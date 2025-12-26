@@ -6,6 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
+ARG INSTALL_INVOKE=1
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -119,7 +120,7 @@ RUN chmod +x \
     /opt/pilot/kohya.sh \
     /usr/local/bin/pilot
 
-EXPOSE 8888 8443 5555 6666
+EXPOSE 8888 8443 5555 6666 9090 9090
 
 ENV WORKSPACE_ROOT=/workspace \
     JUPYTER_PORT=8888 \
@@ -130,3 +131,10 @@ ENV WORKSPACE_ROOT=/workspace \
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
+
+# --- Optional: InvokeAI (web UI) ---
+ARG INSTALL_INVOKE=1
+RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
+      /opt/venvs/core/bin/pip install --no-cache-dir invokeai ; \
+    fi
+COPY scripts/invoke.sh /opt/pilot/invoke.sh
