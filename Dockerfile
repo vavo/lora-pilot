@@ -80,10 +80,11 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       /opt/venvs/core/bin/pip install -r /opt/pilot/repos/ComfyUI/requirements.txt ; \
     fi
 
-# kohya_ss (submodule included; we do NOT pip-install sd-scripts line)
+# kohya_ss (clone submodules, but DON'T pip install sd-scripts/requirements.txt)
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
-      grep -v -E '(^\s*-e\s+\.\/sd-scripts\s*$|^\s*\.\/sd-scripts\s*$)' /opt/pilot/repos/kohya_ss/requirements.txt > /tmp/kohya.requirements.txt && \
+      # Remove any sd-scripts reference from kohya requirements (it’s a submodule, not a pip package)
+      grep -v -E 'sd-scripts' /opt/pilot/repos/kohya_ss/requirements.txt > /tmp/kohya.requirements.txt && \
       /opt/venvs/core/bin/pip install -r /tmp/kohya.requirements.txt ; \
     fi
 
