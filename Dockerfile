@@ -3,6 +3,7 @@ FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC
 
+# Defaults: build a runpod-ready image out of the box
 ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
@@ -13,13 +14,16 @@ ARG TORCHAUDIO_VERSION=2.6.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
 ARG XFORMERS_VERSION=0.0.29.post3
 
+# Base OS deps (+ mc)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl git wget unzip \
     tini supervisor openssl \
     software-properties-common build-essential iproute2 \
     libgl1 libglib2.0-0 \
+    mc \
     && rm -rf /var/lib/apt/lists/*
 
+# Python 3.11
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y --no-install-recommends \
       python3.11 python3.11-venv python3.11-distutils \
@@ -30,28 +34,45 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
+# Create pilot user + folders
 RUN useradd -m -s /bin/bash -u 1000 pilot && \
     mkdir -p /workspace /opt/pilot /opt/pilot/repos /opt/venvs && \
     chown -R pilot:pilot /workspace /opt/pilot /opt/venvs
 
+# code-server
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
-# small tools venv (jupyter etc)
+# tools venv (jupyter)
 RUN python -m venv /opt/venvs/tools && \
     /opt/venvs/tools/bin/pip install --upgrade pip setuptools wheel && \
     /opt/venvs/tools/bin/pip install jupyterlab ipywidgets
 
-# core venv (GPU stack + app deps)
+# core venv ALWAYS exists (pilot's default)
+RUN python -m venv /opt/venvs/core && \
+    /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel
+
+# Optional GPU stack into core
 RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
-      python -m venv /opt/venvs/core && \
-      /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel && \
       /opt/venvs/core/bin/pip install \
         torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} torchaudio==${TORCHAUDIO_VERSION} \
         --index-url ${TORCH_INDEX_URL} && \
-      /opt/venvs/core/bin/pip install \
-        xformers==${XFORMERS_VERSION} \
-        accelerate safetensors numpy pillow tqdm psutil ; \
+      /opt/venvs/core/bin/pip install xformers==${XFORMERS_VERSION} && \
+      /opt/venvs/core/bin/python -c "import torch; print('torch', torch.__version__); print('cuda', torch.cuda.is_available())" ; \
+    else \
+      echo "Skipping GPU stack install (INSTALL_GPU_STACK=${INSTALL_GPU_STACK})" ; \
     fi
+
+# Your requested python modules (go into core)
+RUN /opt/venvs/core/bin/pip install \
+    fastapi \
+    "uvicorn[standard]" \
+    pydantic \
+    python-multipart \
+    pillow \
+    flask \
+    flask-cors \
+    requests \
+    python-dotenv
 
 # ComfyUI
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
@@ -59,34 +80,37 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       /opt/venvs/core/bin/pip install -r /opt/pilot/repos/ComfyUI/requirements.txt ; \
     fi
 
-# kohya_ss (+ submodules)
-# Fix: remove sd-scripts line from kohya requirements (sd-scripts isn't pip-installable)
+# kohya_ss (submodule included; we do NOT pip-install sd-scripts line)
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
-      if [ -f /opt/pilot/repos/kohya_ss/sd-scripts/requirements.txt ]; then \
-        /opt/venvs/core/bin/pip install -r /opt/pilot/repos/kohya_ss/sd-scripts/requirements.txt ; \
-      fi && \
-      sed -i '/sd-scripts/d' /opt/pilot/repos/kohya_ss/requirements.txt && \
-      /opt/venvs/core/bin/pip install -r /opt/pilot/repos/kohya_ss/requirements.txt ; \
+      grep -v -E '(^\s*-e\s+\.\/sd-scripts\s*$|^\s*\.\/sd-scripts\s*$)' /opt/pilot/repos/kohya_ss/requirements.txt > /tmp/kohya.requirements.txt && \
+      /opt/venvs/core/bin/pip install -r /tmp/kohya.requirements.txt ; \
     fi
 
+# Config + scripts
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
 COPY scripts/smoke-test.sh /opt/pilot/smoke-test.sh
 COPY scripts/gpu-smoke-test.sh /opt/pilot/gpu-smoke-test.sh
+COPY scripts/pilot /usr/local/bin/pilot
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
-COPY scripts/pilot /usr/local/bin/pilot
+
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 RUN chmod +x \
     /opt/pilot/bootstrap.sh \
     /opt/pilot/smoke-test.sh \
     /opt/pilot/gpu-smoke-test.sh \
+    /usr/local/bin/pilot \
     /opt/pilot/comfy.sh \
-    /opt/pilot/kohya.sh \
-    /usr/local/bin/pilot
+    /opt/pilot/kohya.sh
 
+# Pilot defaults to core venv
+ENV VIRTUAL_ENV=/opt/venvs/core \
+    PATH=/opt/venvs/core/bin:$PATH
+
+# Ports: jupyter/code-server + comfy/kohya
 EXPOSE 8888 8443 5555 6666
 
 ENV WORKSPACE_ROOT=/workspace \
