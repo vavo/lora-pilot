@@ -50,7 +50,6 @@ COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 RUN chmod +x /opt/pilot/bootstrap.sh /opt/pilot/smoke-test.sh
 
-# Default ports (more later when we add SD apps)
 EXPOSE 8888 8443
 
 ENV WORKSPACE_ROOT=/workspace \
@@ -58,4 +57,4 @@ ENV WORKSPACE_ROOT=/workspace \
     CODE_SERVER_PORT=8443
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && /usr/bin/supervisord -c /etc/supervisor/supervisord.conf"]
+CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && source /workspace/config/secrets.env && exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf"]
