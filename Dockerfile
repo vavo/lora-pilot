@@ -24,6 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     mc \
   && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates curl git wget unzip openssl \
+      tini supervisor software-properties-common build-essential \
+      iproute2 libgl1 libglib2.0-0 && \
+    apt-get -y upgrade && \
+    apt-get -y autoremove --purge && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # ----- python 3.11 -----
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -106,6 +115,8 @@ COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
+
+RUN chown -R pilot:pilot /opt/pilot/repos || true
 
 RUN chmod +x \
     /opt/pilot/bootstrap.sh \
