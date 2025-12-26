@@ -42,6 +42,17 @@ RUN python -m venv /opt/venvs/tools && \
     /opt/venvs/tools/bin/pip install --upgrade pip setuptools wheel && \
     /opt/venvs/tools/bin/pip install jupyterlab ipywidgets
 
+# --- Optional: kohya_ss trainer venv ---
+ARG INSTALL_KOHYA=0
+
+RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
+      mkdir -p /opt/pilot/repos && \
+      git clone --depth 1 https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
+      python -m venv /opt/venvs/kohya && \
+      /opt/venvs/kohya/bin/pip install --upgrade pip setuptools wheel && \
+      /opt/venvs/kohya/bin/pip install -r /opt/pilot/repos/kohya_ss/requirements.txt ; \
+    fi
+
 RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       python -m venv /opt/venvs/core && \
       /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel && \
@@ -73,3 +84,7 @@ ENV WORKSPACE_ROOT=/workspace \
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
+
+COPY scripts/kohya.sh /opt/pilot/kohya.sh
+RUN chmod +x /opt/pilot/kohya.sh
+
