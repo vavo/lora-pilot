@@ -127,5 +127,5 @@ ENV WORKSPACE_ROOT=/workspace \
     KOHYA_PORT=6666 \
     HOME=/home/pilot
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
