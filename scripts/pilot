@@ -1,76 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOCK="/tmp/supervisor.sock"
-CTL=(/usr/bin/supervisorctl -s "unix://${SOCK}")
-
-SECRETS="/workspace/config/secrets.env"
-if [ -f "$SECRETS" ]; then
-  # shellcheck disable=SC1090
-  source "$SECRETS"
-fi
-
-cmd="${1:-help}"
+cmd="${1:-}"
 shift || true
 
-usage() {
-  cat <<'EOF'
-pilot commands:
-  pilot urls            Print URLs + credentials
-  pilot status          Supervisor status
-  pilot start <name>    Start a program (jupyter|code-server|comfyui|kohya)
-  pilot stop <name>     Stop a program
-  pilot restart <name>  Restart a program
-  pilot logs [name]     Tail logs (all or one of: jupyter|code-server|comfyui|kohya)
-  pilot comfy           Start ComfyUI via supervisor
-  pilot kohya           Start Kohya GUI via supervisor
-EOF
-}
-
 case "$cmd" in
-  urls)
-    host="${PILOT_HOST:-localhost}"
-    echo "Jupyter:     http://${host}:8888/lab?token=${JUPYTER_TOKEN:-<missing>}"
-    echo "code-server: http://${host}:8443"
-    echo "password:    ${CODE_SERVER_PASSWORD:-<missing>}"
-    echo "ComfyUI:     http://${host}:5555"
-    echo "Kohya:       http://${host}:6666"
-    ;;
-
-  status)
-    "${CTL[@]}" status
-    ;;
-
-  start|stop|restart)
-    name="${1:-}"
-    [ -n "$name" ] || { echo "Missing program name"; exit 2; }
-    "${CTL[@]}" "$cmd" "$name"
-    ;;
-
-  logs)
-    name="${1:-}"
-    if [ -z "$name" ]; then
-      tail -n 200 -f /workspace/logs/supervisord.log || true
-    else
-      tail -n 200 -f "/workspace/logs/${name}.out.log" "/workspace/logs/${name}.err.log" || true
-    fi
-    ;;
-
-  comfy)
-    "${CTL[@]}" start comfyui
-    ;;
-
-  kohya)
-    "${CTL[@]}" start kohya
-    ;;
-
-  help|--help|-h|"")
-    usage
-    ;;
-
+  comfy) exec /opt/pilot/comfy.sh "$@" ;;
+  kohya) exec /opt/pilot/kohya.sh "$@" ;;
+  jupyter) exec /opt/pilot/start-jupyter.sh "$@" ;;
+  code) exec /opt/pilot/start-code-server.sh "$@" ;;
   *)
-    echo "Unknown: $cmd"
-    usage
+    echo "usage: pilot {comfy|kohya|jupyter|code} [args...]"
     exit 2
     ;;
 esac
