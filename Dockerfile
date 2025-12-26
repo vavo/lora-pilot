@@ -4,6 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Etc/UTC
 
 ARG INSTALL_GPU_STACK=0
+ARG INSTALL_KOHYA=0
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -42,9 +43,7 @@ RUN python -m venv /opt/venvs/tools && \
     /opt/venvs/tools/bin/pip install --upgrade pip setuptools wheel && \
     /opt/venvs/tools/bin/pip install jupyterlab ipywidgets
 
-# --- Optional: kohya_ss trainer venv ---
-ARG INSTALL_KOHYA=0
-
+# --- Optional: kohya_ss trainer venv + repo ---
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       mkdir -p /opt/pilot/repos && \
       git clone --depth 1 https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
@@ -53,6 +52,7 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       /opt/venvs/kohya/bin/pip install -r /opt/pilot/repos/kohya_ss/requirements.txt ; \
     fi
 
+# --- Optional: core GPU stack venv ---
 RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       python -m venv /opt/venvs/core && \
       /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel && \
@@ -71,9 +71,14 @@ COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
 COPY scripts/smoke-test.sh /opt/pilot/smoke-test.sh
 COPY scripts/gpu-smoke-test.sh /opt/pilot/gpu-smoke-test.sh
+COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
-RUN chmod +x /opt/pilot/bootstrap.sh /opt/pilot/smoke-test.sh /opt/pilot/gpu-smoke-test.sh
+RUN chmod +x \
+    /opt/pilot/bootstrap.sh \
+    /opt/pilot/smoke-test.sh \
+    /opt/pilot/gpu-smoke-test.sh \
+    /opt/pilot/kohya.sh
 
 EXPOSE 8888 8443
 
@@ -84,7 +89,3 @@ ENV WORKSPACE_ROOT=/workspace \
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
-
-COPY scripts/kohya.sh /opt/pilot/kohya.sh
-RUN chmod +x /opt/pilot/kohya.sh
-
