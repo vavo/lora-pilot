@@ -72,4 +72,4 @@ ENV WORKSPACE_ROOT=/workspace \
     HOME=/home/pilot
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -c /etc/supervisor/supervisord.conf"]
+CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
