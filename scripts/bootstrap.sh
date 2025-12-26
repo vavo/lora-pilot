@@ -1,9 +1,8 @@
+cat > scripts/bootstrap.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
 DEFAULTS_FILE="/opt/pilot/config/env.defaults"
-SECRETS_FILE=""
-
 if [[ -f "$DEFAULTS_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$DEFAULTS_FILE"
@@ -18,38 +17,40 @@ mkdir -p \
   "${WORKSPACE_ROOT}/outputs" \
   "${WORKSPACE_ROOT}/cache" \
   "${WORKSPACE_ROOT}/config" \
-  "${WORKSPACE_ROOT}/apps"
+  "${WORKSPACE_ROOT}/apps" \
+  "${WORKSPACE_ROOT}/custom_nodes" \
+  "${WORKSPACE_ROOT}/logs"
 
-# Secrets (persist in /workspace)
+# Ensure runtime/config dirs exist (prevents /root fallbacks)
+mkdir -p \
+  "${XDG_CONFIG_HOME}" "${XDG_CACHE_HOME}" "${XDG_DATA_HOME}" \
+  "${JUPYTER_RUNTIME_DIR}" "${JUPYTER_DATA_DIR}" "${JUPYTER_CONFIG_DIR}" \
+  "${HF_HOME}" "${HUGGINGFACE_HUB_CACHE}" "${TRANSFORMERS_CACHE}" \
+  "${TORCH_HOME}" "${PIP_CACHE_DIR}" \
+  "${CODE_SERVER_CONFIG_DIR}" "${CODE_SERVER_DATA_DIR}"
+
+# Secrets (persist)
 if [[ -f "$SECRETS_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$SECRETS_FILE"
 else
   CODE_SERVER_PASSWORD="${CODE_SERVER_PASSWORD:-$(openssl rand -hex 16)}"
   JUPYTER_TOKEN="${JUPYTER_TOKEN:-$(openssl rand -hex 16)}"
-  cat > "$SECRETS_FILE" <<EOF
+  cat > "$SECRETS_FILE" <<EOF2
 export CODE_SERVER_PASSWORD="${CODE_SERVER_PASSWORD}"
 export JUPYTER_TOKEN="${JUPYTER_TOKEN}"
-EOF
+EOF2
 fi
 
-# Export again (in case secrets were loaded)
 export CODE_SERVER_PASSWORD="${CODE_SERVER_PASSWORD:-}"
 export JUPYTER_TOKEN="${JUPYTER_TOKEN:-}"
 
-# Ensure caches exist
-mkdir -p \
-  "${XDG_CACHE_HOME}" \
-  "${HF_HOME}" \
-  "${HUGGINGFACE_HUB_CACHE}" \
-  "${TRANSFORMERS_CACHE}" \
-  "${TORCH_HOME}" \
-  "${PIP_CACHE_DIR}"
-
-# Best-effort permissions (some mounts don't allow chown)
+# Best-effort permissions (some mounts don’t allow chown)
 chown -R pilot:pilot "${WORKSPACE_ROOT}" 2>/dev/null || true
 
 echo "=== LoRA Pilot bootstrap complete ==="
 echo "Workspace: ${WORKSPACE_ROOT}"
 echo "Jupyter:  http://<host>:${JUPYTER_PORT}  (token in ${SECRETS_FILE})"
 echo "code-server: http://<host>:${CODE_SERVER_PORT}  (password in ${SECRETS_FILE})"
+EOF
+chmod +x scripts/bootstrap.sh

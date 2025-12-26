@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl \
     software-properties-common \
     build-essential \
+    iproute2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python 3.11 (Ubuntu 22.04 default is 3.10, so we add deadsnakes)
