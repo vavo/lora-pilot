@@ -20,7 +20,7 @@ if ! id -u pilot >/dev/null 2>&1; then
 fi
 
 if [ "$(stat -c '%u' "$WORKSPACE_ROOT")" != "$(id -u pilot)" ]; then
-  chown -R pilot:pilot "$WORKSPACE_ROOT" || true
+  chown -R pilot:pilot "$WORKSPACE_ROOT" 2>/dev/null || true
 fi
 
 export HOME=/home/pilot
