@@ -36,12 +36,12 @@ RUN useradd -m -s /bin/bash -u 1000 pilot && \
 
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
-# tools venv (jupyter only)
+# small tools venv (jupyter etc)
 RUN python -m venv /opt/venvs/tools && \
     /opt/venvs/tools/bin/pip install --upgrade pip setuptools wheel && \
     /opt/venvs/tools/bin/pip install jupyterlab ipywidgets
 
-# core venv (torch/xformers + shared deps for comfy + kohya)
+# core venv (GPU stack + app deps)
 RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       python -m venv /opt/venvs/core && \
       /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel && \
@@ -50,10 +50,7 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
         --index-url ${TORCH_INDEX_URL} && \
       /opt/venvs/core/bin/pip install \
         xformers==${XFORMERS_VERSION} \
-        accelerate safetensors numpy pillow tqdm psutil && \
-      /opt/venvs/core/bin/python -c "import torch; print('torch ok', torch.__version__)" ; \
-    else \
-      echo "Skipping GPU stack install"; exit 1; \
+        accelerate safetensors numpy pillow tqdm psutil ; \
     fi
 
 # ComfyUI
@@ -62,20 +59,33 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       /opt/venvs/core/bin/pip install -r /opt/pilot/repos/ComfyUI/requirements.txt ; \
     fi
 
-# kohya_ss (needs submodules for sd-scripts)
+# kohya_ss (+ submodules)
+# Fix: remove sd-scripts line from kohya requirements (sd-scripts isn't pip-installable)
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
+      if [ -f /opt/pilot/repos/kohya_ss/sd-scripts/requirements.txt ]; then \
+        /opt/venvs/core/bin/pip install -r /opt/pilot/repos/kohya_ss/sd-scripts/requirements.txt ; \
+      fi && \
+      sed -i '/sd-scripts/d' /opt/pilot/repos/kohya_ss/requirements.txt && \
       /opt/venvs/core/bin/pip install -r /opt/pilot/repos/kohya_ss/requirements.txt ; \
     fi
 
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
-COPY scripts/pilot /usr/local/bin/pilot
+COPY scripts/smoke-test.sh /opt/pilot/smoke-test.sh
+COPY scripts/gpu-smoke-test.sh /opt/pilot/gpu-smoke-test.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
+COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
-RUN chmod +x /opt/pilot/bootstrap.sh /usr/local/bin/pilot /opt/pilot/comfy.sh /opt/pilot/kohya.sh
+RUN chmod +x \
+    /opt/pilot/bootstrap.sh \
+    /opt/pilot/smoke-test.sh \
+    /opt/pilot/gpu-smoke-test.sh \
+    /opt/pilot/comfy.sh \
+    /opt/pilot/kohya.sh \
+    /usr/local/bin/pilot
 
 EXPOSE 8888 8443 5555 6666
 
