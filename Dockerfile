@@ -81,20 +81,20 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       /opt/venvs/core/bin/pip install -r /opt/pilot/repos/ComfyUI/requirements.txt ; \
     fi
 
-# ----- Kohya  -----
+# ----- Kohya -----
+ARG INSTALL_KOHYA=1
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
   git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
-  REQ=/opt/pilot/repos/kohya_ss/requirements_runpod.txt; \
-  [ -f "$REQ" ] || REQ=/opt/pilot/repos/kohya_ss/requirements_linux.txt; \
-  [ -f "$REQ" ] || REQ=/opt/pilot/repos/kohya_ss/requirements.txt; \
-  sed -E 's|/tmp/requirements\.txt|/opt/pilot/repos/kohya_ss/requirements.txt|g' "$REQ" \
-    | grep -v -E '(^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
-    > /tmp/kohya-req.txt && \
-  /opt/venvs/core/bin/pip install --no-cache-dir -r /tmp/kohya-req.txt && \
-  rm -f /tmp/kohya-req.txt && \
+  ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt && \
+  cd /opt/pilot/repos/kohya_ss && \
+  REQ=requirements_runpod.txt; \
+  [ -f "$REQ" ] || REQ=requirements_linux.txt; \
+  [ -f "$REQ" ] || REQ=requirements.txt; \
+  /opt/venvs/core/bin/pip install --no-cache-dir -r "$REQ" && \
   SITEPKG="$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])')" && \
   printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth" ; \
 fi
+
 # ----- project files -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
