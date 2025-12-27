@@ -24,15 +24,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     mc \
   && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates curl git wget unzip openssl \
-      tini supervisor software-properties-common build-essential \
-      iproute2 libgl1 libglib2.0-0 && \
-    apt-get -y upgrade && \
-    apt-get -y autoremove --purge && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 # ----- python 3.11 -----
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -87,11 +78,12 @@ RUN /opt/venvs/core/bin/pip install \
 # ----- ComfyUI -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI && \
-      /opt/venvs/core/bin/pip install -r /opt/pilot/repos/ComfyUI/requirements.txt ; \
+      /opt/venvs/core/bin/pip install -r /opt/pilot/repos/ComfyUI/requirements.txt && \
+      mkdir -p /workspace/comfy/user /workspace/outputs && \
+      ln -sf /workspace/comfy/user /opt/pilot/repos/ComfyUI/user ; \
     fi
 
 # ----- Kohya -----
-ARG INSTALL_KOHYA=1
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
   git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
   ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt && \
@@ -99,10 +91,17 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
   REQ=requirements_runpod.txt; \
   [ -f "$REQ" ] || REQ=requirements_linux.txt; \
   [ -f "$REQ" ] || REQ=requirements.txt; \
-  /opt/venvs/core/bin/pip install --no-cache-dir -r "$REQ" && \
+  grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*(torch|torchvision|torchaudio|xformers)([<=> ].*)?$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' "$REQ" > /tmp/kohya-req.txt && \
+  /opt/venvs/core/bin/pip install --no-cache-dir -r /tmp/kohya-req.txt && \
+  rm -f /tmp/kohya-req.txt && \
   SITEPKG="$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])')" && \
   printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth" ; \
 fi
+
+# --- Optional: InvokeAI (web UI) ---
+RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
+      /opt/venvs/core/bin/pip install --no-cache-dir invokeai ; \
+    fi
 
 # ----- project files -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
@@ -113,10 +112,11 @@ COPY scripts/start-jupyter.sh /opt/pilot/start-jupyter.sh
 COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
+COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
-RUN chown -R pilot:pilot /opt/pilot/repos || true
+RUN chown -R pilot:pilot /opt/pilot/repos /workspace /opt/pilot 2>/dev/null || true
 
 RUN chmod +x \
     /opt/pilot/bootstrap.sh \
@@ -126,23 +126,18 @@ RUN chmod +x \
     /opt/pilot/start-code-server.sh \
     /opt/pilot/comfy.sh \
     /opt/pilot/kohya.sh \
+    /opt/pilot/invoke.sh \
     /usr/local/bin/pilot
 
-EXPOSE 8888 8443 5555 6666 9090 9090
+EXPOSE 8888 8443 5555 6666 9090
 
 ENV WORKSPACE_ROOT=/workspace \
     JUPYTER_PORT=8888 \
     CODE_SERVER_PORT=8443 \
     COMFY_PORT=5555 \
     KOHYA_PORT=6666 \
+    INVOKE_PORT=9090 \
     HOME=/home/pilot
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
-
-# --- Optional: InvokeAI (web UI) ---
-ARG INSTALL_INVOKE=1
-RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
-      /opt/venvs/core/bin/pip install --no-cache-dir invokeai ; \
-    fi
-COPY scripts/invoke.sh /opt/pilot/invoke.sh
