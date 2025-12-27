@@ -51,6 +51,7 @@ RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 # ----- user + dirs -----
 RUN useradd -m -s /bin/bash -u 1000 pilot && \
     usermod -s /bin/bash pilot && \
+    chsh -s /bin/bash pilot && \
     mkdir -p /workspace /opt/pilot /opt/pilot/repos /opt/venvs /opt/pilot/config && \
     chown -R pilot:pilot /workspace /opt/pilot /opt/pilot/repos
 
