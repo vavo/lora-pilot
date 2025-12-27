@@ -1,0 +1,20 @@
+# name|kind|source|subdir|include
+#
+# kind:
+#   url     -> source is https://...
+#   hf_file -> source is repo_id:path_in_repo
+#   hf_repo -> source is repo_id (optional include patterns in last column)
+#
+# Default destination root: /workspace/models
+
+# --- SDXL (Comfy checkpoints) ---
+sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints|
+sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints|
+sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints|
+
+# --- FLUX.1-dev (gated HF, needs HF_TOKEN + accepted license) ---
+flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|checkpoints|
+flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae|
+
+# --- WAN (Diffusers-style repo download; big; usually gated/large) ---
+wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md
