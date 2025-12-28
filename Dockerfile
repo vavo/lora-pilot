@@ -95,7 +95,7 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
         --index-url ${TORCH_INDEX_URL} && \
       /opt/venvs/core/bin/pip install \
         xformers==${XFORMERS_VERSION} \
-        accelerate safetensors numpy pillow tqdm psutil ; \
+accelerate safetensors "numpy<2" pillow tqdm psutil
     else \
       echo "Skipping GPU stack install (INSTALL_GPU_STACK=${INSTALL_GPU_STACK})"; \
     fi
@@ -121,37 +121,76 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
 
 # ----- Kohya (install into core venv, but DO NOT let it replace torch/xformers) -----
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
-  git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
-  ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt && \
-  cd /opt/pilot/repos/kohya_ss && \
+  set -eux; \
+  git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss; \
+  cd /opt/pilot/repos/kohya_ss; \
   REQ=requirements_runpod.txt; \
   [ -f "$REQ" ] || REQ=requirements_linux.txt; \
   [ -f "$REQ" ] || REQ=requirements.txt; \
-  grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' "$REQ" > /tmp/kohya-req.txt && \
-  /opt/venvs/core/bin/pip install --no-cache-dir -r /tmp/kohya-req.txt && \
-  rm -f /tmp/kohya-req.txt && \
-  SITEPKG="$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])')" && \
-  printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth" && \
+  \
+  # Filter out container-hostile / unwanted deps
+  grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*numpy([[:space:]=<>!].*)?$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
+    "$REQ" > /tmp/kohya-req.txt; \
+  \
+  # Hard constraints so pip can't "helpfully" bring back numpy 2.x
+  cat > /tmp/kohya-constraints.txt <<'EOF' \
+numpy<2 \
+EOF \
+  ; \
+  \
+  /opt/venvs/core/bin/pip install --no-cache-dir -r /tmp/kohya-req.txt -c /tmp/kohya-constraints.txt; \
+  rm -f /tmp/kohya-req.txt /tmp/kohya-constraints.txt; \
+  \
+  SITEPKG="$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])')"; \
+  printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth"; \
   printf '%s\n' \
     'from easygui import global_state as _gs' \
     'globals().update(_gs.__dict__)' \
-    > "${SITEPKG}/global_state.py" \
-  ; fi
+    > "${SITEPKG}/global_state.py"; \
+fi
 
-# ----- InvokeAI (install into core venv) -----
+# ----- InvokeAI (thin venv that reuses core site-packages) -----
 RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
-      /opt/venvs/core/bin/pip install --no-cache-dir invokeai ; \
+      set -eux; \
+      python -m venv --system-site-packages /opt/venvs/invoke; \
+      /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel; \
+      \
+      # Prevent Invoke from "helpfully" replacing torch stack
+      cat > /tmp/invoke-constraints.txt <<'EOF' \
+torch==${TORCH_VERSION} \
+torchvision==${TORCHVISION_VERSION} \
+torchaudio==${TORCHAUDIO_VERSION} \
+xformers==${XFORMERS_VERSION} \
+numpy<2 \
+EOF \
+      ; \
+      /opt/venvs/invoke/bin/pip install --no-cache-dir -c /tmp/invoke-constraints.txt invokeai; \
+      rm -f /tmp/invoke-constraints.txt; \
     fi
 
-# ----- OneTrainer (install into core venv) -----
+# ----- OneTrainer (core venv, constrained) -----
 RUN if [ "${INSTALL_ONETRAINER}" = "1" ]; then \
-      git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer && \
+      set -eux; \
+      git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer; \
+      \
+      # constraints so OneTrainer can't "helpfully" rewrite core stack
+      cat > /tmp/onetrainer-constraints.txt <<'EOF' \
+numpy<2 \
+EOF \
+      ; \
+      \
       /opt/venvs/core/bin/pip install --no-cache-dir \
-        -r /opt/pilot/repos/OneTrainer/requirements-global.txt && \
-      grep -v -E '^(--extra-index-url|torch==|torchvision==|torchaudio==)' \
-        /opt/pilot/repos/OneTrainer/requirements-cuda.txt > /tmp/onetrainer-cuda-req.txt && \
-      /opt/venvs/core/bin/pip install --no-cache-dir -r /tmp/onetrainer-cuda-req.txt && \
-      rm -f /tmp/onetrainer-cuda-req.txt ; \
+        -c /tmp/onetrainer-constraints.txt \
+        -r /opt/pilot/repos/OneTrainer/requirements-global.txt; \
+      \
+      grep -v -E '^(--extra-index-url|--index-url|torch==|torchvision==|torchaudio==|xformers==)' \
+        /opt/pilot/repos/OneTrainer/requirements-cuda.txt > /tmp/onetrainer-cuda-req.txt; \
+      \
+      /opt/venvs/core/bin/pip install --no-cache-dir \
+        -c /tmp/onetrainer-constraints.txt \
+        -r /tmp/onetrainer-cuda-req.txt; \
+      \
+      rm -f /tmp/onetrainer-cuda-req.txt /tmp/onetrainer-constraints.txt; \
     fi
 
 # ----- project files -----

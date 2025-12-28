@@ -1,43 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WS="${WORKSPACE_ROOT:-/workspace}"
-PORT="${JUPYTER_PORT:-8888}"
+WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
+JUPYTER_PORT="${JUPYTER_PORT:-8888}"
 
-# Put Jupyter runtime/config somewhere writable on RunPod volumes.
-PH="${WS}/home/pilot"
-export HOME="${PH}"
-export XDG_CONFIG_HOME="${PH}/.config"
-export XDG_DATA_HOME="${PH}/.local/share"
-export XDG_CACHE_HOME="${PH}/.cache"
-
-export JUPYTER_CONFIG_DIR="${PH}/.jupyter"
-export JUPYTER_DATA_DIR="${PH}/.local/share/jupyter"
-export JUPYTER_RUNTIME_DIR="${PH}/.local/share/jupyter/runtime"
-
-mkdir -p \
-  "${XDG_CONFIG_HOME}" \
-  "${JUPYTER_CONFIG_DIR}" \
-  "${JUPYTER_DATA_DIR}" \
-  "${JUPYTER_RUNTIME_DIR}" \
-  "${WS}/logs" \
-  "${WS}/config"
-
-# Token comes from secrets.env (your bootstrap prints that location)
-SECRETS="${WS}/config/secrets.env"
-TOKEN=""
-if [ -f "${SECRETS}" ]; then
-  TOKEN="$(awk -F= '/^JUPYTER_TOKEN=/{print $2}' "${SECRETS}" | tail -n1 || true)"
+# Load secrets so JUPYTER_TOKEN is actually set (otherwise you get "auth disabled")
+if [ -f "${WORKSPACE_ROOT}/config/secrets.env" ]; then
+  # shellcheck disable=SC1090
+  source "${WORKSPACE_ROOT}/config/secrets.env"
 fi
 
+# Writable HOME on workspace (fine), but runtime MUST be on local FS (/tmp) to allow chmod 0600
+export HOME="${HOME:-${WORKSPACE_ROOT}/home/pilot}"
+mkdir -p "$HOME" || true
+
+# Force runtime dirs to /tmp so secure_write() can chmod properly
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/xdg-runtime-pilot}"
+export JUPYTER_RUNTIME_DIR="${JUPYTER_RUNTIME_DIR:-/tmp/jupyter-runtime}"
+mkdir -p "$XDG_RUNTIME_DIR" "$JUPYTER_RUNTIME_DIR"
+chmod 700 "$XDG_RUNTIME_DIR" "$JUPYTER_RUNTIME_DIR" || true
+
+# Keep config/data where you want them
+export JUPYTER_CONFIG_DIR="${JUPYTER_CONFIG_DIR:-$WORKSPACE_ROOT/config/jupyter}"
+export JUPYTER_DATA_DIR="${JUPYTER_DATA_DIR:-$WORKSPACE_ROOT/cache/jupyter}"
+export IPYTHONDIR="${IPYTHONDIR:-$WORKSPACE_ROOT/cache/ipython}"
+mkdir -p "$JUPYTER_CONFIG_DIR" "$JUPYTER_DATA_DIR" "$IPYTHONDIR"
+
+# Make sure Jupyter doesn't generate group/world-writable files
+umask 077
+
 exec /opt/venvs/tools/bin/jupyter-lab \
-  --ServerApp.ip=0.0.0.0 \
-  --ServerApp.port="${PORT}" \
-  --ServerApp.open_browser=False \
-  --ServerApp.allow_remote_access=True \
+  --ip=0.0.0.0 \
+  --port="$JUPYTER_PORT" \
+  --no-browser \
   --ServerApp.allow_origin='*' \
-  --ServerApp.disable_check_xsrf=True \
-  --ServerApp.root_dir="${WS}" \
-  --ServerApp.password='' \
-  --IdentityProvider.token="${TOKEN}" \
-  --ServerApp.token="${TOKEN}"
+  --ServerApp.allow_remote_access=True \
+  --ServerApp.root_dir="$WORKSPACE_ROOT" \
+  --ServerApp.token="${JUPYTER_TOKEN:-}"
