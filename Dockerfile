@@ -8,6 +8,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMFY_PORT=5555 \
     KOHYA_PORT=6666 \
     INVOKE_PORT=9090 \
+    ONETRAINER_PORT=4444 \
     HOME=/home/pilot \
     SHELL=/bin/bash \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
@@ -17,12 +18,14 @@ ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
+ARG INSTALL_ONETRAINER=1
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
 ARG TORCHAUDIO_VERSION=2.6.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
 ARG XFORMERS_VERSION=0.0.29.post3
+ARG CROC_VERSION=10.0.7
 
 # ----- base deps -----
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,11 +34,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common build-essential \
     iproute2 \
     libgl1 libglib2.0-0 \
+    xvfb x11vnc novnc websockify \
     mc \
   && apt-get -y upgrade \
   && apt-get -y autoremove --purge \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
+
+# ----- croc -----
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "${arch}" in \
+      amd64) croc_arch="Linux-64bit" ;; \
+      arm64) croc_arch="Linux-ARM64" ;; \
+      *) echo "Unsupported arch for croc: ${arch}" >&2; exit 1 ;; \
+    esac; \
+    url="https://github.com/schollz/croc/releases/download/v${CROC_VERSION}/croc_v${CROC_VERSION}_${croc_arch}.tar.gz"; \
+    tmp_dir="$(mktemp -d)"; \
+    curl -fL "${url}" -o "${tmp_dir}/croc.tgz"; \
+    tar -xzf "${tmp_dir}/croc.tgz" -C "${tmp_dir}"; \
+    croc_path="$(find "${tmp_dir}" -maxdepth 2 -type f -name croc -print -quit)"; \
+    [ -n "${croc_path}" ] || { echo "croc binary not found in ${url}" >&2; exit 1; }; \
+    install -m 0755 "${croc_path}" /usr/local/bin/croc; \
+    rm -rf "${tmp_dir}"; \
+    croc --version
 
 # ----- python 3.11 -----
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
@@ -123,6 +145,22 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       /opt/venvs/invoke/bin/pip install --no-cache-dir invokeai ; \
     fi
 
+# ----- OneTrainer (separate venv) -----
+RUN if [ "${INSTALL_ONETRAINER}" = "1" ]; then \
+      git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer && \
+      python -m venv /opt/venvs/onetrainer && \
+      /opt/venvs/onetrainer/bin/pip install --upgrade pip setuptools wheel && \
+      /opt/venvs/onetrainer/bin/pip install \
+        torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} torchaudio==${TORCHAUDIO_VERSION} \
+        --index-url ${TORCH_INDEX_URL} && \
+      /opt/venvs/onetrainer/bin/pip install --no-cache-dir \
+        -r /opt/pilot/repos/OneTrainer/requirements-global.txt && \
+      grep -v -E '^(--extra-index-url|torch==|torchvision==|torchaudio==)' \
+        /opt/pilot/repos/OneTrainer/requirements-cuda.txt > /tmp/onetrainer-cuda-req.txt && \
+      /opt/venvs/onetrainer/bin/pip install --no-cache-dir -r /tmp/onetrainer-cuda-req.txt && \
+      rm -f /tmp/onetrainer-cuda-req.txt ; \
+    fi
+
 # ----- project files -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY config/models.manifest /opt/pilot/config/models.manifest.default
@@ -136,6 +174,7 @@ COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
+COPY scripts/onetrainer.sh /opt/pilot/onetrainer.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
@@ -151,6 +190,7 @@ RUN set -eux; \
       /opt/pilot/comfy.sh \
       /opt/pilot/kohya.sh \
       /opt/pilot/invoke.sh \
+      /opt/pilot/onetrainer.sh \
       /opt/pilot/get-models.sh \
       /usr/local/bin/pilot \
     ; do \
@@ -163,7 +203,7 @@ RUN set -eux; \
     mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
     chown -R pilot:pilot /opt/pilot /opt/pilot/repos /opt/venvs || true
 
-EXPOSE 8888 8443 5555 6666 9090
+EXPOSE 8888 8443 5555 6666 9090 4444
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]

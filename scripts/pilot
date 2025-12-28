@@ -9,6 +9,7 @@ case "$cmd" in
   kohya) exec /opt/pilot/kohya.sh "$@" ;;
   jupyter) exec /opt/pilot/start-jupyter.sh "$@" ;;
   code) exec /opt/pilot/start-code-server.sh "$@" ;;
+  onetrainer) exec /opt/pilot/onetrainer.sh "$@" ;;
   urls)
     if [ -f /workspace/config/secrets.env ]; then
       source /workspace/config/secrets.env
@@ -17,13 +18,14 @@ case "$cmd" in
       echo "password:    ${CODE_SERVER_PASSWORD}"
       echo "ComfyUI:     http://localhost:${COMFY_PORT:-5555}"
       echo "Kohya:       http://localhost:${KOHYA_PORT:-6666}"
+      echo "OneTrainer:  http://localhost:${ONETRAINER_PORT:-4444}/vnc.html"
     else
       echo "/workspace/config/secrets.env not found"
       exit 1
     fi
     ;;
   *)
-    echo "usage: pilot {comfy|kohya|jupyter|code|urls} [args...]"
+    echo "usage: pilot {comfy|kohya|jupyter|code|onetrainer|urls} [args...]"
     exit 2
     ;;
 esac
