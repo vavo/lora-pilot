@@ -138,26 +138,19 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
     > "${SITEPKG}/global_state.py" \
   ; fi
 
-# ----- InvokeAI in its OWN venv -----
+# ----- InvokeAI (install into core venv) -----
 RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
-      python -m venv /opt/venvs/invoke && \
-      /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel && \
-      /opt/venvs/invoke/bin/pip install --no-cache-dir invokeai ; \
+      /opt/venvs/core/bin/pip install --no-cache-dir invokeai ; \
     fi
 
-# ----- OneTrainer (separate venv) -----
+# ----- OneTrainer (install into core venv) -----
 RUN if [ "${INSTALL_ONETRAINER}" = "1" ]; then \
       git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer && \
-      python -m venv /opt/venvs/onetrainer && \
-      /opt/venvs/onetrainer/bin/pip install --upgrade pip setuptools wheel && \
-      /opt/venvs/onetrainer/bin/pip install \
-        torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} torchaudio==${TORCHAUDIO_VERSION} \
-        --index-url ${TORCH_INDEX_URL} && \
-      /opt/venvs/onetrainer/bin/pip install --no-cache-dir \
+      /opt/venvs/core/bin/pip install --no-cache-dir \
         -r /opt/pilot/repos/OneTrainer/requirements-global.txt && \
       grep -v -E '^(--extra-index-url|torch==|torchvision==|torchaudio==)' \
         /opt/pilot/repos/OneTrainer/requirements-cuda.txt > /tmp/onetrainer-cuda-req.txt && \
-      /opt/venvs/onetrainer/bin/pip install --no-cache-dir -r /tmp/onetrainer-cuda-req.txt && \
+      /opt/venvs/core/bin/pip install --no-cache-dir -r /tmp/onetrainer-cuda-req.txt && \
       rm -f /tmp/onetrainer-cuda-req.txt ; \
     fi
 

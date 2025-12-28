@@ -8,7 +8,7 @@ VNC_PORT="${ONETRAINER_VNC_PORT:-5900}"
 RESOLUTION="${ONETRAINER_RESOLUTION:-1920x1080}"
 DEPTH="${ONETRAINER_DEPTH:-24}"
 
-export PATH="/opt/venvs/onetrainer/bin:$PATH"
+export PATH="/opt/venvs/core/bin:$PATH"
 export PYTHONUNBUFFERED=1
 export DISPLAY=":${DISPLAY_NUM}"
 
@@ -47,6 +47,6 @@ cleanup() {
 trap cleanup EXIT
 
 cd /opt/pilot/repos/OneTrainer
-/opt/venvs/onetrainer/bin/python -u scripts/train_ui.py &
+/opt/venvs/core/bin/python -u scripts/train_ui.py &
 OT_PID=$!
 wait "${OT_PID}"
