@@ -1,4 +1,3 @@
-cat > scripts/smoke-test.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -16,6 +15,3 @@ else
 fi
 
 echo "[smoke] OK"
-EOF
-
-chmod +x scripts/smoke-test.sh

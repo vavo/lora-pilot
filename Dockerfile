@@ -139,12 +139,10 @@ COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
-RUN ln -sf /opt/pilot/get-models.sh /usr/local/bin/models && \
-    ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models && \
-    mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config && \
-    chown -R pilot:pilot /workspace /opt/pilot /opt/pilot/repos && \
-    chmod +x \
-      /opt/pilot/get-models.sh \
+# Normalize line endings, ensure shebang exists, set exec bits, create symlinks, create dirs.
+# IMPORTANT: do NOT chown -R /workspace (RunPod volumes often disallow it).
+RUN set -eux; \
+    for f in \
       /opt/pilot/bootstrap.sh \
       /opt/pilot/smoke-test.sh \
       /opt/pilot/gpu-smoke-test.sh \
@@ -153,7 +151,17 @@ RUN ln -sf /opt/pilot/get-models.sh /usr/local/bin/models && \
       /opt/pilot/comfy.sh \
       /opt/pilot/kohya.sh \
       /opt/pilot/invoke.sh \
-      /usr/local/bin/pilot
+      /opt/pilot/get-models.sh \
+      /usr/local/bin/pilot \
+    ; do \
+      sed -i 's/\r$//' "$f"; \
+      head -n 1 "$f" | grep -q '^#!' || (echo "Missing shebang in $f" >&2; exit 1); \
+      chmod +x "$f"; \
+    done; \
+    ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
+    ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
+    mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
+    chown -R pilot:pilot /opt/pilot /opt/pilot/repos /opt/venvs || true
 
 EXPOSE 8888 8443 5555 6666 9090
 

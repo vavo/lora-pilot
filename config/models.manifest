@@ -7,14 +7,84 @@
 #
 # Default destination root: /workspace/models
 
-# --- SDXL (Comfy checkpoints) ---
+# --- SDXL Base Models ---
 sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints|
 sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints|
 sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints|
-
-# --- FLUX.1-dev (gated HF, needs HF_TOKEN + accepted license) ---
+# --- SDXL Fine-tuned Models ---
+juggernaut-xl|hf_file|RunDiffusion/Juggernaut-XL:Juggernaut-XL_v9_RunDiffusion_photo2.safetensors|checkpoints|
+ragnarok-xl|hf_file|Ragnar-Schmidek/ragnarok-xl:ragnarok-xl.safetensors|checkpoints|
+epicrealism-xl|hf_file|epicphotogasm/epicrealismXL_v11:epicrealismXL_v11.safetensors|checkpoints|
+realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints|
+realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints|
+pony-xl|hf_file|PixArt-alpha/Pony-Diffusion-XL:ponyDiffusion_v8XLReborn.safetensors|checkpoints|
+dreamshaper-xl|hf_file|Lykon/dreamshaper-xl-1-0:dreamshaperXL10_alpha2Xl10.safetensors|checkpoints|
+juggernaut-xl-v8|hf_file|Sxela/Juggernaut-XL-v8:Juggernaut-XL-v8.safetensors|checkpoints|
+sdvn6-realxl|hf_file|stablediffusionapi/sdvn6-realxl:sdvn6-realxl.safetensors|checkpoints|
+albedobase-xl|hf_file|albedobase/albedobase-xl-1.0:albedobaseXL_v13.safetensors|checkpoints|
+# --- SD 1.5 Base Models ---
+sd15-base|hf_file|runwayml/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints|
+sd21-base|hf_file|stabilityai/stable-diffusion-2-1:768-v-ema.safetensors|checkpoints|
+sd21-base-512|hf_file|stabilityai/stable-diffusion-2-1-base:512-v-ema.safetensors|checkpoints|
+# --- SD 1.5 Fine-tuned Models ---
+realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1:Realistic_Vision_V5.1.safetensors|checkpoints|
+realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1:Realistic_Vision_V6.0_B1.safetensors|checkpoints|
+epicrealism|hf_file|digiplay/majicmixRealistic_v6:epicrealism_naturalSunlight.safetensors|checkpoints|
+rev-animated|hf_file|s3nh/RevAnimated:revAnimated_v122.safetensors|checkpoints|
+toonyou|hf_file|Linaqruf/anything-v3.0:anything-v3-fp16-pruned.safetensors|checkpoints|
+# --- FLUX.1 Models ---
 flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|checkpoints|
 flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae|
-
-# --- WAN (Diffusers-style repo download; big; usually gated/large) ---
+# --- WAN Models ---
 wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md
+wan2.2-anime-14b|hf_repo|Wan-AI/Wan2.2-Anime-14B|wan/wan2.2-anime-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json
+# --- VAE Models ---
+sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae|
+vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae|
+vae-ft-ema|hf_file|stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors|vae|
+# --- Z-Index Models ---
+z3d|hf_repo|Zymrael/Z3D|z3d|*.safetensors,*.json,*.yaml
+z3d-anime|hf_repo|Zymrael/Z3D-Anime|z3d-anime|*.safetensors,*.json,*.yaml
+# --- ControlNet Models ---
+# SD 1.5 ControlNets
+controlnet-canny|hf_file|lllyasviel/sd-controlnet-canny:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-depth|hf_file|lllyasviel/sd-controlnet-depth:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-hed|hf_file|lllyasviel/sd-controlnet-hed:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-mlsd|hf_file|lllyasviel/sd-controlnet-mlsd:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-normal|hf_file|lllyasviel/sd-controlnet-normal:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-openpose|hf_file|lllyasviel/sd-controlnet-openpose:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-scribble|hf_file|lllyasviel/sd-controlnet-scribble:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-seg|hf_file|lllyasviel/sd-controlnet-seg:diffusion_pytorch_model.safetensors|controlnet|
+# SDXL ControlNets
+controlnet-canny-sdxl|hf_file|diffusers/controlnet-canny-sdxl-1.0:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-depth-sdxl|hf_file|diffusers/controlnet-depth-sdxl-1.0:diffusion_pytorch_model.safetensors|controlnet|
+# --- Refiners ---
+sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints|
+sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0_0.9vae.safetensors|checkpoints|
+realvisxl-refiner|hf_file|SG161222/RealVisXL_V4.0:realvisxlV40_v40Bakedvae.safetensors|checkpoints|
+juggernaut-refiner|hf_file|RunDiffusion/Juggernaut-XL:Juggernaut-XL_v9_RunDiffusion_photo2_refiner.safetensors|checkpoints|
+# --- VAE & VAE Approx ---
+sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae|
+vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae|
+vae-ft-ema|hf_file|stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors|vae|
+taesdxl|hf_file|madebyollin/taesdxl:taesdxl.safetensors|vae_approx|
+taesd|hf_file|madebyollin/taesd:taesd.safetensors|vae_approx|
+# --- CLIP Vision Models ---
+clip-vit-h-14|hf_file|laion/CLIP-ViT-H-14-laion2B-s32B-b79K:open_clip_pytorch_model.safetensors|clip_vision|
+clip-vit-l-14|hf_file|openai/clip-vit-large-patch14:model.safetensors|clip_vision|
+clip-vit-bigG-14|hf_file|laion/CLIP-ViT-bigG-14-laion2B-39B-b160k:open_clip_pytorch_model.safetensors|clip_vision|
+# --- Upscale Models ---
+# 4x Upscalers
+realesrgan-4x|hf_file|xintao/realesrgan:RealESRGAN_x4plus.pth|upscale_models|
+realesrgan-4x-anime|hf_file|xintao/realesrgan:RealESRGAN_x4plus_anime_6B.pth|upscale_models|
+swinir-4x|hf_file|microsoft/swin2SR-realworld-sr:003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth|upscale_models|
+esrgan-4x|hf_file|TencentARC/GFPGAN:experiments/pretrained_models/GFPGANv1.4.pth|upscale_models|
+# 2x Upscalers
+realesrgan-2x|hf_file|xintao/realesrgan:RealESRGAN_x2plus.pth|upscale_models|
+latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:diffusion_pytorch_model.safetensors|upscale_models|
+# --- Text Encoders ---
+# SD 1.5 Text Encoder
+sd15-text-encoder|hf_file|runwayml/stable-diffusion-v1-5:text_encoder/model.safetensors|text_encoder|
+# SDXL Text Encoders
+sdxl-text-encoder|hf_file|stabilityai/stable-diffusion-xl-base-1.0:text_encoder/model.safetensors|text_encoder|
+sdxl-text-encoder-2|hf_file|stabilityai/stable-diffusion-xl-base-1.0:text_encoder_2/model.safetensors|text_encoder|
