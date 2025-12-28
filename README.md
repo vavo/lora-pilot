@@ -67,31 +67,31 @@ Typical entries:
 ---
 
 
-# Ports (optional overrides)
+## Ports (optional overrides)
 JUPYTER_PORT=8888
 CODE_SERVER_PORT=8443
 COMFY_PORT=5555
 KOHYA_PORT=6666
 INVOKE_PORT=9090
 
-# Hugging Face (optional but often necessary)
+## Hugging Face (optional but often necessary)
 HF_TOKEN=...                 # for gated models
 HF_HUB_ENABLE_HF_TRANSFER=1  # faster downloads (requires hf_transfer, included)
 HF_XET_HIGH_PERFORMANCE=1    # faster Xet storage downloads (included)
 
-# Optional: disable OneTrainer (default: enabled)
+### Optional: disable OneTrainer (default: enabled)
 INSTALL_ONETRAINER=1
 
-# Optional: disable ComfyUI (default: enabled)
+### Optional: disable ComfyUI (default: enabled)
 INSTALL_COMFY=1
 
-# Optional: disable Kohya SS (default: enabled)
+### Optional: disable Kohya SS (default: enabled)
 INSTALL_KOHYA=1
 
-# Optional: disable InvokeAI (default: enabled)
+### Optional: disable InvokeAI (default: enabled)
 INSTALL_INVOKE=1
 
-##Model downloader (built-in)
+## Model downloader (built-in)
 
 The image includes a system-wide command:
 •	models (alias: pilot-models)
@@ -114,7 +114,7 @@ If your get-models.sh supports workspace overrides, the intended override locati
 
 (If you don’t have override logic yet, copy the default into /workspace/config/ and point the script there. Humans love paper cuts.)
 
-Example usage
+## Example usage
 
 # download SDXL base checkpoint into /workspace/models/checkpoints
 models pull sdxl-base
@@ -122,17 +122,43 @@ models pull sdxl-base
 # list all available model nicknames
 models list
 
-### Security note (because reality exists)
-	•	supervisord can run with an unauthenticated unix socket by default.
-	•	This image is meant for trusted environments like your own RunPod pod.
-	•	Don’t expose internal control surfaces to the public internet unless you enjoy chaos.
+## Security note (because reality exists)
+
+- supervisord can run with an unauthenticated unix socket by default.
+- This image is meant for trusted environments like your own RunPod pod.
+- Don’t expose internal control surfaces to the public internet unless you enjoy chaos.
 
 ⸻
 
-### Credits
-	•	ComfyUI: https://github.com/comfyanonymous/ComfyUI
-	•	ComfyUI-Manager: https://github.com/ltdrdata/ComfyUI-Manager
-	•	Kohya SS: https://github.com/bmaltais/kohya_ss
-	•	code-server: https://github.com/coder/code-server
-	•	JupyterLab: https://jupyter.org/
-	•	InvokeAI: https://github.com/invoke-ai/InvokeAI
+## Credits
+
+-	ComfyUI: https://github.com/comfyanonymous/ComfyUI
+-	ComfyUI-Manager: https://github.com/ltdrdata/ComfyUI-Manager
+-	Kohya SS: https://github.com/bmaltais/kohya_ss
+-	code-server: https://github.com/coder/code-server
+-	JupyterLab: https://jupyter.org/
+-	InvokeAI: https://github.com/invoke-ai/InvokeAI
+
+---
+
+MIT License
+
+Copyright (c) 2025 Vavo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
