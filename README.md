@@ -91,7 +91,7 @@ INSTALL_KOHYA=1
 # Optional: disable InvokeAI (default: enabled)
 INSTALL_INVOKE=1
 
-Model downloader (built-in)
+##Model downloader (built-in)
 
 The image includes a system-wide command:
 •	models (alias: pilot-models)
@@ -101,7 +101,7 @@ Usage:
 •	models pull <name> [--dir SUBDIR]
 •	models pull-all
 
-Manifest
+## Manifest
 
 Models are defined in the manifest shipped in the image:
 	•	/opt/pilot/models.manifest
@@ -121,3 +121,18 @@ models pull sdxl-base
 
 # list all available model nicknames
 models list
+
+### Security note (because reality exists)
+	•	supervisord can run with an unauthenticated unix socket by default.
+	•	This image is meant for trusted environments like your own RunPod pod.
+	•	Don’t expose internal control surfaces to the public internet unless you enjoy chaos.
+
+⸻
+
+### Credits
+	•	ComfyUI: https://github.com/comfyanonymous/ComfyUI
+	•	ComfyUI-Manager: https://github.com/ltdrdata/ComfyUI-Manager
+	•	Kohya SS: https://github.com/bmaltais/kohya_ss
+	•	code-server: https://github.com/coder/code-server
+	•	JupyterLab: https://jupyter.org/
+	•	InvokeAI: https://github.com/invoke-ai/InvokeAI
