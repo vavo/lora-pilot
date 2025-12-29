@@ -8,7 +8,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMFY_PORT=5555 \
     KOHYA_PORT=6666 \
     INVOKE_PORT=9090 \
-    ONETRAINER_PORT=4444 \
     HOME=/workspace/home/root \
     SHELL=/bin/bash \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
@@ -24,7 +23,6 @@ ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
-ARG INSTALL_ONETRAINER=1
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -219,32 +217,6 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         invokeai; \
     fi
 
-# ----- OneTrainer (DEDICATED venv; do NOT touch core deps) -----
-RUN if [ "${INSTALL_ONETRAINER}" = "1" ]; then \
-      set -eux; \
-      git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer; \
-      \
-      python -m venv /opt/venvs/onetrainer; \
-      /opt/venvs/onetrainer/bin/pip install --upgrade pip setuptools wheel; \
-      \
-      # Install torch stack matching the image (keeps xformers/torchvision consistent)
-      /opt/venvs/onetrainer/bin/pip install --no-cache-dir \
-        --index-url ${TORCH_INDEX_URL} \
-        torch==${TORCH_VERSION} \
-        torchvision==${TORCHVISION_VERSION} \
-        torchaudio==${TORCHAUDIO_VERSION}; \
-      /opt/venvs/onetrainer/bin/pip install --no-cache-dir xformers==${XFORMERS_VERSION}; \
-      \
-      # Install OneTrainer deps as-is (it wants numpy==2.2.6, fine, just not in core)
-      /opt/venvs/onetrainer/bin/pip install --no-cache-dir \
-        -r /opt/pilot/repos/OneTrainer/requirements-global.txt; \
-      \
-      # CUDA reqs but strip torch pins (we already installed torch stack above)
-      grep -v -E '^(--extra-index-url|--index-url|torch==|torchvision==|torchaudio==|xformers==)' \
-        /opt/pilot/repos/OneTrainer/requirements-cuda.txt > /tmp/onetrainer-cuda-req.txt; \
-      /opt/venvs/onetrainer/bin/pip install --no-cache-dir -r /tmp/onetrainer-cuda-req.txt; \
-      rm -f /tmp/onetrainer-cuda-req.txt; \
-    fi
 
 # ----- project files -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
@@ -259,7 +231,6 @@ COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
-COPY scripts/onetrainer.sh /opt/pilot/onetrainer.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
@@ -275,7 +246,6 @@ RUN set -eux; \
       /opt/pilot/comfy.sh \
       /opt/pilot/kohya.sh \
       /opt/pilot/invoke.sh \
-      /opt/pilot/onetrainer.sh \
       /opt/pilot/get-models.sh \
       /usr/local/bin/pilot \
     ; do \
