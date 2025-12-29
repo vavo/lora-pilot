@@ -11,11 +11,11 @@ if [ -f "${WORKSPACE_ROOT}/config/secrets.env" ]; then
 fi
 
 # Writable HOME on workspace (fine), but runtime MUST be on local FS (/tmp) to allow chmod 0600
-export HOME="${HOME:-${WORKSPACE_ROOT}/home/pilot}"
+export HOME="${HOME:-${WORKSPACE_ROOT}/home/root}"
 mkdir -p "$HOME" || true
 
 # Force runtime dirs to /tmp so secure_write() can chmod properly
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/xdg-runtime-pilot}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/xdg-runtime-root}"
 export JUPYTER_RUNTIME_DIR="${JUPYTER_RUNTIME_DIR:-/tmp/jupyter-runtime}"
 mkdir -p "$XDG_RUNTIME_DIR" "$JUPYTER_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR" "$JUPYTER_RUNTIME_DIR" || true

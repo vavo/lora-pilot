@@ -6,7 +6,7 @@ PORT="${COMFY_PORT:-5555}"
 COMFY_DIR="/opt/pilot/repos/ComfyUI"
 
 # Stable, writable "home" and caches (RunPod volumes + root-owned /home is common)
-export HOME="${HOME:-$WORKSPACE_ROOT/home/pilot}"
+export HOME="${HOME:-$WORKSPACE_ROOT/home/root}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$WORKSPACE_ROOT/cache/xdg}"
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$WORKSPACE_ROOT/config/xdg}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$WORKSPACE_ROOT/cache/xdg-data}"

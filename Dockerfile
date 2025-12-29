@@ -8,21 +8,23 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMFY_PORT=5555 \
     KOHYA_PORT=6666 \
     INVOKE_PORT=9090 \
-    HOME=/workspace/home/pilot \
+    ONETRAINER_PORT=4444 \
+    HOME=/workspace/home/root \
     SHELL=/bin/bash \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
     HF_XET_HIGH_PERFORMANCE=1
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
-    XDG_CACHE_HOME=/workspace/home/pilot/.cache \
-    XDG_CONFIG_HOME=/workspace/home/pilot/.config \
-    XDG_DATA_HOME=/workspace/home/pilot/.local/share
+    XDG_CACHE_HOME=/workspace/home/root/.cache \
+    XDG_CONFIG_HOME=/workspace/home/root/.config \
+    XDG_DATA_HOME=/workspace/home/root/.local/share
 
 ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
+ARG INSTALL_ONETRAINER=1
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -38,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common build-essential \
     iproute2 \
     libgl1 libglib2.0-0 \
-    xvfb x11vnc novnc websockify \
+    xvfb x11vnc novnc websockify whiptail \
     mc nano \
   && apt-get -y upgrade \
   && apt-get -y autoremove --purge \
@@ -74,14 +76,9 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && \
 
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
-# ----- user + dirs -----
-RUN useradd -m -d /workspace/home/pilot -s /bin/bash -u 1000 pilot && \
-    chown -R pilot:pilot /workspace/home/pilot && \
-    usermod -s /bin/bash pilot && \
-    chsh -s /bin/bash pilot && \
-    mkdir -p /workspace /opt/pilot /opt/pilot/repos /opt/venvs /opt/pilot/config && \
-    chown -R pilot:pilot /workspace /opt/pilot /opt/pilot/repos
-RUN mkdir -p /workspace/home/pilot/.cache/pip /workspace/home/pilot/.fonts
+# ----- dirs -----
+RUN mkdir -p /workspace /opt/pilot /opt/pilot/repos /opt/venvs /opt/pilot/config /workspace/home/root
+RUN mkdir -p /workspace/home/root/.cache/pip /workspace/home/root/.fonts
 
 
 # ----- code-server -----
@@ -222,6 +219,33 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         invokeai; \
     fi
 
+# ----- OneTrainer (DEDICATED venv; do NOT touch core deps) -----
+RUN if [ "${INSTALL_ONETRAINER}" = "1" ]; then \
+      set -eux; \
+      git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer; \
+      \
+      python -m venv /opt/venvs/onetrainer; \
+      /opt/venvs/onetrainer/bin/pip install --upgrade pip setuptools wheel; \
+      \
+      # Install torch stack matching the image (keeps xformers/torchvision consistent)
+      /opt/venvs/onetrainer/bin/pip install --no-cache-dir \
+        --index-url ${TORCH_INDEX_URL} \
+        torch==${TORCH_VERSION} \
+        torchvision==${TORCHVISION_VERSION} \
+        torchaudio==${TORCHAUDIO_VERSION}; \
+      /opt/venvs/onetrainer/bin/pip install --no-cache-dir xformers==${XFORMERS_VERSION}; \
+      \
+      # Install OneTrainer deps as-is (it wants numpy==2.2.6, fine, just not in core)
+      /opt/venvs/onetrainer/bin/pip install --no-cache-dir \
+        -r /opt/pilot/repos/OneTrainer/requirements-global.txt; \
+      \
+      # CUDA reqs but strip torch pins (we already installed torch stack above)
+      grep -v -E '^(--extra-index-url|--index-url|torch==|torchvision==|torchaudio==|xformers==)' \
+        /opt/pilot/repos/OneTrainer/requirements-cuda.txt > /tmp/onetrainer-cuda-req.txt; \
+      /opt/venvs/onetrainer/bin/pip install --no-cache-dir -r /tmp/onetrainer-cuda-req.txt; \
+      rm -f /tmp/onetrainer-cuda-req.txt; \
+    fi
+
 # ----- project files -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY config/models.manifest /opt/pilot/config/models.manifest.default
@@ -235,6 +259,7 @@ COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
+COPY scripts/onetrainer.sh /opt/pilot/onetrainer.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
@@ -250,6 +275,7 @@ RUN set -eux; \
       /opt/pilot/comfy.sh \
       /opt/pilot/kohya.sh \
       /opt/pilot/invoke.sh \
+      /opt/pilot/onetrainer.sh \
       /opt/pilot/get-models.sh \
       /usr/local/bin/pilot \
     ; do \
@@ -260,9 +286,9 @@ RUN set -eux; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
     mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
-    chown -R pilot:pilot /opt/pilot /opt/pilot/repos /opt/venvs || true
+    cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt || true
 
-EXPOSE 8888 8443 5555 6666 9090
+EXPOSE 8888 8443 5555 6666 9090 4444
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]

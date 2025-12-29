@@ -5,7 +5,7 @@ WS="${WORKSPACE_ROOT:-/workspace}"
 PORT="${CODE_SERVER_PORT:-8443}"
 
 # Put user state somewhere writable on RunPod volumes.
-PH="${WS}/home/pilot"
+PH="${WS}/home/root"
 mkdir -p \
   "${PH}" \
   "${PH}/.config" \
