@@ -35,6 +35,9 @@ then
   CPU_FLAG="--cpu"
 fi
 
+rm -rf "${COMFY_DIR}/user"
+mkdir -p "${WORKSPACE_ROOT}/comfy/user"
+ln -s "${WORKSPACE_ROOT}/comfy/user" "${COMFY_DIR}/user"
 cd "$COMFY_DIR"
 
 exec python main.py \

@@ -56,4 +56,7 @@ echo "Jupyter:     http://<host>:${JUPYTER_PORT:-8888}  (token in ${SECRETS_FILE
 echo "code-server: http://<host>:${CODE_SERVER_PORT:-8443} (password in ${SECRETS_FILE})"
 echo "ComfyUI:     http://<host>:${COMFY_PORT:-5555}"
 echo "Kohya:       http://<host>:${KOHYA_PORT:-6666}"
+echo "DiffPipe TB: http://<host>:${DIFFPIPE_PORT:-4444}"
 echo "Invoke:      http://<host>:${INVOKE_PORT:-9090}"
+
+umask "${UMASK:-0022}"

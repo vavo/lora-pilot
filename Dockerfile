@@ -8,10 +8,12 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMFY_PORT=5555 \
     KOHYA_PORT=6666 \
     INVOKE_PORT=9090 \
+    DIFFPIPE_PORT=4444 \
     HOME=/workspace/home/root \
     SHELL=/bin/bash \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
-    HF_XET_HIGH_PERFORMANCE=1
+    HF_XET_HIGH_PERFORMANCE=1 \
+    UMASK=0022
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -23,6 +25,7 @@ ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
+ARG INSTALL_DIFFPIPE=1
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -38,7 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     software-properties-common build-essential \
     iproute2 \
     libgl1 libglib2.0-0 \
-    xvfb x11vnc novnc websockify whiptail \
+    whiptail \
     mc nano \
   && apt-get -y upgrade \
   && apt-get -y autoremove --purge \
@@ -66,7 +69,7 @@ RUN set -eux; \
 # ----- python 3.11 -----
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y --no-install-recommends \
-      python3.11 python3.11-venv python3.11-distutils python3.11-tk \
+      python3.11 python3.11-venv python3.11-distutils python3.11-tk python3.11-dev \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && \
@@ -103,8 +106,18 @@ xformers==${XFORMERS_VERSION}
 numpy<2
 pillow<12
 huggingface-hub<1.0
-diffusers==0.33.0
-opencv-python==4.9.0.80
+EOF
+ENV PIP_CONSTRAINT=/opt/pilot/config/core-constraints.txt
+
+RUN set -eux; \
+    cat > /tmp/kohya-constraints.txt <<EOF
+torch==${TORCH_VERSION}
+torchvision==${TORCHVISION_VERSION}
+torchaudio==${TORCHAUDIO_VERSION}
+xformers==${XFORMERS_VERSION}
+numpy<2
+pillow<12
+huggingface-hub<1.0
 EOF
 
 # ----- GPU stack (core venv) -----
@@ -146,8 +159,8 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI; \
       \
       # Filter out packages that must NOT be overridden in core
-      grep -v -E '^[[:space:]]*(torch|torchvision|torchaudio|xformers|numpy|pillow|Pillow|diffusers|transformers|huggingface-hub|accelerate)([[:space:]=<>!].*)?$' \
-        /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt; \
+grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!])|torchaudio($|[[:space:]=<>!])|xformers($|[[:space:]=<>!])|triton($|[[:space:]=<>!])|numpy($|[[:space:]=<>!])|pillow($|[[:space:]=<>!])|Pillow($|[[:space:]=<>!])|diffusers($|[[:space:]=<>!])|transformers($|[[:space:]=<>!])|huggingface-hub($|[[:space:]=<>!])|accelerate($|[[:space:]=<>!]))' \
+  /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt; \
       \
       # Install Comfy deps constrained to your core stack rules
       /opt/venvs/core/bin/pip install --no-cache-dir \
@@ -195,6 +208,15 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
         > "${SITEPKG}/global_state.py"; \
     fi
 
+# ----- Diffusion Pipe (training stack, core venv) -----
+RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then \
+      set -eux; \
+      git clone --depth 1 --recurse-submodules \
+        https://github.com/tdrussell/diffusion-pipe.git /opt/pilot/repos/diffusion-pipe; \
+      /opt/venvs/core/bin/pip install --no-cache-dir \
+        -r /opt/pilot/repos/diffusion-pipe/requirements.txt; \
+    fi
+
 # ----- InvokeAI (dedicated venv; pinned to core torch stack) -----
 RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       set -eux; \
@@ -209,12 +231,10 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         torchaudio==${TORCHAUDIO_VERSION}; \
       /opt/venvs/invoke/bin/pip install --no-cache-dir \
         xformers==${XFORMERS_VERSION}; \
-      \
       # Then install invoke deps pinned to what Invoke expects
       /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        "numpy<2" "pillow<12" "huggingface-hub<1.0" \
-        "diffusers[torch]==0.33.0" "opencv-python==4.9.0.80" \
-        invokeai; \
+        -c /opt/pilot/config/core-constraints.txt \
+        "diffusers[torch]==0.33.0" invokeai; \
     fi
 
 
@@ -230,6 +250,7 @@ COPY scripts/start-jupyter.sh /opt/pilot/start-jupyter.sh
 COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
+COPY scripts/diffusion-pipe.sh /opt/pilot/diffusion-pipe.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
@@ -245,6 +266,7 @@ RUN set -eux; \
       /opt/pilot/start-code-server.sh \
       /opt/pilot/comfy.sh \
       /opt/pilot/kohya.sh \
+      /opt/pilot/diffusion-pipe.sh \
       /opt/pilot/invoke.sh \
       /opt/pilot/get-models.sh \
       /usr/local/bin/pilot \

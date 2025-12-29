@@ -1,39 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
-JUPYTER_PORT="${JUPYTER_PORT:-8888}"
+ROOT="${WORKSPACE_ROOT:-/workspace}"
+PORT="${JUPYTER_PORT:-8888}"
+SECRETS="${ROOT}/config/secrets.env"
+ALLOW_ORIGIN_PAT="${JUPYTER_ALLOW_ORIGIN_PAT:-https://.*\\.proxy\\.runpod\\.net}"
 
-# Load secrets so JUPYTER_TOKEN is actually set (otherwise you get "auth disabled")
-if [ -f "${WORKSPACE_ROOT}/config/secrets.env" ]; then
-  # shellcheck disable=SC1090
-  source "${WORKSPACE_ROOT}/config/secrets.env"
+# Force a sane HOME (ignore ENV HOME if it's on a funky mount)
+export HOME="${ROOT}/home/root"
+export XDG_CACHE_HOME="${HOME}/.cache"
+export XDG_CONFIG_HOME="${HOME}/.config"
+export XDG_DATA_HOME="${HOME}/.local/share"
+
+# Jupyter runtime MUST be on a filesystem that supports chmod correctly.
+# /tmp almost always behaves. Workspace mounts often don't.
+export JUPYTER_RUNTIME_DIR="/tmp/jupyter-runtime"
+
+mkdir -p "${ROOT}/logs" "${ROOT}/config" "${HOME}" \
+         "${XDG_CACHE_HOME}" "${XDG_CONFIG_HOME}" "${XDG_DATA_HOME}" \
+         "${JUPYTER_RUNTIME_DIR}"
+
+# Lock down perms so jupyter_server secure_write stops screaming
+chmod 700 "${HOME}" "${HOME}/.local" "${HOME}/.local/share" "${JUPYTER_RUNTIME_DIR}" || true
+
+# Load secrets if present
+if [ -f "${SECRETS}" ]; then
+  set -a
+  source "${SECRETS}"
+  set +a
 fi
 
-# Writable HOME on workspace (fine), but runtime MUST be on local FS (/tmp) to allow chmod 0600
-export HOME="${HOME:-${WORKSPACE_ROOT}/home/root}"
-mkdir -p "$HOME" || true
+# Ensure token exists (write once)
+if [ -z "${JUPYTER_TOKEN:-}" ]; then
+  JUPYTER_TOKEN="$(python - <<'PY'
+import secrets
+print(secrets.token_hex(24))
+PY
+)"
+  echo "JUPYTER_TOKEN=${JUPYTER_TOKEN}" >> "${SECRETS}"
+fi
 
-# Force runtime dirs to /tmp so secure_write() can chmod properly
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/xdg-runtime-root}"
-export JUPYTER_RUNTIME_DIR="${JUPYTER_RUNTIME_DIR:-/tmp/jupyter-runtime}"
-mkdir -p "$XDG_RUNTIME_DIR" "$JUPYTER_RUNTIME_DIR"
-chmod 700 "$XDG_RUNTIME_DIR" "$JUPYTER_RUNTIME_DIR" || true
-
-# Keep config/data where you want them
-export JUPYTER_CONFIG_DIR="${JUPYTER_CONFIG_DIR:-$WORKSPACE_ROOT/config/jupyter}"
-export JUPYTER_DATA_DIR="${JUPYTER_DATA_DIR:-$WORKSPACE_ROOT/cache/jupyter}"
-export IPYTHONDIR="${IPYTHONDIR:-$WORKSPACE_ROOT/cache/ipython}"
-mkdir -p "$JUPYTER_CONFIG_DIR" "$JUPYTER_DATA_DIR" "$IPYTHONDIR"
-
-# Make sure Jupyter doesn't generate group/world-writable files
-umask 077
-
-exec /opt/venvs/tools/bin/jupyter-lab \
+exec /opt/venvs/tools/bin/jupyter lab \
   --ip=0.0.0.0 \
-  --port="$JUPYTER_PORT" \
+  --port="${PORT}" \
   --no-browser \
-  --ServerApp.allow_origin='*' \
+  --ServerApp.root_dir="${ROOT}" \
+  --ServerApp.token="${JUPYTER_TOKEN}" \
+  --ServerApp.allow_root=True \
   --ServerApp.allow_remote_access=True \
-  --ServerApp.root_dir="$WORKSPACE_ROOT" \
-  --ServerApp.token="${JUPYTER_TOKEN:-}"
+  --ServerApp.allow_origin_pat="${ALLOW_ORIGIN_PAT}" \
+  --ServerApp.trust_xheaders=True \
+  --ServerApp.runtime_dir="${JUPYTER_RUNTIME_DIR}"

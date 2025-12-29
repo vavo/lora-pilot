@@ -7,6 +7,7 @@ A container image for **RunPod** (and anywhere else you can run Docker) that bun
 - **JupyterLab**
 - **code-server** (VS Code in the browser)
 - **InvokeAI** in its own venv
+- **Diffusion Pipe** (training + TensorBoard)
 
 Everything is started by **supervisord** and writes state/logs to **/workspace** so you can mount a persistent volume and not cry later.
 
@@ -18,6 +19,7 @@ Everything is started by **supervisord** and writes state/logs to **/workspace**
 |---|---:|
 | ComfyUI | `5555` |
 | Kohya SS | `6666` |
+| Diffusion Pipe (TensorBoard) | `4444` |
 | code-server | `8443` |
 | JupyterLab | `8888` |
 | InvokeAI (optional) | `9090` |
@@ -43,10 +45,6 @@ Expected directories (created on boot if possible):
 
 ### RunPod volume guidance
 
-- **Mount a persistent volume to `/workspace`**.
-- Some RunPod mounts are **not chown-able**. You may see:
-  - `chown: ... Operation not permitted`
-  This is usually harmless and expected.
 
 **Disk sizing (practical, not theoretical):**
 - Root/container disk: **50–80 GB** recommended (the stack is heavy).
@@ -70,6 +68,7 @@ Typical entries:
 ## Ports (optional overrides)
 COMFY_PORT=5555
 KOHYA_PORT=6666
+DIFFPIPE_PORT=4444
 CODE_SERVER_PORT=8443
 JUPYTER_PORT=8888
 INVOKE_PORT=9090
@@ -79,14 +78,12 @@ HF_TOKEN=...                 # for gated models
 HF_HUB_ENABLE_HF_TRANSFER=1  # faster downloads (requires hf_transfer, included)
 HF_XET_HIGH_PERFORMANCE=1    # faster Xet storage downloads (included)
 
-### Optional: disable ComfyUI (default: enabled)
-INSTALL_COMFY=1
+## Diffusion Pipe (optional)
+DIFFPIPE_CONFIG=/workspace/config/diffusion-pipe.toml
+DIFFPIPE_LOGDIR=/workspace/diffusion-pipe/logs
+DIFFPIPE_NUM_GPUS=1
+If DIFFPIPE_CONFIG is unset, the service just runs TensorBoard on DIFFPIPE_PORT.
 
-### Optional: disable Kohya SS (default: enabled)
-INSTALL_KOHYA=1
-
-### Optional: disable InvokeAI (default: enabled)
-INSTALL_INVOKE=1
 
 ## Model downloader (built-in)
 
@@ -135,6 +132,7 @@ models list
 -	code-server: https://github.com/coder/code-server
 -	JupyterLab: https://jupyter.org/
 -	InvokeAI: https://github.com/invoke-ai/InvokeAI
+-	Diffusion Pipe: https://github.com/tdrussell/diffusion-pipe
 
 ---
 
