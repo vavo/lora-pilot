@@ -6,7 +6,7 @@ A container image for **RunPod** (and anywhere else you can run Docker) that bun
 - **Kohya SS** (web UI)
 - **JupyterLab**
 - **code-server** (VS Code in the browser)
-- (Optional) **InvokeAI** in its own venv
+- **InvokeAI** in its own venv
 
 Everything is started by **supervisord** and writes state/logs to **/workspace** so you can mount a persistent volume and not cry later.
 
@@ -16,13 +16,13 @@ Everything is started by **supervisord** and writes state/logs to **/workspace**
 
 | Service | Port |
 |---|---:|
-| JupyterLab | `8888` |
-| code-server | `8443` |
 | ComfyUI | `5555` |
 | Kohya SS | `6666` |
+| code-server | `8443` |
+| JupyterLab | `8888` |
 | InvokeAI (optional) | `9090` |
 
-Expose them in RunPod (or publish them in Docker).
+Expose them in RunPod (or just use my RunPod template - https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n).
 
 ---
 
@@ -68,19 +68,16 @@ Typical entries:
 
 
 ## Ports (optional overrides)
-JUPYTER_PORT=8888
-CODE_SERVER_PORT=8443
 COMFY_PORT=5555
 KOHYA_PORT=6666
+CODE_SERVER_PORT=8443
+JUPYTER_PORT=8888
 INVOKE_PORT=9090
 
 ## Hugging Face (optional but often necessary)
 HF_TOKEN=...                 # for gated models
 HF_HUB_ENABLE_HF_TRANSFER=1  # faster downloads (requires hf_transfer, included)
 HF_XET_HIGH_PERFORMANCE=1    # faster Xet storage downloads (included)
-
-### Optional: disable OneTrainer (default: enabled)
-INSTALL_ONETRAINER=1
 
 ### Optional: disable ComfyUI (default: enabled)
 INSTALL_COMFY=1

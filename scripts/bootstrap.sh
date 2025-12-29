@@ -77,4 +77,3 @@ echo "code-server: http://<host>:${CODE_SERVER_PORT:-8443} (password in ${SECRET
 echo "ComfyUI:     http://<host>:${COMFY_PORT:-5555}"
 echo "Kohya:       http://<host>:${KOHYA_PORT:-6666}"
 echo "Invoke:      http://<host>:${INVOKE_PORT:-9090}"
-echo "OneTrainer:  http://<host>:4444 (/vnc.html)"

@@ -8,17 +8,21 @@ ENV DEBIAN_FRONTEND=noninteractive \
     COMFY_PORT=5555 \
     KOHYA_PORT=6666 \
     INVOKE_PORT=9090 \
-    ONETRAINER_PORT=4444 \
-    HOME=/home/pilot \
+    HOME=/workspace/home/pilot \
     SHELL=/bin/bash \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
     HF_XET_HIGH_PERFORMANCE=1
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    XDG_CACHE_HOME=/workspace/home/pilot/.cache \
+    XDG_CONFIG_HOME=/workspace/home/pilot/.config \
+    XDG_DATA_HOME=/workspace/home/pilot/.local/share
 
 ARG INSTALL_GPU_STACK=1
 ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
-ARG INSTALL_ONETRAINER=1
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -35,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iproute2 \
     libgl1 libglib2.0-0 \
     xvfb x11vnc novnc websockify \
-    mc \
+    mc nano \
   && apt-get -y upgrade \
   && apt-get -y autoremove --purge \
   && apt-get clean \
@@ -71,11 +75,14 @@ RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py && \
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
 # ----- user + dirs -----
-RUN useradd -m -s /bin/bash -u 1000 pilot && \
+RUN useradd -m -d /workspace/home/pilot -s /bin/bash -u 1000 pilot && \
+    chown -R pilot:pilot /workspace/home/pilot && \
     usermod -s /bin/bash pilot && \
     chsh -s /bin/bash pilot && \
     mkdir -p /workspace /opt/pilot /opt/pilot/repos /opt/venvs /opt/pilot/config && \
     chown -R pilot:pilot /workspace /opt/pilot /opt/pilot/repos
+RUN mkdir -p /workspace/home/pilot/.cache/pip /workspace/home/pilot/.fonts
+
 
 # ----- code-server -----
 RUN curl -fsSL https://code-server.dev/install.sh | sh
@@ -91,6 +98,20 @@ RUN set -eux; \
     python -m venv /opt/venvs/core; \
     /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel
 
+# ----- core constraints (keep the stack sane) -----
+RUN set -eux; \
+    cat > /opt/pilot/config/core-constraints.txt <<EOF
+torch==${TORCH_VERSION}
+torchvision==${TORCHVISION_VERSION}
+torchaudio==${TORCHAUDIO_VERSION}
+xformers==${XFORMERS_VERSION}
+numpy<2
+pillow<12
+huggingface-hub<1.0
+diffusers==0.33.0
+opencv-python==4.9.0.80
+EOF
+
 # ----- GPU stack (core venv) -----
 RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       set -eux; \
@@ -100,11 +121,12 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
         torchaudio==${TORCHAUDIO_VERSION} \
         --index-url ${TORCH_INDEX_URL}; \
       /opt/venvs/core/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/core-constraints.txt \
         xformers==${XFORMERS_VERSION} \
         accelerate \
         safetensors \
         "numpy<2" \
-        pillow \
+        "pillow<12" \
         tqdm \
         psutil; \
     else \
@@ -112,27 +134,39 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
     fi
 
 # Hugging Face downloader tooling (handles gated + xet storage)
-RUN /opt/venvs/core/bin/pip install --no-cache-dir "huggingface_hub[hf_transfer,hf_xet]"
+RUN /opt/venvs/core/bin/pip install --no-cache-dir \
+    -c /opt/pilot/config/core-constraints.txt \
+    "huggingface_hub[hf_transfer,hf_xet]"
 
 # ----- API deps (core venv) -----
-RUN set -eux; \
-    /opt/venvs/core/bin/pip install --no-cache-dir \
-      fastapi "uvicorn[standard]" pydantic python-multipart \
-      flask flask-cors requests python-dotenv
+RUN /opt/venvs/core/bin/pip install --no-cache-dir \
+    -c /opt/pilot/config/core-constraints.txt \
+    fastapi "uvicorn[standard]" pydantic python-multipart \
+    flask flask-cors requests python-dotenv
 
-      
-# ----- numpy constraint for compatibility -----
-RUN /opt/venvs/core/bin/pip install --no-cache-dir "numpy<2"
 
 # ----- ComfyUI + Manager -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
-      git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI && \
-      /opt/venvs/core/bin/pip install --no-cache-dir -r /opt/pilot/repos/ComfyUI/requirements.txt && \
-      mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes && \
-      git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager && \
-      mkdir -p /workspace/comfy/user && \
-      rm -rf /opt/pilot/repos/ComfyUI/user && \
-      ln -s /workspace/comfy/user /opt/pilot/repos/ComfyUI/user ; \
+      set -eux; \
+      git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI; \
+      \
+      # Filter out packages that must NOT be overridden in core
+      grep -v -E '^[[:space:]]*(torch|torchvision|torchaudio|xformers|numpy|pillow|Pillow|diffusers|transformers|huggingface-hub|accelerate)([[:space:]=<>!].*)?$' \
+        /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt; \
+      \
+      # Install Comfy deps constrained to your core stack rules
+      /opt/venvs/core/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/core-constraints.txt \
+        -r /tmp/comfy-req.txt; \
+      rm -f /tmp/comfy-req.txt; \
+      \
+      mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes; \
+      git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git \
+        /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager; \
+      \
+      mkdir -p /workspace/comfy/user; \
+      rm -rf /opt/pilot/repos/ComfyUI/user; \
+      ln -s /workspace/comfy/user /opt/pilot/repos/ComfyUI/user; \
     fi
 
 # ----- Kohya (install into core venv, but DO NOT let it replace torch/xformers) -----
@@ -166,52 +200,26 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
         > "${SITEPKG}/global_state.py"; \
     fi
 
-# ----- InvokeAI (install into core venv, constrained) -----
+# ----- InvokeAI (dedicated venv; pinned to core torch stack) -----
 RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       set -eux; \
-      printf '%s\n' \
-        "torch==${TORCH_VERSION}" \
-        "torchvision==${TORCHVISION_VERSION}" \
-        "torchaudio==${TORCHAUDIO_VERSION}" \
-        "xformers==${XFORMERS_VERSION}" \
-        "numpy<2" \
-        > /tmp/invoke-constraints.txt; \
-      /opt/venvs/core/bin/pip install --no-cache-dir -c /tmp/invoke-constraints.txt invokeai; \
-      rm -f /tmp/invoke-constraints.txt; \
-    fi
-
-# ----- OneTrainer (core venv, constrained; patch numpy pin) -----
-RUN if [ "${INSTALL_ONETRAINER}" = "1" ]; then \
-      set -eux; \
-      git clone --depth 1 https://github.com/Nerogar/OneTrainer.git /opt/pilot/repos/OneTrainer; \
+      python -m venv /opt/venvs/invoke; \
+      /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel; \
       \
-      # Keep core stack on numpy 1.x for kohya/tf/etc sanity
-      /opt/venvs/core/bin/pip install --no-cache-dir "numpy<2"; \
+      # Install the SAME torch stack (exactly) into invoke
+      /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        --index-url ${TORCH_INDEX_URL} \
+        torch==${TORCH_VERSION} \
+        torchvision==${TORCHVISION_VERSION} \
+        torchaudio==${TORCHAUDIO_VERSION}; \
+      /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        xformers==${XFORMERS_VERSION}; \
       \
-      # OneTrainer pins numpy==2.2.6; we ignore that pin and enforce numpy<2
-      printf '%s\n' \
-        "numpy<2" \
-        > /tmp/onetrainer-constraints.txt; \
-      \
-      # Patch requirements-global: remove numpy pin only
-      grep -v -E '^[[:space:]]*numpy==[0-9]+' \
-        /opt/pilot/repos/OneTrainer/requirements-global.txt \
-        > /tmp/onetrainer-global-req.txt; \
-      \
-      /opt/venvs/core/bin/pip install --no-cache-dir \
-        -c /tmp/onetrainer-constraints.txt \
-        -r /tmp/onetrainer-global-req.txt; \
-      \
-      # CUDA reqs: also ignore torch stack pins and numpy pins
-      grep -v -E '^(--extra-index-url|--index-url|torch==|torchvision==|torchaudio==|xformers==|[[:space:]]*numpy==)' \
-        /opt/pilot/repos/OneTrainer/requirements-cuda.txt \
-        > /tmp/onetrainer-cuda-req.txt; \
-      \
-      /opt/venvs/core/bin/pip install --no-cache-dir \
-        -c /tmp/onetrainer-constraints.txt \
-        -r /tmp/onetrainer-cuda-req.txt; \
-      \
-      rm -f /tmp/onetrainer-*.txt; \
+      # Then install invoke deps pinned to what Invoke expects
+      /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        "numpy<2" "pillow<12" "huggingface-hub<1.0" \
+        "diffusers[torch]==0.33.0" "opencv-python==4.9.0.80" \
+        invokeai; \
     fi
 
 # ----- project files -----
@@ -227,7 +235,6 @@ COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
-COPY scripts/onetrainer.sh /opt/pilot/onetrainer.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
@@ -243,7 +250,6 @@ RUN set -eux; \
       /opt/pilot/comfy.sh \
       /opt/pilot/kohya.sh \
       /opt/pilot/invoke.sh \
-      /opt/pilot/onetrainer.sh \
       /opt/pilot/get-models.sh \
       /usr/local/bin/pilot \
     ; do \
@@ -256,7 +262,7 @@ RUN set -eux; \
     mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
     chown -R pilot:pilot /opt/pilot /opt/pilot/repos /opt/venvs || true
 
-EXPOSE 8888 8443 5555 6666 9090 4444
+EXPOSE 8888 8443 5555 6666 9090
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
