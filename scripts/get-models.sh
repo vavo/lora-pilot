@@ -137,6 +137,22 @@ download_with_gauge() {
   local log_file
   log_file="$(mktemp)"
 
+  # Check if HF_TOKEN is required but not set
+  if [[ -z "${HF_TOKEN:-}" ]]; then
+    HF_TOKEN=$(whiptail --title "Hugging Face Token Required" \
+      --inputbox "Hugging Face token is required to download this model.\n\nDon't have one? Get it here: https://huggingface.co/settings/tokens\n\nEnter your token:" \
+      12 70 \
+      3>&1 1>&2 2>&3) || return 1
+    
+    if [[ -z "${HF_TOKEN}" ]]; then
+      whiptail --title "Error" --msgbox "No token provided. Download cancelled." 8 50
+      return 1
+    fi
+  fi
+
+  # Export the token for the subprocess
+  export HF_TOKEN
+
   (
     pull_one "${name}" >"${log_file}" 2>&1
   ) &

@@ -14,9 +14,26 @@ mkdir -p \
   "$WORKSPACE_ROOT"/config/{jupyter,code-server,xdg} \
   "$WORKSPACE_ROOT"/cache/{jupyter,ipython,xdg,xdg-data,code-server}
 
+# Seed bundled apps into workspace (without clobbering existing)
+if [ -d /opt/pilot/apps ]; then
+  for src in /opt/pilot/apps/*; do
+    [ -d "$src" ] || continue
+    name="$(basename "$src")"
+    dest="$WORKSPACE_ROOT/apps/$name"
+    if [ ! -e "$dest" ]; then
+      cp -a "$src" "$dest"
+    fi
+  done
+  find "$WORKSPACE_ROOT/apps" -type f -name '*.sh' -print0 | xargs -0 -r chmod +x || true
+fi
+
+# Standard model subdirectories (no chown to avoid RunPod volume issues)
+mkdir -p "$WORKSPACE_ROOT/models"/{audio_encoders,checkpoints,clip,clip_vision,configs,controlnet,diffusers,diffusion_models,embeddings,gligen,hypernetworks,latent_upscale_models,loras,model_patches,photomaker,style_models,text_encoders,unet,upscale_models,vae,vae_approx}
+
 # HOME should be on workspace so it's writable (but Jupyter runtime must be /tmp)
 export HOME="${HOME:-$WORKSPACE_ROOT/home/root}"
 mkdir -p "$HOME"
+mkdir -p "$HOME/.triton/autotune" || true
 
 # These should be on workspace (writable). Runtime moved later by start-jupyter.sh.
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$WORKSPACE_ROOT/config/xdg}"

@@ -38,6 +38,9 @@ fi
 rm -rf "${COMFY_DIR}/user"
 mkdir -p "${WORKSPACE_ROOT}/comfy/user"
 ln -s "${WORKSPACE_ROOT}/comfy/user" "${COMFY_DIR}/user"
+# Point Comfy models to the shared workspace tree
+rm -rf "${COMFY_DIR}/models"
+ln -s "${WORKSPACE_ROOT}/models" "${COMFY_DIR}/models"
 cd "$COMFY_DIR"
 
 exec python main.py \

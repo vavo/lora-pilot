@@ -32,6 +32,10 @@ ARG TORCHVISION_VERSION=0.21.0
 ARG TORCHAUDIO_VERSION=2.6.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
 ARG XFORMERS_VERSION=0.0.29.post3
+ARG TRANSFORMERS_VERSION=4.44.2
+ARG PEFT_VERSION=0.11.1
+ARG INVOKE_TRANSFORMERS_VERSION=4.46.1
+ARG CUDA_NVCC_PKG=cuda-nvcc-12-4
 ARG CROC_VERSION=10.0.7
 
 # ----- base deps -----
@@ -42,6 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     iproute2 \
     libgl1 libglib2.0-0 \
     whiptail \
+    ${CUDA_NVCC_PKG} \
     mc nano \
   && apt-get -y upgrade \
   && apt-get -y autoremove --purge \
@@ -103,9 +108,13 @@ torch==${TORCH_VERSION}
 torchvision==${TORCHVISION_VERSION}
 torchaudio==${TORCHAUDIO_VERSION}
 xformers==${XFORMERS_VERSION}
+triton>=3.0.0,<4
+bitsandbytes==0.46.0
 numpy<2
 pillow<12
 huggingface-hub<1.0
+transformers==${TRANSFORMERS_VERSION}
+peft==${PEFT_VERSION}
 EOF
 ENV PIP_CONSTRAINT=/opt/pilot/config/core-constraints.txt
 
@@ -115,9 +124,13 @@ torch==${TORCH_VERSION}
 torchvision==${TORCHVISION_VERSION}
 torchaudio==${TORCHAUDIO_VERSION}
 xformers==${XFORMERS_VERSION}
+triton>=3.0.0,<4
+bitsandbytes==0.46.0
 numpy<2
 pillow<12
 huggingface-hub<1.0
+transformers==${TRANSFORMERS_VERSION}
+peft==${PEFT_VERSION}
 EOF
 
 # ----- GPU stack (core venv) -----
@@ -131,7 +144,10 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       /opt/venvs/core/bin/pip install --no-cache-dir \
         -c /opt/pilot/config/core-constraints.txt \
         xformers==${XFORMERS_VERSION} \
+        bitsandbytes==0.46.0 \
         accelerate \
+        transformers==${TRANSFORMERS_VERSION} \
+        peft==${PEFT_VERSION} \
         safetensors \
         "numpy<2" \
         "pillow<12" \
@@ -159,7 +175,7 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI; \
       \
       # Filter out packages that must NOT be overridden in core
-grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!])|torchaudio($|[[:space:]=<>!])|xformers($|[[:space:]=<>!])|triton($|[[:space:]=<>!])|numpy($|[[:space:]=<>!])|pillow($|[[:space:]=<>!])|Pillow($|[[:space:]=<>!])|diffusers($|[[:space:]=<>!])|transformers($|[[:space:]=<>!])|huggingface-hub($|[[:space:]=<>!])|accelerate($|[[:space:]=<>!]))' \
+grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!])|torchaudio($|[[:space:]=<>!])|xformers($|[[:space:]=<>!])|triton($|[[:space:]=<>!])|bitsandbytes($|[[:space:]=<>!])|numpy($|[[:space:]=<>!])|pillow($|[[:space:]=<>!])|Pillow($|[[:space:]=<>!])|diffusers($|[[:space:]=<>!])|transformers($|[[:space:]=<>!])|peft($|[[:space:]=<>!])|huggingface-hub($|[[:space:]=<>!])|accelerate($|[[:space:]=<>!]))' \
   /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt; \
       \
       # Install Comfy deps constrained to your core stack rules
@@ -191,7 +207,7 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       [ -f "$REQ" ] || REQ=requirements.txt; \
       \
       # Filter out container-hostile / unwanted deps (and avoid recursive -r /tmp/requirements.txt)
-      grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*numpy([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
+      grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*triton([[:space:]=<>!].*)?$|^[[:space:]]*bitsandbytes([[:space:]=<>!].*)?$|^[[:space:]]*transformers([[:space:]=<>!].*)?$|^[[:space:]]*peft([[:space:]=<>!].*)?$|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*numpy([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
         "$REQ" > /tmp/kohya-req.txt; \
       \
       # Hard constraints so pip can't "helpfully" bring back numpy 2.x
@@ -231,10 +247,11 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         torchaudio==${TORCHAUDIO_VERSION}; \
       /opt/venvs/invoke/bin/pip install --no-cache-dir \
         xformers==${XFORMERS_VERSION}; \
-      # Then install invoke deps pinned to what Invoke expects
-      /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        -c /opt/pilot/config/core-constraints.txt \
-        "diffusers[torch]==0.33.0" invokeai; \
+      # Then install invoke deps with an explicit transformers pin and without core constraints
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        "diffusers[torch]==0.33.0" \
+        "transformers==${INVOKE_TRANSFORMERS_VERSION}" \
+        invokeai; \
     fi
 
 
@@ -253,6 +270,7 @@ COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/diffusion-pipe.sh /opt/pilot/diffusion-pipe.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/pilot /usr/local/bin/pilot
+COPY apps /opt/pilot/apps
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Normalize line endings, ensure shebang exists, set exec bits, create symlinks, create dirs.
@@ -275,6 +293,10 @@ RUN set -eux; \
       head -n 1 "$f" | grep -q '^#!' || (echo "Missing shebang in $f" >&2; exit 1); \
       chmod +x "$f"; \
     done; \
+    if [ -d /opt/pilot/apps ]; then \
+      find /opt/pilot/apps -type f -name '*.sh' -print0 | xargs -0 -r chmod +x; \
+      find /opt/pilot/apps -type f -name '*.sh' -print0 | xargs -0 -r sed -i 's/\r$//'; \
+    fi; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
     mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \

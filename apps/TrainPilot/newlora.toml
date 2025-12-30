@@ -1,0 +1,105 @@
+# ==========================================================
+#   KohakuBlueleaf SDXL LoRA Optimized Config (A40 tuned)
+#   Profile: high_quality  |  Stable, TE-aware, mid-long run
+# ==========================================================
+
+# === Model + VAE ===
+pretrained_model_name_or_path = "/workspace/models/checkpoints/juggernautXL_juggXIByRundiffusion.safetensors"
+vae = "/workspace/models/sdxl-vae-fp16-fix/sdxl_vae.safetensors"
+vae_dtype = "fp16"
+resolution = "1024,1024"
+enable_bucket = true
+min_bucket_reso = 768
+max_bucket_reso = 1600
+
+# === Dataset ===
+train_data_dir = "/workspace/datasets/images"
+# caption_file_extension = ".txt"
+caption_extension = ".txt"
+shuffle_caption = true
+keep_tokens = 1
+# optional: limit_num_samples = 0  # uncomment to cap dataset
+flip_aug = true                    # random horizontal flip
+color_aug = false                   # mild color jitter
+
+# === Output ===
+output_dir = "/workspace/outputs/kajzer"
+output_name = "kajzer"
+save_model_as = "safetensors"
+save_precision = "bf16"
+save_every_n_epochs = 1
+save_starting_epoch = 3
+save_last_n_epochs = 15
+save_state = false
+
+# === Network (LyCORIS LoRA) ===
+sdxl = true
+network_module = "networks.lora"
+network_train_unet_only = false
+te_lr_ratio = 0.2  # implicit, simulated by lower LR for TE
+network_dim = 32
+network_alpha = 16
+network_dropout = 0.05
+conv_dim = 32
+conv_alpha = 16
+min_snr_gamma = 5.0 
+
+# === Training ===
+train_batch_size = 2
+gradient_accumulation_steps = 2
+max_train_epochs = 30
+max_token_length = 225
+
+learning_rate = 0.00025
+learning_rate_te = 0.00003
+learning_rate_te1 = 0.00003
+learning_rate_te2 = 0.00003
+
+optimizer_type = "AdamW"
+optimizer_args = [
+  "betas=(0.9,0.99)",
+  "eps=1e-8",
+  "weight_decay=0.01"
+]
+
+lr_scheduler = "cosine_with_restarts"
+lr_scheduler_num_cycles = 2
+lr_warmup_steps = 100
+lr_scheduler_min_lr_ratio = 0.05
+
+gradient_checkpointing = true
+noise_offset = 0.02
+adaptive_noise_scale = 0.3
+max_grad_norm = 0.8
+bucket_reso_steps = 64
+
+# === Precision & Performance ===
+mixed_precision = "bf16"
+full_bf16 = true
+mem_eff_attn = false
+xformers = false
+sdpa = true
+persistent_data_loader_workers = true
+max_data_loader_n_workers = 4
+
+# === Samples ===
+# sample_prompts = "/workspace/apps/TrainPilot/sample_prompts.txt"
+# sample_every_n_epochs = 2
+# sample_starting_epoch = 3
+# sample_sampler = "euler_a"
+# sample_steps = 24
+# sample_scale = 3.5
+# samples_per_prompt = 1
+# sample_resolution = "1024,1024"
+
+# reg_data_dir = "/workspace/datasets/regularization"
+# prior_loss_weight = 1.0
+
+# === Misc / Logging ===
+seed = 31337
+logging_dir = "/workspace/logs/TrainPilot"
+# log_with = ""
+print_hyperparameter = true
+caption_dropout_rate = 0.1
+caption_dropout_every_n_epochs = 1
+max_train_steps = 2000   # (auto-calculated from epochs)
