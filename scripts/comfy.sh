@@ -4,6 +4,7 @@ set -euo pipefail
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
 PORT="${COMFY_PORT:-5555}"
 COMFY_DIR="/opt/pilot/repos/ComfyUI"
+OUT_DIR="$WORKSPACE_ROOT/outputs/comfy"
 
 # Stable, writable "home" and caches (RunPod volumes + root-owned /home is common)
 export HOME="${HOME:-$WORKSPACE_ROOT/home/root}"
@@ -15,6 +16,7 @@ export PIP_CACHE_DIR="${PIP_CACHE_DIR:-$WORKSPACE_ROOT/cache/pip}"
 mkdir -p \
   "$WORKSPACE_ROOT/logs" \
   "$WORKSPACE_ROOT/outputs" \
+  "$OUT_DIR" \
   "$WORKSPACE_ROOT/models" \
   "$WORKSPACE_ROOT/custom_nodes" \
   "$HOME" \
@@ -46,5 +48,5 @@ cd "$COMFY_DIR"
 exec python main.py \
   --listen 0.0.0.0 \
   --port "$PORT" \
-  --output-directory "$WORKSPACE_ROOT/outputs" \
+  --output-directory "$OUT_DIR" \
   $CPU_FLAG

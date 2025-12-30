@@ -12,7 +12,7 @@ sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safete
 sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints|
 sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints|
 # --- SDXL Fine-tuned Models ---
-juggernaut-xl|hf_file|RunDiffusion/Juggernaut-XL:Juggernaut-XL_v9_RunDiffusion_photo2.safetensors|checkpoints|
+juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors
 ragnarok-xl|hf_file|Ragnar-Schmidek/ragnarok-xl:ragnarok-xl.safetensors|checkpoints|
 epicrealism-xl|hf_file|epicphotogasm/epicrealismXL_v11:epicrealismXL_v11.safetensors|checkpoints|
 realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints|
@@ -62,7 +62,7 @@ controlnet-depth-sdxl|hf_file|diffusers/controlnet-depth-sdxl-1.0:diffusion_pyto
 sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints|
 sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0_0.9vae.safetensors|checkpoints|
 realvisxl-refiner|hf_file|SG161222/RealVisXL_V4.0:realvisxlV40_v40Bakedvae.safetensors|checkpoints|
-juggernaut-refiner|hf_file|RunDiffusion/Juggernaut-XL:Juggernaut-XL_v9_RunDiffusion_photo2_refiner.safetensors|checkpoints|
+juggernaut-refiner|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*refiner*.safetensors
 # --- VAE & VAE Approx ---
 sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae|
 vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae|

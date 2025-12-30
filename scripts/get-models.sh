@@ -9,7 +9,26 @@ MANIFEST="${MODELS_MANIFEST:-${CONFIG_DIR}/models.manifest}"
 DEFAULT_MANIFEST="${DEFAULT_MODELS_MANIFEST:-/opt/pilot/config/models.manifest.default}"
 
 VENV_PY="${VENV_PY:-/opt/venvs/core/bin/python}"
-HF_CLI="${HF_CLI:-/opt/venvs/core/bin/huggingface-cli}"
+HF_BIN="${HF_BIN:-}"
+
+# Prefer the newer `hf` CLI, fall back to huggingface-cli
+resolve_hf_bin() {
+  if [[ -n "${HF_BIN:-}" ]]; then
+    return
+  fi
+  if command -v hf >/dev/null 2>&1; then
+    HF_BIN="$(command -v hf)"
+  elif command -v huggingface-cli >/dev/null 2>&1; then
+    HF_BIN="$(command -v huggingface-cli)"
+  elif [[ -x "/opt/venvs/core/bin/hf" ]]; then
+    HF_BIN="/opt/venvs/core/bin/hf"
+  elif [[ -x "/opt/venvs/core/bin/huggingface-cli" ]]; then
+    HF_BIN="/opt/venvs/core/bin/huggingface-cli"
+  else
+    echo "ERROR: hf (Hugging Face CLI) not found. Install huggingface_hub." >&2
+    exit 1
+  fi
+}
 
 usage() {
   cat <<EOF
@@ -257,9 +276,10 @@ download_url() {
 
 hf_download_file() {
   local repo="$1" path="$2" destdir="$3"
+  resolve_hf_bin
   mkdir -p "${destdir}"
   echo "HF file -> ${repo}:${path} -> ${destdir}"
-  HF_TOKEN="${HF_TOKEN:-}" "${HF_CLI}" download \
+  HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
     "${repo}" "${path}" \
     --local-dir "${destdir}" \
     --local-dir-use-symlinks False
@@ -267,6 +287,7 @@ hf_download_file() {
 
 hf_download_repo() {
   local repo="$1" destdir="$2" include_csv="${3:-}"
+  resolve_hf_bin
   mkdir -p "${destdir}"
   echo "HF repo -> ${repo} -> ${destdir}"
   if [[ -n "${include_csv}" ]]; then
@@ -275,13 +296,13 @@ hf_download_repo() {
     for p in "${pats[@]}"; do
       [[ -n "${p// /}" ]] && args+=( --include "${p}" )
     done
-    HF_TOKEN="${HF_TOKEN:-}" "${HF_CLI}" download \
+    HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
       "${repo}" \
       --local-dir "${destdir}" \
       --local-dir-use-symlinks False \
       "${args[@]}"
   else
-    HF_TOKEN="${HF_TOKEN:-}" "${HF_CLI}" download \
+    HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
       "${repo}" \
       --local-dir "${destdir}" \
       --local-dir-use-symlinks False

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/opt/venvs/core/bin/python
 import sys, os, json
 
 try:
@@ -9,10 +9,9 @@ except ImportError:
     try:
         import tomli as toml
     except ImportError:
-        import sys
-        print("Installing toml...", file=sys.stderr)
+        print("Installing toml into /opt/venvs/core...", file=sys.stderr)
         import subprocess
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "toml==0.10.2"], check=False)
+        subprocess.run(["/opt/venvs/core/bin/pip", "install", "-q", "toml==0.10.2"], check=False)
         import toml
 
 # --------- IO helpers ---------

@@ -33,7 +33,7 @@ ARG TORCHAUDIO_VERSION=2.6.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
 ARG XFORMERS_VERSION=0.0.29.post3
 ARG TRANSFORMERS_VERSION=4.44.2
-ARG PEFT_VERSION=0.11.1
+ARG PEFT_VERSION=0.17.0
 ARG INVOKE_TRANSFORMERS_VERSION=4.46.1
 ARG CUDA_NVCC_PKG=cuda-nvcc-12-4
 ARG CROC_VERSION=10.0.7
@@ -141,15 +141,16 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
         torchvision==${TORCHVISION_VERSION} \
         torchaudio==${TORCHAUDIO_VERSION} \
         --index-url ${TORCH_INDEX_URL}; \
-      /opt/venvs/core/bin/pip install --no-cache-dir \
-        -c /opt/pilot/config/core-constraints.txt \
-        xformers==${XFORMERS_VERSION} \
-        bitsandbytes==0.46.0 \
-        accelerate \
-        transformers==${TRANSFORMERS_VERSION} \
-        peft==${PEFT_VERSION} \
-        safetensors \
-        "numpy<2" \
+    /opt/venvs/core/bin/pip install --no-cache-dir \
+      -c /opt/pilot/config/core-constraints.txt \
+      xformers==${XFORMERS_VERSION} \
+      bitsandbytes==0.46.0 \
+      toml \
+      accelerate \
+      transformers==${TRANSFORMERS_VERSION} \
+      peft==${PEFT_VERSION} \
+      safetensors \
+      "numpy<2" \
         "pillow<12" \
         tqdm \
         psutil; \
@@ -247,7 +248,7 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         torchaudio==${TORCHAUDIO_VERSION}; \
       /opt/venvs/invoke/bin/pip install --no-cache-dir \
         xformers==${XFORMERS_VERSION}; \
-      # Then install invoke deps with an explicit transformers pin and without core constraints
+      # Then install invoke deps with explicit pins (skip core constraint to allow different transformers)
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
         "diffusers[torch]==0.33.0" \
         "transformers==${INVOKE_TRANSFORMERS_VERSION}" \
@@ -272,6 +273,10 @@ COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY apps /opt/pilot/apps
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
+
+# Default shell: activate core venv for root sessions
+RUN echo 'source /opt/venvs/core/bin/activate' > /etc/profile.d/core-venv.sh && \
+    chmod 644 /etc/profile.d/core-venv.sh
 
 # Normalize line endings, ensure shebang exists, set exec bits, create symlinks, create dirs.
 # IMPORTANT: do NOT chown -R /workspace (RunPod volumes often disallow it).
@@ -299,7 +304,7 @@ RUN set -eux; \
     fi; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
-    mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
+    mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/outputs/comfy /workspace/outputs/invoke /workspace/datasets /workspace/datasets/images /workspace/datasets/ZIPs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
     cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt || true
 
 EXPOSE 8888 8443 5555 6666 9090 4444

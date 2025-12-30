@@ -211,7 +211,7 @@ while :; do
       # --------------------------------------------------
       # RUN TRAINING
       # --------------------------------------------------
-      CMD=(python -u sd-scripts/sdxl_train_network.py
+      CMD=("$PYTHON_BIN" -u sd-scripts/sdxl_train_network.py
            --config "$COPIED_TOML"
            --output_dir "$OUT_DIR"
            --output_name "$OUTPUT_NAME"

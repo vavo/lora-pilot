@@ -13,6 +13,8 @@ mkdir -p \
   "$WORKSPACE_ROOT"/{apps,models,datasets,outputs,custom_nodes,logs,cache,config,home} \
   "$WORKSPACE_ROOT"/config/{jupyter,code-server,xdg} \
   "$WORKSPACE_ROOT"/cache/{jupyter,ipython,xdg,xdg-data,code-server}
+mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke}
+mkdir -p "$WORKSPACE_ROOT/datasets"/{images,ZIPs}
 
 # Seed bundled apps into workspace (without clobbering existing)
 if [ -d /opt/pilot/apps ]; then

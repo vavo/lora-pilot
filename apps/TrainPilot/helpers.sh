@@ -25,7 +25,8 @@ prepare_env() {
 
   mkdir -p "$OUTS_BASE" "$IMAGES_DIR" "$(dirname "$ACCELERATE_CONFIG_FILE")" "$HF_HOME"
 
-  require python3
+  PYTHON_BIN="${PYTHON_BIN:-/opt/venvs/core/bin/python}"
+  require "$PYTHON_BIN"
 }
 
 # ---------- UI ----------
@@ -79,13 +80,13 @@ count_images(){ find "$1" -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpe
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 toml_set() {  # toml_set <file> <dotted.key> <str|raw> <value>
-  python3 "$SCRIPT_DIR/toml_edit.py" set "$1" "$2" "$3" "$4"
+  "$PYTHON_BIN" "$SCRIPT_DIR/toml_edit.py" set "$1" "$2" "$3" "$4"
 }
 toml_del() {  # toml_del <file> <dotted.key>
-  python3 "$SCRIPT_DIR/toml_edit.py" del "$1" "$2"
+  "$PYTHON_BIN" "$SCRIPT_DIR/toml_edit.py" del "$1" "$2"
 }
 toml_get() {  # toml_get <file> <dotted.key>
-  python3 "$SCRIPT_DIR/toml_edit.py" get "$1" "$2"
+  "$PYTHON_BIN" "$SCRIPT_DIR/toml_edit.py" get "$1" "$2"
 }
 
 # Back-compat shims for your current train.sh
