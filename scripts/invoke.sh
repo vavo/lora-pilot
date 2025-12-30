@@ -2,11 +2,11 @@
 set -euo pipefail
 
 PORT="${INVOKE_PORT:-9090}"
-ROOT="${WORKSPACE_ROOT:-/workspace}/invokeai"
-mkdir -p "$ROOT"
-mkdir -p "${WORKSPACE_ROOT:-/workspace}/models"
+ROOT="${WORKSPACE_ROOT:-/workspace}/apps/invoke"
+MODELS_ROOT="${WORKSPACE_ROOT:-/workspace}/apps/invoke/models"
 OUT_DIR="${WORKSPACE_ROOT:-/workspace}/outputs/invoke"
-mkdir -p "$OUT_DIR"
+
+mkdir -p "$ROOT" "$MODELS_ROOT" "$OUT_DIR"
 
 export INVOKEAI_ROOT="$ROOT"
 export INVOKEAI_HOST="${INVOKEAI_HOST:-0.0.0.0}"
@@ -17,12 +17,12 @@ source /opt/venvs/invoke/bin/activate
 
 # Point InvokeAI models to shared workspace tree if supported
 if invokeai-config --help >/dev/null 2>&1; then
-  invokeai-config --root "$ROOT" set ModelsDir "${WORKSPACE_ROOT:-/workspace}/models" >/dev/null 2>&1 || true
+  invokeai-config --root "$ROOT" set ModelsDir "$MODELS_ROOT" >/dev/null 2>&1 || true
   invokeai-config --root "$ROOT" set OutputDir "$OUT_DIR" >/dev/null 2>&1 || true
 fi
 # Fallback: ensure Invoke's default models path points at the shared workspace tree
 if [ ! -e "$ROOT/models" ]; then
-  ln -s "${WORKSPACE_ROOT:-/workspace}/models" "$ROOT/models"
+  ln -s "$MODELS_ROOT" "$ROOT/models"
 fi
 if [ ! -e "$ROOT/outputs" ]; then
   ln -s "$OUT_DIR" "$ROOT/outputs"

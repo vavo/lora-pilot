@@ -5,6 +5,12 @@ WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
 PORT="${COMFY_PORT:-5555}"
 COMFY_DIR="/opt/pilot/repos/ComfyUI"
 OUT_DIR="$WORKSPACE_ROOT/outputs/comfy"
+USER_DIR="$WORKSPACE_ROOT/apps/comfy/user"
+CUSTOM_NODES_DIR="$WORKSPACE_ROOT/apps/comfy/custom_nodes"
+MODELS_ROOT="$WORKSPACE_ROOT/models"
+ensure_model_dirs() {
+  mkdir -p "$MODELS_ROOT"/{audio_encoders,checkpoints,clip,clip_vision,configs,controlnet,diffusers,diffusion_models,embeddings,gligen,hypernetworks,latent_upscale_models,loras,model_patches,photomaker,style_models,text_encoders,unet,upscale_models,vae,vae_approx}
+}
 
 # Stable, writable "home" and caches (RunPod volumes + root-owned /home is common)
 export HOME="${HOME:-$WORKSPACE_ROOT/home/root}"
@@ -17,8 +23,9 @@ mkdir -p \
   "$WORKSPACE_ROOT/logs" \
   "$WORKSPACE_ROOT/outputs" \
   "$OUT_DIR" \
+  "$CUSTOM_NODES_DIR" \
+  "$USER_DIR" \
   "$WORKSPACE_ROOT/models" \
-  "$WORKSPACE_ROOT/custom_nodes" \
   "$HOME" \
   "$XDG_CACHE_HOME" \
   "$XDG_CONFIG_HOME" \
@@ -27,6 +34,7 @@ mkdir -p \
 
 # Use core venv
 source /opt/venvs/core/bin/activate
+ensure_model_dirs
 
 CPU_FLAG=""
 if ! python - <<'PY'
@@ -38,11 +46,18 @@ then
 fi
 
 rm -rf "${COMFY_DIR}/user"
-mkdir -p "${WORKSPACE_ROOT}/comfy/user"
-ln -s "${WORKSPACE_ROOT}/comfy/user" "${COMFY_DIR}/user"
+ln -s "${USER_DIR}" "${COMFY_DIR}/user"
 # Point Comfy models to the shared workspace tree
 rm -rf "${COMFY_DIR}/models"
 ln -s "${WORKSPACE_ROOT}/models" "${COMFY_DIR}/models"
+# Point Comfy custom nodes to workspace apps/comfy/custom_nodes
+rm -rf "${COMFY_DIR}/custom_nodes"
+ln -s "${CUSTOM_NODES_DIR}" "${COMFY_DIR}/custom_nodes"
+# Ensure ComfyUI-Manager exists in workspace custom_nodes
+if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
+  mkdir -p "${CUSTOM_NODES_DIR}"
+  cp -a "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/"
+fi
 cd "$COMFY_DIR"
 
 exec python main.py \

@@ -35,10 +35,9 @@ The container treats **`/workspace`** as the only place that matters.
 Expected directories (created on boot if possible):
 
 - `/workspace/models`
-- `/workspace/datasets`
-- `/workspace/outputs`
-- `/workspace/custom_nodes`
-- `/workspace/apps`
+- `/workspace/datasets` (with `/workspace/datasets/images` and `/workspace/datasets/ZIPs`)
+- `/workspace/outputs` (with `/workspace/outputs/comfy` and `/workspace/outputs/invoke`)
+- `/workspace/apps` (Comfy user+custom_nodes under `/workspace/apps/comfy`, Diffusion Pipe under `/workspace/apps/diffusion-pipe`, Invoke under `/workspace/apps/invoke`, Kohya under `/workspace/apps/kohya`)
 - `/workspace/config`
 - `/workspace/cache`
 - `/workspace/logs`

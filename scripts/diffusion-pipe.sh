@@ -4,14 +4,15 @@ set -euo pipefail
 ROOT="${WORKSPACE_ROOT:-/workspace}"
 PORT="${DIFFPIPE_PORT:-4444}"
 REPO="/opt/pilot/repos/diffusion-pipe"
-LOGDIR="${DIFFPIPE_LOGDIR:-${ROOT}/diffusion-pipe/logs}"
+BASE_APP_DIR="${ROOT}/apps/diffusion-pipe"
+LOGDIR="${DIFFPIPE_LOGDIR:-${ROOT}/logs/diffusion-pipe}"
 CONFIG="${DIFFPIPE_CONFIG:-}"
 NUM_GPUS="${DIFFPIPE_NUM_GPUS:-1}"
 
 export NCCL_P2P_DISABLE="${NCCL_P2P_DISABLE:-1}"
 export NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"
 
-mkdir -p "${ROOT}/diffusion-pipe" "${LOGDIR}"
+mkdir -p "${BASE_APP_DIR}" "${LOGDIR}"
 
 source /opt/venvs/core/bin/activate
 cd "${REPO}"

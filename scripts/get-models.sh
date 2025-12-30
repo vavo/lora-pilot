@@ -73,9 +73,17 @@ require_manifest() {
 }
 
 require_whiptail() {
+  export TERM="${TERM:-xterm-256color}"
   if ! command -v whiptail >/dev/null 2>&1; then
     echo "ERROR: whiptail not found."
-    echo "Install it (apt-get update && apt-get install -y whiptail) or use CLI: models list/pull."
+    echo "Install it (apt-get update && apt install -y whiptail) or use CLI: models list/pull."
+    exit 1
+  fi
+}
+
+require_tty() {
+  if [ ! -t 0 ] || [ ! -t 1 ]; then
+    echo "ERROR: GUI mode requires a TTY. Run this in an interactive shell (e.g., docker exec -it ...)." >&2
     exit 1
   fi
 }
@@ -209,6 +217,7 @@ download_with_gauge() {
 }
 
 gui() {
+  require_tty
   require_manifest
   require_whiptail
 
@@ -224,7 +233,11 @@ gui() {
       --menu "Toggle filters at the top. Select a model to download." \
       25 100 17 \
       "${menu_items[@]}" \
-      3>&1 1>&2 2>&3)" || exit 0
+      3>&1 1>&2 2>&3)" || {
+        rc=$?
+        echo "models gui: whiptail failed (rc=${rc}). Ensure TERM is set and a TTY is available."
+        exit "${rc}"
+      }
 
     case "${choice}" in
       toggle_sdxl) f_sdxl=$((1 - f_sdxl)) ;;

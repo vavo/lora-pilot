@@ -34,7 +34,10 @@ ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
 ARG XFORMERS_VERSION=0.0.29.post3
 ARG TRANSFORMERS_VERSION=4.44.2
 ARG PEFT_VERSION=0.17.0
-ARG INVOKE_TRANSFORMERS_VERSION=4.46.1
+ARG INVOKE_TORCH_VERSION=2.7.0
+ARG INVOKE_TORCHVISION_VERSION=0.22.0
+ARG INVOKE_TORCHAUDIO_VERSION=2.7.0
+ARG INVOKE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
 ARG CUDA_NVCC_PKG=cuda-nvcc-12-4
 ARG CROC_VERSION=10.0.7
 
@@ -189,9 +192,9 @@ grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!]
       git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git \
         /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager; \
       \
-      mkdir -p /workspace/comfy/user; \
+      mkdir -p /workspace/apps/comfy/user; \
       rm -rf /opt/pilot/repos/ComfyUI/user; \
-      ln -s /workspace/comfy/user /opt/pilot/repos/ComfyUI/user; \
+      ln -s /workspace/apps/comfy/user /opt/pilot/repos/ComfyUI/user; \
     fi
 
 # ----- Kohya (install into core venv, but DO NOT let it replace torch/xformers) -----
@@ -240,18 +243,16 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       python -m venv /opt/venvs/invoke; \
       /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel; \
       \
-      # Install the SAME torch stack (exactly) into invoke
-      /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        --index-url ${TORCH_INDEX_URL} \
-        torch==${TORCH_VERSION} \
-        torchvision==${TORCHVISION_VERSION} \
-        torchaudio==${TORCHAUDIO_VERSION}; \
-      /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        xformers==${XFORMERS_VERSION}; \
-      # Then install invoke deps with explicit pins (skip core constraint to allow different transformers)
+      # Install Invoke-specific torch stack (kept separate from core)
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        --index-url ${INVOKE_TORCH_INDEX_URL} \
+        torch==${INVOKE_TORCH_VERSION} \
+        torchvision==${INVOKE_TORCHVISION_VERSION} \
+        torchaudio==${INVOKE_TORCHAUDIO_VERSION}; \
+      # Then install invoke deps with explicit pins (skip core constraint to allow different transformers); also pin numpy<2
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
         "diffusers[torch]==0.33.0" \
-        "transformers==${INVOKE_TRANSFORMERS_VERSION}" \
+        "numpy<2" \
         invokeai; \
     fi
 
@@ -304,7 +305,7 @@ RUN set -eux; \
     fi; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
-    mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/outputs/comfy /workspace/outputs/invoke /workspace/datasets /workspace/datasets/images /workspace/datasets/ZIPs /workspace/models /workspace/custom_nodes /workspace/config /workspace/cache /workspace/home; \
+    mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/outputs/comfy /workspace/outputs/invoke /workspace/datasets /workspace/datasets/images /workspace/datasets/ZIPs /workspace/models /workspace/config /workspace/cache /workspace/home; \
     cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt || true
 
 EXPOSE 8888 8443 5555 6666 9090 4444
