@@ -271,6 +271,7 @@ COPY scripts/comfy.sh /opt/pilot/comfy.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/diffusion-pipe.sh /opt/pilot/diffusion-pipe.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
+COPY scripts/tagpilot.sh /opt/pilot/tagpilot.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY apps /opt/pilot/apps
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
@@ -292,6 +293,7 @@ RUN set -eux; \
       /opt/pilot/kohya.sh \
       /opt/pilot/diffusion-pipe.sh \
       /opt/pilot/invoke.sh \
+      /opt/pilot/tagpilot.sh \
       /opt/pilot/get-models.sh \
       /usr/local/bin/pilot \
     ; do \

@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TagPilot ✈️</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #2d3748; }
+        ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+        .settings-icon { position: fixed; top: 10px; right: 10px; font-size: 32px; cursor: pointer; z-index: 1000; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: #1f2937; padding: 24px; border-radius: 12px; width: 320px; color: white; }
+        .close { float: right; cursor: pointer; font-size: 24px; }
+        .collapsible-content { transition: max-height 0.3s ease-out; max-height: 0; overflow: hidden; }
+        .collapsible-content.expanded { max-height: 1000px; overflow-y: auto; }
+        .rotate-icon { transition: transform 0.3s ease; }
+        .rotate-icon.expanded { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Settings Icon -->
+    <div id="settings-icon" class="settings-icon">⚙️</div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeSettings">×</span>
+            <h2 class="text-2xl mb-4">Settings</h2>
+            <label class="block mb-2">Model:</label>
+            <select id="modelSelect" class="w-full bg-gray-700 p-2 rounded mb-4">
+                <option value="gemini">Gemini</option>
+                <option value="grok">Grok</option>
+                <option value="openai">OpenAI</option>
+                <option value="deepdanbooru">DeepDanbooru</option>
+                <option value="wd14">WD1.4 Tagger</option>
+            </select>
+            <label class="block mb-2 api-key-label">API Key for chosen model:</label>
+            <input type="password" id="apiKeyInput" class="w-full bg-gray-700 p-2 rounded mb-4">
+            <label class="block mb-2 dd-threshold-label" style="display:none;">DeepDanbooru Threshold (0-1):</label>
+            <input type="number" id="ddThreshold" min="0" max="1" step="0.05" value="0.5" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
+            <label class="block mb-2 wd-apikey-label" style="display:none;">Replicate API Key (WD1.4):</label>
+            <input type="password" id="wdApiKeyInput" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
+            <label class="block mb-2 wd-general-label" style="display:none;">WD1.4 General Threshold (0-1):</label>
+            <input type="number" id="wdGeneralThresh" min="0" max="1" step="0.05" value="0.35" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
+            <label class="block mb-2 wd-char-label" style="display:none;">WD1.4 Character Threshold (0-1):</label>
+            <input type="number" id="wdCharThresh" min="0" max="1" step="0.05" value="0.85" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
+            <button id="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded">Save</button>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div id="notification" class="hidden fixed top-5 right-5 bg-yellow-500 text-gray-900 py-3 px-5 rounded-lg shadow-lg z-50 transition-all duration-300 transform translate-x-full">
+        <p id="notification-text"></p>
+    </div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">TagPilot ✈️</h1>
+            <p class="text-lg text-gray-400">Advanced LoRA Dataset Tagger</p>
+        </header>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-white">1. Load Your Dataset</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                <div>
+                    <label for="image-upload" class="w-full h-full flex flex-col items-center justify-center p-6 bg-gray-700 hover:bg-indigo-600 border-2 border-dashed border-gray-500 rounded-lg cursor-pointer transition-all">
+                        <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <span class="font-semibold">Upload Photos</span>
+                        <span class="text-sm text-gray-400">Select individual image files</span>
+                    </label>
+                    <input id="image-upload" type="file" class="hidden" multiple accept="image/png, image/jpeg, image/webp">
+                </div>
+                <div>
+                    <label for="zip-upload" class="w-full h-full flex flex-col items-center justify-center p-6 bg-gray-700 hover:bg-indigo-600 border-2 border-dashed border-gray-500 rounded-lg cursor-pointer transition-all">
+                        <svg class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span class="font-semibold">Upload ZIP Dataset</span>
+                        <span class="text-sm text-gray-400">.zip file with images and .txt files</span>
+                    </label>
+                    <input id="zip-upload" type="file" class="hidden" accept=".zip">
+                </div>
+            </div>
+        </div>
+
+        <div id="tagger-section" class="hidden">
+            <div class="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4 flex-wrap">
+                    <h2 class="text-2xl font-semibold text-white">2. Edit Tags</h2>
+                    <div class="flex items-center gap-4 flex-wrap justify-center w-full sm:w-auto">
+                        <button id="reset-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                            Reset All
+                        </button>
+                        <button id="clear-tags-button" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                            Clear Tags/Captions
+                        </button>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-3 text-gray-400 text-sm">Trigger Word:</span>
+                            <input type="text" id="trigger-word-input" placeholder="e.g. ohwx man" class="bg-gray-700 border border-gray-600 rounded-md py-2 pl-24 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40 sm:w-48">
+                        </div>
+                        <div class="relative flex items-center">
+                            <span class="absolute left-3 text-gray-400 text-sm">Dataset Name:</span>
+                            <input type="text" id="dataset-name-input" placeholder="filename" class="bg-gray-700 border border-gray-600 rounded-md py-2 pl-28 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40 sm:w-48">
+                        </div>
+                        <button id="tag-all-button" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Tag All</button>
+                        <button id="caption-all-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Caption All</button>
+                        <button id="export-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                            Export as ZIP
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tag-viewer-section" class="bg-gray-800 rounded-lg shadow-lg mb-6 overflow-hidden hidden">
+                <div id="tag-viewer-header" class="p-4 bg-gray-750 flex justify-between items-center cursor-pointer hover:bg-gray-700 transition-colors border-b border-gray-700">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-lg font-semibold text-white">Tag Viewer</h3>
+                        <span id="total-tags-badge" class="bg-indigo-900 text-indigo-200 text-xs px-2 py-1 rounded-full font-mono">0 tags</span>
+                    </div>
+                    <svg id="tag-viewer-arrow" class="w-5 h-5 text-gray-400 rotate-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+                <div id="tag-viewer-content" class="collapsible-content bg-gray-800">
+                    <div id="tag-viewer-list" class="p-4 flex flex-wrap gap-2">
+                    </div>
+                </div>
+            </div>
+
+            <div id="image-grid" class="grid grid-cols-1 gap-6"></div>
+            <div id="placeholder" class="text-center py-20 bg-gray-800 rounded-lg">
+                <svg class="mx-auto h-12 w-12 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-300">No images loaded</h3>
+                <p class="mt-1 text-sm text-gray-500">Upload some photos or a ZIP file to get started.</p>
+            </div>
+        </div>
+
+        <div id="loader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
+            <div class="flex flex-col items-center">
+                <svg class="animate-spin h-10 w-10 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p id="loader-text" class="text-white text-lg">Processing ZIP file...</p>
+            </div>
+        </div>
+
+        <div id="tag-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700">
+                <div id="tag-settings-config">
+                    <h3 class="text-xl font-bold text-white mb-4">Tagging Settings</h3>
+                    <div class="mb-4">
+                        <label class="block text-gray-400 text-sm mb-2">Max number of tags per image</label>
+                        <input type="number" id="setting-max-tags" value="30" min="1" max="100" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="mb-6">
+                        <button id="toggle-tag-prompt-btn" class="text-sm text-indigo-400 hover:text-indigo-300 underline mb-2 focus:outline-none">
+                            Edit System Prompt
+                        </button>
+                        <textarea id="tag-system-prompt" class="hidden w-full h-32 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500"></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-400 text-sm mb-2">If tags exist:</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="radio" name="tag-mode" value="ignore" checked class="form-radio text-indigo-600 h-4 w-4 bg-gray-900 border-gray-600 focus:ring-indigo-500">
+                                <span class="text-gray-300">Ignore (Skip already tagged images)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="radio" name="tag-mode" value="append" class="form-radio text-indigo-600 h-4 w-4 bg-gray-900 border-gray-600 focus:ring-indigo-500">
+                                <span class="text-gray-300">Append (Add new to existing)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="radio" name="tag-mode" value="overwrite" class="form-radio text-indigo-600 h-4 w-4 bg-gray-900 border-gray-600 focus:ring-indigo-500">
+                                <span class="text-gray-300">Overwrite (Replace existing)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button id="cancel-tagging-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors">Cancel</button>
+                        <button id="start-tagging-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded transition-colors">Start</button>
+                    </div>
+                </div>
+                <div id="tag-settings-progress" class="hidden text-center">
+                    <h3 class="text-xl font-bold text-white mb-2">Auto-Tagging in Progress...</h3>
+                    <p class="text-gray-400 mb-4">Please wait while TagPilot processes your images.</p>
+                    <div class="w-full bg-gray-700 rounded-full h-4 mb-2 overflow-hidden">
+                        <div id="tag-progress-bar" class="bg-teal-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="tag-progress-text" class="text-sm text-gray-300 mb-6">0 / 0</p>
+                    <button id="stop-tagging-btn" class="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded transition-colors">Stop</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="caption-settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700">
+                <div id="caption-settings-config">
+                    <h3 class="text-xl font-bold text-white mb-4">Caption Settings</h3>
+                    <div class="mb-4">
+                        <label class="block text-gray-400 text-sm mb-2">Max caption length (words)</label>
+                        <input type="number" id="setting-max-caption-len" value="50" min="5" max="200" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-400 text-sm mb-2">If text exists:</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="radio" name="caption-mode" value="ignore" checked class="form-radio text-purple-600 h-4 w-4 bg-gray-900 border-gray-600 focus:ring-purple-500">
+                                <span class="text-gray-300">Ignore (Skip)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="radio" name="caption-mode" value="append" class="form-radio text-purple-600 h-4 w-4 bg-gray-900 border-gray-600 focus:ring-purple-500">
+                                <span class="text-gray-300">Append (Add to end)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="radio" name="caption-mode" value="overwrite" class="form-radio text-purple-600 h-4 w-4 bg-gray-900 border-gray-600 focus:ring-purple-500">
+                                <span class="text-gray-300">Overwrite (Replace)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <button id="toggle-caption-prompt-btn" class="text-sm text-purple-400 hover:text-purple-300 underline mb-2 focus:outline-none">Edit System Prompt</button>
+                        <textarea id="caption-system-prompt" class="hidden w-full h-32 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:outline-none focus:border-purple-500"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button id="cancel-captioning-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors">Cancel</button>
+                        <button id="start-captioning-btn" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded transition-colors">Start</button>
+                    </div>
+                </div>
+                <div id="caption-settings-progress" class="hidden text-center">
+                    <h3 class="text-xl font-bold text-white mb-2">Auto-Captioning...</h3>
+                    <p class="text-gray-400 mb-4">TagPilot is writing descriptions for your images.</p>
+                    <div class="w-full bg-gray-700 rounded-full h-4 mb-2 overflow-hidden">
+                        <div id="caption-progress-bar" class="bg-purple-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="caption-progress-text" class="text-sm text-gray-300 mb-6">0 / 0</p>
+                    <button id="stop-captioning-btn" class="px-6 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded transition-colors">Stop</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <img id="preview-image" src="" class="max-w-full max-h-full object-contain rounded-lg">
+            <button id="preview-close" class="absolute top-4 right-4 text-white text-4xl font-bold">&times;</button>
+        </div>
+
+        <div id="crop-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 flex flex-col items-center justify-center z-50 p-4">
+            <div class="w-full max-w-4xl h-4/5">
+                <img id="crop-image" src="" class="max-w-full max-h-full">
+            </div>
+            <div class="mt-4 flex gap-4">
+                <button id="crop-save" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Save Crop</button>
+                <button id="crop-cancel" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let dataset = [];
+        let currentTriggerWord = "";
+        let isBatchProcessing = false;
+        let cropper = null;
+        let currentCropIndex = -1;
+
+        const DEFAULT_TAG_PROMPT = `You are an expert for creating photorealistic AI training datasets. Your task is to generate descriptive tags for the provided image for the purpose of SDXL lora training using kohya_ss.
+Follow these rules strictly:
+1.  Focus on Unique Features:** Prioritize tags that describe the subject's unique identity, specific clothing (e.g., 'blue denim jacket', not just 'jacket'), hairstyle and color, distinct facial features (e.g., 'freckles', 'defined jawline'), and overall style cues (e.g., 'goth style', 'business casual').
+2.  Avoid Noise:** Do NOT use generic, low-impact tags like 'solo', '1girl', 'looking at viewer', 'realistic', 'photorealistic'.
+3.  Prioritize Impact:** List the most descriptive and important tags first.
+4.  Balance Character and Context:** Aim for approximately two-thirds of the tags describing the character (person, clothing, hair, accessories) and one-third describing the background, composition, and lighting (e.g., 'outdoors', 'city street at night', 'soft lighting').
+5.  Be Concise and Specific:** Avoid redundant tags. For example, use 'blue eyes' instead of 'blue color, eyes'.
+
+The final output MUST be a comma-separated list of tags. No comments, no 'Here is:', no 'Let me know..'. Just a list of comma separated tags.`;
+
+        const DEFAULT_CAPTION_PROMPT = `You are an expert for creating photorealistic AI training datasets. Your task is to generate descriptive caption for the provided image for the purpose of Lora training using tools like kohya_ss, OneTrainer or diffusion pipes. Follow these rules strictly:
+
+1. Information sufficiency: Captions should include all meaningful content and be comprehensive, especially for complex scenes that may be overlooked by general captions.
+2. Minimal redundancy: Captions should be concise and avoid unnecessary repetition of information.
+3. Human comprehensibility: Captions should be phrased naturally using correct spelling, grammar, and punctuation to be easily understood by humans.
+4. Grounded descriptions: For more specific tasks, provide region-specific captions that describe a particular area of the image defined by a bounding box, rather than just the general scene.
+5. Variety: Ensure a diverse set of captions for each image, including both general descriptions and more detailed ones, to provide richer training data.
+
+Expected outcome is a human-readable continuous text consisting of several sentences without the use of numbering or bullet points.`;
+
+        // DOM elements
+        const settingsIcon = document.getElementById('settings-icon');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettings');
+        const modelSelect = document.getElementById('modelSelect');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const wdApiKeyInput = document.getElementById('wdApiKeyInput');
+        const ddThreshold = document.getElementById('ddThreshold');
+        const wdGeneralThresh = document.getElementById('wdGeneralThresh');
+        const wdCharThresh = document.getElementById('wdCharThresh');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+
+        const imageUpload = document.getElementById('image-upload');
+        const zipUpload = document.getElementById('zip-upload');
+        const imageGrid = document.getElementById('image-grid');
+        const placeholder = document.getElementById('placeholder');
+        const taggerSection = document.getElementById('tagger-section');
+        const exportButton = document.getElementById('export-button');
+        const resetButton = document.getElementById('reset-button');
+        const clearTagsButton = document.getElementById('clear-tags-button');
+        const tagAllButton = document.getElementById('tag-all-button');
+        const captionAllButton = document.getElementById('caption-all-button');
+        const datasetNameInput = document.getElementById('dataset-name-input');
+        const triggerWordInput = document.getElementById('trigger-word-input');
+
+        const loader = document.getElementById('loader');
+        const loaderText = document.getElementById('loader-text');
+        const previewModal = document.getElementById('preview-modal');
+        const previewImage = document.getElementById('preview-image');
+        const previewClose = document.getElementById('preview-close');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+
+        const tagViewerSection = document.getElementById('tag-viewer-section');
+        const tagViewerHeader = document.getElementById('tag-viewer-header');
+        const tagViewerContent = document.getElementById('tag-viewer-content');
+        const tagViewerList = document.getElementById('tag-viewer-list');
+        const tagViewerArrow = document.getElementById('tag-viewer-arrow');
+        const totalTagsBadge = document.getElementById('total-tags-badge');
+
+        const tagSettingsModal = document.getElementById('tag-settings-modal');
+        const tagSettingsConfig = document.getElementById('tag-settings-config');
+        const tagSettingsProgress = document.getElementById('tag-settings-progress');
+        const startTaggingBtn = document.getElementById('start-tagging-btn');
+        const cancelTaggingBtn = document.getElementById('cancel-tagging-btn');
+        const stopTaggingBtn = document.getElementById('stop-tagging-btn');
+        const settingMaxTags = document.getElementById('setting-max-tags');
+        const tagProgressBar = document.getElementById('tag-progress-bar');
+        const tagProgressText = document.getElementById('tag-progress-text');
+        const toggleTagPromptBtn = document.getElementById('toggle-tag-prompt-btn');
+        const tagSystemPrompt = document.getElementById('tag-system-prompt');
+
+        const captionSettingsModal = document.getElementById('caption-settings-modal');
+        const captionSettingsConfig = document.getElementById('caption-settings-config');
+        const captionSettingsProgress = document.getElementById('caption-settings-progress');
+        const startCaptioningBtn = document.getElementById('start-captioning-btn');
+        const cancelCaptioningBtn = document.getElementById('cancel-captioning-btn');
+        const stopCaptioningBtn = document.getElementById('stop-captioning-btn');
+        const settingMaxCaptionLen = document.getElementById('setting-max-caption-len');
+        const captionProgressBar = document.getElementById('caption-progress-bar');
+        const captionProgressText = document.getElementById('caption-progress-text');
+        const toggleCaptionPromptBtn = document.getElementById('toggle-caption-prompt-btn');
+        const captionSystemPrompt = document.getElementById('caption-system-prompt');
+
+        const cropModal = document.getElementById('crop-modal');
+        const cropImage = document.getElementById('crop-image');
+        const cropSaveButton = document.getElementById('crop-save');
+        const cropCancelButton = document.getElementById('crop-cancel');
+
+        tagSystemPrompt.value = DEFAULT_TAG_PROMPT;
+        captionSystemPrompt.value = DEFAULT_CAPTION_PROMPT;
+
+        // Event listeners
+        settingsIcon.addEventListener('click', openSettings);
+        closeSettingsBtn.addEventListener('click', closeSettings);
+        saveSettingsBtn.addEventListener('click', saveSettings);
+        modelSelect.addEventListener('change', updateSettingsFields);
+
+        imageUpload.addEventListener('change', handleImageUpload);
+        zipUpload.addEventListener('change', handleZipUpload);
+        exportButton.addEventListener('click', handleExport);
+        resetButton.addEventListener('click', handleReset);
+        clearTagsButton.addEventListener('click', handleClearTags);
+        tagAllButton.addEventListener('click', openTagSettings);
+        captionAllButton.addEventListener('click', openCaptionSettings);
+        startTaggingBtn.addEventListener('click', startBatchTagging);
+        cancelTaggingBtn.addEventListener('click', closeTagSettings);
+        stopTaggingBtn.addEventListener('click', stopBatchProcessing);
+        toggleTagPromptBtn.addEventListener('click', () => tagSystemPrompt.classList.toggle('hidden'));
+        startCaptioningBtn.addEventListener('click', startBatchCaptioning);
+        cancelCaptioningBtn.addEventListener('click', closeCaptionSettings);
+        stopCaptioningBtn.addEventListener('click', stopBatchProcessing);
+        toggleCaptionPromptBtn.addEventListener('click', () => captionSystemPrompt.classList.toggle('hidden'));
+        previewClose.addEventListener('click', hidePreview);
+        triggerWordInput.addEventListener('input', handleTriggerWordChange);
+        tagViewerHeader.addEventListener('click', () => {
+            tagViewerContent.classList.toggle('expanded');
+            tagViewerArrow.classList.toggle('expanded');
+        });
+        previewModal.addEventListener('click', (e) => e.target === previewModal && hidePreview());
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hidePreview();
+                cancelCrop();
+                if (!isBatchProcessing) {
+                    closeTagSettings();
+                    closeCaptionSettings();
+                }
+            }
+        });
+        cropSaveButton.addEventListener('click', saveCrop);
+        cropCancelButton.addEventListener('click', cancelCrop);
+
+        // Settings functions
+        function updateSettingsFields() {
+            const model = modelSelect.value;
+            const isLLM = ['gemini', 'grok', 'openai'].includes(model);
+            const isDD = model === 'deepdanbooru';
+            const isWD = model === 'wd14';
+
+            document.querySelectorAll('.api-key-label, #apiKeyInput').forEach(el => el.style.display = isLLM ? 'block' : 'none');
+            document.querySelectorAll('.dd-threshold-label, #ddThreshold').forEach(el => el.style.display = isDD ? 'block' : 'none');
+            document.querySelectorAll('.wd-apikey-label, #wdApiKeyInput, .wd-general-label, #wdGeneralThresh, .wd-char-label, #wdCharThresh').forEach(el => el.style.display = isWD ? 'block' : 'none');
+        }
+
+        function openSettings() {
+            settingsModal.style.display = 'flex';
+            modelSelect.value = localStorage.getItem('selectedModel') || 'gemini';
+            apiKeyInput.value = localStorage.getItem(modelSelect.value + 'ApiKey') || '';
+            wdApiKeyInput.value = localStorage.getItem('wd14ApiKey') || '';
+            ddThreshold.value = localStorage.getItem('ddThreshold') || '0.5';
+            wdGeneralThresh.value = localStorage.getItem('wdGeneralThresh') || '0.35';
+            wdCharThresh.value = localStorage.getItem('wdCharThresh') || '0.85';
+            updateSettingsFields();
+        }
+
+        function closeSettings() {
+            settingsModal.style.display = 'none';
+        }
+
+        function saveSettings() {
+            const model = modelSelect.value;
+            localStorage.setItem('selectedModel', model);
+            if (['gemini', 'grok', 'openai'].includes(model)) localStorage.setItem(model + 'ApiKey', apiKeyInput.value.trim());
+            if (model === 'wd14') localStorage.setItem('wd14ApiKey', wdApiKeyInput.value.trim());
+            localStorage.setItem('ddThreshold', ddThreshold.value);
+            localStorage.setItem('wdGeneralThresh', wdGeneralThresh.value);
+            localStorage.setItem('wdCharThresh', wdCharThresh.value);
+            closeSettings();
+            showNotification('Settings saved');
+        }
+
+        function getModel() { return localStorage.getItem('selectedModel') || 'gemini'; }
+        function getApiKey() { return localStorage.getItem(getModel() + 'ApiKey') || ''; }
+        function getWDKey() { return localStorage.getItem('wd14ApiKey') || ''; }
+
+        async function fileToBase64(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function generateCaption(imageFile) {
+            const model = getModel();
+            const base64 = await fileToBase64(imageFile);
+
+            if (model === 'deepdanbooru') {
+                const threshold = localStorage.getItem('ddThreshold') || '0.5';
+                const resp = await fetch(`https://deepdanbooru.donmai.us/?url=${encodeURIComponent(base64)}&min_score=${threshold}`);
+                const text = await resp.text();
+                const tags = text.split('\n').map(line => line.match(/^(.*?) \(/)?.[1].trim()).filter(Boolean);
+                return tags.join(', ');
+            }
+
+            if (model === 'wd14') {
+                const apiKey = getWDKey();
+                if (!apiKey) throw new Error('Replicate API key required for WD1.4');
+                const general = parseFloat(localStorage.getItem('wdGeneralThresh') || '0.35');
+                const char = parseFloat(localStorage.getItem('wdCharThresh') || '0.85');
+
+                const create = await fetch('https://api.replicate.com/v1/predictions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({
+                        version: "2c081a1ded296dda31ce8f85c50588a4a44e9dc8ad55a350bae6e5596e2d5b63",
+                        input: { image: base64, general_thresh: general, character_thresh: char }
+                    })
+                });
+                const data = await create.json();
+                let result = data;
+                while (result.status !== 'succeeded' && result.status !== 'failed') {
+                    await new Promise(r => setTimeout(r, 1000));
+                    const poll = await fetch(result.urls.get, { headers: { 'Authorization': `Bearer ${apiKey}` } });
+                    result = await poll.json();
+                }
+                if (result.status === 'failed') throw new Error('WD1.4 tagging failed');
+                const tags = result.output.map(t => t.tag).filter(Boolean).join(', ');
+                return tags;
+            }
+
+            const apiKey = getApiKey();
+            if (!apiKey) throw new Error('API key missing');
+
+            let responseText = '';
+            if (model === 'gemini') {
+                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [
+                            { text: "Provide detailed comma-separated tags for LoRA training." },
+                            { inline_data: { mime_type: imageFile.type, data: base64.split(',')[1] } }
+                        ] }]
+                    })
+                });
+                const data = await resp.json();
+                responseText = data.candidates[0].content.parts[0].text;
+            } else {
+                const isGrok = model === 'grok';
+                const endpoint = isGrok ? 'https://api.x.ai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
+                const modelName = isGrok ? 'grok-vision-latest' : 'gpt-4o';
+                const resp = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({
+                        model: modelName,
+                        messages: [{ role: 'user', content: [
+                            { type: 'text', text: 'Provide detailed comma-separated tags for LoRA training.' },
+                            { type: 'image_url', image_url: { url: base64 } }
+                        ] }],
+                        max_tokens: 300
+                    })
+                });
+                const data = await resp.json();
+                responseText = data.choices[0].message.content;
+            }
+            return responseText.trim();
+        }
+
+        function showNotification(text, duration = 3000) {
+            notificationText.textContent = text;
+            notification.classList.remove('hidden', 'translate-x-full');
+            notification.classList.add('translate-x-0');
+            setTimeout(() => notification.classList.add('translate-x-full'), duration);
+        }
+
+        function showLoader(text) {
+            loaderText.textContent = text || 'Processing...';
+            loader.style.display = 'flex';
+        }
+
+        function hideLoader() {
+            loader.style.display = 'none';
+        }
+
+        async function calculateFileHash(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function handleImageUpload(event) {
+            const files = Array.from(event.target.files);
+            if (files.length === 0) return;
+            showLoader('Processing & checking for duplicates...');
+
+            const existingHashes = new Set(await Promise.all(dataset.map(item => calculateFileHash(item.file))));
+            const newDatasetItems = [];
+            const duplicatesFound = [];
+
+            for (const file of files) {
+                const hash = await calculateFileHash(file);
+                if (existingHashes.has(hash)) {
+                    duplicatesFound.push(file.name);
+                    continue;
+                }
+
+                let finalFile = file;
+                if (file.name.toLowerCase().endsWith('.jpeg')) {
+                    const newName = file.name.slice(0, -5) + '.jpg';
+                    finalFile = new File([file], newName, { type: 'image/jpeg' });
+                }
+                
+                let initialTags = currentTriggerWord ? currentTriggerWord : "";
+                newDatasetItems.push({ file: finalFile, tags: initialTags, type: 'tags' });
+                existingHashes.add(hash); 
+            }
+            
+            dataset.push(...newDatasetItems);
+            hideLoader();
+
+            if (duplicatesFound.length > 0) {
+                showNotification(`Skipped ${duplicatesFound.length} duplicate image(s).`);
+            }
+            render();
+        }
+
+        async function handleZipUpload(event) {
+            const zipFile = event.target.files[0];
+            if (!zipFile) return;
+
+            showLoader('Processing ZIP & checking for duplicates...');
+            
+            try {
+                const jszip = new JSZip();
+                const zip = await jszip.loadAsync(zipFile);
+                
+                const imageFiles = {};
+                const textFiles = {};
+                const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+
+                for (const filename in zip.files) {
+                    if (zip.files[filename].dir) continue;
+                    const lowerFilename = filename.toLowerCase();
+                    if (imageExtensions.some(ext => lowerFilename.endsWith(ext))) {
+                        const baseName = filename.substring(0, filename.lastIndexOf('.'));
+                        imageFiles[baseName] = { file: zip.files[filename], originalName: filename };
+                    } else if (lowerFilename.endsWith('.txt')) {
+                        const baseName = filename.substring(0, filename.lastIndexOf('.'));
+                        textFiles[baseName] = zip.files[filename];
+                    }
+                }
+
+                const existingHashes = new Set(await Promise.all(dataset.map(item => calculateFileHash(item.file))));
+                const newDatasetItems = [];
+                const duplicatesFound = [];
+
+                for (const baseName in imageFiles) {
+                    const { file: imageZipObject, originalName } = imageFiles[baseName];
+                    const imageBlob = await imageZipObject.async('blob');
+                    
+                    let finalName = originalName;
+                    if (originalName.toLowerCase().endsWith('.jpeg')) {
+                        finalName = originalName.slice(0, -5) + '.jpg';
+                    }
+                    const imageFile = new File([imageBlob], finalName, { type: imageBlob.type });
+
+                    const hash = await calculateFileHash(imageFile);
+                    if (existingHashes.has(hash)) {
+                        duplicatesFound.push(originalName);
+                        continue;
+                    }
+
+                    let tags = '';
+                    if (textFiles[baseName]) {
+                        tags = await textFiles[baseName].async('string');
+                        tags = tags.trim();
+                    }
+
+                    if (currentTriggerWord) {
+                        if (!tags.startsWith(currentTriggerWord)) {
+                            tags = tags ? currentTriggerWord + ", " + tags : currentTriggerWord;
+                        }
+                    }
+
+                    newDatasetItems.push({ file: imageFile, tags: tags, type: 'tags' });
+                    existingHashes.add(hash);
+                }
+                
+                dataset.push(...newDatasetItems);
+                render();
+
+                if (duplicatesFound.length > 0) {
+                    showNotification(`Skipped ${duplicatesFound.length} duplicate image(s) from ZIP.`);
+                }
+
+            } catch (error) {
+                console.error("Error processing ZIP file:", error);
+                showNotification("Error processing ZIP. See console for details.");
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function handleReset() {
+            dataset = [];
+            imageUpload.value = '';
+            zipUpload.value = '';
+            datasetNameInput.value = '';
+            triggerWordInput.value = '';
+            currentTriggerWord = '';
+            render();
+        }
+
+        function handleClearTags() {
+            if (!confirm("Clear all tags/captions?")) return;
+            dataset.forEach(item => {
+                item.tags = currentTriggerWord || "";
+                item.type = 'tags';
+            });
+            renderTagUpdates();
+            showNotification("Cleared all tags.");
+        }
+
+        async function handleExport() {
+            if (dataset.length === 0) return showNotification("No images to export");
+
+            const zip = new JSZip();
+            dataset.forEach(item => {
+                zip.file(item.file.name, item.file);
+                const txtName = item.file.name.replace(/\.[^/.]+$/, ".txt");
+                zip.file(txtName, item.tags);
+            });
+            const blob = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (datasetNameInput.value.trim() || 'dataset') + '.zip';
+            a.click();
+            showNotification("Exported ZIP");
+        }
+
+        function handleTriggerWordChange(e) {
+            const newTrigger = e.target.value.trim();
+            dataset.forEach(item => {
+                let text = item.tags.trim();
+                if (currentTriggerWord && text.startsWith(currentTriggerWord)) {
+                    text = text.substring(currentTriggerWord.length).trim();
+                    if (text.startsWith(',')) text = text.substring(1).trim();
+                }
+                if (newTrigger) {
+                    text = newTrigger + (text ? ", " + text : "");
+                }
+                item.tags = text;
+            });
+            currentTriggerWord = newTrigger;
+            renderTagUpdates();
+        }
+
+        function renderTagUpdates() {
+            dataset.forEach((_, i) => {
+                const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
+                if (wrapper) renderTagsInCard(wrapper, i);
+            });
+            renderTagViewer();
+        }
+
+        function openTagSettings() {
+            if (dataset.length === 0) return showNotification("No images");
+            tagSettingsConfig.classList.remove('hidden');
+            tagSettingsProgress.classList.add('hidden');
+            tagSettingsModal.style.display = 'flex';
+        }
+
+        function closeTagSettings() {
+            tagSettingsModal.style.display = 'none';
+        }
+
+        function openCaptionSettings() {
+            if (dataset.length === 0) return showNotification("No images");
+            captionSettingsConfig.classList.remove('hidden');
+            captionSettingsProgress.classList.add('hidden');
+            captionSettingsModal.style.display = 'flex';
+        }
+
+        function closeCaptionSettings() {
+            captionSettingsModal.style.display = 'none';
+        }
+
+        function stopBatchProcessing() {
+            isBatchProcessing = false;
+        }
+
+        async function startBatchTagging() {
+            const maxTags = parseInt(settingMaxTags.value) || 30;
+            const mode = document.querySelector('input[name="tag-mode"]:checked').value;
+
+            tagSettingsConfig.classList.add('hidden');
+            tagSettingsProgress.classList.remove('hidden');
+            isBatchProcessing = true;
+
+            let processed = 0;
+            const total = dataset.length;
+            tagProgressText.textContent = `0 / ${total}`;
+            tagProgressBar.style.width = '0%';
+
+            for (let i = 0; i < total && isBatchProcessing; i++) {
+                const item = dataset[i];
+                let shouldTag = mode === 'overwrite' || mode === 'append' || (mode === 'ignore' && (!item.tags || item.tags === currentTriggerWord));
+
+                if (shouldTag) {
+                    try {
+                        const newTags = await generateCaption(item.file);
+                        let tags = newTags.split(',').map(t => t.trim()).filter(Boolean);
+                        if (mode === 'append') {
+                            tags = [...new Set(item.tags.split(',').map(t => t.trim()).filter(Boolean).concat(tags))];
+                        }
+                        if (currentTriggerWord) {
+                            tags = tags.filter(t => t !== currentTriggerWord);
+                            tags.unshift(currentTriggerWord);
+                        }
+                        if (tags.length > maxTags) tags = tags.slice(0, maxTags);
+                        item.tags = tags.join(', ');
+                        item.type = 'tags';
+                        const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
+                        if (wrapper) renderTagsInCard(wrapper, i);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                processed++;
+                tagProgressBar.style.width = `${(processed / total) * 100}%`;
+                tagProgressText.textContent = `${processed} / ${total}`;
+            }
+
+            renderTagViewer();
+            isBatchProcessing = false;
+            closeTagSettings();
+            showNotification("Tagging complete");
+        }
+
+        async function startBatchCaptioning() {
+            const mode = document.querySelector('input[name="caption-mode"]:checked').value;
+
+            captionSettingsConfig.classList.add('hidden');
+            captionSettingsProgress.classList.remove('hidden');
+            isBatchProcessing = true;
+
+            let processed = 0;
+            const total = dataset.length;
+            captionProgressText.textContent = `0 / ${total}`;
+            captionProgressBar.style.width = '0%';
+
+            for (let i = 0; i < total && isBatchProcessing; i++) {
+                const item = dataset[i];
+                let shouldCaption = mode === 'overwrite' || mode === 'append' || (mode === 'ignore' && (!item.tags || item.tags === currentTriggerWord));
+
+                if (shouldCaption) {
+                    try {
+                        const caption = await generateCaption(item.file);
+                        let final = mode === 'overwrite' ? caption : (item.tags ? item.tags + " " + caption : caption);
+                        if (currentTriggerWord && !final.startsWith(currentTriggerWord)) final = currentTriggerWord + ", " + final;
+                        item.tags = final;
+                        item.type = 'caption';
+                        const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
+                        if (wrapper) renderTagsInCard(wrapper, i);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                processed++;
+                captionProgressBar.style.width = `${(processed / total) * 100}%`;
+                captionProgressText.textContent = `${processed} / ${total}`;
+            }
+
+            renderTagViewer();
+            isBatchProcessing = false;
+            closeCaptionSettings();
+            showNotification("Captioning complete");
+        }
+
+        function render() {
+            imageGrid.innerHTML = '';
+
+            if (dataset.length === 0) {
+                taggerSection.classList.add('hidden');
+                tagViewerSection.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                return;
+            }
+
+            taggerSection.classList.remove('hidden');
+            tagViewerSection.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+
+            dataset.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-800 rounded-lg shadow-md overflow-hidden flex h-72 items-center';
+                const imageUrl = URL.createObjectURL(item.file);
+
+                card.innerHTML = `
+                    <div class="p-4 h-full flex items-center justify-center">
+                        <span class="text-2xl font-bold text-gray-500">${index + 1}</span>
+                    </div>
+                    <div class="w-2/5 flex-shrink-0 cursor-pointer thumbnail-container h-full" onclick="showPreview('${imageUrl}')">
+                        <img src="${imageUrl}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4 flex flex-col flex-grow min-w-0 h-full">
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-xs text-gray-400" id="resolution-${index}">loading...</p>
+                            <button onclick="toggleCardType(${index})" title="Toggle Tags/Caption">
+                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </button>
+                        </div>
+                        <div class="flex flex-grow gap-3 min-h-0">
+                            <div class="tag-area-wrapper w-full flex-grow bg-gray-700 border border-gray-600 rounded-md p-2 flex flex-wrap items-start content-start gap-2 overflow-y-auto" data-index="${index}"></div>
+                            <div class="flex flex-col gap-2">
+                                <button class="crop-btn bg-blue-600 hover:bg-blue-700 py-2 px-3 rounded text-sm" data-index="${index}">Crop</button>
+                                <button class="autotag-single-button bg-teal-600 hover:bg-teal-700 py-2 px-3 rounded text-sm" data-index="${index}">Tag</button>
+                                <button class="caption-single-button bg-purple-600 hover:bg-purple-700 py-2 px-3 rounded text-sm" data-index="${index}">Caption</button>
+                                <button class="remove-btn bg-red-600 hover:bg-red-700 py-2 px-3 rounded text-sm" data-index="${index}">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                imageGrid.appendChild(card);
+
+                const img = card.querySelector('img');
+                img.onload = () => document.getElementById(`resolution-${index}`).textContent = `${img.naturalWidth}x${img.naturalHeight}`;
+
+                renderTagsInCard(card.querySelector('.tag-area-wrapper'), index);
+
+                card.querySelector('.crop-btn').addEventListener('click', () => openCrop(index));
+                card.querySelector('.autotag-single-button').addEventListener('click', () => autotagSingle(index));
+                card.querySelector('.caption-single-button').addEventListener('click', () => captionSingle(index));
+                card.querySelector('.remove-btn').addEventListener('click', () => removeImage(index));
+            });
+
+            renderTagViewer();
+        }
+
+        function renderTagViewer() {
+            tagViewerList.innerHTML = '';
+            const map = new Map();
+            dataset.forEach(item => {
+                if (item.type === 'caption') return;
+                item.tags.split(',').map(t => t.trim()).filter(Boolean).forEach(t => map.set(t, (map.get(t) || 0) + 1));
+            });
+            const sorted = [...map.entries()].sort((a, b) => b[1] - a[1]);
+            sorted.forEach(([tag, count]) => {
+                const pill = document.createElement('span');
+                pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-700 text-gray-300 hover:bg-gray-600';
+                pill.innerHTML = `${tag} <span class="ml-1 text-gray-500">(${count})</span> <button class="ml-2 hover:text-red-500" onclick="deleteTagGlobally('${tag}')">×</button>`;
+                tagViewerList.appendChild(pill);
+            });
+            totalTagsBadge.textContent = `${sorted.length} tags`;
+        }
+
+        function renderTagsInCard(wrapper, index) {
+            wrapper.innerHTML = '';
+            const item = dataset[index];
+            if (item.type === 'caption') {
+                const ta = document.createElement('textarea');
+                ta.value = item.tags;
+                ta.className = 'w-full h-full bg-transparent text-gray-300 text-sm resize-none outline-none';
+                ta.oninput = e => {
+                    item.tags = e.target.value;
+                    renderTagViewer();
+                };
+                wrapper.appendChild(ta);
+            } else {
+                const tags = item.tags.split(',').map(t => t.trim()).filter(Boolean);
+                tags.forEach((tag, ti) => {
+                    const pill = document.createElement('span');
+                    pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-300';
+                    pill.innerHTML = `${tag} <button class="ml-1 hover:text-red-500" onclick="removeTagFromImage(${index}, ${ti})">×</button>`;
+                    wrapper.appendChild(pill);
+                });
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Add tag...';
+                input.className = 'bg-transparent text-gray-300 text-sm outline-none';
+                input.onkeydown = e => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        const v = e.target.value.trim();
+                        if (v) {
+                            tags.push(v);
+                            item.tags = tags.join(', ');
+                            renderTagsInCard(wrapper, index);
+                            input.value = '';
+                            renderTagViewer();
+                        }
+                    }
+                };
+                wrapper.appendChild(input);
+            }
+        }
+
+        function removeTagFromImage(index, tagIndex) {
+            const item = dataset[index];
+            const tags = item.tags.split(',').map(t => t.trim()).filter(Boolean);
+            tags.splice(tagIndex, 1);
+            item.tags = tags.join(', ');
+            renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+            renderTagViewer();
+        }
+
+        function deleteTagGlobally(tag) {
+            if (!confirm(`Delete "${tag}" from all images?`)) return;
+            dataset.forEach(item => {
+                if (item.type === 'caption') return;
+                item.tags = item.tags.split(',').map(t => t.trim()).filter(t => t !== tag).join(', ');
+            });
+            renderTagUpdates();
+        }
+
+        function toggleCardType(index) {
+            const item = dataset[index];
+            item.type = item.type === 'caption' ? 'tags' : 'caption';
+            renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+        }
+
+        async function autotagSingle(index) {
+            try {
+                const tags = await generateCaption(dataset[index].file);
+                dataset[index].tags = currentTriggerWord ? currentTriggerWord + ', ' + tags : tags;
+                dataset[index].type = 'tags';
+                renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+                renderTagViewer();
+                showNotification("Tagged");
+            } catch (e) {
+                showNotification("Error: " + e.message);
+            }
+        }
+
+        async function captionSingle(index) {
+            try {
+                const caption = await generateCaption(dataset[index].file);
+                dataset[index].tags = caption;
+                dataset[index].type = 'caption';
+                renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+                renderTagViewer();
+                showNotification("Captioned");
+            } catch (e) {
+                showNotification("Error: " + e.message);
+            }
+        }
+
+        function removeImage(index) {
+            dataset.splice(index, 1);
+            render();
+        }
+
+        function openCrop(index) {
+            currentCropIndex = index;
+            cropImage.src = URL.createObjectURL(dataset[index].file);
+            cropModal.style.display = 'flex';
+            cropper = new Cropper(cropImage, { aspectRatio: NaN, viewMode: 1 });
+        }
+
+        async function saveCrop() {
+            if (!cropper) return;
+            const canvas = cropper.getCroppedCanvas();
+            const blob = await new Promise(r => canvas.toBlob(r));
+            dataset[currentCropIndex].file = new File([blob], dataset[currentCropIndex].file.name, { type: dataset[currentCropIndex].file.type });
+            cropper.destroy();
+            cropper = null;
+            cropModal.style.display = 'none';
+            render();
+            showNotification("Cropped");
+        }
+
+        function cancelCrop() {
+            if (cropper) cropper.destroy();
+            cropper = null;
+            cropModal.style.display = 'none';
+        }
+
+        function showPreview(url) {
+            previewImage.src = url;
+            previewModal.style.display = 'flex';
+        }
+
+        function hidePreview() {
+            previewModal.style.display = 'none';
+        }
+
+        render();
+    </script>
+</body>
+</html>
