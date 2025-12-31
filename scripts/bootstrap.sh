@@ -15,7 +15,7 @@ mkdir -p \
   "$WORKSPACE_ROOT"/cache/{jupyter,ipython,xdg,xdg-data,code-server}
 mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke}
 mkdir -p "$WORKSPACE_ROOT/datasets"/{images,ZIPs}
-mkdir -p "$WORKSPACE_ROOT/apps"/{comfy,diffusion-pipe,invoke,kohya}
+mkdir -p "$WORKSPACE_ROOT/apps"/{comfy,diffusion-pipe,invoke,kohya,codeserver}
 
 # Seed bundled apps into workspace (without clobbering existing)
 if [ -d /opt/pilot/apps ]; then
@@ -47,8 +47,8 @@ export JUPYTER_CONFIG_DIR="${JUPYTER_CONFIG_DIR:-$WORKSPACE_ROOT/config/jupyter}
 export JUPYTER_DATA_DIR="${JUPYTER_DATA_DIR:-$WORKSPACE_ROOT/cache/jupyter}"
 export IPYTHONDIR="${IPYTHONDIR:-$WORKSPACE_ROOT/cache/ipython}"
 
-export CODE_SERVER_DATA_DIR="${CODE_SERVER_DATA_DIR:-$WORKSPACE_ROOT/cache/code-server}"
-export CODE_SERVER_CONFIG_DIR="${CODE_SERVER_CONFIG_DIR:-$WORKSPACE_ROOT/config/code-server}"
+export CODE_SERVER_DATA_DIR="${CODE_SERVER_DATA_DIR:-$WORKSPACE_ROOT/apps/codeserver/data}"
+export CODE_SERVER_CONFIG_DIR="${CODE_SERVER_CONFIG_DIR:-$WORKSPACE_ROOT/apps/codeserver/config}"
 
 # Secrets (write with strict perms)
 SECRETS_FILE="$WORKSPACE_ROOT/config/secrets.env"

@@ -3,7 +3,8 @@ set -euo pipefail
 
 PORT="${INVOKE_PORT:-9090}"
 ROOT="${WORKSPACE_ROOT:-/workspace}/apps/invoke"
-MODELS_ROOT="${WORKSPACE_ROOT:-/workspace}/apps/invoke/models"
+# Use shared models tree
+MODELS_ROOT="${WORKSPACE_ROOT:-/workspace}/models"
 OUT_DIR="${WORKSPACE_ROOT:-/workspace}/outputs/invoke"
 
 mkdir -p "$ROOT" "$MODELS_ROOT" "$OUT_DIR"

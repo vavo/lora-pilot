@@ -73,7 +73,8 @@ require_manifest() {
 }
 
 require_whiptail() {
-  export TERM="${TERM:-xterm-256color}"
+  # Force a sane TERM for whiptail (code-server shells sometimes pass odd values)
+  export TERM="xterm-256color"
   if ! command -v whiptail >/dev/null 2>&1; then
     echo "ERROR: whiptail not found."
     echo "Install it (apt-get update && apt install -y whiptail) or use CLI: models list/pull."
@@ -235,7 +236,8 @@ gui() {
       "${menu_items[@]}" \
       3>&1 1>&2 2>&3)" || {
         rc=$?
-        echo "models gui: whiptail failed (rc=${rc}). Ensure TERM is set and a TTY is available."
+        echo "models gui: whiptail failed (rc=${rc}). Ensure TERM is set and a TTY is available. Falling back to CLI list."
+        list_names
         exit "${rc}"
       }
 

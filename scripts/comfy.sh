@@ -47,17 +47,17 @@ fi
 
 rm -rf "${COMFY_DIR}/user"
 ln -s "${USER_DIR}" "${COMFY_DIR}/user"
+# Ensure ComfyUI-Manager is present in workspace custom_nodes before rewiring
+if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
+  mkdir -p "${CUSTOM_NODES_DIR}"
+  cp -a "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/"
+fi
 # Point Comfy models to the shared workspace tree
 rm -rf "${COMFY_DIR}/models"
 ln -s "${WORKSPACE_ROOT}/models" "${COMFY_DIR}/models"
 # Point Comfy custom nodes to workspace apps/comfy/custom_nodes
 rm -rf "${COMFY_DIR}/custom_nodes"
 ln -s "${CUSTOM_NODES_DIR}" "${COMFY_DIR}/custom_nodes"
-# Ensure ComfyUI-Manager exists in workspace custom_nodes
-if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
-  mkdir -p "${CUSTOM_NODES_DIR}"
-  cp -a "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/"
-fi
 cd "$COMFY_DIR"
 
 exec python main.py \
