@@ -1,11 +1,12 @@
 # LoRA Pilot (The Last Docker Image You'll Ever Need)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo)
 
 ![LoRA Pilot logo](apps/Portal/static/logo.svg)
 
 > Your AI playground in a box - because who has time to configure 17 different tools?
-Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI image generation and training into one neat package. No more crying over broken dependencies at 3 AM. 🎉
+Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI image generation and training into one neat package. No more crying over broken dependencies at 3 AM.
 
-## ✨ What's in the box?
+##  What's in the box?
 - **🎨 ComfyUI** (+ ComfyUI-Manager preinstalled) - Your node-based playground
 - **🏋️ Kohya SS** - Where LoRAs are born (web UI included!)
 - **📓 JupyterLab** - For when you need to get nerdy
