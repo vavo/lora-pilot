@@ -22,6 +22,11 @@ if invokeai-config --help >/dev/null 2>&1; then
   invokeai-config --root "$ROOT" set OutputDir "$OUT_DIR" >/dev/null 2>&1 || true
 fi
 # Fallback: ensure Invoke's default models path points at the shared workspace tree
+if [ -d "$ROOT/models" ] && [ ! -L "$ROOT/models" ]; then
+  # Move any existing files into shared models then replace with symlink
+  find "$ROOT/models" -mindepth 1 -maxdepth 1 -exec mv -n {} "$MODELS_ROOT"/ \; 2>/dev/null || true
+  rm -rf "$ROOT/models"
+fi
 if [ ! -e "$ROOT/models" ]; then
   ln -s "$MODELS_ROOT" "$ROOT/models"
 fi

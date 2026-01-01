@@ -1,5 +1,7 @@
 # LoRA Pilot (The Last Docker Image You'll Ever Need)
 
+![LoRA Pilot logo](apps/Portal/static/logo.svg)
+
 > Your AI playground in a box - because who has time to configure 17 different tools?
 Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI image generation and training into one neat package. No more crying over broken dependencies at 3 AM. 🎉
 
@@ -10,12 +12,11 @@ Ever wanted to train LoRAs but ended up in dependency hell? We've been there. Lo
 - **💻 code-server** - VS Code in your browser (because local setups are overrated)
 - **🔮 InvokeAI** - Living in its own virtual environment (the diva of the bunch)
 - **🚂 Diffusion Pipe** - Training + TensorBoard, all cozy together
+- **ControlPilot** - Web UI for managing all services
 
 Everything is orchestrated by **supervisord** and writes to **/workspace** so you can actually keep your work. Imagine that! 
 
 Few of the thoughtful details that really bothered me when I was using other SD (Stable Diffusion) docker images:
-
-- No need to take care of upgrading anything. As long as you boot :latest you will always get the latest versions of the tool stack
 - If you want stabiity, just choose :stable and you'll always have 100% working image. Why change anything if it works? (I promise not to break things in :latest though)
 - when you login to Jupyter or VS code server, change the theme, add some plugins or setup a workspace - unlike with other containers, your settings and extensions will persist between reboots
 - no need to change venvs once you login - everything is already set up in the container
@@ -23,16 +24,20 @@ Few of the thoughtful details that really bothered me when I was using other SD 
 - there are loads of custom made scripts to make your workflow smoother and more efficient if you are a CLI guy; 
 - Need SDXL1.0 base model? "models pull sdxl-base", that's it! 
 - Want to run another kohya training without spending 30 minutes editing toml file?Just run "trainpilot", choose a dataset from the select box, desired lora quality and a proven-to-always-work toml will be generated for you based on the size of your dataset.
-- need to manage your services? Never been easier: "pilot status", "pilot start", "pilot stop" - all managed by supervisord
+- ControlPilot gives you a web UI to manage all services without needing to use the command line
+- prefer CLI and want to manage your services? Never been easier: "pilot status", "pilot start", "pilot stop" - all managed by supervisord
+
 ---
 
 ## Default ports
 
 | Service | Port |
 |---|---:|
+| TagPilot | `3333` |
+| Diffusion Pipe (TensorBoard) | `4444` |
 | ComfyUI | `5555` |
 | Kohya SS | `6666` |
-| Diffusion Pipe (TensorBoard) | `4444` |
+| ControlPilot | `7878` |
 | code-server | `8443` |
 | JupyterLab | `8888` |
 | InvokeAI (optional) | `9090` |
@@ -109,12 +114,13 @@ If DIFFPIPE_CONFIG is unset, the service just runs TensorBoard on DIFFPIPE_PORT.
 
 The image includes a system-wide command:
 • models (alias: pilot-models)
-• gui-models (GUI-only variant, whiptail)
 
 Usage:
 • models list
 • models pull <name> [--dir SUBDIR]
 • models pull-all
+
+You can also download models using Lora Pilot's web interface running at port 7878.
 
 ## Manifest
 
@@ -161,6 +167,7 @@ Reddit: u/no3us
 - JupyterLab - Data scientist's best friend
 - InvokeAI - The fancy pants option
 - Diffusion Pipe - Training powerhouse
+- TensorBoard - Visualization tool
 
 ## 📜 License
 MIT License - go wild, make cool stuff, just don't blame us if your AI starts writing poetry about toast.

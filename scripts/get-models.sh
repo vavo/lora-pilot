@@ -222,6 +222,15 @@ gui() {
   require_manifest
   require_whiptail
 
+  # Adapt dialog size to current terminal; whiptail exits with rc=1 if too small
+  local term_rows term_cols menu_height dialog_height dialog_width
+  term_rows="$(tput lines 2>/dev/null || echo 24)"
+  term_cols="$(tput cols 2>/dev/null || echo 100)"
+  dialog_width=$(( term_cols < 70 ? 70 : (term_cols > 120 ? 120 : term_cols) ))
+  dialog_height=$(( term_rows < 20 ? 20 : (term_rows > 40 ? 40 : term_rows) ))
+  menu_height=$(( dialog_height - 10 ))
+  [[ "${menu_height}" -lt 10 ]] && menu_height=10
+
   local f_sdxl=1
   local f_flux=1
   local f_wan=1
@@ -232,7 +241,7 @@ gui() {
     local choice
     choice="$(whiptail --title "Models" \
       --menu "Toggle filters at the top. Select a model to download." \
-      25 100 17 \
+      "${dialog_height}" "${dialog_width}" "${menu_height}" \
       "${menu_items[@]}" \
       3>&1 1>&2 2>&3)" || {
         rc=$?
@@ -296,8 +305,7 @@ hf_download_file() {
   echo "HF file -> ${repo}:${path} -> ${destdir}"
   HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
     "${repo}" "${path}" \
-    --local-dir "${destdir}" \
-    --local-dir-use-symlinks False
+    --local-dir "${destdir}"
 }
 
 hf_download_repo() {
@@ -314,13 +322,11 @@ hf_download_repo() {
     HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
       "${repo}" \
       --local-dir "${destdir}" \
-      --local-dir-use-symlinks False \
       "${args[@]}"
   else
     HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
       "${repo}" \
-      --local-dir "${destdir}" \
-      --local-dir-use-symlinks False
+      --local-dir "${destdir}"
   fi
 }
 

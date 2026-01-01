@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoRA Pilot Portal</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:#f8fafc; color:#0f172a; }
+    .layout { display:flex; min-height:100vh; }
+    .topbar { display:none; align-items:center; justify-content:space-between; padding:12px 16px; background:#fff; border-bottom:1px solid #e2e8f0; position:fixed; top:0; left:0; right:0; z-index:50; }
+    .burger { background:none; border:none; font-size:24px; cursor:pointer; }
+    .sidebar { width:240px; min-width:240px; max-width:240px; background:#ffffff; padding:20px; box-sizing:border-box; border-right:1px solid #e2e8f0; position:relative; z-index:40; transition:transform 0.2s ease; }
+    .logo { margin-bottom:20px; }
+    .logo img { width:100%; height:auto; display:block; }
+    .nav a { display:block; padding:10px 12px; color:#334155; text-decoration:none; border-radius:8px; margin-bottom:6px; cursor:pointer; }
+    .nav a.active, .nav a:hover { background:#e2e8f0; color:#0f172a; }
+    .main { flex:1; padding:24px; }
+    .card { background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:10px; text-align:left; border-bottom:1px solid #e2e8f0; }
+    th { color:#475569; font-weight:600; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; background:#e2e8f0; color:#0f172a; }
+    .pill.ok { background:#dcfce7; color:#166534; }
+    .pill.miss { background:#fee2e2; color:#991b1b; }
+    .dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+    .dot.green { background:#16a34a; }
+    .dot.orange { background:#f97316; }
+    .dot.red { background:#dc2626; }
+    .actions button { margin-right:6px; }
+    button { background:#2563eb; color:#fff; border:none; border-radius:8px; padding:8px 12px; cursor:pointer; }
+    button[disabled] { opacity:0.5; cursor:not-allowed; }
+    .status { font-size:14px; color:#334155; }
+    .hf-box { margin-bottom:12px; }
+    .hf-box input { width: 320px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px; }
+    .hf-box button { margin-left:8px; }
+    .tip { font-size:13px; color:#64748b; margin-top:4px; }
+    .filter { margin:10px 0 8px; }
+    .filter button { margin-right:6px; background:#e2e8f0; color:#0f172a; }
+    .filter button.active { background:#2563eb; color:#fff; }
+    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:30; }
+    @media (max-width: 768px) {
+      .layout { flex-direction:column; }
+      .sidebar { position:fixed; left:0; top:0; height:100vh; transform:translateX(-100%); }
+      .sidebar.open { transform:translateX(0); box-shadow:2px 0 10px rgba(0,0,0,0.15); }
+      .main { padding:80px 16px 16px; } /* add top padding to account for fixed topbar */
+      .topbar { display:flex; }
+      .overlay.show { display:block; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div style="display:flex; align-items:center; gap:10px;">
+      <img src="/logo.svg" alt="LoRA Pilot" style="height:28px; width:auto; display:block;">
+    </div>
+    <button class="burger" id="burger">&#9776;</button>
+  </div>
+  <div class="layout">
+    <div class="overlay" id="overlay"></div>
+    <div class="sidebar">
+      <div class="logo">
+        <img src="/logo.svg" alt="LoRA Pilot">
+      </div>
+      <div class="nav">
+        <a data-section="dashboard">Dashboard</a>
+        <a data-section="services">Services</a>
+        <a data-section="models" class="active">Models</a>
+        <a data-section="docs">Docs</a>
+        <a data-section="support">Support</a>
+      </div>
+    </div>
+    <div class="main">
+      <div id="section-models">
+        <h2>Models</h2>
+        <div class="card">
+          <div class="hf-box">
+            <label>Hugging Face Token:</label>
+            <input id="hf-token" type="password" placeholder="Enter HF_TOKEN" />
+            <button onclick="saveHFToken()">Save</button>
+            <div class="tip">Don’t have one? <a href="https://huggingface.co/settings/tokens" target="_blank">Get it here</a>.</div>
+          </div>
+          <div class="filter">
+            <button data-cat="ALL" class="active" onclick="setFilter(this)">All</button>
+            <button data-cat="FLUX" onclick="setFilter(this)">FLUX</button>
+            <button data-cat="SDXL" onclick="setFilter(this)">SDXL</button>
+            <button data-cat="WAN" onclick="setFilter(this)">WAN</button>
+            <button data-cat="OTHERS" onclick="setFilter(this)">Others</button>
+          </div>
+          <div id="status" class="status">Loading models...</div>
+          <table id="models-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Source</th>
+                <th>Size</th>
+                <th>Status</th>
+                <th>Info</th>
+                <th></th>
+            </tr>
+          </thead>
+            <tbody id="models-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="section-services" style="display:none;">
+        <h2>Services</h2>
+        <div class="card">
+          <div id="svc-status" class="status">Loading services...</div>
+          <table id="services-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Actions</th>
+                <th>Logs</th>
+              </tr>
+            </thead>
+            <tbody id="services-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="section-dashboard" style="display:none;">
+        <h2>Dashboard</h2>
+        <div class="card" id="telemetry-card">
+          <div id="telemetry-status" class="status">Loading telemetry...</div>
+          <div id="telemetry-content" style="display:none;">
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+              <div class="pill">Host: <span id="t-host"></span></div>
+              <div class="pill">Uptime: <span id="t-uptime"></span></div>
+              <div class="pill">CPU load (1/5/15): <span id="t-load"></span></div>
+              <div class="pill">Memory: <span id="t-mem"></span></div>
+            </div>
+            <div class="card" style="margin-bottom:12px;">
+              <h3>Disks</h3>
+              <table>
+                <thead><tr><th>Mount</th><th>Usage</th></tr></thead>
+                <tbody id="disk-body"></tbody>
+              </table>
+            </div>
+            <div class="card">
+              <h3>GPUs</h3>
+              <table>
+                <thead><tr><th>GPU</th><th>Util</th><th>Memory</th></tr></thead>
+                <tbody id="gpu-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="section-docs" style="display:none;">
+        <h2>Docs</h2>
+        <div class="card">
+          <div id="docs-status" class="status">Loading docs...</div>
+          <div id="docs-content" style="display:none; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:13px;"></div>
+        </div>
+      </div>
+
+      <div id="section-support" style="display:none;">
+        <h2>Support</h2>
+        <div class="card" style="line-height:1.6;">
+          <p>Made with ❤️ and way too much coffee by vavo.</p>
+          <p>If you need help or have questions, feel free to reach out or open an issue on GitHub.</p>
+          <p>
+            Reddit: <a href="https://www.reddit.com/user/no3us" target="_blank">u/no3us</a><br>
+            GitHub repo: <a href="https://github.com/vavo/lora-pilot" target="_blank">https://github.com/vavo/lora-pilot</a><br>
+            DockerHub repo: <a href="https://hub.docker.com/r/notrius/lora-pilot" target="_blank">https://hub.docker.com/r/notrius/lora-pilot</a><br>
+            Prebuilt docker image [stable]: <code>docker pull notrius/lora-pilot:stable</code><br>
+            Runpod template: <a href="https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n" target="_blank">https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const sections = ['models','services','dashboard','docs','support'];
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('overlay');
+    const burger = document.getElementById('burger');
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('show');
+    }
+    if (burger) {
+      burger.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+      });
+    }
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+
+    document.querySelectorAll('.nav a').forEach(a => {
+      a.addEventListener('click', () => {
+        const target = a.dataset.section;
+        if (!target) return;
+        document.querySelectorAll('.nav a').forEach(el => el.classList.remove('active'));
+        a.classList.add('active');
+        sections.forEach(s => {
+          const el = document.getElementById(`section-${s}`);
+          if (el) el.style.display = s === target ? '' : 'none';
+        });
+        if (target === 'models') loadTable();
+        if (target === 'services') loadServices();
+        if (target === 'dashboard') loadTelemetry();
+        if (target === 'docs') loadDocs();
+        closeSidebar();
+      });
+    });
+
+    let allModels = [];
+    let filterCat = 'ALL';
+    async function fetchTelemetry() {
+      const res = await fetch('/api/telemetry');
+      if (!res.ok) throw new Error('Failed to load telemetry');
+      return res.json();
+    }
+    async function fetchDocs() {
+      const res = await fetch('/api/docs');
+      if (!res.ok) throw new Error('Failed to load docs');
+      return res.json();
+    }
+    async function fetchModels() {
+      const res = await fetch('/api/models');
+      if (!res.ok) throw new Error('Failed to load models');
+      return res.json();
+    }
+    async function saveHFToken() {
+      const token = document.getElementById('hf-token').value.trim();
+      if (!token) { alert('Enter a token'); return; }
+      const res = await fetch('/api/hf-token', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ token })
+      });
+      if (!res.ok) { alert('Failed to save token'); return; }
+      alert('HF_TOKEN saved.');
+    }
+    async function pullModel(name, btn) {
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Installing...';
+      try {
+        const res = await fetch(`/api/models/${encodeURIComponent(name)}/pull`, { method:'POST' });
+        if (!res.ok) throw new Error(await res.text());
+        await loadTable();
+      } catch (e) {
+        alert(`Pull failed: ${e}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    }
+    async function loadTable() {
+      const status = document.getElementById('status');
+      const table = document.getElementById('models-table');
+      const tbody = document.getElementById('models-body');
+      status.textContent = 'Loading models...';
+      table.style.display = 'none';
+      tbody.innerHTML = '';
+      try {
+        if (!allModels.length) {
+          allModels = await fetchModels();
+        }
+        const data = filterCat === 'ALL' ? allModels : allModels.filter(m => m.category === filterCat);
+        if (!data.length) {
+          status.textContent = 'No models found in manifest.';
+          return;
+        }
+        for (const m of data) {
+          const tr = document.createElement('tr');
+          const size = m.size_bytes ? formatBytes(m.size_bytes) : '—';
+          tr.innerHTML = `
+            <td>${m.name}</td>
+            <td><span class="pill">${m.category}</span></td>
+            <td>${m.type}</td>
+            <td><code>${m.source}</code></td>
+            <td>${size}</td>
+            <td><span class="pill ${m.installed ? 'ok' : 'miss'}">${m.installed ? 'Installed' : 'Not Installed'}</span></td>
+            <td>${m.info_url ? `<a href="${m.info_url}" target="_blank">Info</a>` : '—'}</td>
+            <td>
+              <button onclick="pullModel('${m.name}', this)">Install</button>
+              <button onclick="deleteModel('${m.name}', this)">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+        status.textContent = '';
+        table.style.display = '';
+      } catch (e) {
+        status.textContent = `Error: ${e}`;
+      }
+    }
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '—';
+      const sizes = ['B','KB','MB','GB','TB'];
+      const i = Math.min(sizes.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+      const val = bytes / Math.pow(1024, i);
+      return `${val.toFixed(val >= 10 || i === 0 ? 0 : 1)} ${sizes[i]}`;
+    }
+    async function deleteModel(name, btn) {
+      if (!confirm(`Delete model files for ${name}?`)) return;
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/models/${encodeURIComponent(name)}/delete`, { method:'POST' });
+        if (!res.ok) throw new Error(await res.text());
+        await loadTable();
+      } catch (e) {
+        alert(`Delete failed: ${e}`);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    function setFilter(btn) {
+      document.querySelectorAll('.filter button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filterCat = btn.dataset.cat;
+      loadTable();
+    }
+
+    async function fetchServices() {
+      const res = await fetch('/api/services');
+      if (!res.ok) throw new Error('Failed to load services');
+      return res.json();
+    }
+    async function svcAction(name, action, btn) {
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/services/${name}/${action}`, {method:'POST'});
+        if (!res.ok) throw new Error(await res.text());
+        await loadServices();
+      } catch (e) {
+        alert(`Action failed: ${e}`);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    async function viewLog(name) {
+      try {
+        const res = await fetch(`/api/services/${name}/log`);
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        alert(`${name} log (${data.path}):\n\n${data.log}`);
+      } catch (e) {
+        alert(`Log fetch failed: ${e}`);
+      }
+    }
+    function stateDot(state) {
+      const s = state.toUpperCase();
+      if (s === 'RUNNING') return '<span class="dot green"></span>Running';
+      if (s === 'STARTING') return '<span class="dot orange"></span>Starting';
+      return '<span class="dot red"></span>' + state;
+    }
+    async function loadServices() {
+      const status = document.getElementById('svc-status');
+      const table = document.getElementById('services-table');
+      const tbody = document.getElementById('services-body');
+      status.textContent = 'Loading services...';
+      table.style.display = 'none';
+      tbody.innerHTML = '';
+      try {
+        const data = await fetchServices();
+        data.forEach(svc => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${svc.display || svc.name}</td>
+            <td>${stateDot(svc.state)}</td>
+            <td class="actions">
+              <button onclick="svcAction('${svc.name}','start', this)">Start</button>
+              <button onclick="svcAction('${svc.name}','restart', this)">Reload</button>
+              <button onclick="svcAction('${svc.name}','stop', this)">Stop</button>
+            </td>
+            <td><button onclick="viewLog('${svc.name}')">Log</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+        status.textContent = '';
+        table.style.display = '';
+      } catch (e) {
+        status.textContent = `Error: ${e}`;
+      }
+    }
+    // Default to models section
+    loadTable();
+
+    async function loadTelemetry() {
+      const status = document.getElementById('telemetry-status');
+      const content = document.getElementById('telemetry-content');
+      status.textContent = 'Loading telemetry...';
+      content.style.display = 'none';
+      try {
+        const t = await fetchTelemetry();
+        document.getElementById('t-host').textContent = t.host;
+        document.getElementById('t-uptime').textContent = formatUptime(t.uptime_seconds);
+        document.getElementById('t-load').textContent = t.load_avg.map(v => v.toFixed(2)).join(' / ');
+        document.getElementById('t-mem').textContent = `${formatBytes(t.mem_used)} / ${formatBytes(t.mem_total)}`;
+        const db = document.getElementById('disk-body');
+        db.innerHTML = '';
+        t.disks.forEach(d => {
+          const tr = document.createElement('tr');
+          const pct = d.total ? Math.round((d.used / d.total) * 100) : 0;
+          tr.innerHTML = `<td>${d.mount}</td><td>${formatBytes(d.used)} / ${formatBytes(d.total)} (${pct}%)</td>`;
+          db.appendChild(tr);
+        });
+        const gb = document.getElementById('gpu-body');
+        gb.innerHTML = '';
+        if (t.gpus && t.gpus.length) {
+          t.gpus.forEach(g => {
+            const mem = (g.mem_used && g.mem_total) ? `${formatBytes(g.mem_used)} / ${formatBytes(g.mem_total)}` : '—';
+            const util = g.util != null ? `${g.util}%` : '—';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${g.index}: ${g.name}</td><td>${util}</td><td>${mem}</td>`;
+            gb.appendChild(tr);
+          });
+        } else {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td colspan="3">No GPUs detected</td>`;
+          gb.appendChild(tr);
+        }
+        status.textContent = '';
+        content.style.display = '';
+      } catch (e) {
+        status.textContent = `Error: ${e}`;
+      }
+    }
+    function formatUptime(s) {
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      return `${d}d ${h}h ${m}m`;
+    }
+    async function loadDocs() {
+      const status = document.getElementById('docs-status');
+      const content = document.getElementById('docs-content');
+      status.textContent = 'Loading docs...';
+      content.style.display = 'none';
+      try {
+        const d = await fetchDocs();
+        content.textContent = d.content || '';
+        status.textContent = '';
+        content.style.display = '';
+      } catch (e) {
+        status.textContent = `Error: ${e}`;
+      }
+    }
+  </script>
+</body>
+</html>
