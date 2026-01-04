@@ -1,0 +1,30 @@
+<h2>Dashboard</h2>
+<div class="card" id="telemetry-card">
+  <div id="telemetry-status" class="status">Loading telemetry...</div>
+  <div id="telemetry-content" style="display:none;">
+    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+      <div class="pill">RunPod ID: <span id="t-host"></span></div>
+      <div class="pill">Uptime: <span id="t-uptime"></span></div>
+      <div class="pill">CPU load (1/5/15): <span id="t-load"></span></div>
+      <div class="pill">Memory: <span id="t-mem"></span></div>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <h3>CPU / GPU</h3>
+      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center;">
+        <div>
+          <div style="font-weight:600; margin-bottom:4px;">CPU Load</div>
+          <div class="bar-wrap"><div class="bar-fill" id="cpu-bar" style="width:0%;"></div></div>
+          <div style="font-size:12px; color:var(--muted); margin-top:4px;" id="cpu-label"></div>
+        </div>
+        <div id="gpu-bars"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px;">
+      <h3>Disks</h3>
+      <table>
+        <thead><tr><th>Mount</th><th>Usage</th><th></th></tr></thead>
+        <tbody id="disk-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>

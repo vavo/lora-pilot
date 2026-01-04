@@ -261,6 +261,7 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY config/models.manifest /opt/pilot/config/models.manifest.default
 COPY scripts/get-models.sh /opt/pilot/get-models.sh
+COPY scripts/get-modelsgui.sh /opt/pilot/get-modelsgui.sh
 
 COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
 COPY scripts/smoke-test.sh /opt/pilot/smoke-test.sh
@@ -298,6 +299,7 @@ RUN set -eux; \
       /opt/pilot/tagpilot.sh \
       /opt/pilot/portal.sh \
       /opt/pilot/get-models.sh \
+      /opt/pilot/get-modelsgui.sh \
       /usr/local/bin/pilot \
     ; do \
       sed -i 's/\r$//' "$f"; \
@@ -310,6 +312,7 @@ RUN set -eux; \
     fi; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
+    ln -sf /opt/pilot/get-modelsgui.sh /usr/local/bin/modelsgui; \
     mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/outputs/comfy /workspace/outputs/invoke /workspace/datasets /workspace/datasets/images /workspace/datasets/ZIPs /workspace/models /workspace/config /workspace/cache /workspace/home; \
     cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt || true
 

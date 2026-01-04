@@ -2,7 +2,7 @@
 
 # --- SDXL Base Models ---
 sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6.94GB
-sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints||6.94GB
+sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0/blob/main/sd_xl_base_1.0_0.9vae.safetensors|vae||6.94GB
 sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints||6.08GB
 
 # --- SDXL Fine-tuned Models ---

@@ -1,0 +1,100 @@
+<h2>Train with dpipes</h2>
+<div class="card" style="margin-bottom:12px; background:#fff7ed; border-color:#fdba74; color:#9a3412;">
+  <strong>Experimental:</strong> This integration is under active development. Expect rough edges and use at your own risk.
+</div>
+<div class="card">
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+    <div class="card" style="padding:12px;">
+      <h4>Paths</h4>
+      <label>Dataset Path</label>
+      <input id="dp-dataset" type="text" value="/workspace/datasets" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>Config Path</label>
+      <input id="dp-config" type="text" value="/workspace/configs" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>Output Path</label>
+      <input id="dp-output" type="text" value="/workspace/outputs" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+    </div>
+    <div class="card" style="padding:12px;">
+      <h4>Model Paths</h4>
+      <label>Transformer</label><input id="dp-transformer" type="text" value="/workspace/models/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>VAE</label><input id="dp-vae" type="text" value="/workspace/models/hunyuan_video_vae_fp32.safetensors" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>LLM</label><input id="dp-llm" type="text" value="/workspace/models/llava-llama-3-8b-text-encoder-tokenizer" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>CLIP</label><input id="dp-clip" type="text" value="/workspace/models/clip-vit-large-patch14" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-top:12px;">
+    <div class="card" style="padding:12px;">
+      <h4>Training</h4>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div><label>Epochs</label><input id="dp-epochs" type="number" value="1000" style="width:120px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Batch</label><input id="dp-batch" type="number" value="1" style="width:120px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>LR</label><input id="dp-lr" type="number" step="0.00001" value="0.00002" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>GAS</label><input id="dp-gas" type="number" value="4" style="width:120px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Rank</label><input id="dp-rank" type="number" value="32" style="width:120px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>LoRA dtype</label>
+          <select id="dp-dtype" style="padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;">
+            <option value="bfloat16" selected>bfloat16</option>
+            <option value="float16">float16</option>
+            <option value="float32">float32</option>
+            <option value="float8">float8</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+        <div><label>Save every (epochs)</label><input id="dp-save-every" type="number" value="2" style="width:160px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Eval every (epochs)</label><input id="dp-eval-every" type="number" value="1" style="width:160px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Checkpoint mins</label><input id="dp-ckpt-mins" type="number" value="120" style="width:160px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Warmup steps</label><input id="dp-warmup" type="number" value="100" style="width:160px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Grad clip</label><input id="dp-gradclip" type="number" step="0.1" value="1.0" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Steps/print</label><input id="dp-steps-print" type="number" value="1" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px;">
+      <h4>Dataset</h4>
+      <label>Resolutions JSON</label><input id="dp-res" type="text" value="[512]" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>Frame buckets</label><input id="dp-frames" type="text" value="[1,33]" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>AR buckets</label><input id="dp-ar" type="text" value="" placeholder="optional JSON list" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label>Num repeats</label><input id="dp-repeats" type="number" value="10" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <label style="display:flex; align-items:center; gap:6px; margin-top:6px;"><input type="checkbox" id="dp-resume" /> Resume from last checkpoint</label>
+      <label style="display:flex; align-items:center; gap:6px; margin-top:6px;"><input type="checkbox" id="dp-double" /> Train only double blocks</label>
+    </div>
+    <div class="card" style="padding:12px;">
+      <h4>Optimizer</h4>
+      <label>Optimizer</label>
+      <select id="dp-optim" style="padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px; width:100%;">
+        <option value="adamw_optimi" selected>adamw_optimi</option>
+        <option value="adamw">adamw</option>
+        <option value="adamw8bit">adamw8bit</option>
+        <option value="stableadamw">stableadamw</option>
+        <option value="sgd">sgd</option>
+        <option value="adamw8bitKahan">adamw8bitKahan</option>
+        <option value="offload">offload</option>
+      </select>
+      <label>Betas</label><input id="dp-betas" type="text" value="[0.9,0.99]" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" />
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
+        <div><label>Weight Decay</label><input id="dp-wd" type="number" step="0.0001" value="0.01" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Eps</label><input id="dp-eps" type="number" step="0.0000001" value="0.00000001" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+      </div>
+    </div>
+    <div class="card" style="padding:12px;">
+      <h4>Evaluation & Misc</h4>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div><label>Video clip mode</label><input id="dp-vmode" type="text" value="single_middle" style="width:200px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Eval MB/GPU</label><input id="dp-eval-mb" type="number" value="1" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+        <div><label>Eval GAS</label><input id="dp-eval-gas" type="number" value="1" style="width:140px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px;" /></div>
+      </div>
+      <label style="display:flex; align-items:center; gap:6px; margin-top:6px;"><input type="checkbox" id="dp-enable-wandb" /> Enable Wandb</label>
+      <input id="dp-wandb-name" type="text" placeholder="wandb run name" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px; display:none;" />
+      <input id="dp-wandb-proj" type="text" placeholder="wandb tracker name" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px; display:none;" />
+      <input id="dp-wandb-key" type="text" placeholder="wandb api key" style="width:100%; padding:6px 8px; border:1px solid #e2e8f0; border-radius:6px; display:none;" />
+    </div>
+  </div>
+  <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <button onclick="startDpipe()">Start Training</button>
+    <button onclick="stopDpipe()">Stop</button>
+    <span id="dp-status" class="status"></span>
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <h3>Logs</h3>
+    <pre id="dp-logs" style="max-height:300px; overflow:auto; background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px;"></pre>
+  </div>
+</div>

@@ -14,6 +14,13 @@ OUTPUT_NAME="${OUTPUT_NAME:-}"
 : "${DATASET_NAME:=}"
 : "${OUTPUT_NAME:=}"
 
+# Headless defaults: if caller set NO_CONFIRM=1 we avoid whiptail and require inputs
+if [[ "${NO_CONFIRM}" == "1" ]]; then
+  [[ -n "${DATASET_NAME}" ]] || die "DATASET_NAME required when NO_CONFIRM=1"
+  [[ -n "${PROFILE}" ]] || PROFILE="regular"
+  [[ -n "${OUTPUT_NAME}" ]] || OUTPUT_NAME="${DATASET_NAME}"
+fi
+
 # ------------------------------------------------------
 # QUEUE MODE
 # ------------------------------------------------------
@@ -36,7 +43,9 @@ if [[ "${1:-}" == "--queue" ]]; then
   exit 0
 fi
 
-require_whiptail
+if [[ "${NO_CONFIRM}" != "1" ]]; then
+  require_whiptail
+fi
 prepare_env
 
 # ------------------------------------------------------
@@ -65,6 +74,22 @@ done
 
 STEP="dataset"
 CHOSEN_IDX=""
+
+# If running headless (NO_CONFIRM=1) and dataset provided, preselect it (accept absolute path too)
+if [[ "${NO_CONFIRM}" == "1" && -n "${DATASET_NAME}" ]]; then
+  ds_path="${DATASET_NAME}"
+  if [[ ! -d "${ds_path}" ]]; then
+    ds_path="/workspace/datasets/${DATASET_NAME}"
+  fi
+  if [[ ! -d "${ds_path}" ]]; then
+    die "Dataset path not found: ${DATASET_NAME}"
+  fi
+  CHOSEN_IDX=0
+  NAMES=("$(basename "${ds_path}")")
+  COUNTS=($(count_images "${ds_path}"))
+  PATHS=("${ds_path}")
+  STEP="profile"
+fi
 
 # ------------------------------------------------------
 # STATE MACHINE

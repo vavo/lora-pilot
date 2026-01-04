@@ -1,0 +1,32 @@
+<h2>Models</h2>
+<div class="card">
+  <div class="hf-box">
+    <label>Hugging Face Token:</label>
+    <input id="hf-token" type="password" placeholder="Enter HF_TOKEN" />
+    <button onclick="saveHFToken()">Save</button>
+    <div class="tip">Don’t have one? <a href="https://huggingface.co/settings/tokens" target="_blank">Get it here</a>.</div>
+  </div>
+  <div class="filter">
+    <button data-cat="ALL" class="active" onclick="setFilter(this)">All</button>
+    <button data-cat="FLUX" onclick="setFilter(this)">FLUX</button>
+    <button data-cat="SDXL" onclick="setFilter(this)">SDXL</button>
+    <button data-cat="WAN" onclick="setFilter(this)">WAN</button>
+    <button data-cat="OTHERS" onclick="setFilter(this)">Others</button>
+  </div>
+  <div id="status" class="status">Loading models...</div>
+  <table id="models-table" style="display:none;">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Type</th>
+        <th>Source</th>
+        <th>Size</th>
+        <th>Status</th>
+        <th>Info</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="models-body"></tbody>
+  </table>
+</div>

@@ -4,8 +4,8 @@
 # ==========================================================
 
 # === Model + VAE ===
-pretrained_model_name_or_path = "/workspace/models/checkpoints/juggernautXL_juggXIByRundiffusion.safetensors"
-vae = "/workspace/models/sdxl-vae-fp16-fix/sdxl_vae.safetensors"
+pretrained_model_name_or_path = "/workspace/models/checkpoints/juggernautXL_version2.safetensors"
+vae = "/workspace/models/vae/sd_xl_base_1.0_0.9vae.safetensors"
 vae_dtype = "fp16"
 resolution = "1024,1024"
 enable_bucket = true

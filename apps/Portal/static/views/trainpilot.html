@@ -1,0 +1,32 @@
+<h2>Train with kohya</h2>
+<div class="card">
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+    <div class="card" style="padding:12px;">
+      <h4>Basics</h4>
+      <label>Dataset name</label>
+      <input id="tp-dataset" type="text" placeholder="dataset folder name" value="/workspace/datasets" style="width:100%; max-width:380px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--text);" />
+      <label style="margin-top:6px;">Output name</label>
+      <input id="tp-output" type="text" placeholder="output name" style="width:100%; max-width:380px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--text);" />
+      <label style="margin-top:6px;">Profile</label>
+      <select id="tp-profile" style="width:100%; max-width:380px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--text);">
+        <option value="quick_test">quick_test</option>
+        <option value="regular" selected>regular</option>
+        <option value="high_quality">high_quality</option>
+      </select>
+    </div>
+    <div class="card" style="padding:12px;">
+      <h4>Config</h4>
+      <label>TOML path</label>
+      <input id="tp-toml" type="text" value="/opt/pilot/apps/TrainPilot/newlora.toml" style="width:100%; max-width:380px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--text);" />
+    </div>
+  </div>
+  <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+    <button onclick="startTrainPilot()">Start</button>
+    <button onclick="stopTrainPilot()">Stop</button>
+    <span id="tp-status" class="status"></span>
+  </div>
+  <div class="card" style="margin-top:12px;">
+    <h3>Logs</h3>
+    <pre id="tp-logs" style="max-height:300px; overflow:auto; background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px;"></pre>
+  </div>
+</div>
