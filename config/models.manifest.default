@@ -2,59 +2,77 @@
 
 # --- SDXL Base Models ---
 sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6.94GB
-sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0/blob/main/sd_xl_base_1.0_0.9vae.safetensors|vae||6.94GB
+sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints||6.94GB
 sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints||6.08GB
 
 # --- SDXL Fine-tuned Models ---
 juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
-ragnarok-xl|hf_file|Ragnar-Schmidek/ragnarok-xl:ragnarok-xl.safetensors|checkpoints|
-epicrealism-xl|hf_file|epicphotogasm/epicrealismXL_v11:epicrealismXL_v11.safetensors|checkpoints|
-realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints|
-realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints|
-pony-xl|hf_file|PixArt-alpha/Pony-Diffusion-XL:ponyDiffusion_v8XLReborn.safetensors|checkpoints|
-dreamshaper-xl|hf_file|Lykon/dreamshaper-xl-1-0:dreamshaperXL10_alpha2Xl10.safetensors|checkpoints|
-juggernaut-xl-v8|hf_file|Sxela/Juggernaut-XL-v8:Juggernaut-XL-v8.safetensors|checkpoints|
+ragnarok-xl|hf_file|Ragnar-Schmidek/ragnarok-xl:ragnarok-xl.safetensors|checkpoints||7.11GB
+epicrealism-xl|hf_file|epicphotogasm/epicrealismXL_v11:epicrealismXL_v11.safetensors|checkpoints||6.94GB
+realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints||6.94GB
+realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints||6.94GB
+pony-xl|hf_file|PixArt-alpha/Pony-Diffusion-XL:ponyDiffusion_v8XLReborn.safetensors|checkpoints||6.94GB
+dreamshaper-xl|hf_file|Lykon/dreamshaper-xl-1-0:dreamshaperXL10_alpha2Xl10.safetensors|checkpoints||5.95GB
+juggernaut-xl-v8|hf_file|Sxela/Juggernaut-XL-v8:Juggernaut-XL-v8.safetensors|checkpoints||7.11GB
 
 # --- SD 1.5 Base Models ---
-sd15-base|hf_file|runwayml/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints|
-sd21-base|hf_file|stabilityai/stable-diffusion-2-1:768-v-ema.safetensors|checkpoints|
-sd21-base-512|hf_file|stabilityai/stable-diffusion-2-1-base:512-v-ema.safetensors|checkpoints|
+sd15-base|hf_file|runwayml/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints||4.27GB
+sd21-base|hf_file|stabilityai/stable-diffusion-2-1:768-v-ema.safetensors|checkpoints||4.86GB
+sd21-base-512|hf_file|stabilityai/stable-diffusion-2-1-base:512-v-ema.safetensors|checkpoints||4.86GB
 
 # --- SD 1.5 Fine-tuned Models ---
-realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1:Realistic_Vision_V5.1.safetensors|checkpoints|
-realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1:Realistic_Vision_V6.0_B1.safetensors|checkpoints|
-epicrealism|hf_file|digiplay/majicmixRealistic_v6:epicrealism_naturalSunlight.safetensors|checkpoints|
-rev-animated|hf_file|s3nh/RevAnimated:revAnimated_v122.safetensors|checkpoints|
-toonyou|hf_file|Linaqruf/anything-v3.0:anything-v3-fp16-pruned.safetensors|checkpoints|
+realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1:Realistic_Vision_V5.1.safetensors|checkpoints||4.27GB
+realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1:Realistic_Vision_V6.0_B1.safetensors|checkpoints||4.27GB
+epicrealism|hf_file|digiplay/majicmixRealistic_v6:epicrealism_naturalSunlight.safetensors|checkpoints||2.13GB
+rev-animated|hf_file|s3nh/RevAnimated:revAnimated_v122.safetensors|checkpoints||4.24GB
+toonyou|hf_file|Linaqruf/anything-v3.0:anything-v3-fp16-pruned.safetensors|checkpoints||2.13GB
+
+# --- SD3.x ---
+# NOTE: stabilityai/stable-diffusion-3-medium is gated on Hugging Face (you must accept the license + be logged in)
+sd3-medium-fp8-allinone|hf_file|stabilityai/stable-diffusion-3-medium:sd3_medium_incl_clips_t5xxlfp8.safetensors|checkpoints||10.90GB
+
+# SD3.5 (popular, Comfy-Org packaged)
+sd3.5-medium-fp8-allinone|hf_file|Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors|checkpoints||11.60GB
 
 # --- FLUX.1 Models ---
-flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|checkpoints||23.8GB
-flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||335MB
+flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|diffusion_models||23.80GBflux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||0.34GB
+
+# --- Flux 2 (ComfyUI-ready, quantized) ---
+# NOTE: these are the Comfy-Org split_files that match ComfyUI_examples for Flux 2
+flux2-dev-fp8mixed|hf_file|Comfy-Org/flux2-dev:split_files/diffusion_models/flux2_dev_fp8mixed.safetensors|diffusion_models||35.50GB
+flux2-mistral-encoder-fp8|hf_file|Comfy-Org/flux2-dev:split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors|text_encoders||18.00GB
+flux2-vae|hf_file|Comfy-Org/flux2-dev:split_files/vae/flux2-vae.safetensors|vae||0.34GB
+flux2-turbo-lora|hf_file|Comfy-Org/flux2-dev:split_files/loras/Flux2TurboComfyv2.safetensors|loras||2.76GB
 
 # --- WAN Models ---
-wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md
-wan2.2-anime-14b|hf_repo|Wan-AI/Wan2.2-Anime-14B|wan/wan2.2-anime-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json
+wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
+wan2.2-anime-14b|hf_repo|Wan-AI/Wan2.2-Anime-14B|wan/wan2.2-anime-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json|72.40GB
 
 # --- VAE Models ---
-sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae|
-vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae|
-vae-ft-ema|hf_file|stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors|vae|
+sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae||0.34GB
+vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae||0.34GB
+vae-ft-ema|hf_file|stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors|vae||0.34GB
 
 # --- ControlNet Models ---
 # SD 1.5 ControlNets
-controlnet-canny|hf_file|lllyasviel/sd-controlnet-canny:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-depth|hf_file|lllyasviel/sd-controlnet-depth:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-hed|hf_file|lllyasviel/sd-controlnet-hed:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-mlsd|hf_file|lllyasviel/sd-controlnet-mlsd:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-normal|hf_file|lllyasviel/sd-controlnet-normal:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-openpose|hf_file|lllyasviel/sd-controlnet-openpose:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-scribble|hf_file|lllyasviel/sd-controlnet-scribble:diffusion_pytorch_model.safetensors|controlnet|
-controlnet-seg|hf_file|lllyasviel/sd-controlnet-seg:diffusion_pytorch_model.safetensors|controlnet|
+controlnet-canny|hf_file|lllyasviel/sd-controlnet-canny:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-depth|hf_file|lllyasviel/sd-controlnet-depth:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-hed|hf_file|lllyasviel/sd-controlnet-hed:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-mlsd|hf_file|lllyasviel/sd-controlnet-mlsd:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-normal|hf_file|lllyasviel/sd-controlnet-normal:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-openpose|hf_file|lllyasviel/sd-controlnet-openpose:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-scribble|hf_file|lllyasviel/sd-controlnet-scribble:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-seg|hf_file|lllyasviel/sd-controlnet-seg:diffusion_pytorch_model.safetensors|controlnet||1.45GB
 
 # --- Upscale Models ---
-realesrgan-4x|hf_file|xintao/realesrgan:RealESRGAN_x4plus.pth|upscale_models|
-realesrgan-4x-anime|hf_file|xintao/realesrgan:RealESRGAN_x4plus_anime_6B.pth|upscale_models|
-swinir-4x|hf_file|microsoft/swin2SR-realworld-sr:003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth|upscale_models|
-esrgan-4x|hf_file|TencentARC/GFPGAN:experiments/pretrained_models/GFPGANv1.4.pth|upscale_models|
-realesrgan-2x|hf_file|xintao/realesrgan:RealESRGAN_x2plus.pth|upscale_models|
-latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:diffusion_pytorch_model.safetensors|upscale_models|
+realesrgan-4x|hf_file|xintao/realesrgan:RealESRGAN_x4plus.pth|upscale_models||0.07GB
+realesrgan-4x-anime|hf_file|xintao/realesrgan:RealESRGAN_x4plus_anime_6B.pth|upscale_models||0.02GB
+swinir-4x|hf_file|microsoft/swin2SR-realworld-sr:003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth|upscale_models||0.14GB
+esrgan-4x|hf_file|TencentARC/GFPGAN:experiments/pretrained_models/GFPGANv1.4.pth|upscale_models||0.33GB
+realesrgan-2x|hf_file|xintao/realesrgan:RealESRGAN_x2plus.pth|upscale_models||0.06GB
+latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:unet/diffusion_pytorch_model.safetensors|latent_upscale_models||1.49GB
+
+# --- Z-Image Turbo (the “Z-index” thing people keep saying) ---
+z-image-turbo|hf_file|Comfy-Org/z_image_turbo:split_files/diffusion_models/z_image_turbo_bf16.safetensors|diffusion_models||12.30GB
+z-image-qwen-encoder|hf_file|Comfy-Org/z_image_turbo:split_files/text_encoders/qwen_3_4b.safetensors|text_encoders||8.04GB
+z-image-ae|hf_file|Comfy-Org/z_image_turbo:split_files/vae/ae.safetensors|vae||0.34GB

@@ -6,6 +6,10 @@
     <button onclick="saveHFToken()">Save</button>
     <div class="tip">Don’t have one? <a href="https://huggingface.co/settings/tokens" target="_blank">Get it here</a>.</div>
   </div>
+  <div style="margin-bottom:8px;">
+    <label>Search</label><br>
+    <input id="models-search" type="text" placeholder="Filter by name, source or subdir" style="width:320px; max-width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px;" oninput="applyModelSearch()" />
+  </div>
   <div class="filter">
     <button data-cat="ALL" class="active" onclick="setFilter(this)">All</button>
     <button data-cat="FLUX" onclick="setFilter(this)">FLUX</button>

@@ -1,19 +1,21 @@
 let allModels = [];
 let filterCat = "ALL";
+let searchText = "";
 
 window.initModels = async function () {
   const hf = document.getElementById("hf-token");
   if (hf && !hf.dataset.bound) {
     hf.dataset.bound = "1";
   }
+  const search = document.getElementById("models-search");
+  if (search && !search.dataset.bound) {
+    search.dataset.bound = "1";
+    search.addEventListener("input", () => {
+      searchText = search.value.trim().toLowerCase();
+      loadModelsTable(false);
+    });
+  }
   await loadModelsTable(true);
-};
-
-window.setFilter = async function (btn) {
-  document.querySelectorAll(".filter button").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
-  filterCat = btn.dataset.cat || "ALL";
-  await loadModelsTable(false);
 };
 
 window.saveHFToken = async function () {
@@ -43,7 +45,15 @@ async function loadModelsTable(forceReload) {
     if (!allModels.length || forceReload) {
       allModels = await fetchJson("/api/models");
     }
-    const data = filterCat === "ALL" ? allModels : allModels.filter(m => m.category === filterCat);
+    let data = filterCat === "ALL" ? allModels : allModels.filter(m => m.category === filterCat);
+    if (searchText) {
+      const q = searchText.toLowerCase();
+      data = data.filter(m =>
+        (m.name && m.name.toLowerCase().includes(q)) ||
+        (m.source && m.source.toLowerCase().includes(q)) ||
+        (m.subdir && m.subdir.toLowerCase().includes(q))
+      );
+    }
     if (!data.length) {
       status.textContent = "No models found in manifest.";
       return;

@@ -317,15 +317,22 @@ def create_dataset(payload: dict):
 @app.post("/api/datasets/upload")
 def upload_dataset(file: UploadFile = File(...)):
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    target_dir = WORKSPACE_ROOT / "datasets"
     zip_dir.mkdir(parents=True, exist_ok=True)
-    fname = _clean_name(Path(file.filename or "dataset.zip").stem) + ".zip"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    fname_stem = _clean_name(Path(file.filename or "dataset.zip").stem)
+    fname = fname_stem + ".zip"
     dest = zip_dir / fname
     try:
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
+        # Extract into /workspace/datasets/<cleaned_name>
+        extract_dir = target_dir / f"1_{fname_stem}"
+        extract_dir.mkdir(parents=True, exist_ok=True)
+        shutil.unpack_archive(str(dest), extract_dir)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return {"status": "uploaded", "path": str(dest)}
+    return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
 
 
 @app.post("/api/models/{name}/pull")
@@ -566,11 +573,12 @@ def telemetry():
     seen = set()
     # Always include a /workspace entry using raw stats (even if same mount as /)
     try:
+        WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
         ws_stats = shutil.disk_usage(str(WORKSPACE_ROOT))
         ws_pct = int((ws_stats.used / ws_stats.total) * 100) if ws_stats.total else 0
         disks.append(
             DiskUsage(
-                mount="/workspace",
+                mount=str(WORKSPACE_ROOT),
                 total=ws_stats.total,
                 used=ws_stats.used,
                 free=ws_stats.free,
@@ -579,7 +587,17 @@ def telemetry():
             )
         )
     except Exception:
-        pass
+        # If failed, still add a placeholder entry to make the UI aware
+        disks.append(
+            DiskUsage(
+                mount=str(WORKSPACE_ROOT),
+                total=0,
+                used=0,
+                free=0,
+                pct=0,
+                alert=False,
+            )
+        )
     gpus = get_gpus()
     return Telemetry(
         host=host,
