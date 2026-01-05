@@ -111,9 +111,14 @@
                         </div>
                         <button id="tag-all-button" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Tag All</button>
                         <button id="caption-all-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Caption All</button>
-                        <button id="export-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
-                            Export as ZIP
-                        </button>
+                        <div class="flex flex-wrap gap-2">
+                            <button id="export-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                                Export as ZIP
+                            </button>
+                            <button id="save-workspace-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                                Save to /workspace/datasets
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -307,6 +312,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const placeholder = document.getElementById('placeholder');
         const taggerSection = document.getElementById('tagger-section');
         const exportButton = document.getElementById('export-button');
+        const saveWorkspaceButton = document.getElementById('save-workspace-button');
         const resetButton = document.getElementById('reset-button');
         const clearTagsButton = document.getElementById('clear-tags-button');
         const tagAllButton = document.getElementById('tag-all-button');
@@ -370,6 +376,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         imageUpload.addEventListener('change', handleImageUpload);
         zipUpload.addEventListener('change', handleZipUpload);
         exportButton.addEventListener('click', handleExport);
+        saveWorkspaceButton.addEventListener('click', handleSaveToWorkspace);
         resetButton.addEventListener('click', handleReset);
         clearTagsButton.addEventListener('click', handleClearTags);
         tagAllButton.addEventListener('click', openTagSettings);
@@ -537,6 +544,17 @@ Expected outcome is a human-readable continuous text consisting of several sente
             setTimeout(() => notification.classList.add('translate-x-full'), duration);
         }
 
+        function base64ToFile(b64Data, filename, mime) {
+            const byteCharacters = atob(b64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: mime || 'application/octet-stream' });
+            return new File([blob], filename, { type: mime || 'application/octet-stream' });
+        }
+
         function showLoader(text) {
             loaderText.textContent = text || 'Processing...';
             loader.style.display = 'flex';
@@ -551,6 +569,49 @@ Expected outcome is a human-readable continuous text consisting of several sente
             const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function loadDatasetFromServer(dsName) {
+            showLoader(`Loading dataset ${dsName}...`);
+            try {
+                const res = await fetch(`/api/tagpilot/load?name=${encodeURIComponent(dsName)}`);
+                if (!res.ok) throw new Error(await res.text());
+                const data = await res.json();
+                const files = data.files || [];
+                const images = [];
+                const texts = new Map();
+                files.forEach(f => {
+                    const lower = f.name.toLowerCase();
+                    if (lower.endsWith('.txt')) {
+                        const base = f.name.replace(/\.[^/.]+$/, '');
+                        try {
+                            const txt = atob(f.b64 || '');
+                            texts.set(base, txt);
+                        } catch {}
+                        return;
+                    }
+                    const isImg = ['.png','.jpg','.jpeg','.webp','.bmp','.gif'].some(ext => lower.endsWith(ext));
+                    if (!isImg) return;
+                    try {
+                        const fileObj = base64ToFile(f.b64, f.name, f.mime);
+                        images.push(fileObj);
+                    } catch {}
+                });
+                dataset = [];
+                images.forEach(file => {
+                    const base = file.name.replace(/\.[^/.]+$/, '');
+                    const txt = texts.get(base) || currentTriggerWord || "";
+                    dataset.push({ file, tags: txt, type: 'tags' });
+                });
+                datasetNameInput.value = dsName;
+                render();
+                showNotification(`Loaded dataset ${dsName}`);
+            } catch (e) {
+                console.error(e);
+                showNotification("Failed to load dataset");
+            } finally {
+                hideLoader();
+            }
         }
 
         async function handleImageUpload(event) {
@@ -702,6 +763,34 @@ Expected outcome is a human-readable continuous text consisting of several sente
             a.download = (datasetNameInput.value.trim() || 'dataset') + '.zip';
             a.click();
             showNotification("Exported ZIP");
+        }
+
+        async function handleSaveToWorkspace() {
+            if (dataset.length === 0) return showNotification("No images to export");
+            const name = datasetNameInput.value.trim() || 'dataset';
+            const zip = new JSZip();
+            dataset.forEach(item => {
+                zip.file(item.file.name, item.file);
+                const txtName = item.file.name.replace(/\.[^/.]+$/, ".txt");
+                zip.file(txtName, item.tags);
+            });
+            const blob = await zip.generateAsync({type:"blob"});
+            const fd = new FormData();
+            fd.append("file", new File([blob], `${name}.zip`, {type:"application/zip"}));
+            try {
+                const resp = await fetch(`/api/tagpilot/save?name=${encodeURIComponent(name)}`, {
+                    method: 'POST',
+                    body: fd
+                });
+                if (!resp.ok) {
+                    const text = await resp.text();
+                    throw new Error(text || resp.statusText);
+                }
+                showNotification("Saved to /workspace/datasets");
+            } catch (e) {
+                console.error(e);
+                showNotification("Error saving dataset");
+            }
         }
 
         function handleTriggerWordChange(e) {
@@ -1050,6 +1139,13 @@ Expected outcome is a human-readable continuous text consisting of several sente
         function hidePreview() {
             previewModal.style.display = 'none';
         }
+
+        // Auto-load dataset if provided in query string
+        (function initFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const ds = params.get('dataset');
+            if (ds) loadDatasetFromServer(ds);
+        })();
 
         render();
     </script>

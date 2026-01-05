@@ -19,7 +19,9 @@ async function loadDatasets() {
     data.forEach(d => {
       const tr = document.createElement("tr");
       const size = d.size_bytes ? formatBytes(d.size_bytes) : "—";
-      tr.innerHTML = `<td>${d.display || d.name}</td><td>${d.images || 0}</td><td>${size}</td><td>${d.has_tags ? "Yes" : "No"}</td>`;
+      const link = tagpilotUrl(d.name);
+      const nameCell = link ? `<a href="${link}" target="_blank">${d.display || d.name}</a>` : (d.display || d.name);
+      tr.innerHTML = `<td>${nameCell}</td><td>${d.images || 0}</td><td>${size}</td><td>${d.has_tags ? "Yes" : "No"}</td>`;
       list.appendChild(tr);
     });
     if (table) table.style.display = "";
@@ -84,3 +86,20 @@ window.closeUploadModal = function () {
   const inp = document.getElementById("ds-zip");
   if (inp) inp.value = "";
 };
+
+function tagpilotUrl(datasetName) {
+  const port = 3333;
+  const host = window.location.hostname;
+  const proto = window.location.protocol;
+  if (host.includes(".proxy.runpod.net")) {
+    const parts = host.split(".");
+    const first = parts[0];
+    const idx = first.lastIndexOf("-");
+    if (idx !== -1) {
+      const base = first.slice(0, idx);
+      const newHost = [base + "-" + port, ...parts.slice(1)].join(".");
+      return `${proto}//${newHost}/?dataset=${encodeURIComponent(datasetName)}`;
+    }
+  }
+  return `${proto}//${host}:${port}/?dataset=${encodeURIComponent(datasetName)}`;
+}

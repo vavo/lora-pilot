@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+import base64
+import mimetypes
 import os
 import re
 import shutil
 import subprocess
 import time
+import threading
 from collections import deque
 from pathlib import Path
 from typing import List, Optional
@@ -107,6 +110,7 @@ class Telemetry(BaseModel):
     mem_free: int
     disks: List[DiskUsage]
     gpus: List[GPUInfo]
+    workspace_data_used_bytes: Optional[int] = None
     docs: Optional[str] = None  # unused in telemetry, kept for future
 
 
@@ -298,16 +302,23 @@ def _clean_name(name: str) -> str:
     return cleaned or "dataset"
 
 
-@app.post("/api/datasets/create")
-def create_dataset(payload: dict):
+def _dataset_dir(name: str) -> Path:
     base = WORKSPACE_ROOT / "datasets"
     base.mkdir(parents=True, exist_ok=True)
+    n = name.strip()
+    if not n:
+        n = "dataset"
+    if n.startswith("1_"):
+        return base / n
+    return base / f"1_{_clean_name(n)}"
+
+
+@app.post("/api/datasets/create")
+def create_dataset(payload: dict):
     raw = payload.get("name", "").strip()
     if not raw:
         raise HTTPException(status_code=400, detail="name is required")
-    cleaned = _clean_name(raw)
-    dirname = f"1_{cleaned}"
-    target = base / dirname
+    target = _dataset_dir(raw)
     if target.exists():
         raise HTTPException(status_code=400, detail="dataset already exists")
     target.mkdir(parents=True, exist_ok=True)
@@ -328,11 +339,55 @@ def upload_dataset(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, f)
         # Extract into /workspace/datasets/<cleaned_name>
         extract_dir = target_dir / f"1_{fname_stem}"
+        if extract_dir.exists():
+            shutil.rmtree(extract_dir, ignore_errors=True)
         extract_dir.mkdir(parents=True, exist_ok=True)
         shutil.unpack_archive(str(dest), extract_dir)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
+
+
+@app.get("/api/tagpilot/load")
+def tagpilot_load(name: str):
+    target = _dataset_dir(name)
+    if not target.exists() or not target.is_dir():
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    allowed = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".txt"}
+    files = []
+    for p in sorted(target.rglob("*")):
+        if not p.is_file():
+            continue
+        if p.suffix.lower() not in allowed:
+            continue
+        rel = p.relative_to(target).as_posix()
+        mime = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
+        try:
+            data = p.read_bytes()
+            b64 = base64.b64encode(data).decode("utf-8")
+        except Exception:
+            continue
+        files.append({"name": rel, "mime": mime, "b64": b64})
+    return {"name": target.name, "files": files}
+
+
+@app.post("/api/tagpilot/save")
+def tagpilot_save(name: str, file: UploadFile = File(...)):
+    target = _dataset_dir(name)
+    zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    zip_dir.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        shutil.rmtree(target, ignore_errors=True)
+    target.mkdir(parents=True, exist_ok=True)
+    fname = _clean_name(name) + ".zip"
+    dest = zip_dir / fname
+    try:
+        with dest.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+        shutil.unpack_archive(str(dest), target)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"status": "saved", "path": str(target), "zip": str(dest)}
 
 
 @app.post("/api/models/{name}/pull")
@@ -459,6 +514,55 @@ def get_meminfo():
     return total, used, free
 
 
+# --- tiny cache at module scope (top-level) ---
+_WS_DU_CACHE = {"ts": 0.0, "val": None}
+_WS_DU_CACHE_SECONDS = int(os.environ.get("WORKSPACE_DU_CACHE_SECONDS", "30"))
+
+
+def _du_bytes(path: str) -> int:
+    """
+    Fast-ish: try GNU du first, then BusyBox-ish du, then a slow Python fallback.
+    Returns total apparent bytes under `path`.
+    """
+    # Try GNU coreutils: du -sb
+    for cmd in (["du", "-sb", path], ["du", "-sB1", path]):
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            # output: "<bytes>\t<path>"
+            tok = (p.stdout.strip().split() or ["0"])[0]
+            return int(tok)
+        except Exception:
+            pass
+
+    # Slow fallback: walk filesystem
+    total = 0
+    for root, dirs, files in os.walk(path, topdown=True):
+        # avoid dying on permission errors
+        try:
+            for name in files:
+                fp = os.path.join(root, name)
+                try:
+                    st = os.stat(fp, follow_symlinks=False)
+                    total += int(st.st_size)
+                except Exception:
+                    continue
+        except Exception:
+            continue
+    return total
+
+
+def workspace_data_used_bytes(path: str) -> int:
+    """
+    Cached du result to keep /api/telemetry from turning into a space heater.
+    """
+    now = time.time()
+    if _WS_DU_CACHE["val"] is not None and (now - _WS_DU_CACHE["ts"]) < _WS_DU_CACHE_SECONDS:
+        return int(_WS_DU_CACHE["val"])
+    val = _du_bytes(path)
+    _WS_DU_CACHE["ts"] = now
+    _WS_DU_CACHE["val"] = val
+    return int(val)
+
 def disk_usage(path: str) -> DiskUsage:
     # Prefer df with the actual mountpoint to honor container quotas/overlays
     def resolve_mountpoint(p: str) -> str:
@@ -527,6 +631,7 @@ def get_gpus() -> List[GPUInfo]:
 @app.get("/api/telemetry", response_model=Telemetry)
 def telemetry():
     host = os.environ.get("RUNPOD_POD_ID") or os.environ.get("RUNPOD_HOST_ID") or os.uname().nodename
+
     # Container uptime: derive from host uptime minus PID 1 start time
     uptime_seconds = 0.0
     try:
@@ -540,8 +645,10 @@ def telemetry():
         uptime_seconds = max(host_uptime - start_secs, 0.0)
     except Exception:
         uptime_seconds = 0.0
+
     load_avg = list(os.getloadavg()) if hasattr(os, "getloadavg") else [0.0, 0.0, 0.0]
     cpu_count = os.cpu_count() or 1
+
     # Try cgroup (container) memory first
     mem_total = mem_used = mem_free = 0
     cgroup_cur = Path("/sys/fs/cgroup/memory.current")
@@ -559,35 +666,16 @@ def telemetry():
             mem_total, mem_used, mem_free = get_meminfo()
     else:
         mem_total, mem_used, mem_free = get_meminfo()
+
     root_du = disk_usage("/")
     disks = [root_du]
-    # Heuristic: pick a reasonable workspace mount (prefer explicit env, otherwise realpath, then common volume paths)
-    candidates = []
-    env_ws = os.environ.get("WORKSPACE_DISK_PATH")
-    if env_ws:
-        candidates.append(env_ws)
-    # Force /workspace first (most typical mount), then resolved WORKSPACE_ROOT, then others
-    candidates.append("/workspace")
-    candidates.append(str(Path(WORKSPACE_ROOT).resolve()))
-    candidates.extend(["/runpod-volume", "/data"])
-    seen = set()
-    # Always include a /workspace entry using raw stats (even if same mount as /)
+
+    # Always include a /workspace entry using raw stats
+    # Always include a /workspace entry using mount-aware stats
     try:
         WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
-        ws_stats = shutil.disk_usage(str(WORKSPACE_ROOT))
-        ws_pct = int((ws_stats.used / ws_stats.total) * 100) if ws_stats.total else 0
-        disks.append(
-            DiskUsage(
-                mount=str(WORKSPACE_ROOT),
-                total=ws_stats.total,
-                used=ws_stats.used,
-                free=ws_stats.free,
-                pct=ws_pct,
-                alert=ws_pct >= 80,
-            )
-        )
+        disks.append(disk_usage(str(WORKSPACE_ROOT)))
     except Exception:
-        # If failed, still add a placeholder entry to make the UI aware
         disks.append(
             DiskUsage(
                 mount=str(WORKSPACE_ROOT),
@@ -598,6 +686,15 @@ def telemetry():
                 alert=False,
             )
         )
+
+
+    # NEW: how much data is actually stored under /workspace (du), cached
+    ws_path = str(WORKSPACE_ROOT)
+    try:
+        ws_data_used = workspace_data_used_bytes(ws_path)
+    except Exception:
+        ws_data_used = 0
+
     gpus = get_gpus()
     return Telemetry(
         host=host,
@@ -609,6 +706,7 @@ def telemetry():
         mem_free=mem_free,
         disks=disks,
         gpus=gpus,
+        workspace_data_used_bytes=ws_data_used,  # <-- NEW
     )
 
 
