@@ -36,10 +36,10 @@
       --status: #cbd5e1;
     }
     body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
-    .layout { display:flex; min-height:100vh; }
+    .layout { display:flex; min-height:100vh; align-items:flex-start; }
     .topbar { display:none; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); position:fixed; top:0; left:0; right:0; z-index:50; }
     .burger { background:none; border:none; font-size:28px; cursor:pointer; color:var(--text); }
-    .sidebar { width:240px; min-width:240px; max-width:240px; background:var(--card); padding:20px; box-sizing:border-box; border-right:1px solid var(--border); position:relative; z-index:40; transition:transform 0.2s ease; display:flex; flex-direction:column; gap:12px; height:100vh; }
+    .sidebar { width:240px; min-width:240px; max-width:240px; background:var(--card); padding:20px; box-sizing:border-box; border-right:1px solid var(--border); position:sticky; top:0; z-index:40; transition:transform 0.2s ease; display:flex; flex-direction:column; gap:12px; height:100vh; align-self:flex-start; }
     .logo { margin-bottom:20px; }
     .logo img { width:100%; height:auto; display:block; }
     .nav a { display:block; padding:10px 12px; color:var(--status); text-decoration:none; border-radius:8px; margin-bottom:6px; cursor:pointer; }
@@ -100,6 +100,7 @@
           <a data-section="services">Services</a>
           <a data-section="models">Models</a>
           <a data-section="datasets">Datasets</a>
+          <a data-section="tagpilot">Tag Images</a>
           <a data-section="trainpilot">Train with kohya</a>
           <a data-section="dpipe">Train with dpipes</a>
           <a data-section="docs">Docs</a>
@@ -114,15 +115,16 @@
       <div id="content"></div>
     </div>
   </div>
-  <script src="/js/utils.js"></script>
-  <script src="/js/dashboard.js"></script>
-  <script src="/js/services.js"></script>
-  <script src="/js/models.js"></script>
-  <script src="/js/datasets.js"></script>
-  <script src="/js/trainpilot.js"></script>
-  <script src="/js/dpipe.js"></script>
-  <script src="/js/docs.js"></script>
-  <script src="/js/support.js"></script>
-  <script src="/js/main.js"></script>
+  <script src="/js/utils.js?v=20260105a"></script>
+  <script src="/js/dashboard.js?v=20260105a"></script>
+  <script src="/js/services.js?v=20260105a"></script>
+  <script src="/js/models.js?v=20260105a"></script>
+  <script src="/js/datasets.js?v=20260105a"></script>
+  <script src="/js/trainpilot.js?v=20260105a"></script>
+  <script src="/js/dpipe.js?v=20260105a"></script>
+  <script src="/js/docs.js?v=20260105a"></script>
+  <script src="/js/support.js?v=20260105a"></script>
+  <script src="/js/tagpilot.js?v=20260105a"></script>
+  <script src="/js/main.js?v=20260105a"></script>
 </body>
 </html>

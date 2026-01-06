@@ -113,3 +113,17 @@ window.deleteModel = async function (name, btn) {
     btn.textContent = original;
   }
 };
+
+window.setFilter = function (btn) {
+  const cat = btn?.dataset?.cat || "ALL";
+  filterCat = cat;
+  document.querySelectorAll(".filter button").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  loadModelsTable(false);
+};
+
+window.applyModelSearch = function () {
+  const search = document.getElementById("models-search");
+  searchText = search ? (search.value.trim().toLowerCase()) : "";
+  loadModelsTable(false);
+};

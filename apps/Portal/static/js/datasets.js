@@ -1,4 +1,5 @@
 window.initDatasets = async function () {
+  wireUpload();
   await loadDatasets();
 };
 
@@ -20,9 +21,17 @@ async function loadDatasets() {
       const tr = document.createElement("tr");
       const size = d.size_bytes ? formatBytes(d.size_bytes) : "—";
       const link = tagpilotUrl(d.name);
-      const nameCell = link ? `<a href="${link}" target="_blank">${d.display || d.name}</a>` : (d.display || d.name);
+      const nameCell = link ? `<a href="${link}" class="ds-link" data-ds="${d.name}">${d.display || d.name}</a>` : (d.display || d.name);
       tr.innerHTML = `<td>${nameCell}</td><td>${d.images || 0}</td><td>${size}</td><td>${d.has_tags ? "Yes" : "No"}</td>`;
       list.appendChild(tr);
+    });
+    // wire inline navigation
+    list.querySelectorAll(".ds-link").forEach(a => {
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        const name = a.getAttribute("data-ds");
+        if (name) openTagpilotDataset(name);
+      });
     });
     if (table) table.style.display = "";
     status.textContent = "";
@@ -49,28 +58,47 @@ window.createDatasetPrompt = async function () {
   }
 };
 
-window.uploadDataset = async function () {
-  const fileInput = document.getElementById("ds-zip");
+async function uploadDatasetFile(file) {
   const status = document.getElementById("ds-upload-status");
-  if (!fileInput || !fileInput.files || !fileInput.files.length) {
+  const bar = document.getElementById("ds-upload-bar");
+  if (bar) bar.style.width = "0%";
+  if (!file) {
     if (status) status.textContent = "Select a ZIP first.";
     return;
   }
-  const file = fileInput.files[0];
   if (status) status.textContent = "Uploading...";
   const fd = new FormData();
   fd.append("file", file);
   try {
-    await fetchJson("/api/datasets/upload", {
-      method: "POST",
-      body: fd,
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/datasets/upload");
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && bar) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          bar.style.width = `${pct}%`;
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.responseText);
+        else reject(xhr.responseText || xhr.statusText);
+      };
+      xhr.onerror = () => reject("Upload failed");
+      xhr.send(fd);
     });
     if (status) status.textContent = "Uploaded.";
-    fileInput.value = "";
+    closeUploadModal();
     await loadDatasets();
   } catch (e) {
-    if (status) status.textContent = `Error: ${e.message || e}`;
+    if (status) status.textContent = `Error: ${e}`;
   }
+}
+
+window.uploadDataset = async function () {
+  const fileInput = document.getElementById("ds-zip");
+  if (!fileInput || !fileInput.files || !fileInput.files.length) return;
+  const file = fileInput.files[0];
+  await uploadDatasetFile(file);
 };
 
 window.openUploadModal = function () {
@@ -85,21 +113,50 @@ window.closeUploadModal = function () {
   if (status) status.textContent = "";
   const inp = document.getElementById("ds-zip");
   if (inp) inp.value = "";
+  const bar = document.getElementById("ds-upload-bar");
+  if (bar) bar.style.width = "0%";
 };
 
 function tagpilotUrl(datasetName) {
-  const port = 3333;
-  const host = window.location.hostname;
-  const proto = window.location.protocol;
-  if (host.includes(".proxy.runpod.net")) {
-    const parts = host.split(".");
-    const first = parts[0];
-    const idx = first.lastIndexOf("-");
-    if (idx !== -1) {
-      const base = first.slice(0, idx);
-      const newHost = [base + "-" + port, ...parts.slice(1)].join(".");
-      return `${proto}//${newHost}/?dataset=${encodeURIComponent(datasetName)}`;
-    }
+  return `${window.location.origin}/tagpilot/?dataset=${encodeURIComponent(datasetName)}`;
+}
+
+function openTagpilotDataset(name) {
+  window.pendingTagDataset = name;
+  const iframe = document.querySelector("iframe[src^=\"/tagpilot\"]");
+  if (iframe) {
+    iframe.src = `/tagpilot/?dataset=${encodeURIComponent(name)}`;
+    if (window.loadSection) window.loadSection("tagpilot");
+  } else if (window.loadSection) {
+    window.loadSection("tagpilot").then(() => {
+      const ifr = document.querySelector("iframe[src^=\"/tagpilot\"]");
+      if (ifr) ifr.src = `/tagpilot/?dataset=${encodeURIComponent(name)}`;
+    });
+  } else {
+    window.location.href = tagpilotUrl(name);
   }
-  return `${proto}//${host}:${port}/?dataset=${encodeURIComponent(datasetName)}`;
+}
+
+function wireUpload() {
+  const input = document.getElementById("ds-zip");
+  const dz = document.getElementById("ds-dropzone");
+  if (input) {
+    input.addEventListener("change", () => {
+      if (input.files && input.files.length) uploadDatasetFile(input.files[0]);
+    });
+  }
+  if (dz) {
+    ["dragenter", "dragover"].forEach(ev => dz.addEventListener(ev, e => {
+      e.preventDefault();
+      dz.style.borderColor = "var(--accent)";
+    }));
+    ["dragleave", "drop"].forEach(ev => dz.addEventListener(ev, e => {
+      e.preventDefault();
+      dz.style.borderColor = "var(--border)";
+    }));
+    dz.addEventListener("drop", e => {
+      const files = e.dataTransfer?.files;
+      if (files && files.length) uploadDatasetFile(files[0]);
+    });
+  }
 }

@@ -11,7 +11,8 @@ from collections import deque
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -121,6 +122,20 @@ class DatasetEntry(BaseModel):
     size_bytes: int
     has_tags: bool
     path: str
+
+
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        # Disable caching to avoid stale assets (esp. TagPilot embed)
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        # Cloudflare hints
+        response.headers["Cloudflare-Cache-Status"] = "BYPASS"
+        response.headers["CF-Cache-Status"] = "BYPASS"
+        response.headers["CDN-Cache-Control"] = "no-store"
+        return response
 
 
 def classify_model(name: str, source: str, subdir: str) -> str:
@@ -251,7 +266,27 @@ def parse_manifest() -> List[ModelEntry]:
 
 
 app = FastAPI(title="LoRA Pilot Portal", docs_url=None, redoc_url=None)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(dpipe_router)
+
+# No-cache headers for API responses (helps avoid stale data)
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        response.headers["Cloudflare-Cache-Status"] = "BYPASS"
+        response.headers["CF-Cache-Status"] = "BYPASS"
+        response.headers["CDN-Cache-Control"] = "no-store"
+    return response
 
 README_PRIMARY = Path("/opt/pilot/README.md")
 README_FALLBACK = Path("/workspace/README.md")
@@ -600,31 +635,38 @@ def disk_usage(path: str) -> DiskUsage:
 
 def get_gpus() -> List[GPUInfo]:
     gpus: List[GPUInfo] = []
-    if shutil.which("nvidia-smi") is None:
-        return gpus
-    try:
-        out = subprocess.check_output(
-            [
-                "nvidia-smi",
-                "--query-gpu=index,name,utilization.gpu,memory.used,memory.total",
-                "--format=csv,noheader,nounits",
-            ],
-            text=True,
-        )
-        for line in out.strip().splitlines():
-            parts = [p.strip() for p in line.split(",")]
-            if len(parts) >= 5:
-                gpus.append(
-                    GPUInfo(
-                        index=int(parts[0]),
-                        name=parts[1],
-                        util=int(parts[2]),
-                        mem_used=int(parts[3]) * 1024 * 1024,
-                        mem_total=int(parts[4]) * 1024 * 1024,
+    candidates = [
+        shutil.which("nvidia-smi"),
+        "/usr/bin/nvidia-smi",
+        "/usr/local/bin/nvidia-smi",
+    ]
+    candidates = [c for c in candidates if c]
+    for exe in candidates:
+        try:
+            out = subprocess.check_output(
+                [
+                    exe,
+                    "--query-gpu=index,name,utilization.gpu,memory.used,memory.total",
+                    "--format=csv,noheader,nounits",
+                ],
+                text=True,
+            )
+            for line in out.strip().splitlines():
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) >= 5:
+                    gpus.append(
+                        GPUInfo(
+                            index=int(parts[0]),
+                            name=parts[1],
+                            util=int(parts[2]),
+                            mem_used=int(parts[3]) * 1024 * 1024,
+                            mem_total=int(parts[4]) * 1024 * 1024,
+                        )
                     )
-                )
-    except Exception:
-        pass
+            if gpus:
+                break
+        except Exception:
+            continue
     return gpus
 
 
@@ -810,4 +852,12 @@ def get_docs():
 
 # Static assets
 static_dir = Path(__file__).parent / "static"
-app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+tagpilot_dir = Path("/workspace/apps/TagPilot")
+if not tagpilot_dir.exists():
+    fallback_tagpilot = Path("/opt/pilot/apps/TagPilot")
+    if fallback_tagpilot.exists():
+        tagpilot_dir = fallback_tagpilot
+
+# Mount TagPilot assets under /tagpilot (served by the same app/port)
+app.mount("/tagpilot", NoCacheStaticFiles(directory=tagpilot_dir, html=True), name="tagpilot")
+app.mount("/", NoCacheStaticFiles(directory=static_dir, html=True), name="static")

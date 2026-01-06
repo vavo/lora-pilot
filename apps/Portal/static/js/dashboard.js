@@ -64,7 +64,7 @@ window.initDashboard = async function () {
         tr.innerHTML = `
           <td>/workspace (data)</td>
           <td>${formatBytes(data.workspace_data_used_bytes)}</td>
-          <td style="color:var(--muted); font-size:12px;">du</td>
+          <td style="color:var(--muted); font-size:12px;">data used</td>
         `;
         tbody.appendChild(tr);
       }

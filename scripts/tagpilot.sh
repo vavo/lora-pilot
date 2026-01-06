@@ -5,7 +5,7 @@ ROOT="${WORKSPACE_ROOT:-/workspace}"
 APP_DIR="${ROOT}/apps/TagPilot"
 PORT="${TAGPILOT_PORT:-3333}"
 
-# Ensure the app is seeded into workspace
+# Ensure the app is seeded into workspace (copy once if missing)
 if [ -d /opt/pilot/apps/TagPilot ] && [ ! -e "${APP_DIR}" ]; then
   mkdir -p "${ROOT}/apps"
   cp -a /opt/pilot/apps/TagPilot "${APP_DIR}"

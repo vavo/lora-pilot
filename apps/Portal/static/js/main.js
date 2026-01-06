@@ -1,4 +1,4 @@
-const sections = ["dashboard", "services", "models", "datasets", "trainpilot", "dpipe", "docs", "support"];
+const sections = ["dashboard", "services", "models", "datasets", "tagpilot", "trainpilot", "dpipe", "docs", "support"];
 const viewCache = {};
 let currentSection = null;
 const viewMap = {
@@ -6,6 +6,7 @@ const viewMap = {
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
   models: { view: "/views/models.html", init: () => window.initModels && window.initModels() },
   datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
+  tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
   dpipe: { view: "/views/dpipe.html", init: () => window.initDpipe && window.initDpipe() },
   docs: { view: "/views/docs.html", init: () => window.initDocs && window.initDocs() },
@@ -61,6 +62,8 @@ async function loadSection(section) {
   viewMap[section].init();
   currentSection = section;
 }
+// expose for other modules
+window.loadSection = loadSection;
 
 // Event wiring
 if (burger) {

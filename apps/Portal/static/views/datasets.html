@@ -26,11 +26,13 @@
       <h3 style="margin:0;">Upload a dataset</h3>
       <button style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 8px;" onclick="closeUploadModal()">Close</button>
     </div>
-    <label for="ds-zip" style="display:block; border:1px dashed var(--border); border-radius:6px; padding:24px; text-align:center; cursor:pointer; background:var(--pill); color:var(--text);">
+    <label id="ds-dropzone" for="ds-zip" style="display:block; border:1px dashed var(--border); border-radius:6px; padding:24px; text-align:center; cursor:pointer; background:var(--pill); color:var(--text);">
       Drag and drop OR click to select
       <input id="ds-zip" type="file" accept=".zip" style="display:none;" />
     </label>
-    <button style="margin-top:12px; background:transparent; color:var(--text); border:1px solid var(--text);" onclick="uploadDataset()">Upload</button>
+    <div style="margin-top:12px; height:10px; background:var(--border); border-radius:6px; overflow:hidden;">
+      <div id="ds-upload-bar" style="height:100%; width:0%; background:var(--accent); transition:width 0.2s ease;"></div>
+    </div>
     <div id="ds-upload-status" class="status" style="margin-top:8px;"></div>
   </div>
 </div>
