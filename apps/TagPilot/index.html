@@ -17,6 +17,10 @@
         :root[data-theme="light"] { color-scheme: light; }
         body { font-family: 'Inter', sans-serif; background:#0f172a; color:#e2e8f0; }
         :root[data-theme="light"] body { background:#ffffff; color:#0f172a; }
+        .logo-light { display:none; }
+        .logo-dark { display:block; }
+        :root[data-theme="light"] .logo-light { display:block !important; }
+        :root[data-theme="light"] .logo-dark { display:none !important; }
         :root[data-theme="light"] .bg-gray-800 { background:#f3f4f6 !important; color:#0f172a !important; }
         :root[data-theme="light"] .bg-gray-700 { background:#e5e7eb !important; color:#0f172a !important; }
         :root[data-theme="light"] .bg-gray-900 { background:#ffffff !important; color:#0f172a !important; }
@@ -36,7 +40,7 @@
         .rotate-icon.expanded { transform: rotate(180deg); }
     </style>
 </head>
-<body class="bg-white text-gray-900">
+<body>
 
     <!-- Settings Icon -->
     <div id="settings-icon" class="settings-icon">⚙️</div>

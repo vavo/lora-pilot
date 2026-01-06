@@ -383,6 +383,27 @@ def upload_dataset(file: UploadFile = File(...)):
     return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
 
 
+@app.delete("/api/datasets/{name}")
+def delete_dataset(name: str):
+    target = _dataset_dir(name)
+    if not target.exists():
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    try:
+        shutil.rmtree(target)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    # Best-effort cleanup of any corresponding ZIP
+    zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    stem = _clean_name(name)
+    for candidate in [zip_dir / f"{stem}.zip", zip_dir / f"1_{stem}.zip"]:
+        if candidate.exists():
+            try:
+                candidate.unlink()
+            except Exception:
+                pass
+    return {"status": "deleted", "path": str(target)}
+
+
 @app.get("/api/tagpilot/load")
 def tagpilot_load(name: str):
     target = _dataset_dir(name)
@@ -468,7 +489,16 @@ def delete_model(name: str):
 
 
 @app.post("/api/hf-token")
-def set_hf_token(token: str):
+async def set_hf_token(request: Request, token: Optional[str] = None):
+    # Accept token either as query param or JSON body {token:"..."}
+    if token is None:
+        try:
+            payload = await request.json()
+            token = payload.get("token") if isinstance(payload, dict) else None
+        except Exception:
+            token = None
+    if not token:
+        raise HTTPException(status_code=422, detail="token is required")
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     secrets_file = CONFIG_DIR / "secrets.env"
     lines = []

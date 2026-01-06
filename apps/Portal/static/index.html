@@ -52,6 +52,8 @@
     .pill { display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; background:var(--pill); color:var(--text); }
     .pill.ok { background:var(--pill-ok); color:#16a34a; }
     .pill.miss { background:var(--pill-miss); color:#ffffff; }
+    .pill.danger { background:#dc2626; color:#ffffff; }
+    button.danger { background:#dc2626; color:#ffffff; }
     .bar-wrap { background:var(--pill); border-radius:8px; height:12px; width:220px; overflow:hidden; }
     .bar-fill { height:100%; background:var(--accent); transition:width 0.2s ease; }
     .status { font-size:14px; color:var(--status); }
@@ -105,10 +107,8 @@
           <a data-section="dpipe">Train with dpipes</a>
           <a data-section="docs">Docs</a>
           <a data-section="support">Support</a>
+          <button id="theme-toggle" style="background:var(--pill); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%; text-align:left; margin-top:8px;">🌙 Dark mode</button>
         </div>
-      </div>
-      <div style="margin-top:auto; display:flex; justify-content:flex-start;">
-        <button id="theme-toggle" style="background:var(--pill); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%; text-align:left;">🌙 Dark mode</button>
       </div>
     </div>
     <div class="main">

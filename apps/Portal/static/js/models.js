@@ -61,17 +61,18 @@ async function loadModelsTable(forceReload) {
     data.forEach(m => {
       const tr = document.createElement("tr");
       const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
+      const srcDisplay = m.source && m.source.length > 15 ? `${m.source.slice(0,15)}…` : (m.source || "—");
+      const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
       tr.innerHTML = `
-        <td>${m.name}</td>
+        <td>${nameCell}</td>
         <td><span class="pill">${m.category}</span></td>
         <td>${m.type}</td>
-        <td><code>${m.source}</code></td>
+        <td><code title="${m.source || ''}">${srcDisplay}</code></td>
         <td>${size}</td>
         <td><span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span></td>
-        <td>${m.info_url ? `<a href="${m.info_url}" target="_blank">Info</a>` : "—"}</td>
         <td>
           <button onclick="pullModel('${m.name}', this)">Install</button>
-          <button onclick="deleteModel('${m.name}', this)">Delete</button>
+          <button class="danger" onclick="deleteModel('${m.name}', this)">Delete</button>
         </td>
       `;
       tbody.appendChild(tr);

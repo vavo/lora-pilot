@@ -22,7 +22,7 @@ async function loadServices() {
         <td class="actions">
           <button onclick="serviceAction('${svc.name}','start')">Start</button>
           <button onclick="serviceAction('${svc.name}','restart')">Reload</button>
-          <button onclick="serviceAction('${svc.name}','stop')">Stop</button>
+          <button class="danger" onclick="serviceAction('${svc.name}','stop')">Stop</button>
         </td>
         <td>${openUrl ? `<a href="${openUrl}" target="_blank">Open</a>` : "—"}</td>
         <td><button onclick="viewServiceLog('${svc.name}')">Logs</button></td>

@@ -22,7 +22,14 @@ async function loadDatasets() {
       const size = d.size_bytes ? formatBytes(d.size_bytes) : "—";
       const link = tagpilotUrl(d.name);
       const nameCell = link ? `<a href="${link}" class="ds-link" data-ds="${d.name}">${d.display || d.name}</a>` : (d.display || d.name);
-      tr.innerHTML = `<td>${nameCell}</td><td>${d.images || 0}</td><td>${size}</td><td>${d.has_tags ? "Yes" : "No"}</td>`;
+      tr.innerHTML = `
+        <td>${nameCell}</td>
+        <td>${d.images || 0}</td>
+        <td>${size}</td>
+        <td>${d.has_tags ? "Yes" : "No"}</td>
+        <td style="text-align:right;">
+          <button class="pill danger" data-del="${d.name}">Delete</button>
+        </td>`;
       list.appendChild(tr);
     });
     // wire inline navigation
@@ -31,6 +38,22 @@ async function loadDatasets() {
         e.preventDefault();
         const name = a.getAttribute("data-ds");
         if (name) openTagpilotDataset(name);
+      });
+    });
+    list.querySelectorAll("button[data-del]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const name = btn.getAttribute("data-del");
+        if (!name) return;
+        const ok = confirm(`Delete dataset ${name}? This will remove /workspace/datasets/${name} and its ZIP (if any).`);
+        if (!ok) return;
+        status.textContent = "Deleting...";
+        try {
+          await fetchJson(`/api/datasets/${encodeURIComponent(name)}`, { method: "DELETE" });
+          status.textContent = "Deleted.";
+          await loadDatasets();
+        } catch (e) {
+          status.textContent = `Error: ${e.message || e}`;
+        }
       });
     });
     if (table) table.style.display = "";

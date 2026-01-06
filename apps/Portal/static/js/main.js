@@ -84,7 +84,7 @@ if (nav) {
 }
 if (themeToggle) {
   themeToggle.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const current = document.documentElement.getAttribute("data-theme") || "light";
     setTheme(current === "dark" ? "light" : "dark");
   });
 }

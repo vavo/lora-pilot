@@ -1,3 +1,9 @@
+<style>
+  .logo-light { display:block; }
+  .logo-dark { display:none; }
+  :root[data-theme="dark"] .logo-light { display:none !important; }
+  :root[data-theme="dark"] .logo-dark { display:block !important; }
+</style>
 <div style="text-align:center; margin-bottom:12px;">
   <img src="/logo-trainpilot.svg" alt="TrainPilot" class="logo-light" style="width:300px; height:auto; margin:0 auto; display:block;">
   <img src="/logodark-trainpilot.svg" alt="TrainPilot" class="logo-dark" style="width:300px; height:auto; margin:0 auto; display:block;">
@@ -10,7 +16,7 @@
       <div style="margin-top:6px;">
         <select id="tp-dataset" style="width:100%; min-width:260px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); font-size:15px;"></select>
         <div style="margin-top:6px;">
-          <a href="#" onclick="openDatasets(event)" style="font-size:13px; color:var(--accent); text-decoration:none;">add new dataset</a>
+          <a href="#" onclick="openDatasets(event)" style="font-size:13px; color:var(--accent); text-decoration:none;">add new dataset</a><br>
         </div>
       </div>
       <label style="margin-top:12px;">Output name (this will be the name of your LoRA epochs)</label>
@@ -18,30 +24,21 @@
 
       <h4 style="margin-top:16px;">2. Choose output quality</h4>
       <select id="tp-profile" style="width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); font-size:15px;">
-        <option value="quick_test">1. Quick test (400-600 steps)</option>
-        <option value="regular" selected>2. Normal quality (800-1200 steps)</option>
-        <option value="high_quality">3. High quality (1600-2200 steps)</option>
+        <option value="quick_test" selected>Quick test (400-600 steps)</option>
+        <option value="regular">Normal quality (800-1200 steps)</option>
+        <option value="high_quality">High quality (1600-2200 steps)</option>
       </select>
-    </div>
-    <div class="card" style="padding:12px;">
-      <h4>Config</h4>
-      <label>TOML path</label>
-      <input id="tp-toml" type="text" value="/opt/pilot/apps/TrainPilot/newlora.toml" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text);" />
     </div>
   </div>
   <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
     <button onclick="startTrainPilot()">Start</button>
-    <button onclick="stopTrainPilot()">Stop</button>
+    <button class="danger" onclick="stopTrainPilot()">Stop</button>
     <span id="tp-status" class="status"></span>
   </div>
   <div class="card" style="margin-top:12px;">
+    <h3>TOML Config</h3><br>
+    <code>/workspace/apps/TrainPilot/newlora.toml</code><br>
     <h3>Logs</h3>
     <pre id="tp-logs" style="max-height:300px; overflow:auto; background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px;"></pre>
   </div>
 </div>
-<style>
-  .logo-light { display:block; }
-  .logo-dark { display:none; }
-  :root[data-theme="dark"] .logo-light { display:none; }
-  :root[data-theme="dark"] .logo-dark { display:block; }
-</style>
