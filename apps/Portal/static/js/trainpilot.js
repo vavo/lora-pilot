@@ -93,10 +93,18 @@ function startTpLogPoll() {
   if (tpLogTimer) return;
   const poll = async () => {
     const pre = document.getElementById("tp-logs");
+    const status = document.getElementById("tp-status");
     if (!pre) return;
     try {
       const data = await fetchJson("/api/trainpilot/logs?limit=500");
-      pre.textContent = (data.lines || []).join("\n");
+      const lines = data.lines || [];
+      pre.textContent = lines.join("\n");
+      // show last line as status hint
+      if (status && lines.length) {
+        status.textContent = lines[lines.length - 1];
+      }
+      // auto-scroll to bottom
+      pre.scrollTop = pre.scrollHeight;
     } catch (e) {
       // ignore transient errors
     }

@@ -4,16 +4,19 @@
 ![LoRA Pilot logo](apps/Portal/static/logo.svg)
 
 > Your AI playground in a box - because who has time to configure 17 different tools?
-Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI image generation and training into one neat package. No more crying over broken dependencies at 3 AM.
+Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI datasets management, training and image generation into one neat package. No more crying over broken dependencies at 3 AM.
 
 ##  What's in the box?
+- **ControlPilot** – one web UI to manage telemetry, services, models, upload and tag/caption datasets or start training using kohya/diffusion-pipe
 - **🎨 ComfyUI** (+ ComfyUI-Manager preinstalled) - Your node-based playground
 - **🏋️ Kohya SS** - Where LoRAs are born (web UI included!)
 - **📓 JupyterLab** - For when you need to get nerdy
 - **💻 code-server** - VS Code in your browser (because local setups are overrated)
 - **🔮 InvokeAI** - Living in its own virtual environment (the diva of the bunch)
 - **🚂 Diffusion Pipe** - Training + TensorBoard, all cozy together
-- **ControlPilot** - Web UI for managing all services
+- **TagPilot** – dataset tagger embedded on the same port as ControlPilot
+- **TrainPilot** - the easiest way to run SDXL training on kohya
+- **GUI for dpipe** - a web UI for diffusion pipe
 
 Everything is orchestrated by **supervisord** and writes to **/workspace** so you can actually keep your work. Imagine that! 
 

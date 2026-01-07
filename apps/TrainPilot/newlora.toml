@@ -5,7 +5,7 @@
 
 # === Model + VAE ===
 pretrained_model_name_or_path = "/workspace/models/checkpoints/juggernautXL_version2.safetensors"
-vae = "/workspace/models/vae/sd_xl_base_1.0_0.9vae.safetensors"
+vae = "/workspace/models/checkpoints/sd_xl_base_1.0_0.9vae.safetensors"
 vae_dtype = "fp16"
 resolution = "1024,1024"
 enable_bucket = true

@@ -35,7 +35,6 @@ SERVICE_LOGS = {
     "kohya": ("/workspace/logs/kohya.out.log", "/workspace/logs/kohya.err.log"),
     "diffpipe": ("/workspace/logs/diffpipe.out.log", "/workspace/logs/diffpipe.err.log"),
     "invoke": ("/workspace/logs/invoke.out.log", "/workspace/logs/invoke.err.log"),
-    "tagpilot": ("/workspace/logs/tagpilot.out.log", "/workspace/logs/tagpilot.err.log"),
     "controlpilot": ("/workspace/logs/controlpilot.out.log", "/workspace/logs/controlpilot.err.log"),
 }
 DISPLAY_NAMES = {
@@ -45,7 +44,6 @@ DISPLAY_NAMES = {
     "kohya": "Kohya",
     "diffpipe": "TensorBoard",
     "invoke": "Invoke AI",
-    "tagpilot": "TagPilot",
     "controlpilot": "ControlPilot",
 }
 SERVICES = list(SERVICE_LOGS.keys())
@@ -477,15 +475,44 @@ def delete_model(name: str):
                 break
     if not line:
         raise HTTPException(status_code=404, detail="Unknown model")
-    _, _, _, subdir, *_ = line + ["", ""]
+    parts = line + ["", "", "", ""]
+    _, kind, source, subdir, include, *_ = parts
     target_dir = MODELS_DIR / subdir
-    if target_dir.exists():
-        for p in target_dir.glob("*"):
-            try:
-                p.unlink()
-            except IsADirectoryError:
+    to_delete: list[Path] = []
+    include = include.strip()
+
+    def add_path(p: Path):
+        if p.exists():
+            to_delete.append(p)
+
+    if kind == "hf_file":
+        # hf_file sources look like repo:path/in/repo/filename
+        fname = source.split(":", 1)[-1] if ":" in source else source
+        fname = os.path.basename(fname)
+        add_path(target_dir / fname)
+    elif kind == "url":
+        add_path(target_dir / os.path.basename(source.split("?", 1)[0]))
+    else:
+        # hf_repo or others: use include globs if provided; otherwise try name* heuristic
+        patterns = [p.strip() for p in include.split(",") if p.strip()] if include else []
+        if not patterns:
+            patterns = [f"{name}*", f"{name}.*"]
+        for pat in patterns:
+            for p in target_dir.glob(pat):
+                add_path(p)
+
+    deleted = 0
+    for p in to_delete:
+        try:
+            if p.is_dir():
                 shutil.rmtree(p, ignore_errors=True)
-    return {"status": "ok"}
+            else:
+                p.unlink(missing_ok=True)
+            deleted += 1
+        except Exception:
+            pass
+
+    return {"status": "ok", "deleted": deleted}
 
 
 @app.post("/api/hf-token")

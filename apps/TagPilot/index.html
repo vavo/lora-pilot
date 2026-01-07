@@ -16,9 +16,10 @@
         :root { color-scheme: dark; }
         :root[data-theme="light"] { color-scheme: light; }
         body { font-family: 'Inter', sans-serif; background:#0f172a; color:#e2e8f0; }
+        :root[data-theme="dark"] body { background:#0f172a; color:#e2e8f0; }
         :root[data-theme="light"] body { background:#ffffff; color:#0f172a; }
-        .logo-light { display:none; }
-        .logo-dark { display:block; }
+        .logo-light { display:none !important; }
+        .logo-dark { display:block !important; }
         :root[data-theme="light"] .logo-light { display:block !important; }
         :root[data-theme="light"] .logo-dark { display:none !important; }
         :root[data-theme="light"] .bg-gray-800 { background:#f3f4f6 !important; color:#0f172a !important; }
@@ -41,6 +42,28 @@
     </style>
 </head>
 <body>
+
+    <script>
+      // Sync theme with parent ControlPilot (or saved setting) to avoid double logos/white bg in dark mode
+      (function syncTheme() {
+        let theme = "dark";
+        try {
+          if (window.parent && window.parent !== window) {
+            const t = window.parent.document.documentElement.getAttribute("data-theme");
+            if (t) theme = t;
+          }
+        } catch (e) {}
+        if (!theme) {
+          const saved = localStorage.getItem("theme");
+          theme = saved === "light" ? "light" : "dark";
+        }
+        document.documentElement.setAttribute("data-theme", theme);
+        // force logo visibility in case of cached CSS
+        const showLight = theme === "light";
+        document.querySelectorAll(".logo-light").forEach(el => el.style.display = showLight ? "block" : "none");
+        document.querySelectorAll(".logo-dark").forEach(el => el.style.display = showLight ? "none" : "block");
+      })();
+    </script>
 
     <!-- Settings Icon -->
     <div id="settings-icon" class="settings-icon">⚙️</div>

@@ -3,6 +3,8 @@
   .logo-dark { display:none; }
   :root[data-theme="dark"] .logo-light { display:none !important; }
   :root[data-theme="dark"] .logo-dark { display:block !important; }
+  :root[data-theme="light"] .logo-light { display:block !important; }
+  :root[data-theme="light"] .logo-dark { display:none !important; }
 </style>
 <div style="text-align:center; margin-bottom:12px;">
   <img src="/logo-trainpilot.svg" alt="TrainPilot" class="logo-light" style="width:300px; height:auto; margin:0 auto; display:block;">
@@ -37,8 +39,8 @@
   </div>
   <div class="card" style="margin-top:12px;">
     <h3>TOML Config</h3><br>
-    <code>/workspace/apps/TrainPilot/newlora.toml</code><br>
+    <code>/workspace/apps/TrainPilot/newlora.toml</code><br><br>
     <h3>Logs</h3>
-    <pre id="tp-logs" style="max-height:300px; overflow:auto; background:#0f172a; color:#e2e8f0; padding:12px; border-radius:8px;"></pre>
+    <pre id="tp-logs" style="max-height:300px; overflow:auto; background:var(--card); color:var(--text); padding:12px; border-radius:8px; border:1px solid var(--border);"></pre>
   </div>
 </div>
