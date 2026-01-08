@@ -20,6 +20,10 @@ Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev, schnell), Chroma, Lumina-
 - **TrainPilot** - the easiest way to run SDXL training on kohya
 - **GUI for dpipe** - a web UI for diffusion pipe
 
+
+![Control Pilot screenshot](apps/Portal/static/lora-pilot-UI.heic)
+Screenshot of Control Pilot UI
+
 Everything is orchestrated by **supervisord** and writes to **/workspace** so you can actually keep your work. Imagine that! 
 
 Few of the thoughtful details that really bothered me when I was using other SD (Stable Diffusion) docker images:
