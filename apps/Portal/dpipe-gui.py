@@ -20,6 +20,25 @@ import zipfile
 import tempfile
 import time
 
+def safe_parse_tuple(tuple_str, default):
+    """
+    Safely parse a tuple string without using eval().
+    Accepts formats like "(0.9, 0.999)" or "0.9, 0.999"
+    Returns the default tuple if parsing fails.
+    """
+    try:
+        # Remove parentheses and split by comma
+        cleaned = tuple_str.strip().replace('(', '').replace(')', '')
+        parts = [p.strip() for p in cleaned.split(',')]
+        
+        # Convert to floats and return as tuple
+        if len(parts) == 2:
+            return (float(parts[0]), float(parts[1]))
+        else:
+            return default
+    except (ValueError, AttributeError):
+        return default
+
 # Working directories
 MODEL_DIR = "/workspace/models"
 BASE_DATASET_DIR = "/workspace/datasets"
@@ -209,11 +228,11 @@ def create_training_config(
             "dtype": dtype,
             "only_double_blocks": only_double_blocks
         },
-        # Optimizer configuration with evaluated betas
+        # Optimizer configuration with safely parsed betas
         "optimizer": {
             "type": optimizer_type,
             "lr": lr,
-            "betas": eval(betas),
+            "betas": safe_parse_tuple(betas, (0.9, 0.999)),
             "weight_decay": weight_decay,
             "eps": eps
         },
