@@ -4,6 +4,7 @@ import subprocess
 import threading
 import gradio as gr
 import os
+import shlex
 from datetime import datetime, timedelta
 import json
 import torch
@@ -561,18 +562,19 @@ def train_model(dataset_path, config_dir, output_dir, epochs, batch_size, lr, sa
         
         resume_checkpoint =  "--resume_from_checkpoint" if resume_from_checkpoint else ""
         
-        cmd = (
-            f"bash -c 'source {conda_activate_path} && "
-            f"conda activate {conda_env_name} && "
+        # Build command safely without shell=True to prevent command injection
+        cmd = [
+            "bash", "-c", 
+            f"source {shlex.quote(conda_activate_path)} && "
+            f"conda activate {shlex.quote(conda_env_name)} && "
             f"NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 {'NCCL_SHM_DISABLE=1' if int(num_gpus) > 1 else ''} deepspeed --num_gpus={num_gpus} "
-            f"train.py --deepspeed --config {training_config_path} {resume_checkpoint}'"          
-        )
+            f"train.py --deepspeed --config {shlex.quote(training_config_path)} {resume_checkpoint}"
+        ]
         
         # --regenerate_cache
             
         proc = subprocess.Popen(
             cmd,
-            shell=True,  # Required for complex shell commands
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             preexec_fn=os.setsid,
