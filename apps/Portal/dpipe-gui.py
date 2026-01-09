@@ -1069,26 +1069,57 @@ theme = gr.themes.Monochrome(
     ]
 )
 
+def _safe_resolve_path(selected_path: str, root_dir: str = "/workspace"):
+    """
+    Normalize and validate the selected path to ensure it stays within root_dir.
+    Returns the normalized absolute path if valid, otherwise None.
+    """
+    if not selected_path:
+        return None
+
+    # Ensure root_dir is absolute
+    root_dir_abs = os.path.abspath(root_dir)
+
+    # If the selected path is already absolute, use it directly; otherwise join with root_dir
+    if os.path.isabs(selected_path):
+        candidate = os.path.abspath(selected_path)
+    else:
+        candidate = os.path.abspath(os.path.normpath(os.path.join(root_dir_abs, selected_path)))
+
+    # Ensure the resolved path is within the intended root directory
+    root_with_sep = os.path.join(root_dir_abs, "")
+    if candidate == root_dir_abs or candidate.startswith(root_with_sep):
+        return candidate
+
+    return None
+
+
 def get_selected_file(file_paths):
     """
     Handles file selection and prepares it for download.
     """
     # Handle the case when file_paths is a string (single file)
     if isinstance(file_paths, str):
-        if os.path.isdir(file_paths):
+        safe_path = _safe_resolve_path(file_paths, root_dir="/workspace")
+        if not safe_path:
+            return None, "Invalid file selection."
+        if os.path.isdir(safe_path):
             return None, "Please select a single file and not a folder."
-        if not os.path.exists(file_paths):
-            return None, f"File not found: {file_paths}"
-        return file_paths, f"File '{os.path.basename(file_paths)}' ready for download."
+        if not os.path.exists(safe_path):
+            return None, f"File not found: {safe_path}"
+        return safe_path, f"File '{os.path.basename(safe_path)}' ready for download."
 
     # Handle the case when file_paths is a list (multiple files)
     if isinstance(file_paths, list) and file_paths:
-        file_path = file_paths[0]  # Use the first file
-        if os.path.isdir(file_path):
+        raw_path = file_paths[0]  # Use the first file
+        safe_path = _safe_resolve_path(raw_path, root_dir="/workspace")
+        if not safe_path:
+            return None, "Invalid file selection."
+        if os.path.isdir(safe_path):
             return None, "Please select a single file and not a folder."
-        if not os.path.exists(file_path):
-            return None, f"File not found: {file_path}"
-        return file_path, f"File '{os.path.basename(file_path)}' ready for download."
+        if not os.path.exists(safe_path):
+            return None, f"File not found: {safe_path}"
+        return safe_path, f"File '{os.path.basename(safe_path)}' ready for download."
 
     return None, "Invalid or no file selected."
 
