@@ -4,11 +4,13 @@ import mimetypes
 import os
 import re
 import shutil
+import stat
 import subprocess
 import time
 import threading
+import zipfile
 from collections import deque
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
@@ -346,6 +348,45 @@ def _dataset_dir(name: str) -> Path:
     return base / f"1_{_clean_name(n)}"
 
 
+def _zipinfo_is_symlink(info: zipfile.ZipInfo) -> bool:
+    mode = info.external_attr >> 16
+    return stat.S_ISLNK(mode)
+
+
+def _safe_zip_member_path(name: str) -> PurePosixPath:
+    safe_name = name.replace("\\", "/")
+    path = PurePosixPath(safe_name)
+    if path.is_absolute():
+        raise ValueError(f"unsafe absolute path in zip: {name}")
+    if ".." in path.parts:
+        raise ValueError(f"unsafe parent path in zip: {name}")
+    if path.parts and ":" in path.parts[0]:
+        raise ValueError(f"unsafe drive path in zip: {name}")
+    return path
+
+
+def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
+    dest_dir = dest_dir.resolve()
+    with zipfile.ZipFile(zip_path) as zf:
+        for info in zf.infolist():
+            if not info.filename:
+                continue
+            if _zipinfo_is_symlink(info):
+                raise ValueError(f"symlink not allowed in zip: {info.filename}")
+            rel_path = _safe_zip_member_path(info.filename)
+            if not rel_path.parts:
+                continue
+            target = (dest_dir / Path(*rel_path.parts)).resolve()
+            if os.path.commonpath([str(dest_dir), str(target)]) != str(dest_dir):
+                raise ValueError(f"zip path escapes destination: {info.filename}")
+            if info.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(info) as src, open(target, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+
+
 @app.post("/api/datasets/create")
 def create_dataset(payload: dict):
     raw = payload.get("name", "").strip()
@@ -375,7 +416,7 @@ def upload_dataset(file: UploadFile = File(...)):
         if extract_dir.exists():
             shutil.rmtree(extract_dir, ignore_errors=True)
         extract_dir.mkdir(parents=True, exist_ok=True)
-        shutil.unpack_archive(str(dest), extract_dir)
+        _safe_extract_zip(dest, extract_dir)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
@@ -438,7 +479,7 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
     try:
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
-        shutil.unpack_archive(str(dest), target)
+        _safe_extract_zip(dest, target)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"status": "saved", "path": str(target), "zip": str(dest)}

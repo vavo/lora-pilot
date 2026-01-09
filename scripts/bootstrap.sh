@@ -62,10 +62,12 @@ fi
 
 : "${JUPYTER_TOKEN:=$(openssl rand -hex 16)}"
 : "${CODE_SERVER_PASSWORD:=$(openssl rand -hex 16)}"
+: "${SUPERVISOR_ADMIN_PASSWORD:=$(openssl rand -hex 32)}"
 
 cat > "$SECRETS_FILE" <<EOT
 export JUPYTER_TOKEN="${JUPYTER_TOKEN}"
 export CODE_SERVER_PASSWORD="${CODE_SERVER_PASSWORD}"
+export SUPERVISOR_ADMIN_PASSWORD="${SUPERVISOR_ADMIN_PASSWORD}"
 EOT
 
 chmod 600 "$SECRETS_FILE" 2>/dev/null || true
