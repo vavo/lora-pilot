@@ -12,6 +12,9 @@ export PYTHONPATH="/opt/pilot/repos/kohya_ss/sd-scripts:${PYTHONPATH:-}"
 
 mkdir -p "$ROOT/logs" "$APP_ROOT"
 
+# Fix setuptools deprecation warning for Kohya
+/opt/venvs/core/bin/pip install "setuptools<81.0" --quiet
+
 cd /opt/pilot/repos/kohya_ss
 exec /opt/venvs/core/bin/python -u kohya_gui.py \
   --listen "$HOST" \
