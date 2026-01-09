@@ -970,8 +970,8 @@ def create_zip(dataset_name, download_dataset, download_config, download_outputs
         # if not all([os.path.exists(dataset_dir), os.path.exists(config_dir_path), os.path.exists(output_dir_path)]):
         #     return None, "One or more directories (dataset, config, output) do not exist."
 
-        # Create a temporary directory to store the ZIP
-        temp_dir = tempfile.mkdtemp()
+        # Create a temporary directory to store the ZIP with secure permissions
+        temp_dir = tempfile.mkdtemp(mode=0o700)
         zip_filename = f"{dataset_name}_archive_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
         zip_path = os.path.join(temp_dir, zip_filename)
         
@@ -1064,8 +1064,8 @@ def cleanup_temp_files(temp_dir, retention_time=3600):
             print(f"Error during cleanup: {str(e)}")
             time.sleep(1800)
 
-# Start the cleanup thread
-temp_base_dir = tempfile.mkdtemp()
+# Start the cleanup thread with secure temporary directory
+temp_base_dir = tempfile.mkdtemp(mode=0o700)
 cleanup_thread = threading.Thread(target=cleanup_temp_files, args=(temp_base_dir,), daemon=True)
 cleanup_thread.start()
 
