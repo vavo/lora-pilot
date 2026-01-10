@@ -87,7 +87,9 @@ function startLogPoll() {
     if (!pre) return;
     try {
       const data = await fetchJson("/dpipe/train/logs?limit=500");
-      const lines = Object.values(data.logs || {}).flat();
+      // Use Array.prototype.reduce() as fallback for older browsers without .flat()
+      const logs = data.logs || {};
+      const lines = Object.values(logs).reduce((acc, val) => acc.concat(val), []);
       pre.textContent = lines.join("\n");
     } catch (e) {
       // ignore

@@ -115,6 +115,24 @@
       <div id="content"></div>
     </div>
   </div>
+  
+  <!-- Polyfills for older browser compatibility -->
+  <script>
+    // Array.prototype.flat() polyfill for older browsers
+    if (!Array.prototype.flat) {
+      Array.prototype.flat = function(depth = 1) {
+        return this.reduce((acc, val) => acc.concat(depth > 1 && Array.isArray(val) ? val.flat(depth - 1) : val), []);
+      };
+    }
+    
+    // Array.prototype.flatMap() polyfill for older browsers
+    if (!Array.prototype.flatMap) {
+      Array.prototype.flatMap = function(callback, thisArg) {
+        return this.map(callback, thisArg).flat();
+      };
+    }
+  </script>
+  
   <script src="/js/utils.js?v=20260105a"></script>
   <script src="/js/dashboard.js?v=20260105a"></script>
   <script src="/js/services.js?v=20260105a"></script>

@@ -1,0 +1,3 @@
+Version 1.6
+- addressed several critical security issues
+- added shutdown scheduler to ControlPilot (schedule shutdown in X minutes/hours/days in Dashboard)

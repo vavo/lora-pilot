@@ -13,7 +13,27 @@ window.fetchJson = async function (url, opts = {}) {
     const txt = await res.text();
     throw new Error(txt || res.statusText);
   }
-  return res.json();
+  
+  // Handle empty responses or non-JSON content
+  const contentType = res.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    // Return empty object for non-JSON responses to avoid parsing errors
+    return {};
+  }
+  
+  const text = await res.text();
+  if (!text.trim()) {
+    // Return empty object for empty responses
+    return {};
+  }
+  
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    console.warn('Failed to parse JSON response:', text, e);
+    // Return empty object instead of throwing
+    return {};
+  }
 };
 
 // Build service URL respecting RunPod proxy subdomain pattern <id>-<port>.proxy.runpod.net

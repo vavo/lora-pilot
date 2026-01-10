@@ -53,6 +53,12 @@ TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
 
+# Shutdown scheduler globals
+shutdown_scheduled = False
+shutdown_time = None
+shutdown_thread = None
+shutdown_lock = threading.Lock()
+
 
 def ensure_manifest():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -99,6 +105,17 @@ class GPUInfo(BaseModel):
     util: Optional[int] = None
     mem_used: Optional[int] = None
     mem_total: Optional[int] = None
+
+
+class ShutdownRequest(BaseModel):
+    value: int
+    unit: str  # "minutes", "hours", "days"
+
+
+class ShutdownStatus(BaseModel):
+    scheduled: bool
+    time_remaining: Optional[int] = None  # seconds remaining
+    shutdown_time: Optional[str] = None  # ISO timestamp
 
 
 class Telemetry(BaseModel):
@@ -632,6 +649,26 @@ def service_log(name: str, lines: int = 50):
     return {"log": content, "path": str(path)}
 
 
+@app.post("/api/shutdown/schedule")
+def schedule_shutdown_endpoint(request: ShutdownRequest):
+    """Schedule a shutdown"""
+    schedule_shutdown(request)
+    return {"status": "scheduled", "message": f"Shutdown scheduled in {request.value} {request.unit}"}
+
+
+@app.post("/api/shutdown/cancel")
+def cancel_shutdown_endpoint():
+    """Cancel the scheduled shutdown"""
+    cancel_shutdown()
+    return {"status": "cancelled", "message": "Shutdown cancelled"}
+
+
+@app.get("/api/shutdown/status", response_model=ShutdownStatus)
+def shutdown_status_endpoint():
+    """Get the current shutdown status"""
+    return get_shutdown_status()
+
+
 def get_meminfo():
     meminfo = {}
     try:
@@ -766,6 +803,77 @@ def get_gpus() -> List[GPUInfo]:
         except Exception:
             continue
     return gpus
+
+
+def shutdown_worker():
+    """Worker function that waits for shutdown time and executes shutdown"""
+    global shutdown_scheduled, shutdown_time
+    
+    while True:
+        with shutdown_lock:
+            if not shutdown_scheduled or shutdown_time is None:
+                break
+                
+            time_remaining = shutdown_time - time.time()
+            
+            if time_remaining <= 0:
+                # Time to shutdown
+                print("Executing scheduled shutdown...")
+                os.system("shutdown -h now")
+                break
+                
+            # Sleep for a short time, then check again
+            shutdown_lock.release()
+            time.sleep(min(10, time_remaining))
+            shutdown_lock.acquire()
+
+
+def schedule_shutdown(request: ShutdownRequest):
+    """Schedule a shutdown for the specified time"""
+    global shutdown_scheduled, shutdown_time, shutdown_thread
+    
+    # Convert to seconds
+    multipliers = {"minutes": 60, "hours": 3600, "days": 86400}
+    if request.unit not in multipliers:
+        raise HTTPException(status_code=400, detail="Invalid unit. Must be: minutes, hours, days")
+    
+    delay_seconds = request.value * multipliers[request.unit]
+    
+    with shutdown_lock:
+        shutdown_scheduled = True
+        shutdown_time = time.time() + delay_seconds
+        
+        # Start the shutdown worker thread
+        shutdown_thread = threading.Thread(target=shutdown_worker, daemon=True)
+        shutdown_thread.start()
+
+
+def cancel_shutdown():
+    """Cancel the scheduled shutdown"""
+    global shutdown_scheduled, shutdown_time, shutdown_thread
+    
+    with shutdown_lock:
+        shutdown_scheduled = False
+        shutdown_time = None
+        shutdown_thread = None
+
+
+def get_shutdown_status() -> ShutdownStatus:
+    """Get the current shutdown status"""
+    global shutdown_scheduled, shutdown_time
+    
+    with shutdown_lock:
+        if not shutdown_scheduled or shutdown_time is None:
+            return ShutdownStatus(scheduled=False)
+        
+        time_remaining = max(0, int(shutdown_time - time.time()))
+        shutdown_time_str = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(shutdown_time))
+        
+        return ShutdownStatus(
+            scheduled=True,
+            time_remaining=time_remaining,
+            shutdown_time=shutdown_time_str
+        )
 
 
 @app.get("/api/telemetry", response_model=Telemetry)

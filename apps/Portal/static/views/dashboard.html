@@ -28,3 +28,32 @@
     </div>
   </div>
 </div>
+
+<div class="card" id="shutdown-card">
+  <h3>Pod Shutdown</h3>
+  <div id="shutdown-scheduler">
+    <!-- Debug info -->
+    <div id="shutdown-debug" style="background:var(--alert-bg); color:var(--alert-text); padding:8px; border-radius:4px; margin-bottom:12px; font-size:12px; display:none;">
+      Debug: Loading...
+    </div>
+    
+    <div id="shutdown-inputs" style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+      <input type="number" id="shutdown-value" min="1" max="999" value="1" style="width:80px; padding:4px 8px; border:1px solid var(--border); border-radius:4px; background:var(--card); color:var(--text);">
+      <select id="shutdown-unit" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; background:var(--card); color:var(--text);">
+        <option value="minutes">Minutes</option>
+        <option value="hours">Hours</option>
+        <option value="days">Days</option>
+      </select>
+      <button id="schedule-shutdown-btn" onclick="scheduleShutdown()" style="padding:4px 12px; border:1px solid var(--border); border-radius:4px; background:var(--accent); color:white; cursor:pointer;">Schedule Shutdown</button>
+    </div>
+    <div id="shutdown-status" style="display:none;">
+      <div style="margin-bottom:8px;">
+        <strong>Shutdown scheduled:</strong> <span id="shutdown-time"></span>
+      </div>
+      <div style="margin-bottom:8px;">
+        <strong>Time remaining:</strong> <span id="shutdown-countdown"></span>
+      </div>
+      <button id="cancel-shutdown-btn" onclick="cancelShutdown()" class="danger" style="padding:4px 12px; border:1px solid var(--border); border-radius:4px; cursor:pointer;">Cancel Shutdown</button>
+    </div>
+  </div>
+</div>
