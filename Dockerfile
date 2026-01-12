@@ -269,6 +269,7 @@ COPY scripts/gpu-smoke-test.sh /opt/pilot/gpu-smoke-test.sh
 COPY scripts/start-jupyter.sh /opt/pilot/start-jupyter.sh
 COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
 COPY scripts/comfy.sh /opt/pilot/comfy.sh
+COPY scripts/start-kohya.sh /opt/pilot/start-kohya.sh
 COPY scripts/kohya.sh /opt/pilot/kohya.sh
 COPY scripts/diffusion-pipe.sh /opt/pilot/diffusion-pipe.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
@@ -293,6 +294,7 @@ RUN set -eux; \
       /opt/pilot/start-jupyter.sh \
       /opt/pilot/start-code-server.sh \
       /opt/pilot/comfy.sh \
+      /opt/pilot/start-kohya.sh \
       /opt/pilot/kohya.sh \
       /opt/pilot/diffusion-pipe.sh \
       /opt/pilot/invoke.sh \
