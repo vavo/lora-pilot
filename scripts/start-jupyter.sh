@@ -45,9 +45,8 @@ exec /opt/venvs/tools/bin/jupyter lab \
   --port="${PORT}" \
   --no-browser \
   --ServerApp.root_dir="${ROOT}" \
-  --ServerApp.token="${JUPYTER_TOKEN}" \
+  --IdentityProvider.token="${JUPYTER_TOKEN}" \
   --ServerApp.allow_root=True \
   --ServerApp.allow_remote_access=True \
   --ServerApp.allow_origin_pat="${ALLOW_ORIGIN_PAT}" \
-  --ServerApp.trust_xheaders=True \
-  --ServerApp.runtime_dir="${JUPYTER_RUNTIME_DIR}"
+  --ServerApp.trust_xheaders=True

@@ -98,15 +98,71 @@ function startTpLogPoll() {
     try {
       const data = await fetchJson("/api/trainpilot/logs?limit=500");
       const lines = data.lines || [];
-      pre.textContent = lines.join("\n");
-      // show last line as status hint
+      
+      // Enhance log display with better formatting
+      const formattedLines = lines.map(line => {
+        // Highlight important log patterns
+        if (line.includes('--- Kohya training logs')) {
+          return `\n${line}\n${'='.repeat(50)}`;
+        }
+        if (line.includes('epoch') || line.includes('step')) {
+          return `🔄 ${line}`;
+        }
+        if (line.includes('loss')) {
+          return `📊 ${line}`;
+        }
+        if (line.includes('error') || line.includes('Error') || line.includes('ERROR')) {
+          return `❌ ${line}`;
+        }
+        if (line.includes('warning') || line.includes('Warning') || line.includes('WARNING')) {
+          return `⚠️ ${line}`;
+        }
+        if (line.includes('=== Starting Kohya')) {
+          return `🚀 ${line}`;
+        }
+        if (line.includes('=== Training finished')) {
+          return `✅ ${line}`;
+        }
+        return line;
+      });
+      
+      pre.textContent = formattedLines.join("\n");
+      
+      // Show last meaningful line as status hint
       if (status && lines.length) {
-        status.textContent = lines[lines.length - 1];
+        const lastLine = lines[lines.length - 1];
+        if (lastLine.includes('step') || lastLine.includes('epoch')) {
+          status.textContent = `Training: ${lastLine.trim()}`;
+        } else if (lastLine.includes('=== Training finished')) {
+          status.textContent = 'Training completed!';
+        } else if (lastLine.includes('error') || lastLine.includes('Error')) {
+          status.textContent = `Error: ${lastLine.trim()}`;
+        } else if (lastLine && !lastLine.includes('---')) {
+          status.textContent = lastLine.trim();
+        }
       }
-      // auto-scroll to bottom
+      
+      // Show training indicator if training is active
+      const indicator = document.getElementById("tp-training-indicator");
+      if (indicator) {
+        const hasTrainingLogs = lines.some(line => 
+          line.includes('=== Starting Kohya') || 
+          line.includes('step') || 
+          line.includes('epoch')
+        );
+        const hasFinished = lines.some(line => line.includes('=== Training finished'));
+        
+        if (hasTrainingLogs && !hasFinished) {
+          indicator.style.display = 'inline-flex';
+        } else {
+          indicator.style.display = 'none';
+        }
+      }
+      
+      // Auto-scroll to bottom
       pre.scrollTop = pre.scrollHeight;
     } catch (e) {
-      // ignore transient errors
+      // Ignore transient errors
     }
   };
   poll();
@@ -127,3 +183,76 @@ function autoFillOutput(labelText) {
     if (base) out.value = base;
   }
 }
+
+// TOML Config Modal Functions
+window.showTomlConfig = async function () {
+  const modal = document.getElementById("toml-modal");
+  const content = document.getElementById("toml-content");
+  
+  if (!modal || !content) return;
+  
+  // Show modal with loading state
+  modal.style.display = "block";
+  content.className = "toml-loading";
+  content.textContent = "Loading configuration...";
+  
+  try {
+    // Fetch TOML content from backend
+    const response = await fetchJson("/api/trainpilot/toml");
+    
+    if (response.content) {
+      content.className = "toml-content";
+      // Apply basic TOML syntax highlighting
+      content.innerHTML = highlightToml(response.content);
+    } else {
+      content.className = "toml-loading";
+      content.textContent = "Configuration file not found or empty.";
+    }
+  } catch (error) {
+    content.className = "toml-loading";
+    content.textContent = `Error loading configuration: ${error.message}`;
+  }
+};
+
+function highlightToml(tomlContent) {
+  // Basic TOML syntax highlighting
+  return tomlContent
+    // Escape HTML
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    // Highlight keys (before =)
+    .replace(/^([A-Za-z_][A-Za-z0-9_-]*)\s*=/gm, '<span class="key">$1</span> =')
+    // Highlight quoted strings
+    .replace(/"([^"]*)"/g, '<span class="string">"$1"</span>')
+    // Highlight single-quoted strings
+    .replace(/'([^']*)'/g, '<span class="string">\'$1\'</span>')
+    // Highlight numbers
+    .replace(/\b(\d+\.?\d*)\b/g, '<span class="number">$1</span>')
+    // Highlight booleans
+    .replace(/\b(true|false)\b/g, '<span class="boolean">$1</span>')
+    // Highlight comments
+    .replace(/(#.*$)/gm, '<span class="comment">$1</span>');
+}
+
+window.closeTomlConfig = function () {
+  const modal = document.getElementById("toml-modal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+};
+
+// Close modal when clicking outside
+window.onclick = function (event) {
+  const modal = document.getElementById("toml-modal");
+  if (modal && event.target === modal) {
+    closeTomlConfig();
+  }
+};
+
+// Close modal with Escape key
+window.addEventListener("keydown", function (event) {
+  if (event.key === "Escape") {
+    closeTomlConfig();
+  }
+});

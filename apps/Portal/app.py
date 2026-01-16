@@ -1044,7 +1044,53 @@ def trainpilot_stop():
 
 @app.get("/api/trainpilot/logs")
 def trainpilot_logs(limit: int = 500):
-    return {"lines": list(_tp_logs)[-limit:]}
+    """Get combined logs from TrainPilot process and Kohya training logs."""
+    lines = []
+    
+    # Add TrainPilot process logs
+    lines.extend(list(_tp_logs))
+    
+    # Also try to read the latest Kohya training log file
+    try:
+        # Find the most recent training output directory
+        outs_base = Path("/workspace/outs")
+        if outs_base.exists():
+            # Get all output directories and sort by modification time
+            output_dirs = [d for d in outs_base.iterdir() if d.is_dir()]
+            output_dirs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            
+            for output_dir in output_dirs[:3]:  # Check last 3 directories
+                log_file = output_dir / "_logs" / "train.log"
+                if log_file.exists():
+                    try:
+                        with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+                            kohya_lines = f.readlines()
+                            # Add a separator to distinguish Kohya logs
+                            if kohya_lines:
+                                lines.append(f"--- Kohya training logs from {output_dir.name} ---")
+                                lines.extend([line.rstrip() for line in kohya_lines[-100:]])  # Last 100 lines
+                                break  # Only read from the most recent training
+                    except Exception:
+                        continue
+    except Exception:
+        pass  # If we can't read Kohya logs, just return TrainPilot logs
+    
+    return {"lines": lines[-limit:]}
+
+
+@app.get("/api/trainpilot/toml")
+def get_trainpilot_toml():
+    """Get the current TrainPilot TOML configuration content."""
+    toml_path = Path("/opt/pilot/apps/TrainPilot/newlora.toml")
+    
+    if not toml_path.exists():
+        raise HTTPException(status_code=404, detail="TOML configuration file not found")
+    
+    try:
+        content = toml_path.read_text(encoding="utf-8")
+        return {"content": content}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading TOML file: {str(e)}")
 
 
 @app.get("/api/docs")

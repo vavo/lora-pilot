@@ -36,11 +36,143 @@
     <button onclick="startTrainPilot()">Start</button>
     <button class="danger" onclick="stopTrainPilot()">Stop</button>
     <span id="tp-status" class="status"></span>
+    <span id="tp-training-indicator" style="display:none; margin-left:10px;">
+      <span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%; margin-right:6px; animation:pulse 2s infinite;"></span>
+      <span style="color:#10b981; font-size:13px;">Training Active</span>
+    </span>
   </div>
   <div class="card" style="margin-top:12px;">
     <h3>TOML Config</h3><br>
-    <code>/workspace/apps/TrainPilot/newlora.toml</code><br><br>
-    <h3>Logs</h3>
-    <pre id="tp-logs" style="max-height:300px; overflow:auto; background:var(--card); color:var(--text); padding:12px; border-radius:8px; border:1px solid var(--border);"></pre>
+    <code id="toml-config-path" style="cursor:pointer; color:var(--accent); text-decoration:underline;" onclick="showTomlConfig()">/workspace/apps/TrainPilot/newlora.toml</code>
+    <div style="margin-top:8px; font-size:12px; color:var(--muted);">
+      Click to preview the current training configuration
+    </div>
+  </div>
+    <h3>Training Logs</h3>
+    <div style="margin-bottom:8px; font-size:12px; color:var(--muted);">
+      Shows TrainPilot process logs + Kohya training output from <code>/workspace/outs/*/_logs/train.log</code>
+    </div>
+    <pre id="tp-logs" style="max-height:300px; overflow:auto; background:var(--card); color:var(--text); padding:12px; border-radius:8px; border:1px solid var(--border); font-family:monospace; font-size:12px; line-height:1.4;"></pre>
+  </div>
+  
+  <style>
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-content {
+      background-color: var(--card);
+      color: var(--text);
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 80%;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    
+    .modal-close:hover {
+      background-color: var(--border);
+      color: var(--text);
+    }
+    
+    .modal-body {
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .toml-content {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      color: var(--text);
+      overflow-x: auto;
+    }
+    
+    .toml-content .key {
+      color: #0969da;
+      font-weight: 600;
+    }
+    
+    .toml-content .string {
+      color: #0a3069;
+    }
+    
+    .toml-content .number {
+      color: #0550ae;
+    }
+    
+    .toml-content .boolean {
+      color: #8250df;
+    }
+    
+    .toml-content .comment {
+      color: #6e7781;
+      font-style: italic;
+    }
+    
+    .toml-loading {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+    }
+  </style>
+</div>
+
+<!-- TOML Config Modal -->
+<div id="toml-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 style="margin:0;">Training Configuration (TOML)</h3>
+      <button class="modal-close" onclick="closeTomlConfig()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="toml-content" class="toml-loading">Loading configuration...</div>
+    </div>
   </div>
 </div>
