@@ -175,53 +175,53 @@ RUN /opt/venvs/core/bin/pip install --no-cache-dir \
 
 # ----- ComfyUI + Manager -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
-      set -eux; \
-      git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI; \
+      set -eux && \
+      git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI && \
       \
       # Filter out packages that must NOT be overridden in core
-grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!])|torchaudio($|[[:space:]=<>!])|xformers($|[[:space:]=<>!])|triton($|[[:space:]=<>!])|bitsandbytes($|[[:space:]=<>!])|numpy($|[[:space:]=<>!])|pillow($|[[:space:]=<>!])|Pillow($|[[:space:]=<>!])|diffusers($|[[:space:]=<>!])|transformers($|[[:space:]=<>!])|peft($|[[:space:]=<>!])|huggingface-hub($|[[:space:]=<>!])|accelerate($|[[:space:]=<>!])' \
-  /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt; \
+      grep -v -E '^(torch|torchvision|torchaudio|xformers|triton|bitsandbytes|numpy|pillow|Pillow|diffusers|transformers|peft|huggingface-hub|accelerate)' \
+        /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt && \
       \
       # Install Comfy deps constrained to your core stack rules
       /opt/venvs/core/bin/pip install --no-cache-dir \
         -c /opt/pilot/config/core-constraints.txt \
-        -r /tmp/comfy-req.txt; \
-      rm -f /tmp/comfy-req.txt; \
+        -r /tmp/comfy-req.txt && \
+      rm -f /tmp/comfy-req.txt && \
       \
-      mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes; \
+      mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes && \
       git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git \
-        /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager; \
+        /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager && \
       \
-      mkdir -p /workspace/apps/comfy/user; \
-      rm -rf /opt/pilot/repos/ComfyUI/user; \
+      mkdir -p /workspace/apps/comfy/user && \
+      rm -rf /opt/pilot/repos/ComfyUI/user && \
       ln -s /workspace/apps/comfy/user /opt/pilot/repos/ComfyUI/user; \
     fi
 
 # ----- Kohya (install into core venv, but DO NOT let it replace torch/xformers) -----
 RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
-      set -eux; \
-      git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss; \
-      cd /opt/pilot/repos/kohya_ss; \
+      set -eux && \
+      git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
+      cd /opt/pilot/repos/kohya_ss && \
       \
       # Some kohya req files include "-r /tmp/requirements.txt" (runpod style). Provide it.
-      ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt; \
+      ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt && \
       \
-      REQ=requirements_runpod.txt; \
-      [ -f "$REQ" ] || REQ=requirements_linux.txt; \
-      [ -f "$REQ" ] || REQ=requirements.txt; \
+      REQ=requirements_runpod.txt && \
+      [ -f "$REQ" ] || REQ=requirements_linux.txt && \
+      [ -f "$REQ" ] || REQ=requirements.txt && \
       \
       # Filter out container-hostile / unwanted deps (and avoid recursive -r /tmp/requirements.txt)
-      grep -v -E '^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*triton([[:space:]=<>!].*)?$|^[[:space:]]*bitsandbytes([[:space:]=<>!].*)?$|^[[:space:]]*transformers([[:space:]=<>!].*)?$|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
-        "$REQ" > /tmp/kohya-req.txt; \
+      grep -v -E '^(tensorrt|torch|torchvision|torchaudio|xformers|triton|bitsandbytes|transformers|tensorflow|tensorboard)' \
+        "$REQ" > /tmp/kohya-req.txt && \
       \
       # Hard constraints so pip can't "helpfully" bring back numpy 2.x
-      printf '%s\n' 'numpy<2' > /tmp/kohya-constraints.txt; \
+      printf '%s\n' 'numpy<2' > /tmp/kohya-constraints.txt && \
       \
-      /opt/venvs/core/bin/pip install --no-cache-dir -c /tmp/kohya-constraints.txt -r /tmp/kohya-req.txt; \
-      rm -f /tmp/kohya-req.txt /tmp/kohya-constraints.txt; \
+      /opt/venvs/core/bin/pip install --no-cache-dir -c /tmp/kohya-constraints.txt -r /tmp/kohya-req.txt && \
+      rm -f /tmp/kohya-req.txt /tmp/kohya-constraints.txt && \
       \
-      SITEPKG=$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])') \
-      printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth"; \
+      SITEPKG=$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])') && \
+      printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth" && \
       printf '%s\n' \
         'from easygui import global_state as _gs' \
         'globals().update(_gs.__dict__)' \
@@ -229,34 +229,34 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
     fi
 
 # ----- Diffusion Pipe (training stack, core venv) -----
-RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then
-      set -eux; \
+RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then \
+      set -eux && \
       git clone --depth 1 --recurse-submodules \
-        https://github.com/tdrussell/diffusion-pipe.git /opt/pilot/repos/diffusion-pipe; \
+        https://github.com/tdrussell/diffusion-pipe.git /opt/pilot/repos/diffusion-pipe && \
       /opt/venvs/core/bin/pip install --no-cache-dir \
         -r /opt/pilot/repos/diffusion-pipe/requirements.txt; \
     fi
 
 # ----- InvokeAI (dedicated venv; pinned to core torch stack) -----
-RUN if [ "${INSTALL_INVOKE}" = "1" ]; then
-      set -eux; \
-      python -m venv /opt/venvs/invoke; \
-      /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel; \
+RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
+      set -eux && \
+      python -m venv /opt/venvs/invoke && \
+      /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel && \
       \
-      # Install InvokeAI v6.10.0 (latest)
-      /opt/venvs/invoke/bin/pip install invokeai==6.10.0; \
-      \
-      # Install Invoke-specific torch stack (kept separate from core)
-      /opt/venvs/invoke/bin/pip install --no-cache-dir \
+      # Install Invoke-specific torch stack first (kept separate from core)
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cu126 \
         torch==${INVOKE_TORCH_VERSION} \
         torchvision==${INVOKE_TORCHVISION_VERSION} \
-        torchaudio==${INVOKE_TORCHAUDIO_VERSION}; \
-      # Then install invoke deps with explicit pins (skip core constraint to allow different transformers); also pin numpy<2
-      /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        torchaudio==${INVOKE_TORCHAUDIO_VERSION} && \
+      \
+      # Install InvokeAI v6.10.0 (latest) after torch is in place
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install "invokeai==6.10.0" && \
+      \
+      # Install additional invoke deps with explicit pins (skip core constraint to allow different transformers); also pin numpy<2
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
         "diffusers[torch]==0.33.0" \
-        "numpy<2" \
-        invokeai; \
+        "numpy<2"; \
       fi
 
 

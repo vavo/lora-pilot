@@ -846,8 +846,13 @@ def shutdown_worker():
             
             if time_remaining <= 0:
                 # Time to shutdown
-                print("Executing scheduled shutdown...")
-                os.system("shutdown -h now")
+                pod_id = os.environ.get("RUNPOD_POD_ID", "").strip()
+                if pod_id:
+                    print(f"Executing scheduled shutdown via runpodctl for pod {pod_id}...")
+                    subprocess.run(["runpodctl", "remove", "pod", pod_id], check=False)
+                else:
+                    print("RUNPOD_POD_ID not set; falling back to shutdown -h now")
+                    os.system("shutdown -h now")
                 break
                 
             # Sleep for a short time, then check again
