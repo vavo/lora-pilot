@@ -170,7 +170,8 @@ RUN /opt/venvs/core/bin/pip install --no-cache-dir \
 RUN /opt/venvs/core/bin/pip install --no-cache-dir \
     -c /opt/pilot/config/core-constraints.txt \
     fastapi "uvicorn[standard]" pydantic python-multipart \
-    flask flask-cors requests python-dotenv
+    flask flask-cors requests python-dotenv \
+    python-socketio
 
 # ----- ComfyUI + Manager -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
@@ -210,7 +211,7 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       [ -f "$REQ" ] || REQ=requirements.txt; \
       \
       # Filter out container-hostile / unwanted deps (and avoid recursive -r /tmp/requirements.txt)
-      grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*triton([[:space:]=<>!].*)?$|^[[:space:]]*bitsandbytes([[:space:]=<>!].*)?$|^[[:space:]]*transformers([[:space:]=<>!].*)?$|^[[:space:]]*peft([[:space:]=<>!].*)?$|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
+      grep -v -E '^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*triton([[:space:]=<>!].*)?$|^[[:space:]]*bitsandbytes([[:space:]=<>!].*)?$|^[[:space:]]*transformers([[:space:]=<>!].*)?$|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
         "$REQ" > /tmp/kohya-req.txt; \
       \
       # Hard constraints so pip can't "helpfully" bring back numpy 2.x
@@ -219,30 +220,7 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       /opt/venvs/core/bin/pip install --no-cache-dir -c /tmp/kohya-constraints.txt -r /tmp/kohya-req.txt; \
       rm -f /tmp/kohya-req.txt /tmp/kohya-constraints.txt; \
       \
-      /opt/venvs/core/bin/python - <<'PY'
-from pathlib import Path
-
-target = Path("/opt/pilot/repos/kohya_ss/setup/setup_common.py")
-marker = 'warnings.filterwarnings("ignore", category=UserWarning, module=".*pkg_resources.*")'
-if target.exists():
-    content = target.read_text(encoding="utf-8")
-    if marker not in content:
-        insert = (
-            "import warnings\n"
-            "# Suppress pkg_resources deprecation warning\n"
-            'warnings.filterwarnings("ignore", category=UserWarning, module=".*pkg_resources.*")\n'
-            'warnings.filterwarnings("ignore", category=DeprecationWarning, module=".*pkg_resources.*")\n'
-            "\n"
-        )
-        if content.startswith("#!"):
-            first, rest = content.split("\n", 1)
-            content = first + "\n" + insert + rest
-        else:
-            content = insert + content
-        target.write_text(content, encoding="utf-8")
-PY
-      \
-      SITEPKG="$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])')"; \
+      SITEPKG=$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])') \
       printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth"; \
       printf '%s\n' \
         'from easygui import global_state as _gs' \
@@ -251,7 +229,7 @@ PY
     fi
 
 # ----- Diffusion Pipe (training stack, core venv) -----
-RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then \
+RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then
       set -eux; \
       git clone --depth 1 --recurse-submodules \
         https://github.com/tdrussell/diffusion-pipe.git /opt/pilot/repos/diffusion-pipe; \
