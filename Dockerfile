@@ -102,7 +102,7 @@ RUN set -eux; \
 # ----- venv: core -----
 RUN set -eux; \
     python -m venv /opt/venvs/core; \
-    /opt/venvs/core/bin/pip install --upgrade pip setuptools wheel
+    /opt/venvs/core/bin/pip install --upgrade pip "setuptools<81.0" wheel
 
 # ----- core constraints (keep the stack sane) -----
 RUN set -eux; \
@@ -172,14 +172,13 @@ RUN /opt/venvs/core/bin/pip install --no-cache-dir \
     fastapi "uvicorn[standard]" pydantic python-multipart \
     flask flask-cors requests python-dotenv
 
-
 # ----- ComfyUI + Manager -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       set -eux; \
       git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI; \
       \
       # Filter out packages that must NOT be overridden in core
-grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!])|torchaudio($|[[:space:]=<>!])|xformers($|[[:space:]=<>!])|triton($|[[:space:]=<>!])|bitsandbytes($|[[:space:]=<>!])|numpy($|[[:space:]=<>!])|pillow($|[[:space:]=<>!])|Pillow($|[[:space:]=<>!])|diffusers($|[[:space:]=<>!])|transformers($|[[:space:]=<>!])|peft($|[[:space:]=<>!])|huggingface-hub($|[[:space:]=<>!])|accelerate($|[[:space:]=<>!]))' \
+grep -v -E '^[[:space:]]*(torch($|[[:space:]=<>!])|torchvision($|[[:space:]=<>!])|torchaudio($|[[:space:]=<>!])|xformers($|[[:space:]=<>!])|triton($|[[:space:]=<>!])|bitsandbytes($|[[:space:]=<>!])|numpy($|[[:space:]=<>!])|pillow($|[[:space:]=<>!])|Pillow($|[[:space:]=<>!])|diffusers($|[[:space:]=<>!])|transformers($|[[:space:]=<>!])|peft($|[[:space:]=<>!])|huggingface-hub($|[[:space:]=<>!])|accelerate($|[[:space:]=<>!])' \
   /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt; \
       \
       # Install Comfy deps constrained to your core stack rules
@@ -211,7 +210,7 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       [ -f "$REQ" ] || REQ=requirements.txt; \
       \
       # Filter out container-hostile / unwanted deps (and avoid recursive -r /tmp/requirements.txt)
-      grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*triton([[:space:]=<>!].*)?$|^[[:space:]]*bitsandbytes([[:space:]=<>!].*)?$|^[[:space:]]*transformers([[:space:]=<>!].*)?$|^[[:space:]]*peft([[:space:]=<>!].*)?$|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*numpy([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
+      grep -v -E '(^[[:space:]]*tensorrt([[:space:]]|$)|^[[:space:]]*torch==|^[[:space:]]*torchvision==|^[[:space:]]*torchaudio==|^[[:space:]]*xformers==|^[[:space:]]*triton([[:space:]=<>!].*)?$|^[[:space:]]*bitsandbytes([[:space:]=<>!].*)?$|^[[:space:]]*transformers([[:space:]=<>!].*)?$|^[[:space:]]*peft([[:space:]=<>!].*)?$|^[[:space:]]*tensorflow([[:space:]=<>!].*)?$|^[[:space:]]*tensorboard([[:space:]=<>!].*)?$|^[[:space:]]*-r[[:space:]]+/tmp/requirements\.txt[[:space:]]*$|^[[:space:]]*-e[[:space:]]+\./sd-scripts[[:space:]]*$|^[[:space:]]*\./sd-scripts[[:space:]]*$)' \
         "$REQ" > /tmp/kohya-req.txt; \
       \
       # Hard constraints so pip can't "helpfully" bring back numpy 2.x
@@ -219,6 +218,29 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       \
       /opt/venvs/core/bin/pip install --no-cache-dir -c /tmp/kohya-constraints.txt -r /tmp/kohya-req.txt; \
       rm -f /tmp/kohya-req.txt /tmp/kohya-constraints.txt; \
+      \
+      /opt/venvs/core/bin/python - <<'PY'
+from pathlib import Path
+
+target = Path("/opt/pilot/repos/kohya_ss/setup/setup_common.py")
+marker = 'warnings.filterwarnings("ignore", category=UserWarning, module=".*pkg_resources.*")'
+if target.exists():
+    content = target.read_text(encoding="utf-8")
+    if marker not in content:
+        insert = (
+            "import warnings\n"
+            "# Suppress pkg_resources deprecation warning\n"
+            'warnings.filterwarnings("ignore", category=UserWarning, module=".*pkg_resources.*")\n'
+            'warnings.filterwarnings("ignore", category=DeprecationWarning, module=".*pkg_resources.*")\n'
+            "\n"
+        )
+        if content.startswith("#!"):
+            first, rest = content.split("\n", 1)
+            content = first + "\n" + insert + rest
+        else:
+            content = insert + content
+        target.write_text(content, encoding="utf-8")
+PY
       \
       SITEPKG="$(/opt/venvs/core/bin/python -c 'import site; print(site.getsitepackages()[0])')"; \
       printf "%s\n" "/opt/pilot/repos/kohya_ss/sd-scripts" > "${SITEPKG}/kohya_sd_scripts.pth"; \
@@ -238,23 +260,26 @@ RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then \
     fi
 
 # ----- InvokeAI (dedicated venv; pinned to core torch stack) -----
-RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
+RUN if [ "${INSTALL_INVOKE}" = "1" ]; then
       set -eux; \
       python -m venv /opt/venvs/invoke; \
       /opt/venvs/invoke/bin/pip install --upgrade pip setuptools wheel; \
       \
+      # Install InvokeAI v6.10.0 (latest)
+      /opt/venvs/invoke/bin/pip install invokeai==6.10.0; \
+      \
       # Install Invoke-specific torch stack (kept separate from core)
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        --index-url ${INVOKE_TORCH_INDEX_URL} \
+      /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cu126 \
         torch==${INVOKE_TORCH_VERSION} \
         torchvision==${INVOKE_TORCHVISION_VERSION} \
         torchaudio==${INVOKE_TORCHAUDIO_VERSION}; \
       # Then install invoke deps with explicit pins (skip core constraint to allow different transformers); also pin numpy<2
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+      /opt/venvs/invoke/bin/pip install --no-cache-dir \
         "diffusers[torch]==0.33.0" \
         "numpy<2" \
         invokeai; \
-    fi
+      fi
 
 
 # ----- project files -----

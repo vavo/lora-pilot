@@ -542,6 +542,8 @@ def delete_model(name: str):
     def add_path(p: Path):
         if p.exists():
             to_delete.append(p)
+            # Debug logging
+            print(f"DEBUG: Marked for deletion: {p}")
 
     if kind == "hf_file":
         # hf_file sources look like repo:path/in/repo/filename
@@ -554,20 +556,46 @@ def delete_model(name: str):
         # hf_repo or others: use include globs if provided; otherwise try name* heuristic
         patterns = [p.strip() for p in include.split(",") if p.strip()] if include else []
         if not patterns:
-            patterns = [f"{name}*", f"{name}.*"]
+            # For hf_repo, be more conservative - only match exact name or name with common suffixes
+            patterns = [
+                f"{name}.*",           # Exact name with any extension
+                f"{name}*",             # Exact name prefix (more conservative)
+            ]
+        print(f"DEBUG: Model {name}, kind={kind}, patterns={patterns}, target_dir={target_dir}")
+        print(f"DEBUG: Include pattern: '{include}'")
+        
         for pat in patterns:
+            print(f"DEBUG: Searching for pattern: {pat}")
             for p in target_dir.glob(pat):
-                add_path(p)
+                # Additional safety check: only delete files that are actually related to this model
+                # For hf_repo types, be extra careful and only delete files that match the exact model name
+                if kind == "hf_repo":
+                    filename = p.name.lower()
+                    model_name_lower = name.lower()
+                    # Only delete if filename starts with the exact model name
+                    if filename.startswith(model_name_lower):
+                        add_path(p)
+                    else:
+                        print(f"DEBUG: Skipping {p.name} - doesn't match model name {name}")
+                else:
+                    add_path(p)
+
+    print(f"DEBUG: Total files marked for deletion: {len(to_delete)}")
+    for p in to_delete:
+        print(f"DEBUG: Will delete: {p}")
 
     deleted = 0
     for p in to_delete:
         try:
             if p.is_dir():
+                print(f"DEBUG: Deleting directory: {p}")
                 shutil.rmtree(p, ignore_errors=True)
             else:
+                print(f"DEBUG: Deleting file: {p}")
                 p.unlink(missing_ok=True)
             deleted += 1
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: Failed to delete {p}: {e}")
             pass
 
     return {"status": "ok", "deleted": deleted}
