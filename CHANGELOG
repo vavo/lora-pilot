@@ -1,3 +1,6 @@
-Version 1.6
+Version 1.8
+- updated InvokeAI to 6.10.0
+- several UX fixes and improvements in Control Pilot
 - addressed several critical security issues
-- added shutdown scheduler to ControlPilot (schedule shutdown in X minutes/hours/days in Dashboard)
+- added shutdown scheduler to ControlPilot (schedule shutdown in X minutes/hours/days in Dashboard); supports pod with local storage, network volumes and local docker images. In order for shutdown schedule to work with pods using network volumes, env variable RUNPOD_VOLUME_TYPE must be set to "network" (RUNPOD_VOLUME_TYPE=network). 
+!!!WARNING!!! Setting RUNPOD_VOLUME_TYPE to "network" will cause the pod to terminate (delete) when the shutdown schedule is triggered. Use only with pods with mounted network volumes.

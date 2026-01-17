@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MANIFEST="/opt/pilot/config/models.manifest.default"
+CONFIG_DIR="${CONFIG_DIR:-/workspace/config}"
+MANIFEST="${MODELS_MANIFEST:-${CONFIG_DIR}/models.manifest}"
+DEFAULT_MANIFEST="${DEFAULT_MODELS_MANIFEST:-/opt/pilot/config/models.manifest.default}"
 
 BASE_DIR="${BASE_DIR:-/workspace/models}"
 TITLE="${TITLE:-Model Downloader}"
@@ -46,7 +48,10 @@ elif have_cmd huggingface-cli; then
   FILE_DL="huggingface-cli"
 fi
 
-[[ -f "$MANIFEST" ]] || die "Manifest not found: $MANIFEST"
+if [[ ! -f "$MANIFEST" ]]; then
+  [[ -f "$DEFAULT_MANIFEST" ]] || die "Manifest not found: $MANIFEST (default: $DEFAULT_MANIFEST)"
+  MANIFEST="$DEFAULT_MANIFEST"
+fi
 mkdir -p "$BASE_DIR"
 : > "$LOGFILE"
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import base64
+import fnmatch
 import mimetypes
 import os
 import re
@@ -166,6 +167,42 @@ def classify_model(name: str, source: str, subdir: str) -> str:
     return "OTHERS"
 
 
+def _normalize_match_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+
+def _matches_any_pattern(rel_path: str, patterns: List[str]) -> bool:
+    return any(fnmatch.fnmatch(rel_path, pat) for pat in patterns)
+
+
+def _select_hf_repo_files(target_dir: Path, patterns: List[str], model_name: str) -> List[Path]:
+    if not target_dir.exists():
+        return []
+    files = [p for p in target_dir.rglob("*") if p.is_file()]
+    if patterns:
+        filtered: List[Path] = []
+        for p in files:
+            rel = p.relative_to(target_dir).as_posix()
+            if _matches_any_pattern(rel, patterns):
+                filtered.append(p)
+        files = filtered
+    if not files:
+        return []
+
+    norm_name = _normalize_match_key(model_name)
+    if norm_name:
+        exact = [p for p in files if _normalize_match_key(p.stem) == norm_name]
+        if exact:
+            return exact
+        partial = [p for p in files if norm_name in _normalize_match_key(p.stem)]
+        if partial:
+            return partial
+        # For shared model directories, avoid deleting unrelated files.
+        if target_dir.resolve().parent == MODELS_DIR.resolve():
+            return []
+    return files
+
+
 def parse_manifest() -> List[ModelEntry]:
     ensure_manifest()
     entries: List[ModelEntry] = []
@@ -231,20 +268,17 @@ def parse_manifest() -> List[ModelEntry]:
             repo = source.split(":")[0] if ":" in source else source
             if kind == "hf_file":
                 path_in_repo = source.split(":", 1)[1] if ":" in source else ""
-                fname = Path(path_in_repo).name
-                expected = [target_dir / fname]
+                if path_in_repo:
+                    expected = [target_dir / path_in_repo]
+                    fallback = target_dir / Path(path_in_repo).name
+                    if fallback not in expected:
+                        expected.append(fallback)
             elif kind == "url":
                 fname = Path(source.split("?")[0]).name
                 expected = [target_dir / fname]
             elif kind == "hf_repo":
-                pats = [p.strip() for p in include.split(",")] if include else []
-                if pats:
-                    for pat in pats:
-                        if pat:
-                            matched.extend(target_dir.glob(pat))
-                else:
-                    # no include pattern; consider any file as match
-                    matched.extend(target_dir.glob("*"))
+                pats = [p.strip() for p in include.split(",") if p.strip()] if include else []
+                matched.extend(_select_hf_repo_files(target_dir, pats, name))
             # If we have explicit expected files, check those
             if expected:
                 matched.extend([p for p in expected if p.exists()])
@@ -542,60 +576,31 @@ def delete_model(name: str):
     def add_path(p: Path):
         if p.exists():
             to_delete.append(p)
-            # Debug logging
-            print(f"DEBUG: Marked for deletion: {p}")
 
     if kind == "hf_file":
         # hf_file sources look like repo:path/in/repo/filename
-        fname = source.split(":", 1)[-1] if ":" in source else source
-        fname = os.path.basename(fname)
-        add_path(target_dir / fname)
+        path_in_repo = source.split(":", 1)[1] if ":" in source else source
+        if path_in_repo:
+            add_path(target_dir / path_in_repo)
+            fallback = target_dir / os.path.basename(path_in_repo)
+            add_path(fallback)
     elif kind == "url":
         add_path(target_dir / os.path.basename(source.split("?", 1)[0]))
     else:
-        # hf_repo or others: use include globs if provided; otherwise try name* heuristic
+        # hf_repo or others: use include patterns when provided
         patterns = [p.strip() for p in include.split(",") if p.strip()] if include else []
-        if not patterns:
-            # For hf_repo, be more conservative - only match exact name or name with common suffixes
-            patterns = [
-                f"{name}.*",           # Exact name with any extension
-                f"{name}*",             # Exact name prefix (more conservative)
-            ]
-        print(f"DEBUG: Model {name}, kind={kind}, patterns={patterns}, target_dir={target_dir}")
-        print(f"DEBUG: Include pattern: '{include}'")
-        
-        for pat in patterns:
-            print(f"DEBUG: Searching for pattern: {pat}")
-            for p in target_dir.glob(pat):
-                # Additional safety check: only delete files that are actually related to this model
-                # For hf_repo types, be extra careful and only delete files that match the exact model name
-                if kind == "hf_repo":
-                    filename = p.name.lower()
-                    model_name_lower = name.lower()
-                    # Only delete if filename starts with the exact model name
-                    if filename.startswith(model_name_lower):
-                        add_path(p)
-                    else:
-                        print(f"DEBUG: Skipping {p.name} - doesn't match model name {name}")
-                else:
-                    add_path(p)
-
-    print(f"DEBUG: Total files marked for deletion: {len(to_delete)}")
-    for p in to_delete:
-        print(f"DEBUG: Will delete: {p}")
+        for p in _select_hf_repo_files(target_dir, patterns, name):
+            add_path(p)
 
     deleted = 0
     for p in to_delete:
         try:
             if p.is_dir():
-                print(f"DEBUG: Deleting directory: {p}")
                 shutil.rmtree(p, ignore_errors=True)
             else:
-                print(f"DEBUG: Deleting file: {p}")
                 p.unlink(missing_ok=True)
             deleted += 1
-        except Exception as e:
-            print(f"DEBUG: Failed to delete {p}: {e}")
+        except Exception:
             pass
 
     return {"status": "ok", "deleted": deleted}
@@ -833,28 +838,53 @@ def get_gpus() -> List[GPUInfo]:
     return gpus
 
 
+def _runpod_shutdown_command():
+    pod_id = os.environ.get("RUNPOD_POD_ID", "").strip()
+    if not pod_id:
+        return None, None, ""
+
+    mode = os.environ.get("RUNPOD_POD_SHUTDOWN", "").strip().lower()
+    if mode in ("remove", "terminate", "delete"):
+        return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
+    if mode in ("stop", "halt"):
+        return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
+
+    volume_type = os.environ.get("RUNPOD_VOLUME_TYPE", "").strip().lower()
+    if volume_type in ("network", "network-volume", "nfs", "volume"):
+        return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
+    if volume_type in ("local", "local-storage", "ephemeral", "local-ssd"):
+        return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
+
+    if os.environ.get("RUNPOD_NETWORK_VOLUME_ID"):
+        return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
+
+    # Default to stop to avoid deleting pods with local storage.
+    return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
+
+
 def shutdown_worker():
     """Worker function that waits for shutdown time and executes shutdown"""
     global shutdown_scheduled, shutdown_time
-    
+
     while True:
         with shutdown_lock:
             if not shutdown_scheduled or shutdown_time is None:
                 break
-                
+
             time_remaining = shutdown_time - time.time()
-            
+
             if time_remaining <= 0:
                 # Time to shutdown
-                pod_id = os.environ.get("RUNPOD_POD_ID", "").strip()
-                if pod_id:
-                    print(f"Executing scheduled shutdown via runpodctl for pod {pod_id}...")
-                    subprocess.run(["runpodctl", "remove", "pod", pod_id], check=False)
+                cmd, mode, pod_id = _runpod_shutdown_command()
+                if cmd:
+                    try:
+                        subprocess.run(cmd, check=False)
+                    except FileNotFoundError:
+                        os.system("shutdown -h now")
                 else:
-                    print("RUNPOD_POD_ID not set; falling back to shutdown -h now")
                     os.system("shutdown -h now")
                 break
-                
+
             # Sleep for a short time, then check again
             shutdown_lock.release()
             time.sleep(min(10, time_remaining))

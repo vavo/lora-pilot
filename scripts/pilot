@@ -18,7 +18,7 @@ case "$cmd" in
       echo "password:    ${CODE_SERVER_PASSWORD}"
       echo "ComfyUI:     http://localhost:${COMFY_PORT:-5555}"
       echo "Kohya:       http://localhost:${KOHYA_PORT:-6666}"
-      echo "DiffPipe TB: http://localhost:${DIFFPIPE_PORT:-4444}"
+      echo "TensorBoard: http://localhost:${DIFFPIPE_PORT:-4444}"
     else
       echo "/workspace/config/secrets.env not found"
       exit 1

@@ -35,7 +35,8 @@ sd3-medium-fp8-allinone|hf_file|stabilityai/stable-diffusion-3-medium:sd3_medium
 sd3.5-medium-fp8-allinone|hf_file|Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors|checkpoints||11.60GB
 
 # --- FLUX.1 Models ---
-flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|diffusion_models||23.80GBflux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||0.34GB
+flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|diffusion_models||23.80GB
+flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||0.34GB
 
 # --- Flux 2 (ComfyUI-ready, quantized) ---
 # NOTE: these are the Comfy-Org split_files that match ComfyUI_examples for Flux 2

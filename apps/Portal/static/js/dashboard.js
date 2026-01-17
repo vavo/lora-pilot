@@ -84,11 +84,7 @@ window.initDashboard = async function () {
     content.style.display = "";
     
     // Load shutdown status
-    try {
-      updateShutdownStatus();
-    } catch (e) {
-      console.error('Failed to load shutdown status:', e);
-    }
+    updateShutdownStatus();
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
     content.style.display = "none";
@@ -114,10 +110,7 @@ async function scheduleShutdown() {
   const valueInput = document.getElementById('shutdown-value');
   const unitSelect = document.getElementById('shutdown-unit');
   
-  if (!valueInput || !unitSelect) {
-    console.error('Shutdown input elements not found');
-    return;
-  }
+  if (!valueInput || !unitSelect) return;
   
   const value = parseInt(valueInput.value);
   const unit = unitSelect.value;
@@ -161,39 +154,13 @@ async function cancelShutdown() {
 }
 
 async function updateShutdownStatus() {
-  console.log('Updating shutdown status...');
-  
-  // Show debug info
-  const debugDiv = document.getElementById('shutdown-debug');
-  if (debugDiv) {
-    debugDiv.style.display = 'block';
-    debugDiv.textContent = 'Debug: Loading shutdown status...';
-  }
-  
   try {
     const status = await fetchJson('/api/shutdown/status');
-    console.log('Shutdown status response:', status);
-    
-    // Null checks for all elements
     const inputsDiv = document.getElementById('shutdown-inputs');
     const statusDiv = document.getElementById('shutdown-status');
     const timeSpan = document.getElementById('shutdown-time');
     const countdownSpan = document.getElementById('shutdown-countdown');
-    
-    console.log('Elements found:', { inputsDiv, statusDiv, timeSpan, countdownSpan });
-    
-    if (debugDiv) {
-      debugDiv.textContent = `Debug: Elements found - inputs: ${!!inputsDiv}, status: ${!!statusDiv}, time: ${!!timeSpan}, countdown: ${!!countdownSpan}`;
-    }
-    
-    // Only proceed if all required elements exist
-    if (!inputsDiv || !statusDiv || !timeSpan || !countdownSpan) {
-      console.warn('Shutdown scheduler elements not found, skipping update');
-      if (debugDiv) {
-        debugDiv.textContent = 'Debug: Some elements missing, check DOM structure';
-      }
-      return;
-    }
+    if (!inputsDiv || !statusDiv || !timeSpan || !countdownSpan) return;
     
     if (status.scheduled) {
       inputsDiv.style.display = 'none';
@@ -222,24 +189,14 @@ async function updateShutdownStatus() {
       }
     }
     
-    // Hide debug after successful load
-    if (debugDiv) {
-      setTimeout(() => { debugDiv.style.display = 'none'; }, 2000);
-    }
   } catch (error) {
-    console.error('Failed to fetch shutdown status:', error);
-    if (debugDiv) {
-      debugDiv.textContent = `Debug: Error - ${error.message}`;
-    }
+    // ignore transient errors
   }
 }
 
 function updateCountdown(seconds) {
   const countdownSpan = document.getElementById('shutdown-countdown');
-  if (!countdownSpan) {
-    console.warn('Countdown element not found');
-    return;
-  }
+  if (!countdownSpan) return;
   
   if (seconds <= 0) {
     countdownSpan.textContent = 'Shutting down...';

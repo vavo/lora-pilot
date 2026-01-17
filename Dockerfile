@@ -153,6 +153,7 @@ RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       transformers==${TRANSFORMERS_VERSION} \
       peft==${PEFT_VERSION} \
       safetensors \
+      torchsde \
       "numpy<2" \
         "pillow<12" \
         tqdm \
@@ -253,10 +254,8 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       # Install InvokeAI v6.10.0 (latest) after torch is in place
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install "invokeai==6.10.0" && \
       \
-      # Install additional invoke deps with explicit pins (skip core constraint to allow different transformers); also pin numpy<2
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        "diffusers[torch]==0.33.0" \
-        "numpy<2"; \
+      # Keep numpy <2 to avoid upstream breaking changes
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2"; \
       fi
 
 
@@ -267,7 +266,6 @@ COPY scripts/get-models.sh /opt/pilot/get-models.sh
 COPY scripts/get-modelsgui.sh /opt/pilot/get-modelsgui.sh
 
 COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
-COPY scripts/smoke-test.sh /opt/pilot/smoke-test.sh
 COPY scripts/gpu-smoke-test.sh /opt/pilot/gpu-smoke-test.sh
 COPY scripts/start-jupyter.sh /opt/pilot/start-jupyter.sh
 COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
@@ -292,7 +290,6 @@ RUN echo 'source /opt/venvs/core/bin/activate' > /etc/profile.d/core-venv.sh && 
 RUN set -eux; \
     for f in \
       /opt/pilot/bootstrap.sh \
-      /opt/pilot/smoke-test.sh \
       /opt/pilot/gpu-smoke-test.sh \
       /opt/pilot/start-jupyter.sh \
       /opt/pilot/start-code-server.sh \
