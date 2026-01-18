@@ -106,6 +106,15 @@ CODE_SERVER_PORT=8443
 JUPYTER_PORT=8888
 INVOKE_PORT=9090
 
+## Jupyter (optional)
+JUPYTER_ALLOW_ORIGIN_PAT=...   # extra origin regex appended to defaults (RunPod proxy + localhost + 127.0.0.1)
+
+## Shutdown scheduler (ControlPilot)
+RUNPOD_POD_SHUTDOWN=stop       # default; safe for local storage
+RUNPOD_POD_SHUTDOWN=remove     # terminate pod (network volume only)
+RUNPOD_VOLUME_TYPE=network    # auto-select remove
+RUNPOD_VOLUME_TYPE=local      # auto-select stop
+
 ## Hugging Face (optional but often necessary)
 HF_TOKEN=...                 # for gated models
 HF_HUB_ENABLE_HF_TRANSFER=1  # faster downloads (requires hf_transfer, included)
@@ -143,6 +152,8 @@ If your get-models.sh supports workspace overrides, the intended override locati
 
 (If you don’t have override logic yet, copy the default into /workspace/config/ and point the script there. Humans love paper cuts.)
 
+Both `models` and `modelsgui` will use `/workspace/config/models.manifest` when present.
+
 ## Example usage
 
 # download SDXL base checkpoint into /workspace/models/checkpoints
@@ -165,7 +176,23 @@ If you need help or have questions, feel free to reach out or open an issue on G
 
 Reddit: u/no3us
 
-⸻
+---
+
+## 🆕 Recent Updates
+
+### Localhost Deployment Support
+- **Fixed ComfyUI proxy** - Resolved httpx import issues for localhost compatibility
+- **Universal deployment** - ComfyUI live preview now works on both RunPod and localhost
+- **Mixed content fixes** - Proper HTTPS/HTTP handling in different environments
+- **Training logs fixed** - Kohya training logs now display correctly on localhost
+
+### ComfyUI Integration
+- **Live preview** - Real-time image generation display in ControlPilot
+- **WebSocket proxy** - Seamless ComfyUI WebSocket connection handling
+- **Dynamic URLs** - Automatic detection of RunPod vs localhost deployment
+- **Last image display** - Shows latest generated image when no new images are being generated
+
+---
 
 ## 🙏 Standing on the shoulders of giants
 - ComfyUI - Node-based magic

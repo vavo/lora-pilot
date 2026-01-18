@@ -40,7 +40,7 @@ run:
 	docker run -d --name $(CONTAINER) --platform $(PLATFORM) \
 		-e JUPYTER_TOKEN="$(JUPYTER_TOKEN)" \
 		-e CODE_SERVER_PASSWORD="$(CODE_SERVER_PASSWORD)" \
-		-p 8888:8888 -p 8443:8443 \
+		-p 7878:7878 -p 4444:4444 -p 5555:5555 -p 6666:6666 -p 8888:8888 -p 9090:9090 -p 8443:8443 \
 		-v "$(WORKSPACE_DIR)":/workspace \
 		$(FULL_IMAGE)
 	@$(MAKE) urls

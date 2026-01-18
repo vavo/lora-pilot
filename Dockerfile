@@ -172,7 +172,7 @@ RUN /opt/venvs/core/bin/pip install --no-cache-dir \
     -c /opt/pilot/config/core-constraints.txt \
     fastapi "uvicorn[standard]" pydantic python-multipart \
     flask flask-cors requests python-dotenv \
-    python-socketio
+    python-socketio websockets pillow httpx
 
 # ----- ComfyUI + Manager -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \

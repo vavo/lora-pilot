@@ -4,7 +4,12 @@ set -euo pipefail
 ROOT="${WORKSPACE_ROOT:-/workspace}"
 PORT="${JUPYTER_PORT:-8888}"
 SECRETS="${ROOT}/config/secrets.env"
-ALLOW_ORIGIN_PAT="${JUPYTER_ALLOW_ORIGIN_PAT:-https://.*\\.proxy\\.runpod\\.net}"
+DEFAULT_ORIGIN_PAT="https://.*\\.proxy\\.runpod\\.net|https?://localhost(:[0-9]+)?|https?://127\\.0\\.0\\.1(:[0-9]+)?"
+if [ -n "${JUPYTER_ALLOW_ORIGIN_PAT:-}" ]; then
+  ALLOW_ORIGIN_PAT="${DEFAULT_ORIGIN_PAT}|${JUPYTER_ALLOW_ORIGIN_PAT}"
+else
+  ALLOW_ORIGIN_PAT="${DEFAULT_ORIGIN_PAT}"
+fi
 
 # Force a sane HOME (ignore ENV HOME if it's on a funky mount)
 export HOME="${ROOT}/home/root"

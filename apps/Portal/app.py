@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import base64
-import fnmatch
 import mimetypes
 import os
 import re
@@ -24,6 +23,16 @@ try:
     from .dpipe_api import router as dpipe_router  # type: ignore
 except ImportError:
     from dpipe_api import router as dpipe_router  # type: ignore
+
+# Import service modules (handle both package and flat module execution)
+try:
+    from .services import models as models_service  # type: ignore
+    from .services import shutdown as shutdown_service  # type: ignore
+    from .services.comfy import create_router as create_comfy_router  # type: ignore
+except ImportError:
+    from services import models as models_service  # type: ignore
+    from services import shutdown as shutdown_service  # type: ignore
+    from services.comfy import create_router as create_comfy_router  # type: ignore
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -54,34 +63,6 @@ TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
 
-# Shutdown scheduler globals
-shutdown_scheduled = False
-shutdown_time = None
-shutdown_thread = None
-shutdown_lock = threading.Lock()
-
-
-def ensure_manifest():
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    if not MANIFEST.exists() and DEFAULT_MANIFEST.exists():
-        shutil.copy(DEFAULT_MANIFEST, MANIFEST)
-
-
-class ModelEntry(BaseModel):
-    name: str
-    kind: str
-    source: str
-    subdir: str
-    include: Optional[str] = ""
-    expected_size_bytes: Optional[int] = None
-    category: str
-    type: str
-    installed: bool
-    size_bytes: int
-    info_url: Optional[str] = None
-    target_path: str
-
 
 class ServiceEntry(BaseModel):
     name: str  # supervisor program name
@@ -106,17 +87,6 @@ class GPUInfo(BaseModel):
     util: Optional[int] = None
     mem_used: Optional[int] = None
     mem_total: Optional[int] = None
-
-
-class ShutdownRequest(BaseModel):
-    value: int
-    unit: str  # "minutes", "hours", "days"
-
-
-class ShutdownStatus(BaseModel):
-    scheduled: bool
-    time_remaining: Optional[int] = None  # seconds remaining
-    shutdown_time: Optional[str] = None  # ISO timestamp
 
 
 class Telemetry(BaseModel):
@@ -156,164 +126,6 @@ class NoCacheStaticFiles(StaticFiles):
         return response
 
 
-def classify_model(name: str, source: str, subdir: str) -> str:
-    key = f"{name} {source} {subdir}".lower()
-    if "flux" in key:
-        return "FLUX"
-    if "wan" in key:
-        return "WAN"
-    if any(k in key for k in ["sdxl", "sd_xl", "stable-diffusion-xl", "-xl", "xl-"]):
-        return "SDXL"
-    return "OTHERS"
-
-
-def _normalize_match_key(value: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", value.lower())
-
-
-def _matches_any_pattern(rel_path: str, patterns: List[str]) -> bool:
-    return any(fnmatch.fnmatch(rel_path, pat) for pat in patterns)
-
-
-def _select_hf_repo_files(target_dir: Path, patterns: List[str], model_name: str) -> List[Path]:
-    if not target_dir.exists():
-        return []
-    files = [p for p in target_dir.rglob("*") if p.is_file()]
-    if patterns:
-        filtered: List[Path] = []
-        for p in files:
-            rel = p.relative_to(target_dir).as_posix()
-            if _matches_any_pattern(rel, patterns):
-                filtered.append(p)
-        files = filtered
-    if not files:
-        return []
-
-    norm_name = _normalize_match_key(model_name)
-    if norm_name:
-        exact = [p for p in files if _normalize_match_key(p.stem) == norm_name]
-        if exact:
-            return exact
-        partial = [p for p in files if norm_name in _normalize_match_key(p.stem)]
-        if partial:
-            return partial
-        # For shared model directories, avoid deleting unrelated files.
-        if target_dir.resolve().parent == MODELS_DIR.resolve():
-            return []
-    return files
-
-
-def parse_manifest() -> List[ModelEntry]:
-    ensure_manifest()
-    entries: List[ModelEntry] = []
-    if not MANIFEST.exists():
-        return entries
-    subdir_to_type = {
-        "checkpoints": "checkpoint",
-        "vae": "vae",
-        "vae_approx": "vae",
-        "loras": "lora",
-        "refiners": "refiner",
-        "text_encoders": "text_encoder",
-        "clip": "clip",
-        "clip_vision": "clip_vision",
-        "controlnet": "controlnet",
-        "diffusers": "diffusers",
-        "diffusion_models": "checkpoint",
-        "embeddings": "embedding",
-        "hypernetworks": "hypernetwork",
-        "latent_upscale_models": "latent_upscale",
-        "audio_encoders": "audio_encoder",
-        "photomaker": "photomaker",
-        "style_models": "style",
-        "unet": "unet",
-        "upscale_models": "upscale",
-    }
-
-    def parse_size(raw: str) -> Optional[int]:
-        if not raw:
-            return None
-        s = raw.strip().lower()
-        try:
-            if s.endswith("tb"):
-                return int(float(s[:-2]) * 1024 * 1024 * 1024 * 1024)
-            if s.endswith("gb"):
-                return int(float(s[:-2]) * 1024 * 1024 * 1024)
-            if s.endswith("mb"):
-                return int(float(s[:-2]) * 1024 * 1024)
-            if s.endswith("kb"):
-                return int(float(s[:-2]) * 1024)
-            # plain bytes
-            if s.replace(".", "", 1).isdigit():
-                return int(float(s))
-        except Exception:
-            return None
-        return None
-
-    with MANIFEST.open() as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            parts = line.split("|")
-            if len(parts) < 4:
-                continue
-            name, kind, source, subdir, *rest = parts
-            include = rest[0] if rest else ""
-            expected_size_bytes = parse_size(rest[1]) if len(rest) > 1 else None
-            target_dir = MODELS_DIR / subdir
-            target_dir.mkdir(parents=True, exist_ok=True)
-            expected: List[Path] = []
-            matched: List[Path] = []
-            repo = source.split(":")[0] if ":" in source else source
-            if kind == "hf_file":
-                path_in_repo = source.split(":", 1)[1] if ":" in source else ""
-                if path_in_repo:
-                    expected = [target_dir / path_in_repo]
-                    fallback = target_dir / Path(path_in_repo).name
-                    if fallback not in expected:
-                        expected.append(fallback)
-            elif kind == "url":
-                fname = Path(source.split("?")[0]).name
-                expected = [target_dir / fname]
-            elif kind == "hf_repo":
-                pats = [p.strip() for p in include.split(",") if p.strip()] if include else []
-                matched.extend(_select_hf_repo_files(target_dir, pats, name))
-            # If we have explicit expected files, check those
-            if expected:
-                matched.extend([p for p in expected if p.exists()])
-            # Prefer safetensors when summarizing size
-            safes = [p for p in matched if p.suffix == ".safetensors"]
-            use_files = safes or matched
-            installed = len(use_files) > 0
-            size_bytes = sum(p.stat().st_size for p in use_files)
-            if not installed and expected_size_bytes:
-                size_bytes = expected_size_bytes
-            category = classify_model(name, source, subdir)
-            mtype = subdir_to_type.get(subdir, "checkpoint")
-            info_url = None
-            if kind.startswith("hf_"):
-                repo = source.split(":")[0]
-                info_url = f"https://huggingface.co/{repo}"
-            elif source.startswith("http"):
-                info_url = source
-            entries.append(
-                ModelEntry(
-                    name=name,
-                    kind=kind,
-                    source=source,
-                    subdir=subdir,
-                    include=include,
-                    expected_size_bytes=expected_size_bytes,
-                    category=category,
-                    type=mtype,
-                    installed=installed,
-                    size_bytes=size_bytes,
-                    info_url=info_url,
-                    target_path=str(target_dir),
-                )
-            )
-    return entries
 
 
 app = FastAPI(title="LoRA Pilot Portal", docs_url=None, redoc_url=None)
@@ -325,6 +137,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(dpipe_router)
+app.include_router(create_comfy_router(WORKSPACE_ROOT))
 
 # No-cache headers for API responses (helps avoid stale data)
 @app.middleware("http")
@@ -342,9 +155,14 @@ async def add_no_cache_headers(request: Request, call_next):
 README_PRIMARY = Path("/opt/pilot/README.md")
 README_FALLBACK = Path("/workspace/README.md")
 
-@app.get("/api/models", response_model=List[ModelEntry])
+@app.get("/api/models", response_model=List[models_service.ModelEntry])
 def list_models():
-    return parse_manifest()
+    return models_service.parse_manifest(
+        MANIFEST,
+        DEFAULT_MANIFEST,
+        MODELS_DIR,
+        CONFIG_DIR,
+    )
 
 
 @app.get("/api/datasets", response_model=List[DatasetEntry])
@@ -538,7 +356,7 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
 
 @app.post("/api/models/{name}/pull")
 def pull_model(name: str):
-    ensure_manifest()
+    models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
     # Use existing CLI for consistency
     try:
         result = subprocess.run(
@@ -555,54 +373,11 @@ def pull_model(name: str):
 
 @app.post("/api/models/{name}/delete")
 def delete_model(name: str):
-    ensure_manifest()
-    line = None
-    with MANIFEST.open() as f:
-        for l in f:
-            if l.strip().startswith("#") or not l.strip():
-                continue
-            parts = l.strip().split("|")
-            if parts and parts[0] == name:
-                line = parts
-                break
-    if not line:
+    models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
+    try:
+        deleted = models_service.delete_model(name, MANIFEST, MODELS_DIR)
+    except KeyError:
         raise HTTPException(status_code=404, detail="Unknown model")
-    parts = line + ["", "", "", ""]
-    _, kind, source, subdir, include, *_ = parts
-    target_dir = MODELS_DIR / subdir
-    to_delete: list[Path] = []
-    include = include.strip()
-
-    def add_path(p: Path):
-        if p.exists():
-            to_delete.append(p)
-
-    if kind == "hf_file":
-        # hf_file sources look like repo:path/in/repo/filename
-        path_in_repo = source.split(":", 1)[1] if ":" in source else source
-        if path_in_repo:
-            add_path(target_dir / path_in_repo)
-            fallback = target_dir / os.path.basename(path_in_repo)
-            add_path(fallback)
-    elif kind == "url":
-        add_path(target_dir / os.path.basename(source.split("?", 1)[0]))
-    else:
-        # hf_repo or others: use include patterns when provided
-        patterns = [p.strip() for p in include.split(",") if p.strip()] if include else []
-        for p in _select_hf_repo_files(target_dir, patterns, name):
-            add_path(p)
-
-    deleted = 0
-    for p in to_delete:
-        try:
-            if p.is_dir():
-                shutil.rmtree(p, ignore_errors=True)
-            else:
-                p.unlink(missing_ok=True)
-            deleted += 1
-        except Exception:
-            pass
-
     return {"status": "ok", "deleted": deleted}
 
 
@@ -683,23 +458,23 @@ def service_log(name: str, lines: int = 50):
 
 
 @app.post("/api/shutdown/schedule")
-def schedule_shutdown_endpoint(request: ShutdownRequest):
+def schedule_shutdown_endpoint(request: shutdown_service.ShutdownRequest):
     """Schedule a shutdown"""
-    schedule_shutdown(request)
+    shutdown_service.schedule_shutdown(request)
     return {"status": "scheduled", "message": f"Shutdown scheduled in {request.value} {request.unit}"}
 
 
 @app.post("/api/shutdown/cancel")
 def cancel_shutdown_endpoint():
     """Cancel the scheduled shutdown"""
-    cancel_shutdown()
+    shutdown_service.cancel_shutdown()
     return {"status": "cancelled", "message": "Shutdown cancelled"}
 
 
-@app.get("/api/shutdown/status", response_model=ShutdownStatus)
+@app.get("/api/shutdown/status", response_model=shutdown_service.ShutdownStatus)
 def shutdown_status_endpoint():
     """Get the current shutdown status"""
-    return get_shutdown_status()
+    return shutdown_service.get_shutdown_status()
 
 
 def get_meminfo():
@@ -836,107 +611,6 @@ def get_gpus() -> List[GPUInfo]:
         except Exception:
             continue
     return gpus
-
-
-def _runpod_shutdown_command():
-    pod_id = os.environ.get("RUNPOD_POD_ID", "").strip()
-    if not pod_id:
-        return None, None, ""
-
-    mode = os.environ.get("RUNPOD_POD_SHUTDOWN", "").strip().lower()
-    if mode in ("remove", "terminate", "delete"):
-        return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
-    if mode in ("stop", "halt"):
-        return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
-
-    volume_type = os.environ.get("RUNPOD_VOLUME_TYPE", "").strip().lower()
-    if volume_type in ("network", "network-volume", "nfs", "volume"):
-        return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
-    if volume_type in ("local", "local-storage", "ephemeral", "local-ssd"):
-        return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
-
-    if os.environ.get("RUNPOD_NETWORK_VOLUME_ID"):
-        return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
-
-    # Default to stop to avoid deleting pods with local storage.
-    return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
-
-
-def shutdown_worker():
-    """Worker function that waits for shutdown time and executes shutdown"""
-    global shutdown_scheduled, shutdown_time
-
-    while True:
-        with shutdown_lock:
-            if not shutdown_scheduled or shutdown_time is None:
-                break
-
-            time_remaining = shutdown_time - time.time()
-
-            if time_remaining <= 0:
-                # Time to shutdown
-                cmd, mode, pod_id = _runpod_shutdown_command()
-                if cmd:
-                    try:
-                        subprocess.run(cmd, check=False)
-                    except FileNotFoundError:
-                        os.system("shutdown -h now")
-                else:
-                    os.system("shutdown -h now")
-                break
-
-            # Sleep for a short time, then check again
-            shutdown_lock.release()
-            time.sleep(min(10, time_remaining))
-            shutdown_lock.acquire()
-
-
-def schedule_shutdown(request: ShutdownRequest):
-    """Schedule a shutdown for the specified time"""
-    global shutdown_scheduled, shutdown_time, shutdown_thread
-    
-    # Convert to seconds
-    multipliers = {"minutes": 60, "hours": 3600, "days": 86400}
-    if request.unit not in multipliers:
-        raise HTTPException(status_code=400, detail="Invalid unit. Must be: minutes, hours, days")
-    
-    delay_seconds = request.value * multipliers[request.unit]
-    
-    with shutdown_lock:
-        shutdown_scheduled = True
-        shutdown_time = time.time() + delay_seconds
-        
-        # Start the shutdown worker thread
-        shutdown_thread = threading.Thread(target=shutdown_worker, daemon=True)
-        shutdown_thread.start()
-
-
-def cancel_shutdown():
-    """Cancel the scheduled shutdown"""
-    global shutdown_scheduled, shutdown_time, shutdown_thread
-    
-    with shutdown_lock:
-        shutdown_scheduled = False
-        shutdown_time = None
-        shutdown_thread = None
-
-
-def get_shutdown_status() -> ShutdownStatus:
-    """Get the current shutdown status"""
-    global shutdown_scheduled, shutdown_time
-    
-    with shutdown_lock:
-        if not shutdown_scheduled or shutdown_time is None:
-            return ShutdownStatus(scheduled=False)
-        
-        time_remaining = max(0, int(shutdown_time - time.time()))
-        shutdown_time_str = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(shutdown_time))
-        
-        return ShutdownStatus(
-            scheduled=True,
-            time_remaining=time_remaining,
-            shutdown_time=shutdown_time_str
-        )
 
 
 @app.get("/api/telemetry", response_model=Telemetry)
@@ -1116,7 +790,7 @@ def trainpilot_logs(limit: int = 500):
     # Also try to read the latest Kohya training log file
     try:
         # Find the most recent training output directory
-        outs_base = Path("/workspace/outs")
+        outs_base = Path("/workspace/outputs")
         if outs_base.exists():
             # Get all output directories and sort by modification time
             output_dirs = [d for d in outs_base.iterdir() if d.is_dir()]

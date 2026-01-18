@@ -1,4 +1,17 @@
+Version 1.9
+
+- ControlPilot shutdown scheduler defaults to safe stop for local storage; remove/delete requires explicit RUNPOD_POD_SHUTDOWN=remove or RUNPOD_VOLUME_TYPE=network.
+- Jupyter allow-origin defaults to RunPod proxy + localhost/127.0.0.1; add more with JUPYTER_ALLOW_ORIGIN_PAT.
+- ControlPilot model sizing/deletes fixed for hf_repo and nested hf_file paths.
+- modelsgui now honors /workspace/config/models.manifest when present.
+- Fixed ComfyUI proxy httpx import issue - moved to module-level imports for localhost compatibility.
+- Fixed Kohya training logs display - corrected path from /workspace/outs to /workspace/outputs.
+- Added universal deployment support for ComfyUI live preview (RunPod + localhost).
+- Fixed mixed content issues in ComfyUI integration for both environments.
+- huge refactor of Control Pilot
+
 Version 1.8
+
 - updated InvokeAI to 6.10.0
 - several UX fixes and improvements in Control Pilot
 - addressed several critical security issues
