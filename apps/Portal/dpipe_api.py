@@ -288,7 +288,19 @@ def start_training(req: TrainRequest):
     _ensure_single_run()
 
     ds_path = Path(req.dataset_path)
-    cfg_dir = Path(req.config_dir)
+    # Constrain config_dir to a subdirectory under WORKSPACE to avoid arbitrary path usage.
+    base_cfg_root = (WORKSPACE / "configs").resolve()
+    user_cfg_component = Path(req.config_dir)
+    # Prevent absolute paths and normalize to avoid path traversal (e.g., "..").
+    if user_cfg_component.is_absolute():
+        raise HTTPException(status_code=400, detail="config_dir must be a relative path or name")
+    cfg_dir = (base_cfg_root / user_cfg_component).resolve()
+    try:
+        cfg_dir.relative_to(base_cfg_root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="config_dir is invalid")
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+
     out_dir = Path(req.output_dir)
     if not ds_path.exists():
         raise HTTPException(status_code=400, detail="dataset_path does not exist")
