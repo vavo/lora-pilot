@@ -55,6 +55,20 @@ Expose them in RunPod (or just use my RunPod template - https://console.runpod.i
 
 ---
 
+## Local Docker (Compose)
+
+LoRA Pilot also runs on localhost via Docker Compose (GPU, CPU, and dev setups included).
+
+Quick start:
+```bash
+cp .env.example .env
+docker compose -f docker-compose.yml up -d
+```
+
+See `DOCKER_COMPOSE.md` for a short overview and `docker-compose/README.md` for the full guide.
+
+---
+
 ## Storage layout
 
 The container treats **`/workspace`** as the only place that matters.

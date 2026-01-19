@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  lora-pilot:
+    image: vavo/lora-pilot:latest
+    container_name: lora-pilot-minimal
+    restart: unless-stopped
+    
+    # NO GPU - CPU only mode
+    # Note: Resource limits via 'deploy' are ignored by local Docker Compose
+    # Use Docker daemon limits or external orchestration for production resource control
+    
+    ports:
+      # Only essential ports
+      - "7878:7878"  # ControlPilot
+      - "8888:8888"  # JupyterLab
+    
+    volumes:
+      - ./workspace:/workspace
+    
+    environment:
+      - TZ=America/New_York
+      # CPU-only optimizations
+      - OMP_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+
+networks:
+  default:
+    name: lora-pilot-minimal-network

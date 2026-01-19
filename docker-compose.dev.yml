@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  lora-pilot:
+    image: vavo/lora-pilot:latest
+    container_name: lora-pilot-dev
+    restart: unless-stopped
+    
+    # GPU support
+    runtime: nvidia
+    environment:
+      # GPU configuration
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,display
+      
+      # Timezone
+      - TZ=America/New_York
+      
+      # Development mode settings
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=development
+      # Enable debug features
+      - DEBUG=1
+    
+    ports:
+      - "7878:7878"
+      - "8888:8888"
+      - "8443:8443"
+      - "5555:5555"
+      - "6666:6666"
+      - "9090:9090"
+      - "4444:4444"
+    
+    volumes:
+      # Development workspace
+      - ./workspace:/workspace
+      # Mount source code for development (optional)
+      - ./apps/Portal:/opt/pilot/apps/Portal
+      # Mount scripts for development (optional) - Note: runtime scripts are at root level
+      # This mount is for development of the scripts themselves
+      - ./scripts:/opt/pilot/scripts
+      # Mount root-level scripts that are actually used at runtime
+      - ./scripts:/opt/pilot
+      # Mount supervisor config (optional)
+      - ./supervisor:/etc/supervisor
+    
+    # Override entrypoint for development
+    entrypoint: ["/usr/bin/tini", "-s", "--"]
+    command: ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
+    
+    # Keep container running for debugging
+    stdin_open: true
+    tty: true
+
+networks:
+  default:
+    name: lora-pilot-dev-network

@@ -5,10 +5,14 @@ Version 1.9
 - ControlPilot model sizing/deletes fixed for hf_repo and nested hf_file paths.
 - modelsgui now honors /workspace/config/models.manifest when present.
 - Fixed ComfyUI proxy httpx import issue - moved to module-level imports for localhost compatibility.
-- Fixed Kohya training logs display - corrected path from /workspace/outs to /workspace/outputs.
+- TrainPilot log reader now scans /workspace/outputs/*/_logs/train.log for Kohya output.
 - Added universal deployment support for ComfyUI live preview (RunPod + localhost).
 - Fixed mixed content issues in ComfyUI integration for both environments.
-- huge refactor of Control Pilot
+- Major architectural refactor: Extracted services into modular structure (comfy.py, models.py, shutdown.py).
+- Added comprehensive Docker Compose setup for local development with GPU/CPU/Dev modes.
+- Added docker-compose-helper.sh script for easy container management.
+- Added environment variable configuration (.env.example) for customization.
+- Added health checks for local deployment and documented Compose resource-limit caveats.
 
 Version 1.8
 

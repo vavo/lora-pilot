@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  lora-pilot:
+    # Replace with your image tag
+    image: vavo/lora-pilot:latest
+    container_name: lora-pilot
+    restart: unless-stopped
+    
+    # GPU support - remove if no GPU available
+    runtime: nvidia
+    environment:
+      # GPU configuration
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,display
+      
+      # Timezone
+      - TZ=America/New_York
+      
+      # Hugging Face token (optional, for private models)
+      # - HF_TOKEN=your_huggingface_token_here
+      
+      # Supervisor admin password (optional)
+      # - SUPERVISOR_ADMIN_PASSWORD=your_secure_password
+      
+      # Custom ports (optional - must match ports above)
+      - JUPYTER_PORT=8888
+      - CODE_SERVER_PORT=8443
+      - COMFY_PORT=5555
+      - KOHYA_PORT=6666
+      - INVOKE_PORT=9090
+      - DIFFPIPE_PORT=4444
+    
+    ports:
+      # ControlPilot - Main web interface
+      - "7878:7878"
+      # JupyterLab
+      - "8888:8888"
+      # VS Code Server
+      - "8443:8443"
+      # ComfyUI
+      - "5555:5555"
+      # Kohya SS
+      - "6666:6666"
+      # InvokeAI
+      - "9090:9090"
+      # Diffusion Pipe + TensorBoard
+      - "4444:4444"
+    
+    volumes:
+      # Main workspace - persistent storage
+      - ./workspace:/workspace
+      # Optional: Mount your own models directory
+      # - ./my-models:/workspace/models
+      # Optional: Mount your datasets directory
+      # - ./my-datasets:/workspace/datasets
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7878/api/services"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Optional: Add labels for organization
+    labels:
+      - "com.docker.compose.project=lora-pilot"
+      - "description=LoRA Pilot - AI training and generation platform"
+
+# Optional: Add networks for better isolation
+networks:
+  default:
+    name: lora-pilot-network
+    driver: bridge
