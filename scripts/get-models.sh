@@ -71,7 +71,7 @@ require_manifest() {
 }
 
 # Manifest format (| separated):
-# name|kind|source|subdir|include
+# name|kind|source|subdir|include|size(optional)
 # kind: url | hf_file | hf_repo
 #
 # hf_file source: <repo_id>:<path_in_repo>
@@ -139,13 +139,13 @@ hf_download_repo() {
 
 pull_one() {
   local name="$1" override_subdir="${2:-}"
-  local line kind source subdir include
+  local line kind source subdir include size
   line="$(read_line_for_name "${name}")" || {
     echo "ERROR: unknown model: ${name}"
     exit 2
   }
 
-  IFS='|' read -r _name kind source subdir include <<< "${line}"
+  IFS='|' read -r _name kind source subdir include size <<< "${line}"
 
   if [[ -n "${override_subdir}" ]]; then
     subdir="${override_subdir}"

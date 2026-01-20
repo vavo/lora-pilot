@@ -87,9 +87,7 @@ function startLogPoll() {
     if (!pre) return;
     try {
       const data = await fetchJson("/dpipe/train/logs?limit=500");
-      // Use Array.prototype.reduce() as fallback for older browsers without .flat()
-      const logs = data.logs || {};
-      const lines = Object.values(logs).reduce((acc, val) => acc.concat(val), []);
+      const lines = normalizeDpipeLines(data);
       pre.textContent = lines.join("\n");
     } catch (e) {
       // ignore
@@ -103,6 +101,18 @@ window.stopDpipeLog = function () {
   if (dpLogTimer) clearInterval(dpLogTimer);
   dpLogTimer = null;
 };
+
+function normalizeDpipeLines(data) {
+  if (!data) return [];
+  if (Array.isArray(data.lines)) return data.lines;
+  const logs = data.logs || data.log || {};
+  if (Array.isArray(logs)) return logs;
+  if (logs && typeof logs === "object") {
+    // Use Array.prototype.reduce() as fallback for older browsers without .flat()
+    return Object.values(logs).reduce((acc, val) => acc.concat(val), []);
+  }
+  return [];
+}
 
 function val(id) { return document.getElementById(id)?.value.trim() || ""; }
 function num(id) { return parseInt(val(id) || "0", 10); }

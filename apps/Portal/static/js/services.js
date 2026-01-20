@@ -47,7 +47,7 @@ window.serviceAction = async function (name, action) {
 
 window.viewServiceLog = async function (name) {
   try {
-    const res = await fetchJson(`/api/services/${encodeURIComponent(name)}/log?lines=200`);
+    const res = await fetchJson(`/api/services/${encodeURIComponent(name)}/log?lines=100`);
     alert(`${res.path}\n\n${res.log}`);
   } catch (e) {
     alert(`Failed to load log: ${e.message || e}`);

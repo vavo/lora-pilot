@@ -70,6 +70,10 @@ export CODE_SERVER_PASSWORD="${CODE_SERVER_PASSWORD}"
 export SUPERVISOR_ADMIN_PASSWORD="${SUPERVISOR_ADMIN_PASSWORD}"
 EOT
 
+if [ -n "${HF_TOKEN:-}" ]; then
+  echo "export HF_TOKEN=\"${HF_TOKEN}\"" >> "$SECRETS_FILE"
+fi
+
 chmod 600 "$SECRETS_FILE" 2>/dev/null || true
 
 echo "=== LoRA Pilot bootstrap complete ==="

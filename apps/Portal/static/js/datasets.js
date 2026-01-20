@@ -28,6 +28,7 @@ async function loadDatasets() {
         <td>${size}</td>
         <td>${d.has_tags ? "Yes" : "No"}</td>
         <td style="text-align:right;">
+          <button class="pill" data-rename="${d.name}">Rename</button>
           <button class="pill danger" data-del="${d.name}">Delete</button>
         </td>`;
       list.appendChild(tr);
@@ -50,6 +51,29 @@ async function loadDatasets() {
         try {
           await fetchJson(`/api/datasets/${encodeURIComponent(name)}`, { method: "DELETE" });
           status.textContent = "Deleted.";
+          await loadDatasets();
+        } catch (e) {
+          status.textContent = `Error: ${e.message || e}`;
+        }
+      });
+    });
+    list.querySelectorAll("button[data-rename]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const name = btn.getAttribute("data-rename");
+        if (!name) return;
+        const currentDisplay = name.replace(/^1_/, "").replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        const newName = prompt(`Rename dataset "${currentDisplay}" to:`, currentDisplay);
+        if (newName === null || newName.trim() === "") return;
+        if (newName.trim() === currentDisplay) return;
+        
+        status.textContent = "Renaming...";
+        try {
+          await fetchJson(`/api/datasets/${encodeURIComponent(name)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: newName.trim() })
+          });
+          status.textContent = "Renamed.";
           await loadDatasets();
         } catch (e) {
           status.textContent = `Error: ${e.message || e}`;

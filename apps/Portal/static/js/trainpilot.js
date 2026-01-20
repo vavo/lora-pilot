@@ -96,8 +96,20 @@ function startTpLogPoll() {
     const status = document.getElementById("tp-status");
     if (!pre) return;
     try {
-      const data = await fetchJson("/api/trainpilot/logs?limit=500");
+      const response = await fetch("/api/trainpilot/logs?limit=500");
+      if (!response.ok) {
+        console.error("TrainPilot logs endpoint returned:", response.status, response.statusText);
+        pre.textContent = `Error loading logs: ${response.status} ${response.statusText}`;
+        return;
+      }
+      const data = await response.json();
       const lines = data.lines || [];
+      
+      // Always show the latest logs, even if they're just debug info
+      if (lines.length === 0) {
+        pre.textContent = "No logs available yet...";
+        return;
+      }
       
       // Enhance log display with better formatting
       const formattedLines = lines.map(line => {
@@ -123,6 +135,15 @@ function startTpLogPoll() {
         if (line.includes('=== Training finished')) {
           return `✅ ${line}`;
         }
+        if (line.includes('--- TrainPilot logs endpoint called')) {
+          return `📡 ${line}`;
+        }
+        if (line.includes('--- TrainPilot process running')) {
+          return `🟢 ${line}`;
+        }
+        if (line.includes('--- No TrainPilot process')) {
+          return `🔴 ${line}`;
+        }
         return line;
       });
       
@@ -137,6 +158,10 @@ function startTpLogPoll() {
           status.textContent = 'Training completed!';
         } else if (lastLine.includes('error') || lastLine.includes('Error')) {
           status.textContent = `Error: ${lastLine.trim()}`;
+        } else if (lastLine.includes('--- TrainPilot process running')) {
+          status.textContent = 'Training process is running...';
+        } else if (lastLine.includes('--- No TrainPilot process')) {
+          status.textContent = 'No training process active';
         } else if (lastLine && !lastLine.includes('---')) {
           status.textContent = lastLine.trim();
         }
@@ -162,7 +187,8 @@ function startTpLogPoll() {
       // Auto-scroll to bottom
       pre.scrollTop = pre.scrollHeight;
     } catch (e) {
-      // Ignore transient errors
+      console.error("Error polling TrainPilot logs:", e);
+      // Don't show error in UI to avoid noise, just log to console
     }
   };
   poll();
@@ -198,12 +224,16 @@ window.showTomlConfig = async function () {
   
   try {
     // Fetch TOML content from backend
-    const response = await fetchJson("/api/trainpilot/toml");
+    const response = await fetch("/api/trainpilot/toml");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
     
-    if (response.content) {
+    if (data.content) {
       content.className = "toml-content";
       // Apply basic TOML syntax highlighting
-      content.innerHTML = highlightToml(response.content);
+      content.innerHTML = highlightToml(data.content);
     } else {
       content.className = "toml-loading";
       content.textContent = "Configuration file not found or empty.";

@@ -39,6 +39,9 @@
         .collapsible-content.expanded { max-height: 1000px; overflow-y: auto; }
         .rotate-icon { transition: transform 0.3s ease; }
         .rotate-icon.expanded { transform: rotate(180deg); }
+        .tagpilot-version { position: fixed; bottom: 8px; right: 12px; font-size: 12px; color: #94a3b8; text-decoration: none; opacity: 0.8; z-index: 3000; }
+        .tagpilot-version:hover { opacity: 1; text-decoration: underline; }
+        :root[data-theme="light"] .tagpilot-version { color: #64748b; }
     </style>
 </head>
 <body>
@@ -500,6 +503,27 @@ Expected outcome is a human-readable continuous text consisting of several sente
             });
         }
 
+        async function parseResponseError(resp) {
+            let data = null;
+            try {
+                data = await resp.clone().json();
+            } catch (e) {}
+            if (data) {
+                if (data.error && typeof data.error === 'object') {
+                    return data.error.message || JSON.stringify(data.error);
+                }
+                if (data.error) return String(data.error);
+                if (data.message) return String(data.message);
+                if (data.detail) return String(data.detail);
+                return JSON.stringify(data);
+            }
+            try {
+                const text = await resp.text();
+                if (text) return text;
+            } catch (e) {}
+            return `HTTP ${resp.status}`;
+        }
+
         async function generateCaption(imageFile) {
             const model = getModel();
             const base64 = await fileToBase64(imageFile);
@@ -507,6 +531,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
             if (model === 'deepdanbooru') {
                 const threshold = localStorage.getItem('ddThreshold') || '0.5';
                 const resp = await fetch(`https://deepdanbooru.donmai.us/?url=${encodeURIComponent(base64)}&min_score=${threshold}`);
+                if (!resp.ok) throw new Error(`DeepDanbooru error: ${await parseResponseError(resp)}`);
                 const text = await resp.text();
                 const tags = text.split('\n').map(line => line.match(/^(.*?) \(/)?.[1].trim()).filter(Boolean);
                 return tags.join(', ');
@@ -526,11 +551,13 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         input: { image: base64, general_thresh: general, character_thresh: char }
                     })
                 });
+                if (!create.ok) throw new Error(`Replicate error: ${await parseResponseError(create)}`);
                 const data = await create.json();
                 let result = data;
                 while (result.status !== 'succeeded' && result.status !== 'failed') {
                     await new Promise(r => setTimeout(r, 1000));
                     const poll = await fetch(result.urls.get, { headers: { 'Authorization': `Bearer ${apiKey}` } });
+                    if (!poll.ok) throw new Error(`Replicate poll error: ${await parseResponseError(poll)}`);
                     result = await poll.json();
                 }
                 if (result.status === 'failed') throw new Error('WD1.4 tagging failed');
@@ -553,8 +580,11 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         ] }]
                     })
                 });
+                if (!resp.ok) throw new Error(`Gemini error: ${await parseResponseError(resp)}`);
                 const data = await resp.json();
-                responseText = data.candidates[0].content.parts[0].text;
+                const cand = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!cand) throw new Error('Gemini response missing content');
+                responseText = cand;
             } else {
                 const isGrok = model === 'grok';
                 const endpoint = isGrok ? 'https://api.x.ai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
@@ -571,8 +601,11 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         max_tokens: 300
                     })
                 });
+                if (!resp.ok) throw new Error(`Completions error: ${await parseResponseError(resp)}`);
                 const data = await resp.json();
-                responseText = data.choices[0].message.content;
+                const choice = data?.choices?.[0]?.message?.content;
+                if (!choice) throw new Error('Completions response missing content');
+                responseText = choice;
             }
             return responseText.trim();
         }
@@ -857,29 +890,29 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         async function handleSaveToWorkspace() {
             if (dataset.length === 0) return showNotification("No images to export");
-            const name = datasetNameInput.value.trim() || 'dataset';
-            const zip = new JSZip();
-            dataset.forEach(item => {
-                zip.file(item.file.name, item.file);
-                const txtName = item.file.name.replace(/\.[^/.]+$/, ".txt");
-                zip.file(txtName, item.tags);
-            });
-            const blob = await zip.generateAsync({type:"blob"});
-            const fd = new FormData();
-            fd.append("file", new File([blob], `${name}.zip`, {type:"application/zip"}));
             try {
+                showNotification("Saving to /workspace/datasets...");
+                const name = datasetNameInput?.value.trim() || 'dataset';
+                const zip = new JSZip();
+                dataset.forEach(item => {
+                    zip.file(item.file.name, item.file);
+                    const txtName = item.file.name.replace(/\.[^/.]+$/, ".txt");
+                    zip.file(txtName, item.tags);
+                });
+                const blob = await zip.generateAsync({type:"blob"});
+                const fd = new FormData();
+                fd.append("file", new File([blob], `${name}.zip`, {type:"application/zip"}));
                 const resp = await fetch(`${API_BASE}/api/tagpilot/save?name=${encodeURIComponent(name)}`, {
                     method: 'POST',
                     body: fd
                 });
                 if (!resp.ok) {
-                    const text = await resp.text();
-                    throw new Error(text || resp.statusText);
+                    throw new Error(await parseResponseError(resp));
                 }
                 showNotification("Saved to /workspace/datasets");
             } catch (e) {
                 console.error(e);
-                showNotification("Error saving dataset");
+                showNotification(`Error saving dataset: ${e.message || e}`);
             }
         }
 
@@ -968,7 +1001,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
                         if (wrapper) renderTagsInCard(wrapper, i);
                     } catch (e) {
+                        isBatchProcessing = false;
                         console.error(e);
+                        showNotification(`Tagging error: ${e.message || e}`);
                     }
                 }
                 processed++;
@@ -1008,7 +1043,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
                         if (wrapper) renderTagsInCard(wrapper, i);
                     } catch (e) {
+                        isBatchProcessing = false;
                         console.error(e);
+                        showNotification(`Captioning error: ${e.message || e}`);
                     }
                 }
                 processed++;
@@ -1242,5 +1279,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         render();
     </script>
+
+    <a class="tagpilot-version" href="https://github.com/vavo/tagpilot" target="_blank" rel="noopener">TagPilot v1.0</a>
 </body>
 </html>

@@ -6,10 +6,12 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import time
 import threading
 import zipfile
 from collections import deque
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
@@ -312,6 +314,44 @@ def delete_dataset(name: str):
     return {"status": "deleted", "path": str(target)}
 
 
+@app.patch("/api/datasets/{name}")
+def rename_dataset(name: str, payload: dict):
+    """Rename a dataset directory"""
+    new_name = payload.get("name", "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="new name is required")
+    
+    source = _dataset_dir(name)
+    target = _dataset_dir(new_name)
+    
+    if not source.exists():
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    
+    if target.exists() and target != source:
+        raise HTTPException(status_code=400, detail="Dataset with new name already exists")
+    
+    try:
+        # Rename the directory
+        source.rename(target)
+        
+        # Update any corresponding ZIP files
+        zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+        old_stem = _clean_name(name)
+        new_stem = _clean_name(new_name)
+        
+        for old_zip in [zip_dir / f"{old_stem}.zip", zip_dir / f"1_{old_stem}.zip"]:
+            if old_zip.exists():
+                new_zip = zip_dir / f"{new_stem}.zip"
+                try:
+                    old_zip.rename(new_zip)
+                except Exception:
+                    pass  # Best effort
+        
+        return {"status": "renamed", "old_path": str(source), "new_path": str(target)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/tagpilot/load")
 def tagpilot_load(name: str):
     target = _dataset_dir(name)
@@ -357,18 +397,26 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
 @app.post("/api/models/{name}/pull")
 def pull_model(name: str):
     models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
+    cmd = ["/opt/pilot/get-models.sh", "pull", name]
+    print(f"[models] pull start name={name} cmd={' '.join(cmd)}", file=sys.stderr)
     # Use existing CLI for consistency
     try:
         result = subprocess.run(
-            ["/opt/pilot/get-models.sh", "pull", name],
+            cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             check=True,
         )
-        return {"status": "ok", "output": result.stdout}
+        output = result.stdout or ""
+        tail = output[-4000:] if len(output) > 4000 else output
+        print(f"[models] pull ok name={name} output_tail={tail!r}", file=sys.stderr)
+        return {"status": "ok", "output": output}
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=e.stdout or str(e))
+        output = e.stdout or str(e)
+        tail = output[-4000:] if len(output) > 4000 else output
+        print(f"[models] pull failed name={name} output_tail={tail!r}", file=sys.stderr)
+        raise HTTPException(status_code=500, detail=output)
 
 
 @app.post("/api/models/{name}/delete")
@@ -400,7 +448,21 @@ async def set_hf_token(request: Request, token: Optional[str] = None):
         lines = [ln for ln in lines if not ln.startswith("export HF_TOKEN=")]
     lines.append(f'export HF_TOKEN="{token}"')
     secrets_file.write_text("\n".join(lines) + "\n")
+    os.environ["HF_TOKEN"] = token
     return {"status": "ok"}
+
+
+@app.get("/api/hf-token")
+def get_hf_token_status():
+    token = os.environ.get("HF_TOKEN")
+    if not token:
+        secrets_file = CONFIG_DIR / "secrets.env"
+        if secrets_file.exists():
+            for line in secrets_file.read_text().splitlines():
+                if line.startswith("export HF_TOKEN="):
+                    token = line.split("=", 1)[-1].strip().strip('"')
+                    break
+    return {"set": bool(token)}
 
 
 def supervisor_status(name: str) -> ServiceEntry:
@@ -443,13 +505,25 @@ def control_service(name: str, action: str):
 
 
 @app.get("/api/services/{name}/log")
-def service_log(name: str, lines: int = 50):
+def service_log(name: str, lines: int = 100):
     if name not in SERVICE_LOGS:
         raise HTTPException(status_code=404, detail="Unknown service")
     out_log, err_log = SERVICE_LOGS[name]
-    path = Path(err_log if Path(err_log).exists() else out_log)
-    if not path.exists():
+    out_path = Path(out_log)
+    err_path = Path(err_log)
+    candidates = [p for p in (out_path, err_path) if p.exists()]
+    if not candidates:
         raise HTTPException(status_code=404, detail="Log not found")
+    if len(candidates) == 2:
+        try:
+            if err_path.stat().st_size == 0 and out_path.stat().st_size > 0:
+                path = out_path
+            else:
+                path = max(candidates, key=lambda p: p.stat().st_mtime)
+        except Exception:
+            path = err_path if err_path.exists() else out_path
+    else:
+        path = candidates[0]
     try:
         content = subprocess.check_output(["tail", "-n", str(lines), str(path)], text=True)
     except subprocess.CalledProcessError:
@@ -736,6 +810,15 @@ def trainpilot_start(req: TrainPilotRequest):
     toml_path = Path(req.toml_path.strip() or "/opt/pilot/apps/TrainPilot/newlora.toml")
     if not toml_path.exists():
         raise HTTPException(status_code=400, detail=f"TOML not found: {toml_path}")
+    
+    # Add debugging info to logs
+    _tp_logs.append(f"=== Starting TrainPilot at {datetime.now().isoformat()} ===")
+    _tp_logs.append(f"Dataset: {ds_name} (from {ds_raw})")
+    _tp_logs.append(f"Output: {out_name}")
+    _tp_logs.append(f"Profile: {profile}")
+    _tp_logs.append(f"TOML: {toml_path}")
+    _tp_logs.append(f"Script: {TRAINPILOT_BIN}")
+    
     env = os.environ.copy()
     env.update(
         {
@@ -755,10 +838,13 @@ def trainpilot_start(req: TrainPilotRequest):
             stderr=subprocess.STDOUT,
             env=env,
         )
+        _tp_logs.append(f"TrainPilot process started with PID: {proc.pid}")
     except Exception as e:
+        _tp_logs.append(f"Failed to start TrainPilot: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     _tp_proc = proc
-    _tp_logs.clear()
+    _tp_logs.clear()  # Clear startup logs, start fresh for process output
+    _tp_logs.append(f"=== TrainPilot process started (PID: {proc.pid}) ===")
     threading.Thread(target=_tp_reader, args=(proc,), daemon=True).start()
     return {"status": "started", "pid": proc.pid}
 
@@ -784,34 +870,70 @@ def trainpilot_logs(limit: int = 500):
     """Get combined logs from TrainPilot process and Kohya training logs."""
     lines = []
     
+    # Add initial status
+    lines.append(f"--- TrainPilot logs endpoint called at {datetime.now().isoformat()} ---")
+    
+    # Check TrainPilot process status
+    global _tp_proc
+    if _tp_proc:
+        if _tp_proc.poll() is None:
+            lines.append(f"--- TrainPilot process running (PID: {_tp_proc.pid}) ---")
+        else:
+            lines.append(f"--- TrainPilot process finished (exit code: {_tp_proc.poll()}) ---")
+    else:
+        lines.append("--- No TrainPilot process running ---")
+    
     # Add TrainPilot process logs
-    lines.extend(list(_tp_logs))
+    tp_logs = list(_tp_logs)
+    if tp_logs:
+        lines.append(f"--- TrainPilot process logs ({len(tp_logs)} lines) ---")
+        lines.extend(tp_logs)
+    else:
+        lines.append("--- No TrainPilot process logs available ---")
     
     # Also try to read the latest Kohya training log file
     try:
         # Find the most recent training output directory
         outs_base = Path("/workspace/outputs")
         if outs_base.exists():
+            lines.append(f"--- Checking outputs directory: {outs_base} ---")
             # Get all output directories and sort by modification time
             output_dirs = [d for d in outs_base.iterdir() if d.is_dir()]
+            lines.append(f"--- Found {len(output_dirs)} output directories ---")
             output_dirs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
             
-            for output_dir in output_dirs[:3]:  # Check last 3 directories
+            for i, output_dir in enumerate(output_dirs[:3]):  # Check last 3 directories
+                lines.append(f"--- Checking output dir {i+1}: {output_dir.name} ---")
                 log_file = output_dir / "_logs" / "train.log"
+                lines.append(f"--- Looking for log file: {log_file} ---")
                 if log_file.exists():
                     try:
+                        stat_info = log_file.stat()
+                        lines.append(f"--- Log file exists, size: {stat_info.st_size} bytes, modified: {datetime.fromtimestamp(stat_info.st_mtime)} ---")
                         with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
                             kohya_lines = f.readlines()
                             # Add a separator to distinguish Kohya logs
                             if kohya_lines:
-                                lines.append(f"--- Kohya training logs from {output_dir.name} ---")
+                                lines.append(f"--- Kohya training logs from {output_dir.name} ({len(kohya_lines)} lines) ---")
                                 lines.extend([line.rstrip() for line in kohya_lines[-100:]])  # Last 100 lines
                                 break  # Only read from the most recent training
-                    except Exception:
+                    except Exception as e:
+                        lines.append(f"--- Error reading Kohya logs from {output_dir.name}: {str(e)} ---")
                         continue
-    except Exception:
-        pass  # If we can't read Kohya logs, just return TrainPilot logs
+                else:
+                    lines.append(f"--- Log file not found: {log_file} ---")
+                    # Check if the _logs directory exists
+                    logs_dir = output_dir / "_logs"
+                    if logs_dir.exists():
+                        lines.append(f"--- _logs directory exists, contents: {list(logs_dir.iterdir())} ---")
+                    else:
+                        lines.append(f"--- _logs directory does not exist ---")
+        else:
+            lines.append("--- No training outputs directory found at /workspace/outputs ---")
+    except Exception as e:
+        lines.append(f"--- Error accessing training outputs: {str(e)} ---")
     
+    # Always return a valid response, even if empty
     return {"lines": lines[-limit:]}
 
 

@@ -39,7 +39,7 @@ ARG INVOKE_TORCHVISION_VERSION=0.22.0
 ARG INVOKE_TORCHAUDIO_VERSION=2.7.0
 ARG INVOKE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
 ARG CUDA_NVCC_PKG=cuda-nvcc-12-4
-ARG CROC_VERSION=10.0.7
+ARG CROC_VERSION=10.3.1
 
 # ----- base deps -----
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -253,6 +253,9 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       \
       # Install InvokeAI v6.10.0 (latest) after torch is in place
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install "invokeai==6.10.0" && \
+      \
+      # Enable HF transfer acceleration in invoke venv
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "huggingface_hub[hf_transfer]" && \
       \
       # Keep numpy <2 to avoid upstream breaking changes
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2"; \
