@@ -133,10 +133,13 @@ function renderModelCard(m) {
   const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
   const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
   const installedPill = `<span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span>`;
-  const safePath = (m.primary_path || "").replace(/'/g, "\\'");
-  const copyBtn = m.installed && m.primary_path
-    ? `<button class="ghost" onclick="copyModelPath('${safePath}')">Copy path</button>`
-    : "";
+  const safePath = (m.primary_path || m.target_path || "").replace(/'/g, "\\'");
+  const copyIcon = `
+    <svg class="model-path-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
+      <rect x="4" y="4" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
+    </svg>
+  `;
   const installBtn = !m.installed
     ? `<button onclick="pullModel('${m.name}', this)">Install</button>`
     : "";
@@ -145,6 +148,11 @@ function renderModelCard(m) {
     : "";
   const src = m.source || "—";
   const target = m.primary_path || m.target_path || "";
+  const pathRow = target
+    ? (m.installed
+      ? `<button class="model-path" type="button" onclick="copyModelPath('${safePath}')"><code>${target}</code>${copyIcon}</button>`
+      : `<div class="model-path"><code>${target}</code></div>`)
+    : "";
   card.innerHTML = `
     <div class="model-title">
       <div class="model-name">${nameCell}</div>
@@ -156,10 +164,9 @@ function renderModelCard(m) {
       <div>Kind: <strong>${m.kind || "—"}</strong></div>
     </div>
     <div class="model-source" title="${src}">${src}</div>
-    ${target ? `<div class="model-meta">Path: <code>${target}</code></div>` : ""}
+    ${pathRow}
     <div class="model-actions">
       ${installedPill}
-      ${copyBtn}
       ${installBtn}
       ${deleteBtn}
     </div>

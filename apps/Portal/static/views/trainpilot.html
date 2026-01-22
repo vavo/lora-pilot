@@ -36,6 +36,12 @@
     <button onclick="startTrainPilot()">Start</button>
     <button class="danger" onclick="stopTrainPilot()">Stop</button>
     <span id="tp-status" class="status"></span>
+    <div id="tp-progress-wrap" class="tp-progress-wrap" style="display:none;">
+      <div class="tp-progress">
+        <div id="tp-progress-bar" class="tp-progress-bar"></div>
+      </div>
+      <span id="tp-progress-text" class="tp-progress-text"></span>
+    </div>
     <span id="tp-training-indicator" style="display:none; margin-left:10px;">
       <span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%; margin-right:6px; animation:pulse 2s infinite;"></span>
       <span style="color:#10b981; font-size:13px;">Training Active</span>
@@ -48,17 +54,47 @@
       Click to preview the current training configuration
     </div>
   </div>
+  <div class="card" style="margin-top:12px;">
     <h3>Training Logs</h3>
     <div style="margin-bottom:8px; font-size:12px; color:var(--muted);">
       Shows TrainPilot process logs + Kohya training output from <code>/workspace/outputs/*/_logs/train.log</code>
     </div>
     <pre id="tp-logs" style="max-height:300px; overflow:auto; background:var(--card); color:var(--text); padding:12px; border-radius:8px; border:1px solid var(--border); font-family:monospace; font-size:12px; line-height:1.4;"></pre>
   </div>
+ </div>
   
   <style>
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
+    }
+
+    .tp-progress-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 6px;
+    }
+
+    .tp-progress {
+      width: 180px;
+      height: 10px;
+      background: var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .tp-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), #10b981);
+      transition: width 0.2s ease-out;
+    }
+
+    .tp-progress-text {
+      font-size: 12px;
+      color: var(--muted);
+      min-width: 90px;
     }
     
     .modal {
@@ -162,7 +198,6 @@
       color: var(--muted);
     }
   </style>
-</div>
 
 <!-- TOML Config Modal -->
 <div id="toml-modal" class="modal">

@@ -12,8 +12,14 @@
   .model-meta { font-size:12px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px 12px; }
   .model-source { font-size:12px; background:var(--pill); border-radius:6px; padding:4px 6px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .model-actions { display:flex; flex-wrap:wrap; gap:8px; }
-  .model-actions button { padding:6px 10px; font-size:12px; }
+  .model-actions { align-items:center; }
+  .model-actions button { padding:6px 10px; font-size:12px; display:inline-flex; align-items:center; }
+  .model-actions .pill { display:inline-flex; align-items:center; line-height:1; }
   .model-actions .ghost { background:var(--pill); color:var(--text); border:1px solid var(--border); }
+  .model-path { display:flex; align-items:center; gap:6px; width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--pill); color:var(--text); text-align:left; }
+  .model-path code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .model-path-icon { width:14px; height:14px; color:var(--muted); flex:0 0 auto; }
+  button.model-path { cursor:pointer; }
 </style>
 
 <h2>Models</h2>

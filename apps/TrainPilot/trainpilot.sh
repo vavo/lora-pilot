@@ -181,7 +181,6 @@ while :; do
         fi
       fi
       IMG_CNT="${SRC_IMAGES}"
-      echo "Headless: SRC_PATH='${SRC_PATH}' TRAIN_DIR='${TRAIN_DIR}' TARGET='${TRAIN_DIR}/${REPEATS_USED}_${DATASET_NAME}'"
 
       # --------------------------------------------------
       # PROFILE PARAMS
@@ -267,6 +266,7 @@ while :; do
 
       REPEATS_USED="$(compute_repeats "$PROFILE" "$IMG_CNT")"
       TARGET="$TRAIN_DIR/${REPEATS_USED}_${DATASET_NAME}"
+      echo "Headless: SRC_PATH='${SRC_PATH}' TRAIN_DIR='${TRAIN_DIR}' TARGET='${TARGET}'"
 
       if [[ "${NO_CONFIRM}" == "1" ]]; then
         echo "Preparing Images: Cleaning + copying dataset."

@@ -1,3 +1,14 @@
+Version 1.99
+
+- Added ComfyUI-Downloader custom node to the image and workspace install path.
+- ComfyUI user assets now mirror into the frontend static root to prevent 404s for user.css/userdata/templates.
+- TrainPilot shows a real progress bar parsed from Kohya step logs (status no longer echoes raw log line).
+- Headless TrainPilot stability fixes: corrected SRC_PATH/TRAIN_DIR logging and unbound variable crash.
+- Models page redesign with card layout, inline filters, and click-to-copy model paths with truncation.
+- New models added to models.manifest
+- Docs section now renders markdown
+- Changelog added to Docs
+
 Version 1.9
 
 - ControlPilot shutdown scheduler defaults to safe stop for local storage; remove/delete requires explicit RUNPOD_POD_SHUTDOWN=remove or RUNPOD_VOLUME_TYPE=network.

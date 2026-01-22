@@ -174,7 +174,7 @@ RUN /opt/venvs/core/bin/pip install --no-cache-dir \
     flask flask-cors requests python-dotenv \
     python-socketio websockets pillow httpx
 
-# ----- ComfyUI + Manager -----
+# ----- ComfyUI + Custom Nodes -----
 RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       set -eux && \
       git clone --depth 1 https://github.com/comfyanonymous/ComfyUI.git /opt/pilot/repos/ComfyUI && \
@@ -192,6 +192,8 @@ RUN if [ "${INSTALL_COMFY}" = "1" ]; then \
       mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes && \
       git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Manager.git \
         /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager && \
+      git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git \
+        /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader && \
       \
       mkdir -p /workspace/apps/comfy/user && \
       rm -rf /opt/pilot/repos/ComfyUI/user && \

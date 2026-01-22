@@ -65,10 +65,31 @@ ln -s "${USER_DIR}" "${COMFY_DIR}/user"
 ln -sf "${USER_CSS}" "${COMFY_DIR}/user.css"
 ln -sf "${USERDATA}" "${COMFY_DIR}/userdata"
 ln -sf "${TEMPLATES}" "${COMFY_DIR}/comfy.templates.json"
+# Mirror user assets into the frontend package static root if present
+FRONTEND_STATIC="$(
+  python - <<'PY' || true
+import importlib.util
+import pathlib
+spec = importlib.util.find_spec("comfyui_frontend_package")
+if not spec or not spec.origin:
+    raise SystemExit(1)
+print(pathlib.Path(spec.origin).resolve().parent / "static")
+PY
+)"
+if [[ -n "${FRONTEND_STATIC}" && -d "${FRONTEND_STATIC}" ]]; then
+  ln -sf "${USER_CSS}" "${FRONTEND_STATIC}/user.css"
+  ln -sf "${USERDATA}" "${FRONTEND_STATIC}/userdata"
+  ln -sf "${TEMPLATES}" "${FRONTEND_STATIC}/comfy.templates.json"
+fi
 # Ensure ComfyUI-Manager is present in workspace custom_nodes before rewiring
 if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
   mkdir -p "${CUSTOM_NODES_DIR}"
   cp -a "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/"
+fi
+# Ensure ComfyUI-Downloader is present in workspace custom_nodes before rewiring
+if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Downloader" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader" ]; then
+  mkdir -p "${CUSTOM_NODES_DIR}"
+  cp -a "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader" "${CUSTOM_NODES_DIR}/"
 fi
 # Point Comfy models to the shared workspace tree
 rm -rf "${COMFY_DIR}/models"

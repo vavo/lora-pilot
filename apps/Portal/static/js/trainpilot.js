@@ -11,6 +11,50 @@ function bindTpControls() {
   if (status) status.textContent = "";
 }
 
+function findLatestProgress(lines) {
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i];
+    if (!line || !line.includes("steps")) continue;
+    const percentMatch = line.match(/(\d+)%\|/);
+    const stepMatch = line.match(/(\d+)\s*\/\s*(\d+)/);
+    if (!percentMatch && !stepMatch) continue;
+    const current = stepMatch ? parseInt(stepMatch[1], 10) : null;
+    const total = stepMatch ? parseInt(stepMatch[2], 10) : null;
+    const percent = percentMatch
+      ? parseInt(percentMatch[1], 10)
+      : (current && total ? Math.round((current / total) * 100) : null);
+    if (percent === null || Number.isNaN(percent)) continue;
+    const lossMatch = line.match(/avr_loss=([0-9.]+)/);
+    return {
+      percent: Math.max(0, Math.min(100, percent)),
+      current,
+      total,
+      loss: lossMatch ? lossMatch[1] : null,
+    };
+  }
+  return null;
+}
+
+function updateProgressUI(progress, running, finished) {
+  const wrap = document.getElementById("tp-progress-wrap");
+  const bar = document.getElementById("tp-progress-bar");
+  const text = document.getElementById("tp-progress-text");
+  if (!wrap || !bar || !text) return;
+  if (!running || finished || !progress) {
+    wrap.style.display = "none";
+    bar.style.width = "0%";
+    text.textContent = "";
+    return;
+  }
+  wrap.style.display = "inline-flex";
+  bar.style.width = `${progress.percent}%`;
+  const stepText = progress.current && progress.total
+    ? `${progress.current}/${progress.total}`
+    : `${progress.percent}%`;
+  const lossText = progress.loss ? ` • loss ${progress.loss}` : "";
+  text.textContent = `${progress.percent}% (${stepText})${lossText}`;
+}
+
 async function loadTpDatasets() {
   const sel = document.getElementById("tp-dataset");
   const status = document.getElementById("tp-status");
@@ -106,10 +150,12 @@ function startTpLogPoll() {
       const lines = data.lines || [];
       const running = data.running === true;
       const finished = lines.some(line => line.includes('=== Training finished'));
+      const progress = findLatestProgress(lines);
       
       // Always show the latest logs, even if they're just debug info
       if (lines.length === 0) {
         pre.textContent = "No logs available yet...";
+        updateProgressUI(null, false, false);
         return;
       }
       
@@ -156,8 +202,8 @@ function startTpLogPoll() {
         const lastLine = lines[lines.length - 1];
         if (!running) {
           status.textContent = finished ? 'Training completed!' : 'No training process active';
-        } else if (lastLine.includes('step') || lastLine.includes('epoch')) {
-          status.textContent = `Training: ${lastLine.trim()}`;
+        } else if (progress) {
+          status.textContent = 'Training running';
         } else if (lastLine.includes('=== Training finished')) {
           status.textContent = 'Training completed!';
         } else if (lastLine.includes('error') || lastLine.includes('Error')) {
@@ -170,6 +216,8 @@ function startTpLogPoll() {
           status.textContent = lastLine.trim();
         }
       }
+
+      updateProgressUI(progress, running, finished);
       
       // Show training indicator if training is active
       const indicator = document.getElementById("tp-training-indicator");
@@ -181,7 +229,7 @@ function startTpLogPoll() {
         );
         const hasFinished = finished;
         
-        if (running && hasTrainingLogs && !hasFinished) {
+        if (running && (hasTrainingLogs || progress) && !hasFinished) {
           indicator.style.display = 'inline-flex';
         } else {
           indicator.style.display = 'none';
