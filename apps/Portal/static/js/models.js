@@ -39,6 +39,27 @@ window.saveHFToken = async function () {
   }
 };
 
+window.copyModelPath = async function (path) {
+  if (!path) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(path);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = path;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    alert("Path copied.");
+  } catch (e) {
+    alert(`Copy failed: ${e.message || e}`);
+  }
+};
+
 async function loadHFTokenStatus() {
   const hf = document.getElementById("hf-token");
   if (!hf) return;
@@ -82,13 +103,18 @@ async function loadModelsTable(forceReload) {
       const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
       const srcDisplay = m.source && m.source.length > 15 ? `${m.source.slice(0,15)}…` : (m.source || "—");
       const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
+      const installedPill = `<span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span>`;
+      const safePath = (m.primary_path || "").replace(/'/g, "\\'");
+      const copyBtn = m.installed && m.primary_path
+        ? ` <button onclick="copyModelPath('${safePath}')" style="margin-left:6px; background:var(--pill); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:11px;">Copy path</button>`
+        : "";
       tr.innerHTML = `
         <td>${nameCell}</td>
         <td><span class="pill">${m.category}</span></td>
         <td>${m.type}</td>
         <td><code title="${m.source || ''}">${srcDisplay}</code></td>
         <td>${size}</td>
-        <td><span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span></td>
+        <td>${installedPill}${copyBtn}</td>
         <td>
           <button onclick="pullModel('${m.name}', this)">Install</button>
           <button class="danger" onclick="deleteModel('${m.name}', this)">Delete</button>

@@ -3,7 +3,9 @@
 # --- SDXL Base Models ---
 sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6.94GB
 sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints||6.94GB
+# --- SDXL Refiners ---
 sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints||6.08GB
+sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0_0.9vae.safetensors|checkpoints||6.08GB
 
 # --- SDXL Fine-tuned Models ---
 juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
@@ -11,9 +13,14 @@ ragnarok-xl|hf_file|Ragnar-Schmidek/ragnarok-xl:ragnarok-xl.safetensors|checkpoi
 epicrealism-xl|hf_file|epicphotogasm/epicrealismXL_v11:epicrealismXL_v11.safetensors|checkpoints||6.94GB
 realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints||6.94GB
 realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints||6.94GB
+realvisxl-v5|hf_file|SG161222/RealVisXL_V5.0:RealVisXL_V5.0.safetensors|checkpoints||6.94GB
 pony-xl|hf_file|PixArt-alpha/Pony-Diffusion-XL:ponyDiffusion_v8XLReborn.safetensors|checkpoints||6.94GB
 dreamshaper-xl|hf_file|Lykon/dreamshaper-xl-1-0:dreamshaperXL10_alpha2Xl10.safetensors|checkpoints||5.95GB
 juggernaut-xl-v8|hf_file|Sxela/Juggernaut-XL-v8:Juggernaut-XL-v8.safetensors|checkpoints||7.11GB
+juggernaut-xl-v9|hf_file|Sxela/Juggernaut-XL-v9:Juggernaut-XL-v9.safetensors|checkpoints||7.11GB
+cyberrealistic-xl|hf_file|SG161222/CyberRealistic_V4.0:CyberRealistic_V4.0.safetensors|checkpoints||6.94GB
+analog-madness-xl|hf_file|Ojimi/analog-madness-xl:analog-madness-xl.safetensors|checkpoints||6.94GB
+opendalle-xl|hf_file|dataautogpt3/OpenDalleV1.1:opendalle_v11.safetensors|checkpoints||6.94GB
 
 # --- SD 1.5 Base Models ---
 sd15-base|hf_file|runwayml/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints||4.27GB
@@ -45,6 +52,10 @@ flux2-vae|hf_file|Comfy-Org/flux2-dev:split_files/vae/flux2-vae.safetensors|vae|
 flux2-turbo-lora|hf_file|Comfy-Org/flux2-dev:split_files/loras/Flux2TurboComfyv2.safetensors|loras||2.76GB
 
 # --- WAN Models ---
+wan2.1-t2v-1.3b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors|wan/wan2.1|*.safetensors|2.84GB
+wan2.1-t2v-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_14B_fp16.safetensors|wan/wan2.1|*.safetensors|28.58GB
+wan2.1-i2v-720p-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_i2v_720p_14B_fp16.safetensors|wan/wan2.1|*.safetensors|32.79GB
+wan2.1-vae|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/vae/wan_2.1_vae.safetensors|wan/wan2.1|*.safetensors|0.25GB
 wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
 wan2.2-anime-14b|hf_repo|Wan-AI/Wan2.2-Anime-14B|wan/wan2.2-anime-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json|72.40GB
 
@@ -76,3 +87,16 @@ latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:unet/diffusion_pytorch_model
 z-image-turbo|hf_file|Comfy-Org/z_image_turbo:split_files/diffusion_models/z_image_turbo_bf16.safetensors|diffusion_models||12.30GB
 z-image-qwen-encoder|hf_file|Comfy-Org/z_image_turbo:split_files/text_encoders/qwen_3_4b.safetensors|text_encoders||8.04GB
 z-image-ae|hf_file|Comfy-Org/z_image_turbo:split_files/vae/ae.safetensors|vae||0.34GB
+
+# --- Hunyuan Video Models ---
+hunyuan-video-720-fp8|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt|checkpoints||13.19GB
+hunyuan-video-720|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt|checkpoints||25.64GB
+hunyuan-video-vae|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/vae/pytorch_model.pt|vae||0.99GB
+
+# --- Text Encoders ---
+llava-llama-3-8b-text-encoder-tokenizer|hf_repo|Kijai/llava-llama-3-8b-text-encoder-tokenizer|text_encoders|*.json,*.safetensors|16.06GB
+clip-vit-large-patch14|hf_file|openai/clip-vit-large-patch14:pytorch_model.bin|text_encoders||1.70GB
+
+# --- Additional Text Encoders ---
+t5-xxl|hf_file|stabilityai/stable-diffusion-3-medium:text_encoder_2.safetensors|text_encoders||2.88GB
+clip-g|hf_file|laion/CLIP-ViT-bigG-14-laion2B-39B-b160k:open_clip_pytorch_model.bin|text_encoders||3.54GB

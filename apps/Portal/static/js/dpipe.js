@@ -1,8 +1,49 @@
 let dpLogTimer = null;
+const DP_STORAGE_KEY = "dpipeSettings";
+const DP_FIELDS = [
+  "dp-dataset",
+  "dp-config",
+  "dp-output",
+  "dp-transformer",
+  "dp-vae",
+  "dp-llm",
+  "dp-clip",
+  "dp-epochs",
+  "dp-batch",
+  "dp-lr",
+  "dp-gas",
+  "dp-rank",
+  "dp-dtype",
+  "dp-save-every",
+  "dp-eval-every",
+  "dp-ckpt-mins",
+  "dp-warmup",
+  "dp-gradclip",
+  "dp-steps-print",
+  "dp-res",
+  "dp-frames",
+  "dp-ar",
+  "dp-repeats",
+  "dp-resume",
+  "dp-double",
+  "dp-optim",
+  "dp-betas",
+  "dp-wd",
+  "dp-eps",
+  "dp-vmode",
+  "dp-eval-mb",
+  "dp-eval-gas",
+  "dp-enable-wandb",
+  "dp-wandb-name",
+  "dp-wandb-proj",
+  "dp-wandb-key",
+];
 
 window.initDpipe = function () {
   const status = document.getElementById("dp-status");
   if (status) status.textContent = "";
+  loadDpipeSettings();
+  bindDpipeSettings();
   const wandb = document.getElementById("dp-enable-wandb");
   const fields = ["dp-wandb-name","dp-wandb-proj","dp-wandb-key"].map(id => document.getElementById(id));
   if (wandb && !wandb.dataset.bound) {
@@ -19,6 +60,7 @@ window.startDpipe = async function () {
   const status = document.getElementById("dp-status");
   if (status) status.textContent = "Starting...";
   try {
+    saveDpipeSettings();
     const modelPaths = {
       transformer_path: val("dp-transformer"),
       vae_path: val("dp-vae"),
@@ -103,6 +145,54 @@ window.stopDpipe = async function () {
     if (status) status.textContent = `Error: ${e.message || e}`;
   }
 };
+
+function bindDpipeSettings() {
+  DP_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.bound) return;
+    el.dataset.bound = "1";
+    const handler = () => saveDpipeSettings();
+    el.addEventListener("change", handler);
+    el.addEventListener("input", handler);
+  });
+}
+
+function loadDpipeSettings() {
+  let data = {};
+  try {
+    data = JSON.parse(localStorage.getItem(DP_STORAGE_KEY) || "{}");
+  } catch (e) {
+    data = {};
+  }
+  DP_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || !(id in data)) return;
+    const value = data[id];
+    if (el.type === "checkbox") {
+      el.checked = Boolean(value);
+    } else if (value !== null && value !== undefined) {
+      el.value = String(value);
+    }
+  });
+}
+
+function saveDpipeSettings() {
+  const data = {};
+  DP_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === "checkbox") {
+      data[id] = el.checked;
+    } else {
+      data[id] = el.value;
+    }
+  });
+  try {
+    localStorage.setItem(DP_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    // Ignore storage errors (private mode/quota)
+  }
+}
 
 function startLogPoll() {
   if (dpLogTimer) return;

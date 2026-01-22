@@ -91,12 +91,22 @@ if [[ "${NO_CONFIRM}" == "1" && -n "${DATASET_NAME}" ]]; then
     ds_path="/workspace/datasets/${DATASET_NAME}"
   fi
   if [[ ! -d "${ds_path}" ]]; then
+    ds_path="/workspace/datasets/1_${DATASET_NAME}"
+  fi
+  if [[ ! -d "${ds_path}" ]]; then
     die "Dataset path not found: ${DATASET_NAME}"
   fi
+  base_name="$(basename "${ds_path}")"
+  if [[ "${base_name}" == 1_* ]]; then
+    DATASET_NAME="${base_name#1_}"
+  else
+    DATASET_NAME="${base_name}"
+  fi
   CHOSEN_IDX=0
-  NAMES=("$(basename "${ds_path}")")
+  NAMES=("${DATASET_NAME}")
   COUNTS=($(count_images "${ds_path}"))
   PATHS=("${ds_path}")
+  IMG_CNT="${COUNTS[0]:-0}"
   STEP="profile"
 fi
 
@@ -147,6 +157,31 @@ while :; do
       COPIED_TOML="$OUT_DIR/${OUTPUT_NAME}.toml"
       cp "$TOML" "$COPIED_TOML"
       unixify_file "$COPIED_TOML"
+
+      SRC_PATH="${PATHS[$CHOSEN_IDX]}"
+      SRC_IMAGES="$(count_images "$SRC_PATH" || echo 0)"
+      if (( SRC_IMAGES == 0 )) && [[ -d "$SRC_PATH/images" ]]; then
+        SRC_PATH="$SRC_PATH/images"
+        SRC_IMAGES="$(count_images "$SRC_PATH" || echo 0)"
+      fi
+      if (( SRC_IMAGES == 0 )); then
+        best_dir=""
+        best_count=0
+        while IFS= read -r d; do
+          c="$(count_images "$d" || echo 0)"
+          if (( c > best_count )); then
+            best_count="$c"
+            best_dir="$d"
+          fi
+        done < <(find "${PATHS[$CHOSEN_IDX]}" -maxdepth 3 -type d)
+        if (( best_count > 0 )); then
+          SRC_PATH="$best_dir"
+          SRC_IMAGES="$best_count"
+          echo "Headless: using nested dataset dir '${SRC_PATH}' (${SRC_IMAGES} images)"
+        fi
+      fi
+      IMG_CNT="${SRC_IMAGES}"
+      echo "Headless: SRC_PATH='${SRC_PATH}' TRAIN_DIR='${TRAIN_DIR}' TARGET='${TRAIN_DIR}/${REPEATS_USED}_${DATASET_NAME}'"
 
       # --------------------------------------------------
       # PROFILE PARAMS
@@ -239,10 +274,19 @@ while :; do
         info_box "Preparing Images" "Cleaning + copying dataset."
       fi
 
+      if (( IMG_CNT == 0 )); then
+        echo "ERROR: No images found in dataset source: ${SRC_PATH}" >&2
+        exit 1
+      fi
+
       mkdir -p "$TRAIN_DIR"
-      find "$TRAIN_DIR" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+      if [[ "$SRC_PATH" != "$TRAIN_DIR"* ]]; then
+        find "$TRAIN_DIR" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+      else
+        echo "Headless: source lives under train dir; skipping cleanup"
+      fi
       mkdir -p "$TARGET"
-      cp -a "${PATHS[$CHOSEN_IDX]}/." "$TARGET/"
+      cp -a "${SRC_PATH}/." "$TARGET/"
 
       # --------------------------------------------------
       # RUN TRAINING

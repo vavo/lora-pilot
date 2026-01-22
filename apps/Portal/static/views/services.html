@@ -1,4 +1,14 @@
 <h2>Services</h2>
+<style>
+  .svc-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; }
+  .svc-modal.show { display:flex; align-items:center; justify-content:center; }
+  .svc-modal-content { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:12px; width:80vw; max-width:1100px; height:70vh; display:flex; flex-direction:column; }
+  .svc-modal-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); }
+  .svc-modal-body { padding:12px 16px; overflow:auto; flex:1; background:var(--card); }
+  .svc-modal-close { background:none; border:none; font-size:20px; color:var(--muted); cursor:pointer; }
+  .svc-modal-close:hover { color:var(--text); }
+  .svc-log-pre { white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; line-height:1.4; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:12px; }
+</style>
 <div class="card">
   <div id="svc-status" class="status">Loading services...</div>
   <table id="services-table" style="display:none;">
@@ -13,4 +23,16 @@
     </thead>
     <tbody id="services-body"></tbody>
   </table>
+</div>
+
+<div id="svc-log-modal" class="svc-modal" onclick="closeServiceLog(event)">
+  <div class="svc-modal-content">
+    <div class="svc-modal-header">
+      <div id="svc-log-title">Service Log</div>
+      <button class="svc-modal-close" onclick="closeServiceLog(event)">×</button>
+    </div>
+    <div class="svc-modal-body">
+      <pre id="svc-log-content" class="svc-log-pre"></pre>
+    </div>
+  </div>
 </div>

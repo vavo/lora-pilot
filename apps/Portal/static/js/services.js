@@ -47,9 +47,22 @@ window.serviceAction = async function (name, action) {
 
 window.viewServiceLog = async function (name) {
   try {
-    const res = await fetchJson(`/api/services/${encodeURIComponent(name)}/log?lines=100`);
-    alert(`${res.path}\n\n${res.log}`);
+    const res = await fetchJson(`/api/services/${encodeURIComponent(name)}/log?lines=200`);
+    const modal = document.getElementById("svc-log-modal");
+    const title = document.getElementById("svc-log-title");
+    const content = document.getElementById("svc-log-content");
+    if (title) title.textContent = `Service Log: ${name} (${res.path})`;
+    if (content) content.textContent = res.log || "";
+    if (modal) modal.classList.add("show");
   } catch (e) {
     alert(`Failed to load log: ${e.message || e}`);
   }
+};
+
+window.closeServiceLog = function (evt) {
+  if (evt && evt.target && evt.target.id !== "svc-log-modal" && !evt.target.classList.contains("svc-modal-close")) {
+    return;
+  }
+  const modal = document.getElementById("svc-log-modal");
+  if (modal) modal.classList.remove("show");
 };

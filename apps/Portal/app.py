@@ -531,7 +531,11 @@ def service_log(name: str, lines: int = 100):
     try:
         content = subprocess.check_output(["tail", "-n", str(lines), str(path)], text=True)
     except subprocess.CalledProcessError:
-        content = path.read_text()[-5000:]
+        try:
+            file_lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+            content = "\n".join(file_lines[-lines:]) + "\n"
+        except Exception:
+            content = path.read_text()[-5000:]
     return {"log": content, "path": str(path)}
 
 

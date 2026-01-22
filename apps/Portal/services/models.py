@@ -23,6 +23,7 @@ class ModelEntry(BaseModel):
     size_bytes: int
     info_url: Optional[str] = None
     target_path: str
+    primary_path: Optional[str] = None
 
 
 def _normalize_match_key(value: str) -> str:
@@ -177,6 +178,7 @@ def parse_manifest(
             use_files = safes or matched
             installed = len(use_files) > 0
             size_bytes = sum(p.stat().st_size for p in use_files)
+            primary_path = str(use_files[0]) if use_files else None
             if not installed and expected_size_bytes:
                 size_bytes = expected_size_bytes
             category = classify_model(name, source, subdir)
@@ -201,6 +203,7 @@ def parse_manifest(
                     size_bytes=size_bytes,
                     info_url=info_url,
                     target_path=str(target_dir),
+                    primary_path=primary_path,
                 )
             )
     return entries

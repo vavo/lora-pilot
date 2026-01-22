@@ -204,6 +204,11 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
       cd /opt/pilot/repos/kohya_ss && \
       \
+      # Disable Windows torch requirements to prevent accidental reinstall attempts.
+      if [ -f "requirements_pytorch_windows.txt" ]; then \
+        printf '# disabled by LoRA Pilot (use core venv torch)\n' > requirements_pytorch_windows.txt; \
+      fi && \
+      \
       # Some kohya req files include "-r /tmp/requirements.txt" (runpod style). Provide it.
       ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt && \
       \

@@ -25,7 +25,9 @@ fi
 
 if [[ -n "${CONFIG}" ]]; then
   if [[ "${DIFFPIPE_TENSORBOARD:-1}" == "1" ]]; then
-    /opt/venvs/core/bin/tensorboard --logdir "${LOGDIR}" --bind_all --port "${PORT}" &
+    # Silence pkg_resources deprecation warning from tensorboard
+    PYTHONWARNINGS="${PYTHONWARNINGS:-ignore:pkg_resources is deprecated as an API:UserWarning}" \
+      /opt/venvs/core/bin/tensorboard --logdir "${LOGDIR}" --bind_all --port "${PORT}" &
     TB_PID=$!
     trap 'kill "${TB_PID}" 2>/dev/null || true' EXIT
   fi
