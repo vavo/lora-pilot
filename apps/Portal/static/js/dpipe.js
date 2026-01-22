@@ -19,14 +19,38 @@ window.startDpipe = async function () {
   const status = document.getElementById("dp-status");
   if (status) status.textContent = "Starting...";
   try {
-    const payload = {
-      dataset_path: val("dp-dataset"),
-      config_dir: val("dp-config"),
-      output_dir: val("dp-output"),
+    const modelPaths = {
       transformer_path: val("dp-transformer"),
       vae_path: val("dp-vae"),
       llm_path: val("dp-llm"),
       clip_path: val("dp-clip"),
+    };
+    const validate = await fetchJson("/dpipe/train/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(modelPaths),
+    });
+    if (validate && validate.missing && validate.missing.length) {
+      const missingList = validate.missing.map(m => `${m.field}: ${m.path}`).join("\n");
+      if (status) status.textContent = "Missing model files";
+      const go = confirm(`Missing model files:\n${missingList}\n\nOpen Models page to download?`);
+      if (go) {
+        if (window.loadSection) {
+          window.loadSection("models");
+        } else {
+          window.location.href = "/#models";
+        }
+      }
+      return;
+    }
+    const payload = {
+      dataset_path: val("dp-dataset"),
+      config_dir: val("dp-config"),
+      output_dir: val("dp-output"),
+      transformer_path: modelPaths.transformer_path,
+      vae_path: modelPaths.vae_path,
+      llm_path: modelPaths.llm_path,
+      clip_path: modelPaths.clip_path,
       epochs: num("dp-epochs"),
       batch_size: num("dp-batch"),
       learning_rate: parseFloat(val("dp-lr")),
@@ -90,7 +114,7 @@ function startLogPoll() {
       const lines = normalizeDpipeLines(data);
       pre.textContent = lines.join("\n");
     } catch (e) {
-      // ignore
+      // ignore when no logs yet
     }
   };
   poll();

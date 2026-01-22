@@ -87,10 +87,12 @@ def create_router(workspace_root: Path) -> APIRouter:
             image_patterns = ["*.png", "*.jpg", "*.jpeg", "*.webp"]
             latest_file = None
             latest_time = None
+            image_count = 0
 
             for pattern in image_patterns:
-                for file_path in output_dir.glob(pattern):
+                for file_path in output_dir.rglob(pattern):
                     if file_path.is_file():
+                        image_count += 1
                         file_time = file_path.stat().st_mtime
                         if latest_time is None or file_time > latest_time:
                             latest_time = file_time
@@ -99,23 +101,29 @@ def create_router(workspace_root: Path) -> APIRouter:
             if latest_file:
                 stat = latest_file.stat()
                 file_size = stat.st_size
+                rel_path = latest_file.relative_to(output_dir)
+                subfolder = rel_path.parent.as_posix() if rel_path.parent != Path(".") else ""
                 try:
                     with Image.open(latest_file) as img:
                         dimensions = f"{img.width}x{img.height}"
                 except Exception:
                     dimensions = "Unknown"
 
-                image_url = f"/proxy/comfy/view?filename={latest_file.name}"
+                image_url = f"/proxy/comfy/view?filename={rel_path.name}"
+                if subfolder:
+                    image_url += f"&subfolder={subfolder}"
                 return {
                     "image": {
                         "url": image_url,
                         "filename": latest_file.name,
+                        "subfolder": subfolder,
                         "dimensions": dimensions,
                         "size": file_size,
                         "generated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                    }
+                    },
+                    "image_count": image_count,
                 }
-            return {"image": None, "message": "No images found"}
+            return {"image": None, "message": "No images found", "image_count": 0}
         except Exception as e:
             return {"image": None, "error": str(e)}
 

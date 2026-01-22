@@ -282,6 +282,7 @@ COPY scripts/portal.sh /opt/pilot/portal.sh
 COPY scripts/pilot /usr/local/bin/pilot
 COPY apps /opt/pilot/apps
 COPY README.md /opt/pilot/README.md
+COPY CHANGELOG /opt/pilot/CHANGELOG
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Default shell: activate core venv for root sessions

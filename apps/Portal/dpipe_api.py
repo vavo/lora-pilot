@@ -17,7 +17,8 @@ MODEL_DIR = WORKSPACE / "models"
 BASE_DATASET_DIR = WORKSPACE / "datasets"
 OUTPUT_DIR = WORKSPACE / "outputs"
 CONFIG_DIR = WORKSPACE / "configs"
-DIFFPIPE_APP_DIR = WORKSPACE / "apps" / "diffusion-pipe"
+DIFFPIPE_APP_DIR = Path(os.environ.get("DIFFPIPE_APP_DIR", WORKSPACE / "apps" / "diffusion-pipe"))
+DIFFPIPE_REPO_DIR = Path(os.environ.get("DIFFPIPE_REPO_DIR", "/opt/pilot/repos/diffusion-pipe"))
 
 # Deepspeed entrypoint (assumed installed in core venv)
 DEEPSPEED_BIN = os.environ.get("DEEPSPEED_BIN", "/opt/venvs/core/bin/deepspeed")
@@ -55,6 +56,16 @@ def _read_stream(proc: subprocess.Popen, pid: int):
     proc.wait()
     with _proc_lock:
         _procs.pop(pid, None)
+
+
+def _resolve_diffpipe_dir() -> Path:
+    app_train = DIFFPIPE_APP_DIR / "train.py"
+    if DIFFPIPE_APP_DIR.exists() and app_train.exists():
+        return DIFFPIPE_APP_DIR
+    repo_train = DIFFPIPE_REPO_DIR / "train.py"
+    if DIFFPIPE_REPO_DIR.exists() and repo_train.exists():
+        return DIFFPIPE_REPO_DIR
+    return DIFFPIPE_APP_DIR
 
 
 def create_dataset_config(
@@ -231,6 +242,36 @@ class TrainRequest(BaseModel):
     wandb_tracker_name: Optional[str] = None
     wandb_api_key: Optional[str] = None
 
+
+class TrainValidateRequest(BaseModel):
+    transformer_path: str
+    vae_path: str
+    llm_path: str
+    clip_path: str
+
+
+def _normalize_path(value: str) -> Path:
+    raw = (value or "").strip()
+    if not raw:
+        return Path("")
+    return Path(os.path.expandvars(os.path.expanduser(raw)))
+
+
+@router.post("/train/validate")
+def validate_training_paths(req: TrainValidateRequest):
+    missing = []
+    checks = {
+        "transformer_path": req.transformer_path,
+        "vae_path": req.vae_path,
+        "llm_path": req.llm_path,
+        "clip_path": req.clip_path,
+    }
+    for key, value in checks.items():
+        path = _normalize_path(value)
+        if not path.exists():
+            missing.append({"field": key, "path": value})
+    return {"ok": len(missing) == 0, "missing": missing}
+
     @validator("betas")
     def _parse_betas(cls, v):
         if isinstance(v, list):
@@ -292,8 +333,11 @@ def start_training(req: TrainRequest):
     out_dir = Path(req.output_dir)
     if not ds_path.exists():
         raise HTTPException(status_code=400, detail="dataset_path does not exist")
-    if not DIFFPIPE_APP_DIR.exists():
-        raise HTTPException(status_code=500, detail=f"Diffusion-pipe app dir missing: {DIFFPIPE_APP_DIR}")
+    run_dir = _resolve_diffpipe_dir()
+    if not run_dir.exists():
+        raise HTTPException(status_code=500, detail=f"Diffusion-pipe dir missing: {run_dir}")
+    if not (run_dir / "train.py").exists():
+        raise HTTPException(status_code=500, detail=f"train.py not found in: {run_dir}")
     try:
         resolutions = json.loads(req.resolutions_input)
         frames = json.loads(req.frame_buckets)
@@ -366,7 +410,7 @@ def start_training(req: TrainRequest):
     try:
         proc = subprocess.Popen(
             cmd,
-            cwd=DIFFPIPE_APP_DIR,
+            cwd=run_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             preexec_fn=os.setsid,
@@ -416,7 +460,7 @@ def training_logs(pid: Optional[int] = None, limit: int = 500):
     with _proc_lock:
         if pid is None:
             if not _procs and not _logs:
-                raise HTTPException(status_code=404, detail="No process/logs available")
+                return {"pid": None, "lines": []}
             pid = next(iter(_logs)) if _logs else next(iter(_procs))
         lines = list(_deque_for(pid))[-limit:]
     return {"pid": pid, "lines": lines}

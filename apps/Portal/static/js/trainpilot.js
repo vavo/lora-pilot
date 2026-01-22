@@ -104,6 +104,8 @@ function startTpLogPoll() {
       }
       const data = await response.json();
       const lines = data.lines || [];
+      const running = data.running === true;
+      const finished = lines.some(line => line.includes('=== Training finished'));
       
       // Always show the latest logs, even if they're just debug info
       if (lines.length === 0) {
@@ -152,7 +154,9 @@ function startTpLogPoll() {
       // Show last meaningful line as status hint
       if (status && lines.length) {
         const lastLine = lines[lines.length - 1];
-        if (lastLine.includes('step') || lastLine.includes('epoch')) {
+        if (!running) {
+          status.textContent = finished ? 'Training completed!' : 'No training process active';
+        } else if (lastLine.includes('step') || lastLine.includes('epoch')) {
           status.textContent = `Training: ${lastLine.trim()}`;
         } else if (lastLine.includes('=== Training finished')) {
           status.textContent = 'Training completed!';
@@ -175,9 +179,9 @@ function startTpLogPoll() {
           line.includes('step') || 
           line.includes('epoch')
         );
-        const hasFinished = lines.some(line => line.includes('=== Training finished'));
+        const hasFinished = finished;
         
-        if (hasTrainingLogs && !hasFinished) {
+        if (running && hasTrainingLogs && !hasFinished) {
           indicator.style.display = 'inline-flex';
         } else {
           indicator.style.display = 'none';

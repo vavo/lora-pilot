@@ -48,6 +48,15 @@ if [[ "${NO_CONFIRM}" != "1" ]]; then
 fi
 prepare_env
 
+# In headless mode, avoid any whiptail calls (fail fast if they slip through).
+if [[ "${NO_CONFIRM}" == "1" ]]; then
+  info_box(){ echo "INFO: $1 - $2"; }
+  pick_menu(){ die "pick_menu called in headless mode"; }
+  pick_profile_menu(){ die "pick_profile_menu called in headless mode"; }
+  input_box(){ die "input_box called in headless mode"; }
+  confirm_box(){ return 0; }
+fi
+
 # ------------------------------------------------------
 # DATASET DISCOVERY
 # ------------------------------------------------------
@@ -111,15 +120,7 @@ while :; do
 
     profile)
       if [[ -z "$PROFILE" ]]; then
-        CHOICE=$(
-          whiptail --title "Training Profile" \
-            --ok-button "Next" --cancel-button "Back" \
-            --menu "Choose profile" 18 76 3 \
-              "quick_test"   "400–600 steps" \
-              "regular"      "800–1200 steps" \
-              "high_quality" "1800–2400 steps" \
-          3>&1 1>&2 2>&3
-        ) || { STEP="dataset"; continue; }
+        CHOICE=$(pick_profile_menu) || { STEP="dataset"; continue; }
         PROFILE="$CHOICE"
       fi
       STEP="output"
@@ -127,6 +128,12 @@ while :; do
 
     output)
       def_out="${OUTPUT_NAME:-$DATASET_NAME}"
+      if [[ "${NO_CONFIRM}" == "1" ]]; then
+        OUTPUT_NAME="${OUTPUT_NAME:-$def_out}"
+        echo "Headless: output name set to '${OUTPUT_NAME}'"
+        STEP="summary"
+        continue
+      fi
       OUTPUT_NAME=$(input_box "Output Name" "Set output name" "$def_out") || { STEP="profile"; continue; }
       [[ -n "${OUTPUT_NAME// /}" ]] || { info_box "Invalid" "Empty name."; continue; }
       STEP="summary"
@@ -226,7 +233,11 @@ while :; do
       REPEATS_USED="$(compute_repeats "$PROFILE" "$IMG_CNT")"
       TARGET="$TRAIN_DIR/${REPEATS_USED}_${DATASET_NAME}"
 
-      info_box "Preparing Images" "Cleaning + copying dataset."
+      if [[ "${NO_CONFIRM}" == "1" ]]; then
+        echo "Preparing Images: Cleaning + copying dataset."
+      else
+        info_box "Preparing Images" "Cleaning + copying dataset."
+      fi
 
       mkdir -p "$TRAIN_DIR"
       find "$TRAIN_DIR" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +

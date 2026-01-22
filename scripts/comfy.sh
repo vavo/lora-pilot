@@ -36,6 +36,20 @@ mkdir -p \
 source /opt/venvs/core/bin/activate
 ensure_model_dirs
 
+# Create optional user assets so ComfyUI doesn't spam 404s in console
+USER_CSS="${USER_DIR}/user.css"
+USERDATA="${USER_DIR}/userdata"
+TEMPLATES="${USER_DIR}/comfy.templates.json"
+if [ ! -f "$USER_CSS" ]; then
+  printf '/* Custom ComfyUI user styles */\n' > "$USER_CSS"
+fi
+if [ ! -f "$USERDATA" ]; then
+  printf '{}\n' > "$USERDATA"
+fi
+if [ ! -f "$TEMPLATES" ]; then
+  printf '[]\n' > "$TEMPLATES"
+fi
+
 CPU_FLAG=""
 if ! python - <<'PY'
 import torch, sys
@@ -47,6 +61,10 @@ fi
 
 rm -rf "${COMFY_DIR}/user"
 ln -s "${USER_DIR}" "${COMFY_DIR}/user"
+# Also expose user assets at the ComfyUI web root when possible
+ln -sf "${USER_CSS}" "${COMFY_DIR}/user.css"
+ln -sf "${USERDATA}" "${COMFY_DIR}/userdata"
+ln -sf "${TEMPLATES}" "${COMFY_DIR}/comfy.templates.json"
 # Ensure ComfyUI-Manager is present in workspace custom_nodes before rewiring
 if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then
   mkdir -p "${CUSTOM_NODES_DIR}"

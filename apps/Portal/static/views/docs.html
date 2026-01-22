@@ -1,5 +1,28 @@
+<style>
+  .markdown-body { font-size: 14px; line-height: 1.6; color: var(--text); }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { margin: 16px 0 8px; }
+  .markdown-body p { margin: 8px 0; }
+  .markdown-body a { color: var(--accent); text-decoration: none; }
+  .markdown-body a:hover { text-decoration: underline; }
+  .markdown-body ul, .markdown-body ol { padding-left: 22px; margin: 8px 0; }
+  .markdown-body li { margin: 4px 0; }
+  .markdown-body code { background: var(--pill); padding: 2px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  .markdown-body pre { background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 8px; overflow: auto; }
+  .markdown-body pre code { background: transparent; padding: 0; }
+  .markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+  .markdown-body img { max-width: 100%; border-radius: 8px; background: var(--card); }
+  .markdown-body blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--border); color: var(--muted); }
+  .docs-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .docs-tabs button { background: var(--pill); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  .docs-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+</style>
+
 <h2>Docs</h2>
 <div class="card">
+  <div class="docs-tabs">
+    <button id="docs-tab-readme" class="active">README</button>
+    <button id="docs-tab-changelog">Changelog</button>
+  </div>
   <div id="docs-status" class="status">Loading docs...</div>
-  <div id="docs-content" style="display:none; white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:13px;"></div>
+  <div id="docs-content" class="markdown-body" style="display:none;"></div>
 </div>

@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -64,6 +65,7 @@ SERVICES = list(SERVICE_LOGS.keys())
 TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
+_tp_output_dir: Optional[Path] = None
 
 
 class ServiceEntry(BaseModel):
@@ -156,6 +158,8 @@ async def add_no_cache_headers(request: Request, call_next):
 
 README_PRIMARY = Path("/opt/pilot/README.md")
 README_FALLBACK = Path("/workspace/README.md")
+CHANGELOG_PRIMARY = Path("/opt/pilot/CHANGELOG")
+CHANGELOG_FALLBACK = Path("/workspace/CHANGELOG")
 
 @app.get("/api/models", response_model=List[models_service.ModelEntry])
 def list_models():
@@ -793,6 +797,7 @@ def _tp_reader(proc: subprocess.Popen):
 @app.post("/api/trainpilot/start")
 def trainpilot_start(req: TrainPilotRequest):
     global _tp_proc
+    global _tp_output_dir
     if _tp_proc and _tp_proc.poll() is None:
         raise HTTPException(status_code=400, detail="TrainPilot already running")
     if not TRAINPILOT_BIN.exists():
@@ -804,6 +809,7 @@ def trainpilot_start(req: TrainPilotRequest):
         raise HTTPException(status_code=400, detail="dataset_name is required")
     ds_name = os.path.basename(ds_raw)
     out_name = req.output_name.strip() or ds_name
+    _tp_output_dir = WORKSPACE_ROOT / "outputs" / out_name
     profile = req.profile.strip() or "regular"
     if profile not in ("quick_test", "regular", "high_quality"):
         raise HTTPException(status_code=400, detail="Invalid profile")
@@ -837,6 +843,7 @@ def trainpilot_start(req: TrainPilotRequest):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=env,
+            preexec_fn=os.setsid,
         )
         _tp_logs.append(f"TrainPilot process started with PID: {proc.pid}")
     except Exception as e:
@@ -856,10 +863,13 @@ def trainpilot_stop():
         _tp_proc = None
         return {"status": "noop"}
     try:
-        _tp_proc.terminate()
+        os.killpg(os.getpgid(_tp_proc.pid), signal.SIGTERM)
         _tp_proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
-        _tp_proc.kill()
+        os.killpg(os.getpgid(_tp_proc.pid), signal.SIGKILL)
+        _tp_proc.wait()
+    except ProcessLookupError:
+        pass
     finally:
         _tp_proc = None
     return {"status": "stopped"}
@@ -869,6 +879,7 @@ def trainpilot_stop():
 def trainpilot_logs(limit: int = 500):
     """Get combined logs from TrainPilot process and Kohya training logs."""
     lines = []
+    running = False
     
     # Add initial status
     lines.append(f"--- TrainPilot logs endpoint called at {datetime.now().isoformat()} ---")
@@ -877,6 +888,7 @@ def trainpilot_logs(limit: int = 500):
     global _tp_proc
     if _tp_proc:
         if _tp_proc.poll() is None:
+            running = True
             lines.append(f"--- TrainPilot process running (PID: {_tp_proc.pid}) ---")
         else:
             lines.append(f"--- TrainPilot process finished (exit code: {_tp_proc.poll()}) ---")
@@ -893,16 +905,30 @@ def trainpilot_logs(limit: int = 500):
     
     # Also try to read the latest Kohya training log file
     try:
-        # Find the most recent training output directory
         outs_base = Path("/workspace/outputs")
-        if outs_base.exists():
+        if not outs_base.exists():
+            lines.append("--- No training outputs directory found at /workspace/outputs ---")
+        elif _tp_output_dir:
+            output_dir = _tp_output_dir
+            log_file = output_dir / "_logs" / "train.log"
+            lines.append(f"--- Current output dir: {output_dir} ---")
+            if log_file.exists():
+                stat_info = log_file.stat()
+                lines.append(f"--- Log file exists, size: {stat_info.st_size} bytes, modified: {datetime.fromtimestamp(stat_info.st_mtime)} ---")
+                with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
+                    kohya_lines = f.readlines()
+                    if kohya_lines:
+                        lines.append(f"--- Kohya training logs from {output_dir.name} ({len(kohya_lines)} lines) ---")
+                        lines.extend([line.rstrip() for line in kohya_lines[-100:]])
+            else:
+                lines.append(f"--- Log file not found for current run: {log_file} ---")
+        else:
+            # Find the most recent training output directory
             lines.append(f"--- Checking outputs directory: {outs_base} ---")
-            # Get all output directories and sort by modification time
             output_dirs = [d for d in outs_base.iterdir() if d.is_dir()]
             lines.append(f"--- Found {len(output_dirs)} output directories ---")
             output_dirs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-            
-            for i, output_dir in enumerate(output_dirs[:3]):  # Check last 3 directories
+            for i, output_dir in enumerate(output_dirs[:3]):
                 lines.append(f"--- Checking output dir {i+1}: {output_dir.name} ---")
                 log_file = output_dir / "_logs" / "train.log"
                 lines.append(f"--- Looking for log file: {log_file} ---")
@@ -912,29 +938,25 @@ def trainpilot_logs(limit: int = 500):
                         lines.append(f"--- Log file exists, size: {stat_info.st_size} bytes, modified: {datetime.fromtimestamp(stat_info.st_mtime)} ---")
                         with open(log_file, 'r', encoding='utf-8', errors='replace') as f:
                             kohya_lines = f.readlines()
-                            # Add a separator to distinguish Kohya logs
                             if kohya_lines:
                                 lines.append(f"--- Kohya training logs from {output_dir.name} ({len(kohya_lines)} lines) ---")
-                                lines.extend([line.rstrip() for line in kohya_lines[-100:]])  # Last 100 lines
-                                break  # Only read from the most recent training
+                                lines.extend([line.rstrip() for line in kohya_lines[-100:]])
+                                break
                     except Exception as e:
                         lines.append(f"--- Error reading Kohya logs from {output_dir.name}: {str(e)} ---")
                         continue
                 else:
                     lines.append(f"--- Log file not found: {log_file} ---")
-                    # Check if the _logs directory exists
                     logs_dir = output_dir / "_logs"
                     if logs_dir.exists():
                         lines.append(f"--- _logs directory exists, contents: {list(logs_dir.iterdir())} ---")
                     else:
                         lines.append(f"--- _logs directory does not exist ---")
-        else:
-            lines.append("--- No training outputs directory found at /workspace/outputs ---")
     except Exception as e:
         lines.append(f"--- Error accessing training outputs: {str(e)} ---")
     
     # Always return a valid response, even if empty
-    return {"lines": lines[-limit:]}
+    return {"lines": lines[-limit:], "running": running}
 
 
 @app.get("/api/trainpilot/toml")
@@ -959,6 +981,15 @@ def get_docs():
     if README_FALLBACK.exists():
         return {"content": README_FALLBACK.read_text(encoding="utf-8")}
     raise HTTPException(status_code=404, detail="README not found")
+
+
+@app.get("/api/changelog")
+def get_changelog():
+    if CHANGELOG_PRIMARY.exists():
+        return {"content": CHANGELOG_PRIMARY.read_text(encoding="utf-8")}
+    if CHANGELOG_FALLBACK.exists():
+        return {"content": CHANGELOG_FALLBACK.read_text(encoding="utf-8")}
+    raise HTTPException(status_code=404, detail="CHANGELOG not found")
 
 
 # Static assets
