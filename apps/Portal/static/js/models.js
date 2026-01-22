@@ -75,12 +75,18 @@ async function loadHFTokenStatus() {
 
 async function loadModelsTable(forceReload) {
   const status = document.getElementById("status");
-  const table = document.getElementById("models-table");
-  const tbody = document.getElementById("models-body");
-  if (!status || !table || !tbody) return;
+  const lists = document.getElementById("models-lists");
+  const installedWrap = document.getElementById("models-installed");
+  const availableWrap = document.getElementById("models-available");
+  const installedCount = document.getElementById("models-installed-count");
+  const installedSize = document.getElementById("models-installed-size");
+  const availableCount = document.getElementById("models-available-count");
+  const summary = document.getElementById("models-summary");
+  if (!status || !lists || !installedWrap || !availableWrap) return;
   status.textContent = "Loading models...";
-  table.style.display = "none";
-  tbody.innerHTML = "";
+  lists.style.display = "none";
+  installedWrap.innerHTML = "";
+  availableWrap.innerHTML = "";
   try {
     if (!allModels.length || forceReload) {
       allModels = await fetchJson("/api/models");
@@ -95,38 +101,70 @@ async function loadModelsTable(forceReload) {
       );
     }
     if (!data.length) {
-      status.textContent = "No models found in manifest.";
+      status.textContent = (searchText || filterCat !== "ALL")
+        ? "No models match the current filters."
+        : "No models found in manifest.";
       return;
     }
-    data.forEach(m => {
-      const tr = document.createElement("tr");
-      const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
-      const srcDisplay = m.source && m.source.length > 15 ? `${m.source.slice(0,15)}…` : (m.source || "—");
-      const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
-      const installedPill = `<span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span>`;
-      const safePath = (m.primary_path || "").replace(/'/g, "\\'");
-      const copyBtn = m.installed && m.primary_path
-        ? ` <button onclick="copyModelPath('${safePath}')" style="margin-left:6px; background:var(--pill); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:2px 6px; font-size:11px;">Copy path</button>`
-        : "";
-      tr.innerHTML = `
-        <td>${nameCell}</td>
-        <td><span class="pill">${m.category}</span></td>
-        <td>${m.type}</td>
-        <td><code title="${m.source || ''}">${srcDisplay}</code></td>
-        <td>${size}</td>
-        <td>${installedPill}${copyBtn}</td>
-        <td>
-          <button onclick="pullModel('${m.name}', this)">Install</button>
-          <button class="danger" onclick="deleteModel('${m.name}', this)">Delete</button>
-        </td>
-      `;
-      tbody.appendChild(tr);
+    const installed = data.filter(m => m.installed);
+    const available = data.filter(m => !m.installed);
+    const installedBytes = installed.reduce((acc, m) => acc + (m.size_bytes || 0), 0);
+    if (installedCount) installedCount.textContent = `${installed.length} installed`;
+    if (installedSize) installedSize.textContent = installedBytes ? formatBytes(installedBytes) : "0 B";
+    if (availableCount) availableCount.textContent = `${available.length} available`;
+    if (summary) summary.textContent = `${data.length} models • ${installed.length} installed`;
+
+    installed.forEach(m => {
+      installedWrap.appendChild(renderModelCard(m));
+    });
+    available.forEach(m => {
+      availableWrap.appendChild(renderModelCard(m));
     });
     status.textContent = "";
-    table.style.display = "";
+    lists.style.display = "";
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
   }
+}
+
+function renderModelCard(m) {
+  const card = document.createElement("div");
+  card.className = "model-card";
+  const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
+  const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
+  const installedPill = `<span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span>`;
+  const safePath = (m.primary_path || "").replace(/'/g, "\\'");
+  const copyBtn = m.installed && m.primary_path
+    ? `<button class="ghost" onclick="copyModelPath('${safePath}')">Copy path</button>`
+    : "";
+  const installBtn = !m.installed
+    ? `<button onclick="pullModel('${m.name}', this)">Install</button>`
+    : "";
+  const deleteBtn = m.installed
+    ? `<button class="danger" onclick="deleteModel('${m.name}', this)">Delete</button>`
+    : "";
+  const src = m.source || "—";
+  const target = m.primary_path || m.target_path || "";
+  card.innerHTML = `
+    <div class="model-title">
+      <div class="model-name">${nameCell}</div>
+      <span class="pill">${m.category || "OTHER"}</span>
+    </div>
+    <div class="model-meta">
+      <div>Type: <strong>${m.type || "—"}</strong></div>
+      <div>Size: <strong>${size}</strong></div>
+      <div>Kind: <strong>${m.kind || "—"}</strong></div>
+    </div>
+    <div class="model-source" title="${src}">${src}</div>
+    ${target ? `<div class="model-meta">Path: <code>${target}</code></div>` : ""}
+    <div class="model-actions">
+      ${installedPill}
+      ${copyBtn}
+      ${installBtn}
+      ${deleteBtn}
+    </div>
+  `;
+  return card;
 }
 
 window.pullModel = async function (name, btn) {
@@ -165,11 +203,5 @@ window.setFilter = function (btn) {
   filterCat = cat;
   document.querySelectorAll(".filter button").forEach(b => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
-  loadModelsTable(false);
-};
-
-window.applyModelSearch = function () {
-  const search = document.getElementById("models-search");
-  searchText = search ? (search.value.trim().toLowerCase()) : "";
   loadModelsTable(false);
 };
