@@ -3,7 +3,7 @@ version: '3.8'
 services:
   lora-pilot:
     # Replace with your image tag
-    image: vavo/lora-pilot:latest
+    image: notrius/lora-pilot:latest
     container_name: lora-pilot
     restart: unless-stopped
     

@@ -19,6 +19,7 @@ Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev, schnell), Chroma, Lumina-
 - **TagPilot** – dataset tagger embedded on the same port as ControlPilot
 - **TrainPilot** - the easiest way to run SDXL training on kohya
 - **GUI for dpipe** - a web UI for diffusion pipe
+- **🤖 Copilot (optional)** - a sidecar that wraps the `copilot` CLI so it can operate on `/workspace` with tools (via ControlPilot tab)
 
 
 ![Control Pilot screenshot](apps/Portal/static/lora-pilot-UI.heic)
@@ -50,6 +51,7 @@ Few of the thoughtful details that really bothered me when I was using other SD 
 | code-server | `8443` |
 | JupyterLab | `8888` |
 | InvokeAI (optional) | `9090` |
+| Copilot sidecar (internal) | `7879` |
 
 Expose them in RunPod (or just use my RunPod template - https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n).
 
@@ -119,6 +121,7 @@ DIFFPIPE_PORT=4444
 CODE_SERVER_PORT=8443
 JUPYTER_PORT=8888
 INVOKE_PORT=9090
+COPILOT_SIDECAR_PORT=7879
 
 ## Jupyter (optional)
 JUPYTER_ALLOW_ORIGIN_PAT=...   # extra origin regex appended to defaults (RunPod proxy + localhost + 127.0.0.1)

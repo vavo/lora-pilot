@@ -48,6 +48,21 @@ venv.bak/
 logs/
 *.log
 
+# Runtime/work dir (local volume contents)
+workspace/
+
+# Test/lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# Coverage
+.coverage
+coverage/
+
 # Local development
 docker-compose.yml
 docker-compose.*.yml
@@ -57,8 +72,6 @@ config/local.*
 secrets.*
 
 # Build artifacts
-Dockerfile
-.dockerignore
 build/
 *.tar.gz
 

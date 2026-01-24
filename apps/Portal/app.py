@@ -19,7 +19,9 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+import httpx
 
 # Import dpipe router (handle both package and flat module execution)
 try:
@@ -51,6 +53,7 @@ SERVICE_LOGS = {
     "diffpipe": ("/workspace/logs/diffpipe.out.log", "/workspace/logs/diffpipe.err.log"),
     "invoke": ("/workspace/logs/invoke.out.log", "/workspace/logs/invoke.err.log"),
     "controlpilot": ("/workspace/logs/controlpilot.out.log", "/workspace/logs/controlpilot.err.log"),
+    "copilot": ("/workspace/logs/copilot.out.log", "/workspace/logs/copilot.err.log"),
 }
 DISPLAY_NAMES = {
     "jupyter": "Jupyter Lab",
@@ -60,6 +63,7 @@ DISPLAY_NAMES = {
     "diffpipe": "TensorBoard",
     "invoke": "Invoke AI",
     "controlpilot": "ControlPilot",
+    "copilot": "Copilot Sidecar",
 }
 SERVICES = list(SERVICE_LOGS.keys())
 TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
@@ -143,6 +147,9 @@ app.add_middleware(
 app.include_router(dpipe_router)
 app.include_router(create_comfy_router(WORKSPACE_ROOT))
 
+# Copilot sidecar config
+COPILOT_SIDECAR_URL = os.environ.get("COPILOT_SIDECAR_URL", "http://127.0.0.1:7879")
+
 # No-cache headers for API responses (helps avoid stale data)
 @app.middleware("http")
 async def add_no_cache_headers(request: Request, call_next):
@@ -205,6 +212,34 @@ def list_datasets():
         display = trimmed.replace("_", " ").strip().title() or raw
         entries.append(DatasetEntry(name=raw, display=display, images=images, size_bytes=size_bytes, has_tags=has_tags, path=str(d)))
     return entries
+
+
+async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[dict] = None):
+    url = COPILOT_SIDECAR_URL.rstrip("/") + path
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            res = await client.request(method, url, json=json_body)
+        ct = res.headers.get("content-type", "")
+        if "application/json" in ct:
+            try:
+                return JSONResponse(status_code=res.status_code, content=res.json())
+            except Exception:
+                return JSONResponse(status_code=500, content={"detail": "invalid JSON from copilot sidecar"})
+        return JSONResponse(status_code=res.status_code, content={"detail": res.text})
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="copilot sidecar not reachable")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="copilot sidecar timed out")
+
+
+@app.get("/api/copilot/status")
+async def copilot_status():
+    return await _copilot_sidecar_request("GET", "/status")
+
+
+@app.post("/api/copilot/chat")
+async def copilot_chat(payload: dict):
+    return await _copilot_sidecar_request("POST", "/chat", json_body=payload)
 
 
 def _clean_name(name: str) -> str:

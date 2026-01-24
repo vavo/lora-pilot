@@ -26,6 +26,8 @@ ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
 ARG INSTALL_DIFFPIPE=1
+ARG INSTALL_COPILOT_CLI=1
+ARG COPILOT_CLI_VERSION=
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -92,6 +94,21 @@ RUN mkdir -p /workspace/home/root/.cache/pip /workspace/home/root/.fonts
 
 # ----- code-server -----
 RUN curl -fsSL https://code-server.dev/install.sh | sh
+
+# ----- GitHub Copilot CLI (optional) -----
+# Installs the `copilot` binary. Auth/config is persisted under /workspace by the sidecar at runtime.
+RUN set -eux; \
+    if [ "${INSTALL_COPILOT_CLI}" = "1" ]; then \
+      if [ -n "${COPILOT_CLI_VERSION}" ]; then \
+        VERSION="${COPILOT_CLI_VERSION}" PREFIX="/usr/local" bash -lc 'curl -fsSL https://gh.io/copilot-install | bash'; \
+      else \
+        PREFIX="/usr/local" bash -lc 'curl -fsSL https://gh.io/copilot-install | bash'; \
+      fi; \
+      command -v copilot; \
+      copilot --version || true; \
+    else \
+      echo "Skipping Copilot CLI install (INSTALL_COPILOT_CLI=${INSTALL_COPILOT_CLI})"; \
+    fi
 
 # ----- venv: tools -----
 RUN set -eux; \
@@ -286,10 +303,8 @@ COPY scripts/diffusion-pipe.sh /opt/pilot/diffusion-pipe.sh
 COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/tagpilot.sh /opt/pilot/tagpilot.sh
 COPY scripts/portal.sh /opt/pilot/portal.sh
+COPY scripts/copilot-sidecar.sh /opt/pilot/copilot-sidecar.sh
 COPY scripts/pilot /usr/local/bin/pilot
-COPY apps /opt/pilot/apps
-COPY README.md /opt/pilot/README.md
-COPY CHANGELOG /opt/pilot/CHANGELOG
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
 # Default shell: activate core venv for root sessions
@@ -311,6 +326,7 @@ RUN set -eux; \
       /opt/pilot/invoke.sh \
       /opt/pilot/tagpilot.sh \
       /opt/pilot/portal.sh \
+      /opt/pilot/copilot-sidecar.sh \
       /opt/pilot/get-models.sh \
       /opt/pilot/get-modelsgui.sh \
       /usr/local/bin/pilot \
@@ -319,15 +335,16 @@ RUN set -eux; \
       head -n 1 "$f" | grep -q '^#!' || (echo "Missing shebang in $f" >&2; exit 1); \
       chmod +x "$f"; \
     done; \
-    if [ -d /opt/pilot/apps ]; then \
-      find /opt/pilot/apps -type f -name '*.sh' -print0 | xargs -0 -r chmod +x; \
-      find /opt/pilot/apps -type f -name '*.sh' -print0 | xargs -0 -r sed -i 's/\r$//'; \
-    fi; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/models; \
     ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models; \
     ln -sf /opt/pilot/get-modelsgui.sh /usr/local/bin/modelsgui; \
     mkdir -p /workspace /workspace/logs /workspace/outputs /workspace/outputs/comfy /workspace/outputs/invoke /workspace/datasets /workspace/datasets/images /workspace/datasets/ZIPs /workspace/models /workspace/config /workspace/cache /workspace/home; \
     cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt || true
+
+# Copy app/UI sources late to improve build caching on frequent code changes
+COPY apps /opt/pilot/apps
+COPY README.md /opt/pilot/README.md
+COPY CHANGELOG /opt/pilot/CHANGELOG
 
 EXPOSE 8888 8443 5555 6666 9090 4444
 

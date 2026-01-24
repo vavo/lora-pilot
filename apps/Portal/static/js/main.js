@@ -1,4 +1,4 @@
-const sections = ["dashboard", "services", "models", "datasets", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "support"];
+const sections = ["dashboard", "services", "models", "datasets", "comfyui", "tagpilot", "trainpilot", "dpipe", "copilot", "docs", "support"];
 const viewCache = {};
 let currentSection = null;
 const viewMap = {
@@ -10,6 +10,7 @@ const viewMap = {
   tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
   dpipe: { view: "/views/dpipe.html", init: () => window.initDpipe && window.initDpipe() },
+  copilot: { view: "/views/copilot.html", init: () => window.initCopilot && window.initCopilot() },
   docs: { view: "/views/docs.html", init: () => window.initDocs && window.initDocs() },
   support: { view: "/views/support.html", init: () => window.initSupport && window.initSupport() },
 };

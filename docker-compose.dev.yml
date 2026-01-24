@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   lora-pilot:
-    image: vavo/lora-pilot:latest
+    image: notrius/lora-pilot:latest
     container_name: lora-pilot-dev
     restart: unless-stopped
     

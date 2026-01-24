@@ -106,6 +106,7 @@
           <a data-section="trainpilot">Train with kohya</a>
           <a data-section="dpipe">Train with dpipes</a>
           <a data-section="comfyui">ComfyUI</a>
+          <a data-section="copilot">Copilot</a>
           <a data-section="docs">Docs</a>
           <a data-section="support">Support</a>
           <button id="theme-toggle" style="background:var(--pill); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%; text-align:left; margin-top:8px;">🌙 Dark mode</button>
@@ -114,6 +115,37 @@
     </div>
     <div class="main">
       <div id="content"></div>
+    </div>
+  </div>
+
+  <!-- Global Copilot drawer (persists across subpages) -->
+  <button id="copilot-fab" title="Copilot chat" style="position:fixed; right:18px; bottom:18px; z-index:60; border-radius:999px; padding:12px 14px; box-shadow:0 10px 25px rgba(0,0,0,0.18);">
+    🤖
+  </button>
+  <div id="copilot-drawer" style="display:none; position:fixed; right:18px; bottom:74px; width:min(520px, calc(100vw - 36px)); max-height:min(70vh, 720px); z-index:60;">
+    <div class="card" style="margin:0; display:flex; flex-direction:column; gap:10px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="font-weight:700;">Copilot</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button id="copilot-drawer-start" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Start</button>
+          <button id="copilot-drawer-close" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Close</button>
+        </div>
+      </div>
+      <div class="status" id="copilot-drawer-status">Loading…</div>
+      <textarea id="copilot-drawer-prompt" rows="4" placeholder="Ask Copilot…" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text);"></textarea>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <button id="copilot-drawer-send">Run</button>
+        <label class="status" style="display:flex; gap:6px; align-items:center;">
+          <input type="checkbox" id="copilot-drawer-allow-urls" />
+          allow all URLs
+        </label>
+        <button id="copilot-drawer-clear" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Clear</button>
+        <span class="status" id="copilot-drawer-running" style="display:none;">Running…</span>
+      </div>
+      <pre id="copilot-drawer-output" style="white-space:pre-wrap; margin:0; overflow:auto; max-height:40vh;"></pre>
+      <div class="tip">
+        First-time setup: run <code>copilot</code> then <code>/login</code> in a terminal; config persists under <code>/workspace</code>.
+      </div>
     </div>
   </div>
   
@@ -142,6 +174,8 @@
   <script src="/js/comfyui.js?v=20260105a"></script>
   <script src="/js/trainpilot.js?v=20260105a"></script>
   <script src="/js/dpipe.js?v=20260105a"></script>
+  <script src="/js/copilot.js?v=20260105a"></script>
+  <script src="/js/copilot-global.js?v=20260105a"></script>
   <script src="/js/docs.js?v=20260105a"></script>
   <script src="/js/support.js?v=20260105a"></script>
   <script src="/js/tagpilot.js?v=20260105a"></script>

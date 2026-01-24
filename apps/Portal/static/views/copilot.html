@@ -1,0 +1,34 @@
+<div class="card">
+  <h2>Copilot</h2>
+  <div class="status" id="copilot-status">Loading...</div>
+  <div class="tip" style="margin-top:8px;">
+    This uses the container-local <code>copilot</code> CLI with <code>--allow-all-tools</code>.
+    Treat it like a terminal with opinions.
+  </div>
+  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+    <button id="copilot-refresh">Refresh status</button>
+    <button id="copilot-start" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Start sidecar</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Prompt</h3>
+  <textarea id="copilot-prompt" rows="6" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text);"></textarea>
+  <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+    <button id="copilot-send">Run</button>
+    <label class="status" style="display:flex; gap:6px; align-items:center;">
+      <input type="checkbox" id="copilot-allow-urls" />
+      allow all URLs
+    </label>
+    <span class="status" id="copilot-running" style="display:none;">Running…</span>
+  </div>
+  <div class="tip" style="margin-top:8px;">
+    First-time setup: open a terminal and run <code>copilot</code>, then <code>/login</code>, and trust <code>/workspace</code>.
+  </div>
+</div>
+
+<div class="card">
+  <h3>Output</h3>
+  <pre id="copilot-output" style="white-space:pre-wrap; margin:0;"></pre>
+</div>
+
