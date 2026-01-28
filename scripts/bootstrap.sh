@@ -13,7 +13,7 @@ mkdir -p \
   "$WORKSPACE_ROOT"/{apps,models,datasets,outputs,logs,cache,config,home} \
   "$WORKSPACE_ROOT"/config/{jupyter,code-server,xdg} \
   "$WORKSPACE_ROOT"/cache/{jupyter,ipython,xdg,xdg-data,code-server}
-mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke}
+mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke,ai-toolkit}
 mkdir -p "$WORKSPACE_ROOT/datasets"/{images,ZIPs}
 mkdir -p "$WORKSPACE_ROOT/apps"/{comfy,diffusion-pipe,invoke,kohya,codeserver}
 

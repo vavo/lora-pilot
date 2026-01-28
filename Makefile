@@ -5,9 +5,12 @@ IMAGE ?= lora-pilot
 TAG ?= dev-amd64
 FULL_IMAGE := $(IMAGE):$(TAG)
 CONTAINER ?= lp-test
-PLATFORM ?= linux/amd64
-INSTALL_GPU_STACK ?= 1
-WORKSPACE_DIR ?= $(CURDIR)/workspace
+	PLATFORM ?= linux/amd64
+	INSTALL_GPU_STACK ?= 1
+	INSTALL_INVOKE ?= 1
+	INSTALL_AI_TOOLKIT ?= 0
+	AI_TOOLKIT_REF ?=
+	WORKSPACE_DIR ?= $(CURDIR)/workspace
 
 # Random secrets (deterministic enough, but not sacred)
 JUPYTER_TOKEN ?= $(shell openssl rand -hex 16)
@@ -28,11 +31,14 @@ help:
 	@echo "  make secrets          Print secrets that will be used for make run"
 	@echo "  make fix-perms        Fix host workspace ownership (best effort)"
 
-build:
-	docker buildx build --platform $(PLATFORM) \
-		-t $(FULL_IMAGE) \
-		--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \
-		--load .
+	build:
+		docker buildx build --platform $(PLATFORM) \
+			-t $(FULL_IMAGE) \
+			--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \
+			--build-arg INSTALL_INVOKE=$(INSTALL_INVOKE) \
+			--build-arg INSTALL_AI_TOOLKIT=$(INSTALL_AI_TOOLKIT) \
+			--build-arg AI_TOOLKIT_REF="$(AI_TOOLKIT_REF)" \
+			--load .
 
 run:
 	@mkdir -p "$(WORKSPACE_DIR)"

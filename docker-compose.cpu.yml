@@ -14,6 +14,7 @@ services:
       # Only essential ports
       - "7878:7878"  # ControlPilot
       - "8888:8888"  # JupyterLab
+      - "8675:8675"  # AI Toolkit UI
     
     volumes:
       - ./workspace:/workspace

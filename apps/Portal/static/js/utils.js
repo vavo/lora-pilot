@@ -45,7 +45,7 @@ window.serviceUrl = function (name) {
     "kohya": 6666,
     "diffpipe": 4444,
     "invoke": 9090,
-    "tagpilot": 3333,
+    "ai-toolkit": 8675,
   };
   const port = ports[name];
   if (!port || name === "controlpilot") return null;

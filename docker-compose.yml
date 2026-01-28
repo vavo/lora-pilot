@@ -46,6 +46,8 @@ services:
       - "9090:9090"
       # Diffusion Pipe + TensorBoard
       - "4444:4444"
+      # AI Toolkit UI (Next.js)
+      - "8675:8675"
     
     volumes:
       # Main workspace - persistent storage

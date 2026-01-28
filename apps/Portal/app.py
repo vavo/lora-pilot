@@ -52,6 +52,7 @@ SERVICE_LOGS = {
     "kohya": ("/workspace/logs/kohya.out.log", "/workspace/logs/kohya.err.log"),
     "diffpipe": ("/workspace/logs/diffpipe.out.log", "/workspace/logs/diffpipe.err.log"),
     "invoke": ("/workspace/logs/invoke.out.log", "/workspace/logs/invoke.err.log"),
+    "ai-toolkit": ("/workspace/logs/ai-toolkit.out.log", "/workspace/logs/ai-toolkit.err.log"),
     "controlpilot": ("/workspace/logs/controlpilot.out.log", "/workspace/logs/controlpilot.err.log"),
     "copilot": ("/workspace/logs/copilot.out.log", "/workspace/logs/copilot.err.log"),
 }
@@ -62,6 +63,7 @@ DISPLAY_NAMES = {
     "kohya": "Kohya",
     "diffpipe": "TensorBoard",
     "invoke": "Invoke AI",
+    "ai-toolkit": "AI Toolkit",
     "controlpilot": "ControlPilot",
     "copilot": "Copilot Sidecar",
 }

@@ -26,8 +26,12 @@ ARG INSTALL_COMFY=1
 ARG INSTALL_KOHYA=1
 ARG INSTALL_INVOKE=1
 ARG INSTALL_DIFFPIPE=1
+ARG INSTALL_AI_TOOLKIT=1
+ARG INSTALL_AI_TOOLKIT_UI=1
 ARG INSTALL_COPILOT_CLI=1
 ARG COPILOT_CLI_VERSION=
+ARG AI_TOOLKIT_REF=
+ARG AI_TOOLKIT_DIFFUSERS_VERSION=0.36.0
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -56,7 +60,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && apt-get -y upgrade \
   && apt-get -y autoremove --purge \
   && apt-get clean \
-  && rm -rf /var/lib/apt/lists/*
+	  && rm -rf /var/lib/apt/lists/*
+
+# ----- node.js (for AI Toolkit UI) -----
+RUN if [ "${INSTALL_AI_TOOLKIT_UI}" = "1" ]; then \
+      set -eux; \
+      curl -fsSL https://deb.nodesource.com/setup_20.x | bash -; \
+      apt-get install -y --no-install-recommends nodejs; \
+      rm -rf /var/lib/apt/lists/*; \
+      node -v; \
+      npm -v; \
+    fi
 
 # ----- croc -----
 RUN set -eux; \
@@ -136,7 +150,8 @@ huggingface-hub<1.0
 transformers==${TRANSFORMERS_VERSION}
 peft==${PEFT_VERSION}
 EOF
-ENV PIP_CONSTRAINT=/opt/pilot/config/core-constraints.txt
+# NOTE: Do not set global PIP_CONSTRAINT. It breaks runtime pip installs in other venvs (e.g. invoke),
+# and can make recovery/debugging on long-running pods painful. Use `-c` per-install instead.
 
 RUN set -eux; \
     cat > /tmp/kohya-constraints.txt <<EOF
@@ -281,9 +296,67 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       # Enable HF transfer acceleration in invoke venv
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "huggingface_hub[hf_transfer]" && \
       \
-      # Keep numpy <2 to avoid upstream breaking changes
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2"; \
-      fi
+	      # Keep numpy/pillow stable (avoid numpy 2.x ABI breakage)
+	      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2" "pillow<11"; \
+	      fi
+
+# ----- invoke constraints (shared by ai-toolkit installs) -----
+RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
+      set -eux; \
+      { \
+        echo "torch==${INVOKE_TORCH_VERSION}"; \
+        echo "torchvision==${INVOKE_TORCHVISION_VERSION}"; \
+        echo "torchaudio==${INVOKE_TORCHAUDIO_VERSION}"; \
+        echo "numpy<2"; \
+        echo "pillow<11"; \
+        echo "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}"; \
+      } > /opt/pilot/config/invoke-constraints.txt; \
+    fi
+
+# ----- AI Toolkit (install into invoke venv to reuse torch 2.7/cu126) -----
+RUN if [ "${INSTALL_AI_TOOLKIT}" = "1" ] && [ "${INSTALL_INVOKE}" = "1" ]; then \
+      set -eux && \
+      git clone --depth 1 https://github.com/ostris/ai-toolkit.git /opt/pilot/repos/ai-toolkit && \
+      if [ -n "${AI_TOOLKIT_REF}" ]; then \
+        git -C /opt/pilot/repos/ai-toolkit fetch --depth 1 origin "${AI_TOOLKIT_REF}" && \
+        git -C /opt/pilot/repos/ai-toolkit checkout "${AI_TOOLKIT_REF}"; \
+      fi && \
+      \
+      # Persist datasets/outputs on the workspace volume (RunPod/local) instead of inside the repo.
+      rm -rf /opt/pilot/repos/ai-toolkit/datasets /opt/pilot/repos/ai-toolkit/output /opt/pilot/repos/ai-toolkit/models && \
+      ln -s /workspace/datasets /opt/pilot/repos/ai-toolkit/datasets && \
+      ln -s /workspace/outputs/ai-toolkit /opt/pilot/repos/ai-toolkit/output && \
+      ln -s /workspace/models /opt/pilot/repos/ai-toolkit/models && \
+      \
+      # Avoid overriding InvokeAI's stack in this shared venv.
+      # Keep optional accel deps (e.g. xformers/bitsandbytes) if ai-toolkit requests them.
+      grep -v -E '^(torch|torchvision|torchaudio|numpy|pillow|Pillow|diffusers|gradio|gradio-client)([<>= ]|$)' \
+        /opt/pilot/repos/ai-toolkit/requirements.txt > /tmp/ai-toolkit-req.txt && \
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/invoke-constraints.txt \
+        -r /tmp/ai-toolkit-req.txt && \
+      rm -f /tmp/ai-toolkit-req.txt && \
+      \
+      # Explicit pins (MVP): keep these after requirements so versions win if requirements are loose.
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/invoke-constraints.txt \
+        "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}" \
+        "numpy<2" \
+        "pillow<11" \
+        torchao==0.10.0 \
+        lycoris-lora==1.8.3 \
+        k-diffusion \
+        optimum-quanto==0.2.4 \
+        controlnet_aux==0.0.10; \
+      \
+      if [ "${INSTALL_AI_TOOLKIT_UI}" = "1" ]; then \
+        cd /opt/pilot/repos/ai-toolkit/ui && \
+        npm install && \
+        npm run update_db && \
+        npm run build && \
+        npm cache clean --force; \
+      fi; \
+    fi
 
 
 # ----- project files -----

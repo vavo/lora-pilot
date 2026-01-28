@@ -30,17 +30,29 @@ services:
       - "6666:6666"
       - "9090:9090"
       - "4444:4444"
+      - "8675:8675"
     
     volumes:
       # Development workspace
       - ./workspace:/workspace
       # Mount source code for development (optional)
       - ./apps/Portal:/opt/pilot/apps/Portal
-      # Mount scripts for development (optional) - Note: runtime scripts are at root level
-      # This mount is for development of the scripts themselves
+      # Mount scripts for development without masking /opt/pilot/repos from the image
       - ./scripts:/opt/pilot/scripts
-      # Mount root-level scripts that are actually used at runtime
-      - ./scripts:/opt/pilot
+      - ./scripts/bootstrap.sh:/opt/pilot/bootstrap.sh
+      - ./scripts/gpu-smoke-test.sh:/opt/pilot/gpu-smoke-test.sh
+      - ./scripts/start-jupyter.sh:/opt/pilot/start-jupyter.sh
+      - ./scripts/start-code-server.sh:/opt/pilot/start-code-server.sh
+      - ./scripts/comfy.sh:/opt/pilot/comfy.sh
+      - ./scripts/start-kohya.sh:/opt/pilot/start-kohya.sh
+      - ./scripts/kohya.sh:/opt/pilot/kohya.sh
+      - ./scripts/diffusion-pipe.sh:/opt/pilot/diffusion-pipe.sh
+      - ./scripts/invoke.sh:/opt/pilot/invoke.sh
+      - ./scripts/tagpilot.sh:/opt/pilot/tagpilot.sh
+      - ./scripts/portal.sh:/opt/pilot/portal.sh
+      - ./scripts/copilot-sidecar.sh:/opt/pilot/copilot-sidecar.sh
+      - ./scripts/get-models.sh:/opt/pilot/get-models.sh
+      - ./scripts/get-modelsgui.sh:/opt/pilot/get-modelsgui.sh
       # Mount supervisor config (optional)
       - ./supervisor:/etc/supervisor
     
