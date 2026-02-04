@@ -255,3 +255,70 @@ def delete_model(name: str, manifest_path: Path, models_dir: Path) -> int:
         except Exception:
             pass
     return deleted
+
+
+def model_name_for_expected_path(
+    required_path: Path,
+    manifest_path: Path,
+    default_manifest_path: Path,
+    models_dir: Path,
+    config_dir: Path,
+) -> Optional[str]:
+    """
+    Best-effort mapping from a local path referenced by configs (e.g. TOML)
+    to a model name in the models manifest.
+    """
+    ensure_manifest(manifest_path, default_manifest_path, models_dir, config_dir)
+    if not manifest_path.exists():
+        return None
+
+    try:
+        required_resolved = required_path.resolve()
+    except Exception:
+        required_resolved = required_path
+
+    with manifest_path.open() as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("|")
+            if len(parts) < 4:
+                continue
+            name, kind, source, subdir, *rest = parts
+            include = rest[0] if rest else ""
+            target_dir = models_dir / subdir
+
+            expected: list[Path] = []
+            if kind == "hf_file":
+                path_in_repo = source.split(":", 1)[1] if ":" in source else ""
+                if path_in_repo:
+                    expected.append(target_dir / path_in_repo)
+                    expected.append(target_dir / Path(path_in_repo).name)
+            elif kind == "url":
+                fname = Path(source.split("?", 1)[0]).name
+                expected.append(target_dir / fname)
+            elif kind == "hf_repo":
+                # Repo downloads can be directories. If the config points into the directory,
+                # assume this repo is the likely match (only when include patterns are present).
+                expected.append(target_dir)
+            else:
+                continue
+
+            for p in expected:
+                try:
+                    cand = p.resolve()
+                except Exception:
+                    cand = p
+                if cand == required_resolved:
+                    return name
+                if kind == "hf_repo":
+                    try:
+                        if required_resolved.is_relative_to(cand):  # py3.9+
+                            # Avoid matching parent directories like /workspace/models
+                            if cand == target_dir.resolve():
+                                if include and include.strip():
+                                    return name
+                    except Exception:
+                        pass
+    return None

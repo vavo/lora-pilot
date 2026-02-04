@@ -8,7 +8,17 @@ window.initTrainpilot = function () {
 
 function bindTpControls() {
   const status = document.getElementById("tp-status");
+  const output = document.getElementById("tp-output");
   if (status) status.textContent = "";
+  if (output && !output.dataset.bound) {
+    output.dataset.bound = "1";
+    output.addEventListener("input", () => {
+      const normalized = normalizeOutputName(output.value || "");
+      if (normalized !== output.value) output.value = normalized;
+      updateEpochExample(normalized);
+    });
+    updateEpochExample(output.value || "");
+  }
 }
 
 function findLatestProgress(lines) {
@@ -41,18 +51,108 @@ function updateProgressUI(progress, running, finished) {
   const text = document.getElementById("tp-progress-text");
   if (!wrap || !bar || !text) return;
   if (!running || finished || !progress) {
-    wrap.style.display = "none";
+    wrap.classList.add("is-hidden");
     bar.style.width = "0%";
     text.textContent = "";
     return;
   }
-  wrap.style.display = "inline-flex";
+  wrap.classList.remove("is-hidden");
   bar.style.width = `${progress.percent}%`;
   const stepText = progress.current && progress.total
     ? `${progress.current}/${progress.total}`
     : `${progress.percent}%`;
   const lossText = progress.loss ? ` • loss ${progress.loss}` : "";
   text.textContent = `${progress.percent}% (${stepText})${lossText}`;
+}
+
+function setModelDownloadUI(pct, label) {
+  const wrap = document.getElementById("tp-modeldl-wrap");
+  const bar = document.getElementById("tp-modeldl-bar");
+  const text = document.getElementById("tp-modeldl-text");
+  if (!wrap || !bar || !text) return;
+  wrap.classList.remove("is-hidden");
+  if (typeof pct === "number" && isFinite(pct)) {
+    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+    bar.style.width = `${clamped}%`;
+    text.textContent = label || `${clamped}%`;
+  } else {
+    // Indeterminate: animate by cycling width via CSS transition.
+    const now = Date.now();
+    const phase = Math.floor((now / 700) % 2);
+    bar.style.width = phase ? "85%" : "35%";
+    text.textContent = label || "Downloading…";
+  }
+}
+
+function clearModelDownloadUI() {
+  const wrap = document.getElementById("tp-modeldl-wrap");
+  const bar = document.getElementById("tp-modeldl-bar");
+  const text = document.getElementById("tp-modeldl-text");
+  if (!wrap || !bar || !text) return;
+  wrap.classList.add("is-hidden");
+  bar.style.width = "0%";
+  text.textContent = "";
+}
+
+async function ensureTrainpilotModelsPresent(tomlPath) {
+  const check = await fetchJson("/api/trainpilot/model-check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ toml_path: tomlPath || "" }),
+  });
+  const missing = (check && check.missing) ? check.missing : [];
+  if (!missing.length) return true;
+
+  const lines = missing.map(m => {
+    const kind = m.kind || "model";
+    const path = m.value || "(missing in TOML)";
+    const mapped = m.model_name ? ` → ${m.model_name}` : "";
+    return `- ${kind}: ${path}${mapped}`;
+  }).join("\n");
+
+  const ok = confirm(`Missing model files referenced by the TOML:\n\n${lines}\n\nDownload now?`);
+  if (!ok) return false;
+
+  const downloadable = missing.filter(m => m.model_name);
+  const manual = missing.filter(m => !m.model_name);
+  if (manual.length) {
+    alert(
+      `Some missing files can't be matched to an entry in models.manifest.\n` +
+      `Please download them from the Models tab, then try again.\n\n` +
+      manual.map(m => `- ${m.kind || "model"}: ${m.value || "(missing in TOML)"}`).join("\n")
+    );
+    return false;
+  }
+
+  for (let i = 0; i < downloadable.length; i += 1) {
+    const m = downloadable[i];
+    const modelName = m.model_name;
+    const prefix = `${i + 1}/${downloadable.length}`;
+    setModelDownloadUI(null, `${prefix} Starting ${modelName}…`);
+    await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/start`, { method: "POST" });
+    while (true) {
+      const st = await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/status`);
+      if (st && st.state === "running") {
+        const pct = (typeof st.progress_pct === "number") ? st.progress_pct : null;
+        const label = st.last_line ? `${prefix} ${st.last_line}` : `${prefix} Downloading ${modelName}…`;
+        setModelDownloadUI(pct, label);
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+      if (st && st.state === "done") {
+        setModelDownloadUI(100, `${prefix} Downloaded ${modelName}`);
+        await new Promise(r => setTimeout(r, 350));
+        break;
+      }
+      if (st && st.state === "error") {
+        throw new Error(st.error || `Download failed: ${modelName}`);
+      }
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
+
+  clearModelDownloadUI();
+  return true;
 }
 
 async function loadTpDatasets() {
@@ -75,7 +175,7 @@ async function loadTpDatasets() {
       opt.textContent = label;
       sel.appendChild(opt);
     });
-    // Pre-fill output with selected dataset name (friendly)
+    // Keep output synced with currently selected dataset.
     if (sel.options.length) {
       const firstVal = sel.options[0].textContent || "";
       autoFillOutput(firstVal);
@@ -100,12 +200,21 @@ window.openDatasets = function (evt) {
 
 window.startTrainPilot = async function () {
   const dataset = document.getElementById("tp-dataset")?.value.trim() || "";
-  const output = document.getElementById("tp-output")?.value.trim() || "";
+  const outputEl = document.getElementById("tp-output");
+  const output = normalizeOutputName(outputEl?.value.trim() || "");
   const profile = document.getElementById("tp-profile")?.value || "regular";
   const toml = document.getElementById("tp-toml")?.value.trim() || "";
   const status = document.getElementById("tp-status");
+  if (outputEl) outputEl.value = output;
+  updateEpochExample(output);
   if (status) status.textContent = "Starting...";
   try {
+    clearModelDownloadUI();
+    const ok = await ensureTrainpilotModelsPresent(toml);
+    if (!ok) {
+      if (status) status.textContent = "Canceled.";
+      return;
+    }
     await fetchJson("/api/trainpilot/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -118,6 +227,7 @@ window.startTrainPilot = async function () {
     });
     if (status) status.textContent = "Running...";
   } catch (e) {
+    clearModelDownloadUI();
     if (status) status.textContent = `Error: ${e.message || e}`;
   }
 };
@@ -230,9 +340,9 @@ function startTpLogPoll() {
         const hasFinished = finished;
         
         if (running && (hasTrainingLogs || progress) && !hasFinished) {
-          indicator.style.display = 'inline-flex';
+          indicator.classList.remove("is-hidden");
         } else {
-          indicator.style.display = 'none';
+          indicator.classList.add("is-hidden");
         }
       }
       
@@ -255,11 +365,24 @@ window.stopTpLogPoll = function () {
 function autoFillOutput(labelText) {
   const out = document.getElementById("tp-output");
   if (!out) return;
-  if (!out.value || out.value.trim() === "") {
-    // strip image count from label "(123 images)"
-    const base = labelText.replace(/\s*\([^)]*\)\s*$/, "").trim();
-    if (base) out.value = base;
-  }
+  // strip image count from label "(123 images)"
+  const base = labelText.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const normalized = normalizeOutputName(base);
+  out.value = normalized;
+  updateEpochExample(normalized);
+}
+
+function normalizeOutputName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "_");
+}
+
+function updateEpochExample(name) {
+  const el = document.getElementById("tp-epoch-example");
+  if (!el) return;
+  const safe = normalizeOutputName(name) || "output_name";
+  el.textContent = `Example epoch name: ${safe}000001.safetensors`;
 }
 
 // TOML Config Modal Functions
@@ -270,7 +393,7 @@ window.showTomlConfig = async function () {
   if (!modal || !content) return;
   
   // Show modal with loading state
-  modal.style.display = "block";
+  modal.classList.add("show");
   content.className = "toml-loading";
   content.textContent = "Loading configuration...";
   
@@ -317,24 +440,21 @@ function highlightToml(tomlContent) {
     .replace(/(#.*$)/gm, '<span class="comment">$1</span>');
 }
 
-window.closeTomlConfig = function () {
-  const modal = document.getElementById("toml-modal");
-  if (modal) {
-    modal.style.display = "none";
+window.closeTomlConfig = function (evt) {
+  if (evt && evt.target) {
+    const t = evt.target;
+    const isBackdrop = t.id === "toml-modal";
+    const isCloseBtn = t.classList && t.classList.contains("modal-close");
+    if (!isBackdrop && !isCloseBtn) return;
   }
-};
-
-// Close modal when clicking outside
-window.onclick = function (event) {
   const modal = document.getElementById("toml-modal");
-  if (modal && event.target === modal) {
-    closeTomlConfig();
-  }
+  if (modal) modal.classList.remove("show");
 };
 
 // Close modal with Escape key
 window.addEventListener("keydown", function (event) {
   if (event.key === "Escape") {
-    closeTomlConfig();
+    const modal = document.getElementById("toml-modal");
+    if (modal && modal.classList.contains("show")) closeTomlConfig();
   }
 });

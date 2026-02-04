@@ -17,7 +17,7 @@
   let lastStatusAt = 0;
 
   function setDrawerOpen(open) {
-    drawer.style.display = open ? "" : "none";
+    drawer.classList.toggle("open", open);
     if (open) refreshStatus(true);
   }
 
@@ -51,7 +51,7 @@
     const prompt = (promptEl.value || "").trim();
     if (!prompt) return;
     sendBtn.disabled = true;
-    if (runningEl) runningEl.style.display = "";
+    if (runningEl) runningEl.classList.remove("is-hidden");
     try {
       const payload = {
         prompt,
@@ -72,11 +72,11 @@
       outEl.textContent = `Error: ${e.message || e}`;
     } finally {
       sendBtn.disabled = false;
-      if (runningEl) runningEl.style.display = "none";
+      if (runningEl) runningEl.classList.add("is-hidden");
     }
   }
 
-  if (fab) fab.addEventListener("click", () => setDrawerOpen(drawer.style.display === "none"));
+  if (fab) fab.addEventListener("click", () => setDrawerOpen(!drawer.classList.contains("open")));
   if (closeBtn) closeBtn.addEventListener("click", () => setDrawerOpen(false));
   if (startBtn) startBtn.addEventListener("click", startSidecar);
   if (clearBtn) clearBtn.addEventListener("click", () => { outEl.textContent = ""; });
@@ -87,7 +87,6 @@
 
   // Lazy status refresh if drawer stays open.
   setInterval(() => {
-    if (drawer.style.display !== "none") refreshStatus(false);
+    if (drawer.classList.contains("open")) refreshStatus(false);
   }, 5000);
 })();
-

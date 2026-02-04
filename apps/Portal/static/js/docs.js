@@ -21,14 +21,14 @@ async function loadDocsTab(kind) {
   if (tabReadme) tabReadme.classList.toggle("active", isReadme);
   if (tabChangelog) tabChangelog.classList.toggle("active", !isReadme);
   status.textContent = isReadme ? "Loading README..." : "Loading changelog...";
-  content.style.display = "none";
+  content.classList.add("is-hidden");
   try {
     const url = isReadme ? "/api/docs" : "/api/changelog";
     const data = await fetchJson(url);
     const raw = data.content || "No docs found.";
     content.innerHTML = renderMarkdown(raw);
     status.textContent = "";
-    content.style.display = "";
+    content.classList.remove("is-hidden");
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
   }

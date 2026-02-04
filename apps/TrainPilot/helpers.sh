@@ -52,7 +52,7 @@ pick_profile_menu(){
            --menu "Choose a profile (highlight + Next):" 16 76 6 \
            "quick_test"   "400–600 steps (sanity check)" \
            "regular"      "800–1200 steps (daily driver)" \
-           "high_quality" "1800–2400 steps (fidelity)" \
+           "high_quality" "1600–2400 steps (fidelity)" \
            3>&1 1>&2 2>&3
 }
 
@@ -151,7 +151,7 @@ profile_presets(){ # sets globals for chosen profile & tier
         MEDIUM) DIM=32; ALPHA=16;;
         LARGE|XL) DIM=64; ALPHA=32;;
       esac
-      SPI=20; MIN_STEPS=400; MAX_STEPS=600; MAX_EPOCHS=10   # display cap only; STEPS mode enforced by train.sh
+      SPI=20; MIN_STEPS=400; MAX_STEPS=600; MAX_EPOCHS=12   # display cap only; STEPS mode enforced by train.sh
       GA=1
       ;;
     regular)
@@ -164,7 +164,7 @@ profile_presets(){ # sets globals for chosen profile & tier
         MEDIUM) DIM=48; ALPHA=24;;
         LARGE|XL) DIM=64; ALPHA=32;;
       esac
-      SPI=20; MIN_STEPS=800; MAX_STEPS=1200; MAX_EPOCHS=20
+      SPI=20; MIN_STEPS=800; MAX_STEPS=1200; MAX_EPOCHS=25
       ;;
     high_quality)
       UNET_LR="0.000045"; TE_LR="0.000005"; TE_ON=true
@@ -176,7 +176,7 @@ profile_presets(){ # sets globals for chosen profile & tier
         MEDIUM) DIM=64; ALPHA=32;;
         LARGE|XL) DIM=64; ALPHA=32;;
       esac
-      SPI=34; MIN_STEPS=1600; MAX_STEPS=2400; MAX_EPOCHS=30
+      SPI=34; MIN_STEPS=1600; MAX_STEPS=2400; MAX_EPOCHS=45
       ;;
     *) die "Unknown profile: $profile" ;;
   esac

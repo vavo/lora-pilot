@@ -1,34 +1,43 @@
+<style>
+  #copilot-prompt {
+    background: rgba(255, 90, 62, 0.14);
+    border-color: rgba(255, 90, 62, 0.45);
+  }
+  :root[data-theme="dark"] #copilot-prompt {
+    background: rgba(255, 122, 61, 0.18);
+    border-color: rgba(255, 122, 61, 0.48);
+  }
+</style>
 <div class="card">
   <h2>Copilot</h2>
   <div class="status" id="copilot-status">Loading...</div>
-  <div class="tip" style="margin-top:8px;">
+  <div class="tip mt-8">
     This uses the container-local <code>copilot</code> CLI with <code>--allow-all-tools</code>.
     Treat it like a terminal with opinions.
   </div>
-  <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-    <button id="copilot-refresh">Refresh status</button>
-    <button id="copilot-start" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Start sidecar</button>
+  <div class="row wrap gap-8 mt-12">
+    <button class="btn primary" id="copilot-refresh">Refresh status</button>
+    <button class="btn secondary" id="copilot-start">Start sidecar</button>
   </div>
 </div>
 
 <div class="card">
   <h3>Prompt</h3>
-  <textarea id="copilot-prompt" rows="6" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text);"></textarea>
-  <div style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-    <button id="copilot-send">Run</button>
-    <label class="status" style="display:flex; gap:6px; align-items:center;">
+  <textarea id="copilot-prompt" class="input" rows="6"></textarea>
+  <div class="row wrap gap-8 mt-10">
+    <button class="btn primary" id="copilot-send">Run</button>
+    <label class="status status-check">
       <input type="checkbox" id="copilot-allow-urls" />
       allow all URLs
     </label>
-    <span class="status" id="copilot-running" style="display:none;">Running…</span>
+    <span class="status is-hidden" id="copilot-running">Running…</span>
   </div>
-  <div class="tip" style="margin-top:8px;">
+  <div class="tip mt-8">
     First-time setup: open a terminal and run <code>copilot</code>, then <code>/login</code>, and trust <code>/workspace</code>.
   </div>
 </div>
 
 <div class="card">
   <h3>Output</h3>
-  <pre id="copilot-output" style="white-space:pre-wrap; margin:0;"></pre>
+  <pre id="copilot-output" class="log-box mono"></pre>
 </div>
-

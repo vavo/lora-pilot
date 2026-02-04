@@ -188,6 +188,7 @@ while :; do
       case "$PROFILE" in
         quick_test)
           train_steps=600
+          max_epochs=12
           net_dim=32; net_alpha=16
           conv_dim=32; conv_alpha=16
           dropout=0.05
@@ -198,6 +199,7 @@ while :; do
           ;;
         regular)
           train_steps=1200
+          max_epochs=25
           net_dim=48; net_alpha=24
           conv_dim=48; conv_alpha=24
           dropout=0.05
@@ -208,6 +210,7 @@ while :; do
           ;;
         high_quality)
           train_steps=2400
+          max_epochs=45
           net_dim=64; net_alpha=32
           conv_dim=64; conv_alpha=32
           dropout=0.05
@@ -221,6 +224,13 @@ while :; do
       # Big datasets extend training
       if (( IMG_CNT > 80 )); then
         train_steps=$((train_steps + train_steps / 3))
+      fi
+
+      # Keep profile promises: clamp by epoch ceiling for current dataset.
+      REPEATS_USED="$(compute_repeats "$PROFILE" "$IMG_CNT")"
+      read -r _spe _upe _epoch_cap_steps < <(epoch_caps "$IMG_CNT" "$REPEATS_USED" "$batch" "$ga" "$max_epochs")
+      if (( train_steps > _epoch_cap_steps )); then
+        train_steps="$_epoch_cap_steps"
       fi
 
       # --------------------------------------------------
@@ -241,6 +251,7 @@ while :; do
       toml_set "$COPIED_TOML" "learning_rate_te1" "raw" "$lr_te"
       toml_set "$COPIED_TOML" "learning_rate_te2" "raw" "$lr_te"
 
+      toml_set "$COPIED_TOML" "max_train_epochs" "raw" "$max_epochs"
       toml_set "$COPIED_TOML" "max_train_steps" "raw" "$train_steps"
 
       # precision override
@@ -264,7 +275,6 @@ while :; do
       TRAIN_DIR="${TRAIN_DIR%/}"
       [[ -z "$TRAIN_DIR" ]] && TRAIN_DIR="/workspace/datasets/images"
 
-      REPEATS_USED="$(compute_repeats "$PROFILE" "$IMG_CNT")"
       TARGET="$TRAIN_DIR/${REPEATS_USED}_${DATASET_NAME}"
       echo "Headless: SRC_PATH='${SRC_PATH}' TRAIN_DIR='${TRAIN_DIR}' TARGET='${TARGET}'"
 

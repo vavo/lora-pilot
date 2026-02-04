@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoRA Pilot ControlPilot</title>
+  <link rel="stylesheet" href="/css/ui.css?v=20260204b" />
   <style>
     :root {
       color-scheme: light;
@@ -15,6 +16,7 @@
       --pill-ok: #dcfce7;
       --pill-miss: #fee2e2;
       --accent: #2563eb;
+      --nav-active-bg: rgba(37, 99, 235, 0.12);
       --alert-bg: #fff7ed;
       --alert-text: #9a3412;
       --muted: #475569;
@@ -30,6 +32,7 @@
       --pill-ok: #14532d;
       --pill-miss: #7f1d1d;
       --accent: #3b82f6;
+      --nav-active-bg: rgba(59, 130, 246, 0.18);
       --alert-bg: #312e81;
       --alert-text: #e0e7ff;
       --muted: #94a3b8;
@@ -40,10 +43,36 @@
     .topbar { display:none; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--border); position:fixed; top:0; left:0; right:0; z-index:50; }
     .burger { background:none; border:none; font-size:28px; cursor:pointer; color:var(--text); }
     .sidebar { width:240px; min-width:240px; max-width:240px; background:var(--card); padding:20px; box-sizing:border-box; border-right:1px solid var(--border); position:sticky; top:0; z-index:40; transition:transform 0.2s ease; display:flex; flex-direction:column; gap:12px; height:100vh; align-self:flex-start; }
+    .sidebar-compact-toggle {
+      margin-top: auto;
+      align-self: flex-end;
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      background:var(--pill);
+      color:var(--text);
+      border:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      padding:0;
+    }
+    .sidebar-compact-toggle svg { width:18px; height:18px; }
+    .sidebar.compact { width:76px; min-width:76px; max-width:76px; padding:16px 10px; }
+    .sidebar.compact .logo { display:none; }
+    .sidebar.compact .nav a { justify-content:center; padding:10px 0; }
+    .sidebar.compact .nav a .nav-label { display:none; }
+    .sidebar.compact #theme-toggle { text-align:center; padding:10px 0; }
+    .sidebar.compact .sidebar-compact-toggle svg { transform: rotate(180deg); }
     .logo { margin-bottom:20px; }
     .logo img { width:100%; height:auto; display:block; }
-    .nav a { display:block; padding:10px 12px; color:var(--status); text-decoration:none; border-radius:8px; margin-bottom:6px; cursor:pointer; }
-    .nav a.active, .nav a:hover { background:var(--pill); color:var(--text); }
+    .nav a { display:flex; align-items:center; gap:10px; padding:10px 12px; color:var(--status); text-decoration:none; border-radius:10px; margin-bottom:6px; cursor:pointer; }
+    .nav a:hover { background:var(--pill); color:var(--text); }
+    .nav a.active { background:var(--nav-active-bg); color:var(--accent); }
+    .nav a.active .nav-icon { color: var(--accent); }
+    .nav-icon { width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; color: var(--muted); flex: 0 0 auto; }
+    .nav-icon svg { width:18px; height:18px; display:block; }
     .main { flex:1; padding:24px; }
     .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; }
     table { width:100%; border-collapse:collapse; }
@@ -70,6 +99,11 @@
     .filter { margin:10px 0 8px; }
     .filter button { margin-right:6px; background:var(--pill); color:var(--text); border:1px solid var(--border); }
     .filter button.active { background:var(--accent); color:#fff; }
+    .theme-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      font-weight: 500;
+    }
     .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:30; }
     @media (max-width: 768px) {
       .layout { flex-direction:column; }
@@ -79,14 +113,78 @@
       .topbar { display:flex; }
       .overlay.show { display:block; }
       .sidebar .logo { display:none; }
+      .sidebar-compact-toggle { display:none; }
     }
     .nav-scroll { flex:1; overflow-y:auto; }
+
+    /* Global shutdown notice (visible on all pages when a shutdown is scheduled) */
+    .shutdown-notice {
+      position: fixed;
+      right: 16px;
+      top: 16px;
+      z-index: 80;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      color: #fff;
+      background:
+        radial-gradient(120% 120% at 20% 10%, rgba(255,255,255,0.22), rgba(255,255,255,0) 55%),
+        linear-gradient(180deg, #ff6b4a, #f35a3c);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.30);
+      border: 1px solid rgba(255,255,255,0.18);
+      max-width: min(520px, calc(100vw - 32px));
+    }
+    .shutdown-notice .label {
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      white-space: nowrap;
+    }
+    .shutdown-notice .time {
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      background: rgba(0,0,0,0.14);
+      border: 1px solid rgba(255,255,255,0.18);
+      padding: 6px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .shutdown-notice button {
+      background: rgba(255,255,255,0.96);
+      color: #ff5a3e;
+      border: none;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+    }
+    .shutdown-notice button.secondary {
+      background: rgba(0,0,0,0.16);
+      color: rgba(255,255,255,0.92);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: none;
+    }
+    #copilot-drawer-prompt {
+      background: rgba(255, 90, 62, 0.14);
+      border-color: rgba(255, 90, 62, 0.45);
+    }
+    :root[data-theme="dark"] #copilot-drawer-prompt {
+      background: rgba(255, 122, 61, 0.18);
+      border-color: rgba(255, 122, 61, 0.48);
+    }
+    @media (max-width: 768px) {
+      .shutdown-notice { top: 78px; right: 12px; left: 12px; }
+      .shutdown-notice { justify-content: space-between; }
+    }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <img id="top-logo" src="/logo.svg" alt="LoRA Pilot" style="height:56px; width:auto; display:block;">
+    <div class="topbar-brand">
+      <img id="top-logo" src="/logo.svg" alt="LoRA Pilot" class="topbar-logo">
     </div>
     <button class="burger" id="burger">&#9776;</button>
   </div>
@@ -98,51 +196,117 @@
       </div>
       <div class="nav-scroll">
         <div class="nav" id="nav">
-          <a data-section="dashboard" class="active">Dashboard</a>
-          <a data-section="services">Services</a>
-          <a data-section="models">Models</a>
-          <a data-section="datasets">Datasets</a>
-          <a data-section="tagpilot">Tag Images</a>
-          <a data-section="trainpilot">Train with kohya</a>
-          <a data-section="dpipe">Train with dpipes</a>
-          <a data-section="comfyui">ComfyUI</a>
-          <a data-section="copilot">Copilot</a>
-          <a data-section="docs">Docs</a>
-          <a data-section="support">Support</a>
-          <button id="theme-toggle" style="background:var(--pill); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:8px 10px; width:100%; text-align:left; margin-top:8px;">🌙 Dark mode</button>
+          <a data-section="dashboard" class="active">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 13h7V4H4v9Zm9 7h7V11h-7v9ZM4 20h7v-5H4v5Zm9-18v7h7V2h-7Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Dashboard</span>
+          </a>
+          <a data-section="services">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a2 2 0 0 1 2 2v1.1a7.01 7.01 0 0 1 2.04.85l.78-.78a2 2 0 1 1 2.83 2.83l-.78.78c.36.64.65 1.32.85 2.04H20a2 2 0 1 1 0 4h-1.1a7.01 7.01 0 0 1-.85 2.04l.78.78a2 2 0 1 1-2.83 2.83l-.78-.78c-.64.36-1.32.65-2.04.85V20a2 2 0 1 1-4 0v-1.1a7.01 7.01 0 0 1-2.04-.85l-.78.78a2 2 0 1 1-2.83-2.83l.78-.78A7.01 7.01 0 0 1 5.1 13H4a2 2 0 1 1 0-4h1.1c.2-.72.49-1.4.85-2.04l-.78-.78A2 2 0 1 1 8 3.35l.78.78c.64-.36 1.32-.65 2.04-.85V4a2 2 0 0 1 2-2Zm0 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Services</span>
+          </a>
+          <a data-section="models">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2 3 6.5 12 11l9-4.5L12 2Zm9 7.5-9 4.5-9-4.5V17l9 4.5L21 17V9.5Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Models</span>
+          </a>
+          <a data-section="datasets">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h7l2 2h7v14H4V4Zm2 4h12v2H6V8Zm0 4h12v2H6v-2Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Datasets</span>
+          </a>
+          <a data-section="tagpilot">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M20 10V4H14L4 14l6 6 10-10Zm-4-2a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Tag Images</span>
+          </a>
+          <a data-section="trainpilot">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 9l10 6 10-6-10-6Zm0 9L4 8v8l8 5 8-5V8l-8 4Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Train with kohya</span>
+          </a>
+          <a data-section="dpipe">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M5 3h14v2H5V3Zm2 4h10v2H7V7Zm-2 4h14v10H5V11Zm4 3v4h2v-4H9Zm4 0v4h2v-4h-2Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Train with dpipes</span>
+          </a>
+          <a data-section="comfyui">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M7 2h10v6H7V2Zm-3 9h16v11H4V11Zm3 3v5h10v-5H7Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">ComfyUI</span>
+          </a>
+          <a data-section="copilot">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M9 3a3 3 0 0 0-3 3v2H5a2 2 0 0 0-2 2v3a5 5 0 0 0 5 5h1v1a2 2 0 0 0 4 0v-1h2v1a2 2 0 0 0 4 0v-1h1a5 5 0 0 0 5-5v-3a2 2 0 0 0-2-2h-1V6a3 3 0 0 0-3-3H9Zm0 2h10a1 1 0 0 1 1 1v2H8V6a1 1 0 0 1 1-1Zm-2 8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm10 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Copilot</span>
+          </a>
+          <a data-section="docs">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M6 2h9l3 3v17H6V2Zm8 1.5V6h2.5L14 3.5ZM8 10h8v2H8v-2Zm0 4h8v2H8v-2Zm0 4h6v2H8v-2Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Docs</span>
+          </a>
+          <a data-section="support">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a8 8 0 0 0-8 8v5a3 3 0 0 0 3 3h1v-7H7a1 1 0 0 1-1-1 6 6 0 1 1 12 0 1 1 0 0 1-1 1h-1v7h1a3 3 0 0 0 3-3v-5a8 8 0 0 0-8-8Zm-1 19h2v-2h-2v2Zm-1-6a2 2 0 0 1 4 0c0 1.5-2 1.25-2 3h-2c0-2.25 2-2 2-3a0.5 0.5 0 0 0-1 0H10Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Support</span>
+          </a>
+          <button id="theme-toggle" class="btn ghost theme-toggle-btn">🌙 Dark mode</button>
         </div>
       </div>
+      <button id="sidebar-compact-toggle" class="sidebar-compact-toggle" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </button>
     </div>
     <div class="main">
+      <div class="shutdown-notice" id="shutdown-notice" role="status" aria-live="polite">
+        <span class="label">Shutdown in</span>
+        <span class="time" id="shutdown-notice-time">--:--:--</span>
+        <button class="secondary" id="shutdown-notice-view" type="button" title="Open Dashboard">View</button>
+        <button id="shutdown-notice-cancel" type="button" title="Cancel scheduled shutdown">Cancel</button>
+      </div>
       <div id="content"></div>
     </div>
   </div>
 
   <!-- Global Copilot drawer (persists across subpages) -->
-  <button id="copilot-fab" title="Copilot chat" style="position:fixed; right:18px; bottom:18px; z-index:60; border-radius:999px; padding:12px 14px; box-shadow:0 10px 25px rgba(0,0,0,0.18);">
+  <button id="copilot-fab" class="btn primary fab-btn" title="Copilot chat">
     🤖
   </button>
-  <div id="copilot-drawer" style="display:none; position:fixed; right:18px; bottom:74px; width:min(520px, calc(100vw - 36px)); max-height:min(70vh, 720px); z-index:60;">
-    <div class="card" style="margin:0; display:flex; flex-direction:column; gap:10px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-        <div style="font-weight:700;">Copilot</div>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <button id="copilot-drawer-start" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Start</button>
-          <button id="copilot-drawer-close" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Close</button>
+  <div id="copilot-drawer" class="drawer-wrap">
+    <div class="card drawer-card">
+      <div class="drawer-header">
+        <div class="drawer-title">Copilot</div>
+        <div class="drawer-actions">
+          <button id="copilot-drawer-start" class="btn secondary">Start</button>
+          <button id="copilot-drawer-close" class="btn secondary">Close</button>
         </div>
       </div>
       <div class="status" id="copilot-drawer-status">Loading…</div>
-      <textarea id="copilot-drawer-prompt" rows="4" placeholder="Ask Copilot…" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text);"></textarea>
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-        <button id="copilot-drawer-send">Run</button>
-        <label class="status" style="display:flex; gap:6px; align-items:center;">
+      <textarea id="copilot-drawer-prompt" class="input" rows="4" placeholder="Ask Copilot…"></textarea>
+      <div class="row wrap gap-8 items-center">
+        <button id="copilot-drawer-send" class="btn primary">Run</button>
+        <label class="status status-check">
           <input type="checkbox" id="copilot-drawer-allow-urls" />
           allow all URLs
         </label>
-        <button id="copilot-drawer-clear" style="background:var(--pill); color:var(--text); border:1px solid var(--border);">Clear</button>
-        <span class="status" id="copilot-drawer-running" style="display:none;">Running…</span>
+        <button id="copilot-drawer-clear" class="btn secondary">Clear</button>
+        <span class="status is-hidden" id="copilot-drawer-running">Running…</span>
       </div>
-      <pre id="copilot-drawer-output" style="white-space:pre-wrap; margin:0; overflow:auto; max-height:40vh;"></pre>
+      <pre id="copilot-drawer-output" class="log-box mono drawer-output"></pre>
       <div class="tip">
         First-time setup: run <code>copilot</code> then <code>/login</code> in a terminal; config persists under <code>/workspace</code>.
       </div>
@@ -166,19 +330,19 @@
     }
   </script>
   
-  <script src="/js/utils.js?v=20260105a"></script>
-  <script src="/js/dashboard.js?v=20260105a"></script>
-  <script src="/js/services.js?v=20260105a"></script>
-  <script src="/js/models.js?v=20260105a"></script>
-  <script src="/js/datasets.js?v=20260105a"></script>
-  <script src="/js/comfyui.js?v=20260105a"></script>
-  <script src="/js/trainpilot.js?v=20260105a"></script>
-  <script src="/js/dpipe.js?v=20260105a"></script>
-  <script src="/js/copilot.js?v=20260105a"></script>
-  <script src="/js/copilot-global.js?v=20260105a"></script>
-  <script src="/js/docs.js?v=20260105a"></script>
-  <script src="/js/support.js?v=20260105a"></script>
-  <script src="/js/tagpilot.js?v=20260105a"></script>
-  <script src="/js/main.js?v=20260105a"></script>
+  <script src="/js/utils.js?v=20260204b"></script>
+  <script src="/js/dashboard.js?v=20260204b"></script>
+  <script src="/js/services.js?v=20260204b"></script>
+  <script src="/js/models.js?v=20260204b"></script>
+  <script src="/js/datasets.js?v=20260204b"></script>
+  <script src="/js/comfyui.js?v=20260204b"></script>
+  <script src="/js/trainpilot.js?v=20260204b"></script>
+  <script src="/js/dpipe.js?v=20260204b"></script>
+  <script src="/js/copilot.js?v=20260204b"></script>
+  <script src="/js/copilot-global.js?v=20260204b"></script>
+  <script src="/js/docs.js?v=20260204b"></script>
+  <script src="/js/support.js?v=20260204b"></script>
+  <script src="/js/tagpilot.js?v=20260204b"></script>
+  <script src="/js/main.js?v=20260204b"></script>
 </body>
 </html>

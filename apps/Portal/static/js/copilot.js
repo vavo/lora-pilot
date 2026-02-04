@@ -38,7 +38,7 @@ window.initCopilot = async function () {
     if (!prompt) return;
     outEl.textContent = "";
     runEl.disabled = true;
-    if (runningEl) runningEl.style.display = "";
+    if (runningEl) runningEl.classList.remove("is-hidden");
     try {
       const payload = {
         prompt,
@@ -57,7 +57,7 @@ window.initCopilot = async function () {
       outEl.textContent = `Error: ${e.message || e}`;
     } finally {
       runEl.disabled = false;
-      if (runningEl) runningEl.style.display = "none";
+      if (runningEl) runningEl.classList.add("is-hidden");
     }
   }
 
@@ -67,4 +67,3 @@ window.initCopilot = async function () {
 
   await refreshStatus();
 };
-

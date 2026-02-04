@@ -134,14 +134,14 @@ function displayLastImage(imageInfo) {
 
   container.innerHTML = "";
   container.appendChild(img);
-  infoEl.style.display = "block";
+  infoEl.classList.remove("is-hidden");
 }
 
 function showPlaceholder(message) {
   const container = document.getElementById("preview-container");
   const infoEl = document.getElementById("preview-info");
   if (container) container.innerHTML = `<div class="preview-placeholder">${message}</div>`;
-  if (infoEl) infoEl.style.display = "none";
+  if (infoEl) infoEl.classList.add("is-hidden");
 }
 
 function connectWebSocket() {
@@ -229,7 +229,7 @@ function displayImage(imageData) {
 
   container.innerHTML = "";
   container.appendChild(img);
-  infoEl.style.display = "block";
+  infoEl.classList.remove("is-hidden");
 
   lastGeneratedImage = {
     url: img.src,
@@ -262,5 +262,5 @@ function clearPreview() {
   const container = document.getElementById("preview-container");
   if (container) container.innerHTML = '<div class="preview-placeholder">Preview paused</div>';
   const infoEl = document.getElementById("preview-info");
-  if (infoEl) infoEl.style.display = "none";
+  if (infoEl) infoEl.classList.add("is-hidden");
 }

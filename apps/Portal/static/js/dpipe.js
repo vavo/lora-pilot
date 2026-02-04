@@ -49,9 +49,9 @@ window.initDpipe = function () {
   if (wandb && !wandb.dataset.bound) {
     wandb.dataset.bound = "1";
     wandb.addEventListener("change", () => {
-      fields.forEach(f => { if (f) f.style.display = wandb.checked ? "" : "none"; });
+      fields.forEach(f => { if (f) f.classList.toggle("is-hidden", !wandb.checked); });
     });
-    fields.forEach(f => { if (f) f.style.display = wandb.checked ? "" : "none"; });
+    fields.forEach(f => { if (f) f.classList.toggle("is-hidden", !wandb.checked); });
   }
   startLogPoll();
 };

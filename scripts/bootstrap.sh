@@ -13,9 +13,42 @@ mkdir -p \
   "$WORKSPACE_ROOT"/{apps,models,datasets,outputs,logs,cache,config,home} \
   "$WORKSPACE_ROOT"/config/{jupyter,code-server,xdg} \
   "$WORKSPACE_ROOT"/cache/{jupyter,ipython,xdg,xdg-data,code-server}
+mkdir -p "$WORKSPACE_ROOT/config/ai-toolkit"
 mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke,ai-toolkit}
 mkdir -p "$WORKSPACE_ROOT/datasets"/{images,ZIPs}
 mkdir -p "$WORKSPACE_ROOT/apps"/{comfy,diffusion-pipe,invoke,kohya,codeserver}
+
+# AI Toolkit workspace mapping (avoid storing datasets/models/outputs inside the repo)
+if [ -d /opt/pilot/repos/ai-toolkit ]; then
+  mkdir -p "$WORKSPACE_ROOT/datasets" "$WORKSPACE_ROOT/models" "$WORKSPACE_ROOT/outputs/ai-toolkit"
+  AI_TOOLKIT_DB_PATH="${AI_TOOLKIT_DB_PATH:-$WORKSPACE_ROOT/config/ai-toolkit/aitk_db.db}"
+  mkdir -p "$(dirname "$AI_TOOLKIT_DB_PATH")"
+  touch "$AI_TOOLKIT_DB_PATH"
+
+  ensure_link() {
+    local link_path="$1"
+    local target_path="$2"
+    if [ -L "$link_path" ]; then
+      local cur
+      cur="$(readlink "$link_path" || true)"
+      if [ "$cur" != "$target_path" ]; then
+        rm -f "$link_path"
+        ln -s "$target_path" "$link_path"
+      fi
+      return 0
+    fi
+    if [ -e "$link_path" ]; then
+      echo "AI Toolkit: '$link_path' exists and is not a symlink; leaving as-is (expected -> $target_path)" >&2
+      return 0
+    fi
+    ln -s "$target_path" "$link_path"
+  }
+
+  ensure_link /opt/pilot/repos/ai-toolkit/datasets "$WORKSPACE_ROOT/datasets"
+  ensure_link /opt/pilot/repos/ai-toolkit/models "$WORKSPACE_ROOT/models"
+  ensure_link /opt/pilot/repos/ai-toolkit/output "$WORKSPACE_ROOT/outputs/ai-toolkit"
+  ensure_link /opt/pilot/repos/ai-toolkit/aitk_db.db "$AI_TOOLKIT_DB_PATH"
+fi
 
 # Seed bundled apps into workspace (without clobbering existing)
 if [ -d /opt/pilot/apps ]; then
@@ -84,5 +117,8 @@ echo "ComfyUI:     http://<host>:${COMFY_PORT:-5555}"
 echo "Kohya:       http://<host>:${KOHYA_PORT:-6666}"
 echo "DiffPipe TB: http://<host>:${DIFFPIPE_PORT:-4444}"
 echo "Invoke:      http://<host>:${INVOKE_PORT:-9090}"
+if [ -d /opt/pilot/repos/ai-toolkit/ui ]; then
+  echo "AI Toolkit:  http://<host>:${AI_TOOLKIT_PORT:-8675}"
+fi
 
 umask "${UMASK:-0022}"

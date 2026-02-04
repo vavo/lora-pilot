@@ -1,8 +1,15 @@
+<style>
+  #ds-list .btn.danger {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+  }
+</style>
 <h2>Datasets</h2>
 <div class="card">
-  <h3 style="margin-top:0;">Existing Datasets</h3>
+  <h3 class="section-title-tight">Existing Datasets</h3>
   <div id="ds-status" class="status">Loading datasets...</div>
-  <table id="ds-table" style="display:none; margin-top:8px;">
+  <table id="ds-table" class="is-hidden mt-8">
     <thead>
       <tr>
         <th>Dataset name</th>
@@ -14,26 +21,32 @@
     </thead>
     <tbody id="ds-list"></tbody>
   </table>
-  <div style="display:flex; gap:12px; margin-top:16px;">
-    <button style="background:transparent; color:var(--text); border:1px solid var(--text);" onclick="openUploadModal()">Add more</button>
-    <button style="background:transparent; color:var(--text); border:1px solid var(--text);" onclick="createDatasetPrompt()">Create new</button>
+  <div class="row wrap gap-12 mt-16">
+    <button class="btn ghost" onclick="createDatasetPrompt()">Create new</button>
+    <button class="btn ghost" onclick="openUploadModal()">Upload ZIP</button>
   </div>
 </div>
 
 <!-- Upload modal -->
-<div id="ds-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:90; align-items:center; justify-content:center; padding:16px;">
-  <div style="background:var(--card); border:1px solid var(--border); padding:16px; border-radius:8px; width:100%; max-width:620px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h3 style="margin:0;">Upload a dataset</h3>
-      <button style="background:transparent; color:var(--text); border:1px solid var(--border); padding:4px 8px;" onclick="closeUploadModal()">Close</button>
+<div id="ds-modal" class="modal" onclick="closeUploadModal(event)">
+  <div class="modal-card" data-size="sm">
+    <div class="modal-header">
+      <div class="modal-title">Upload a dataset</div>
+      <button class="modal-close" type="button" aria-label="Close" onclick="closeUploadModal(event)">×</button>
     </div>
-    <label id="ds-dropzone" for="ds-zip" style="display:block; border:1px dashed var(--border); border-radius:6px; padding:24px; text-align:center; cursor:pointer; background:var(--pill); color:var(--text);">
-      Drag and drop OR click to select
-      <input id="ds-zip" type="file" accept=".zip" style="display:none;" />
-    </label>
-    <div style="margin-top:12px; height:10px; background:var(--border); border-radius:6px; overflow:hidden;">
-      <div id="ds-upload-bar" style="height:100%; width:0%; background:var(--accent); transition:width 0.2s ease;"></div>
+    <div class="modal-body">
+      <label id="ds-dropzone" for="ds-zip" class="dropzone">
+        Drag and drop OR click to select
+        <input id="ds-zip" type="file" accept=".zip" class="file-input-hidden" />
+      </label>
+      <div class="progress-track">
+        <div id="ds-upload-bar" class="progress-fill"></div>
+      </div>
+      <div id="ds-upload-status" class="status mt-10"></div>
+      <div class="tip mt-10">ZIP will be extracted into <code>/workspace/datasets</code>.</div>
     </div>
-    <div id="ds-upload-status" class="status" style="margin-top:8px;"></div>
+    <div class="modal-actions">
+      <button class="btn secondary" type="button" onclick="closeUploadModal()">Close</button>
+    </div>
   </div>
 </div>

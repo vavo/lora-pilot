@@ -1,25 +1,54 @@
+<style>
+  .dash-pills { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+  .dash-section { margin-bottom:12px; }
+  .dash-cpu-wrap { display:flex; gap:24px; flex-wrap:wrap; align-items:center; }
+  .dash-muted-sm { font-size:12px; color:var(--muted); margin-top:4px; }
+  .dash-gpu-item { margin-bottom: 8px; }
+  .dash-gpu-title { font-weight: 600; margin-bottom: 4px; }
+  .dash-gpu-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .dash-gpu-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .dash-gpu-value { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dash-disk-meta { color: var(--muted); font-size: 12px; }
+  .shutdown-card-wrap {
+    width: 33.333%;
+    min-width: 360px;
+  }
+  @media (max-width: 1200px) {
+    .shutdown-card-wrap {
+      width: 50%;
+    }
+  }
+  @media (max-width: 900px) {
+    .shutdown-card-wrap {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+</style>
+
 <h2>Dashboard</h2>
 <div class="card" id="telemetry-card">
   <div id="telemetry-status" class="status">Loading telemetry...</div>
-  <div id="telemetry-content" style="display:none;">
-    <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+  <div id="telemetry-content" class="is-hidden">
+    <div class="dash-pills">
       <div class="pill">RunPod ID: <span id="t-host"></span></div>
       <div class="pill">Uptime: <span id="t-uptime"></span></div>
-      <div class="pill">CPU load (1/5/15): <span id="t-load"></span></div>
-      <div class="pill">Memory: <span id="t-mem"></span></div>
     </div>
-    <div class="card" style="margin-bottom:12px;">
+    <div class="panel dash-section">
       <h3>CPU / GPU</h3>
-      <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center;">
+      <div class="dash-cpu-wrap">
         <div>
-          <div style="font-weight:600; margin-bottom:4px;">CPU Load</div>
-          <div class="bar-wrap"><div class="bar-fill" id="cpu-bar" style="width:0%;"></div></div>
-          <div style="font-size:12px; color:var(--muted); margin-top:4px;" id="cpu-label"></div>
+          <div class="fw-600">CPU Load</div>
+          <div class="bar-wrap"><div class="bar-fill" id="cpu-bar"></div></div>
+          <div class="dash-muted-sm" id="cpu-label"></div>
+          <div class="fw-600 mt-8">Memory</div>
+          <div class="bar-wrap"><div class="bar-fill" id="mem-bar"></div></div>
+          <div class="dash-muted-sm" id="mem-label"></div>
         </div>
         <div id="gpu-bars"></div>
       </div>
     </div>
-    <div class="card" style="margin-bottom:12px;">
+    <div class="panel dash-section">
       <h3>Disks</h3>
       <table>
         <thead><tr><th>Mount</th><th>Usage</th><th></th></tr></thead>
@@ -29,31 +58,154 @@
   </div>
 </div>
 
-<div class="card" id="shutdown-card">
-  <h3>Pod Shutdown</h3>
-  <div id="shutdown-scheduler">
-    <!-- Debug info -->
-    <div id="shutdown-debug" style="background:var(--alert-bg); color:var(--alert-text); padding:8px; border-radius:4px; margin-bottom:12px; font-size:12px; display:none;">
-      Debug: Loading...
-    </div>
-    
-    <div id="shutdown-inputs" style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-      <input type="number" id="shutdown-value" min="1" max="999" value="1" style="width:80px; padding:4px 8px; border:1px solid var(--border); border-radius:4px; background:var(--card); color:var(--text);">
-      <select id="shutdown-unit" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; background:var(--card); color:var(--text);">
-        <option value="minutes">Minutes</option>
-        <option value="hours">Hours</option>
-        <option value="days">Days</option>
-      </select>
-      <button id="schedule-shutdown-btn" onclick="scheduleShutdown()" style="padding:4px 12px; border:1px solid var(--border); border-radius:4px; background:var(--accent); color:white; cursor:pointer;">Schedule Shutdown</button>
-    </div>
-    <div id="shutdown-status" style="display:none;">
-      <div style="margin-bottom:8px;">
-        <strong>Shutdown scheduled:</strong> <span id="shutdown-time"></span>
+<div id="shutdown-card" class="mt-12 shutdown-card-wrap">
+  <style>
+    .shutdown-widget {
+      position: relative;
+      border-radius: 18px;
+      padding: 16px;
+      color: #fff;
+      background:
+        radial-gradient(120% 120% at 20% 10%, rgba(255,255,255,0.22), rgba(255,255,255,0) 55%),
+        radial-gradient(120% 120% at 90% 70%, rgba(0,0,0,0.18), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, #ff6b4a, #f35a3c);
+      box-shadow: 0 18px 50px rgba(0,0,0,0.35);
+      overflow: hidden;
+    }
+    .shutdown-widget::after {
+      content: "";
+      position: absolute;
+      inset: -60px -80px;
+      background:
+        radial-gradient(circle at 20% 35%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%),
+        radial-gradient(circle at 85% 40%, rgba(255,255,255,0.10), rgba(255,255,255,0) 55%);
+      transform: rotate(-8deg);
+      pointer-events: none;
+    }
+    .shutdown-header { position: relative; z-index: 1; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .shutdown-title { font-size:18px; font-weight:800; letter-spacing:0.2px; margin:0; }
+    .shutdown-subtitle { margin:2px 0 0; font-size:12px; opacity:0.85; }
+    .shutdown-icon {
+      width: 30px; height: 30px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.14);
+      display:flex; align-items:center; justify-content:center;
+      flex: 0 0 auto;
+    }
+    .shutdown-timebox {
+      position: relative;
+      z-index: 1;
+      margin-top: 14px;
+      background: rgba(0,0,0,0.12);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 16px;
+      padding: 12px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 8px;
+    }
+    .shutdown-seg { flex: 1 1 0; text-align:center; min-width: 0; }
+    .shutdown-num {
+      font-variant-numeric: tabular-nums;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      line-height: 1;
+    }
+    .shutdown-lbl { margin-top: 6px; font-size: 10px; opacity: 0.9; letter-spacing: 0.12em; }
+    .shutdown-sep { opacity: 0.45; font-weight: 800; padding: 0 2px; }
+    .shutdown-input {
+      width: 3ch;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: #fff;
+      font: inherit;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      padding: 0;
+    }
+    .shutdown-input::-webkit-outer-spin-button,
+    .shutdown-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .shutdown-actions { position: relative; z-index: 1; margin-top: 12px; display:flex; gap: 10px; }
+    .shutdown-btn {
+      flex: 1 1 auto;
+      border: none;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-weight: 800;
+      cursor: pointer;
+      background: rgba(255,255,255,0.96);
+      color: #ff5a3e;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+    }
+    .shutdown-btn.secondary {
+      background: rgba(0,0,0,0.18);
+      color: rgba(255,255,255,0.92);
+      box-shadow: none;
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    .shutdown-meta { position: relative; z-index: 1; margin-top: 10px; font-size: 12px; opacity: 0.85; }
+  </style>
+
+  <div class="shutdown-widget" id="shutdown-widget">
+    <div class="shutdown-header">
+      <div>
+        <div class="shutdown-title">Shutdown Pod</div>
+        <div class="shutdown-subtitle">Schedule automatic termination</div>
       </div>
-      <div style="margin-bottom:8px;">
-        <strong>Time remaining:</strong> <span id="shutdown-countdown"></span>
+      <div class="shutdown-icon" title="Scheduler">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+          <path d="M12 8v5l3 2" stroke="rgba(255,255,255,0.92)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+          <path d="M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z" stroke="rgba(255,255,255,0.92)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
       </div>
-      <button id="cancel-shutdown-btn" onclick="cancelShutdown()" class="danger" style="padding:4px 12px; border:1px solid var(--border); border-radius:4px; cursor:pointer;">Cancel Shutdown</button>
+    </div>
+
+    <!-- Step 1: set countdown -->
+    <div class="shutdown-timebox" id="shutdown-picker">
+      <div class="shutdown-seg">
+        <div class="shutdown-num"><input id="shutdown-hours" class="shutdown-input" type="number" min="0" max="99" value="0" aria-label="Hours"></div>
+        <div class="shutdown-lbl">HOURS</div>
+      </div>
+      <div class="shutdown-sep">:</div>
+      <div class="shutdown-seg">
+        <div class="shutdown-num"><input id="shutdown-mins" class="shutdown-input" type="number" min="0" max="59" value="1" aria-label="Minutes"></div>
+        <div class="shutdown-lbl">MINS</div>
+      </div>
+      <div class="shutdown-sep">:</div>
+      <div class="shutdown-seg">
+        <div class="shutdown-num"><input id="shutdown-secs" class="shutdown-input" type="number" min="0" max="59" value="0" aria-label="Seconds"></div>
+        <div class="shutdown-lbl">SECS</div>
+      </div>
+    </div>
+
+    <!-- Step 2: active countdown -->
+    <div class="shutdown-timebox is-hidden" id="shutdown-countdown-box">
+      <div class="shutdown-seg">
+        <div class="shutdown-num" id="shutdown-hh">00</div>
+        <div class="shutdown-lbl">HOURS</div>
+      </div>
+      <div class="shutdown-sep">:</div>
+      <div class="shutdown-seg">
+        <div class="shutdown-num" id="shutdown-mm">00</div>
+        <div class="shutdown-lbl">MINS</div>
+      </div>
+      <div class="shutdown-sep">:</div>
+      <div class="shutdown-seg">
+        <div class="shutdown-num" id="shutdown-ss">00</div>
+        <div class="shutdown-lbl">SECS</div>
+      </div>
+    </div>
+
+    <div class="shutdown-actions">
+      <button class="shutdown-btn" id="schedule-shutdown-btn" onclick="scheduleShutdown()">Schedule Shutdown</button>
+      <button class="shutdown-btn is-hidden" id="cancel-shutdown-btn" onclick="cancelShutdown()">Cancel Scheduler</button>
+    </div>
+
+    <div class="shutdown-meta is-hidden" id="shutdown-meta">
+      Shutdown time: <span id="shutdown-time"></span>
     </div>
   </div>
 </div>

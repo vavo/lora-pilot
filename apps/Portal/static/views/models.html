@@ -1,12 +1,11 @@
 <style>
   .models-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:12px; }
   .models-search { display:flex; flex-direction:column; gap:6px; }
-  .models-search input { width:320px; max-width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); }
   .models-summary { font-size:12px; color:var(--muted); display:flex; gap:8px; align-items:center; }
   .models-section { margin-top:16px; }
   .models-section-header { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
   .models-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
-  .model-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .model-card { background:var(--card); border:1px solid rgba(255, 90, 62, 0.5); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
   .model-title { display:flex; gap:8px; align-items:center; justify-content:space-between; }
   .model-name { font-weight:600; }
   .model-meta { font-size:12px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px 12px; }
@@ -14,26 +13,44 @@
   .model-actions { display:flex; flex-wrap:wrap; gap:8px; }
   .model-actions { align-items:center; }
   .model-actions button { padding:6px 10px; font-size:12px; display:inline-flex; align-items:center; }
+  .model-actions .btn.danger { background:#dc2626; color:#fff; border-color:#dc2626; }
   .model-actions .pill { display:inline-flex; align-items:center; line-height:1; }
   .model-actions .ghost { background:var(--pill); color:var(--text); border:1px solid var(--border); }
   .model-path { display:flex; align-items:center; gap:6px; width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--pill); color:var(--text); text-align:left; }
   .model-path code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .model-path-icon { width:14px; height:14px; color:var(--muted); flex:0 0 auto; }
   button.model-path { cursor:pointer; }
+  .model-progress { display:none; flex-direction:column; gap:6px; margin-top:6px; }
+  .model-progress-track { width:100%; height:10px; background:var(--pill); border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .model-progress-bar { height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #10b981); transition: width 0.2s ease; }
+  .model-progress-bar.indeterminate { width:45%; animation: modelProgressIndeterminate 1.15s infinite ease-in-out; }
+  .model-progress-text { font-size:12px; color:var(--muted); }
+  @keyframes modelProgressIndeterminate {
+    0% { transform: translateX(-120%); }
+    100% { transform: translateX(260%); }
+  }
 </style>
 
 <h2>Models</h2>
 <div class="card">
-  <div class="hf-box">
-    <label>Hugging Face Token:</label>
-    <input id="hf-token" type="password" placeholder="Enter HF_TOKEN" />
-    <button onclick="saveHFToken()">Save</button>
+  <div class="hf-box field">
+    <label>Hugging Face Token</label>
+    <div class="row wrap gap-8">
+      <input id="hf-token" class="input w-320" type="password" placeholder="Enter HF_TOKEN" />
+      <button class="btn primary" onclick="saveHFToken()">Save</button>
+    </div>
     <div class="tip">Don’t have one? <a href="https://huggingface.co/settings/tokens" target="_blank">Get it here</a>.</div>
   </div>
   <div class="models-toolbar">
     <div class="models-search">
       <label>Search</label>
-      <input id="models-search" type="text" placeholder="Search by name, source, or subdir" />
+      <div class="search w-320">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
+        </svg>
+        <input id="models-search" type="text" placeholder="Search by name, source, or subdir" />
+      </div>
     </div>
     <div class="filter">
       <button data-cat="ALL" class="active" onclick="setFilter(this)">All</button>
@@ -42,10 +59,9 @@
       <button data-cat="WAN" onclick="setFilter(this)">WAN</button>
       <button data-cat="OTHERS" onclick="setFilter(this)">Others</button>
     </div>
-    <div id="models-summary" class="models-summary"></div>
   </div>
   <div id="status" class="status">Loading models...</div>
-  <div id="models-lists" style="display:none;">
+  <div id="models-lists" class="is-hidden">
     <div class="models-section">
       <div class="models-section-header">
         <strong>Installed</strong>

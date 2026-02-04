@@ -37,6 +37,7 @@ cd lora-pilot
 - **Kohya SS**: http://localhost:6666
 - **InvokeAI**: http://localhost:9090
 - **Diffusion Pipe**: http://localhost:4444
+- **AI Toolkit**: http://localhost:8675
 
 ## 🛠️ Management Commands
 
@@ -76,6 +77,7 @@ HF_TOKEN=your_token_here
 # Custom ports
 JUPYTER_PORT=8888
 COMFY_PORT=5555
+AI_TOOLKIT_PORT=8675
 # ... etc
 ```
 

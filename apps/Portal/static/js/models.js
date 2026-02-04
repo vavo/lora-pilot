@@ -2,6 +2,65 @@ let allModels = [];
 let filterCat = "ALL";
 let searchText = "";
 
+function getProgressEls(card) {
+  const wrap = card.querySelector(".model-progress");
+  const bar = card.querySelector(".model-progress-bar");
+  const text = card.querySelector(".model-progress-text");
+  return { wrap, bar, text };
+}
+
+function setProgress(card, pct, label) {
+  const { wrap, bar, text } = getProgressEls(card);
+  if (!wrap || !bar || !text) return;
+  wrap.style.display = "flex";
+  if (typeof pct === "number" && isFinite(pct)) {
+    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+    bar.classList.remove("indeterminate");
+    bar.style.width = `${clamped}%`;
+    text.textContent = label || `${clamped}%`;
+  } else {
+    bar.classList.add("indeterminate");
+    bar.style.width = "";
+    text.textContent = label || "Downloading…";
+  }
+}
+
+function clearProgress(card) {
+  const { wrap, bar, text } = getProgressEls(card);
+  if (!wrap || !bar || !text) return;
+  wrap.style.display = "none";
+  bar.classList.remove("indeterminate");
+  bar.style.width = "0%";
+  text.textContent = "";
+}
+
+async function syncPullStatusesOnce() {
+  try {
+    const res = await fetchJson("/api/models/pulls");
+    const jobs = (res && res.jobs) ? res.jobs : [];
+    const cardsByName = new Map();
+    document.querySelectorAll(".model-card").forEach(c => {
+      const n = c?.dataset?.modelName;
+      if (n) cardsByName.set(n, c);
+    });
+    jobs.forEach(j => {
+      if (!j || j.state !== "running") return;
+      const card = cardsByName.get(j.name);
+      if (!card) return;
+      const pct = (typeof j.progress_pct === "number") ? j.progress_pct : null;
+      const label = j.last_line || (pct != null ? `${pct}%` : "Downloading…");
+      setProgress(card, pct, label);
+      const btn = card.querySelector('button[data-action="install"]');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = pct != null ? `Downloading ${pct}%` : "Downloading…";
+      }
+    });
+  } catch (e) {
+    // Best-effort; ignore sync errors.
+  }
+}
+
 window.initModels = async function () {
   const hf = document.getElementById("hf-token");
   if (hf && !hf.dataset.bound) {
@@ -84,7 +143,7 @@ async function loadModelsTable(forceReload) {
   const summary = document.getElementById("models-summary");
   if (!status || !lists || !installedWrap || !availableWrap) return;
   status.textContent = "Loading models...";
-  lists.style.display = "none";
+  lists.classList.add("is-hidden");
   installedWrap.innerHTML = "";
   availableWrap.innerHTML = "";
   try {
@@ -121,7 +180,8 @@ async function loadModelsTable(forceReload) {
       availableWrap.appendChild(renderModelCard(m));
     });
     status.textContent = "";
-    lists.style.display = "";
+    lists.classList.remove("is-hidden");
+    await syncPullStatusesOnce();
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
   }
@@ -130,9 +190,9 @@ async function loadModelsTable(forceReload) {
 function renderModelCard(m) {
   const card = document.createElement("div");
   card.className = "model-card";
+  card.dataset.modelName = m.name || "";
   const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
   const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
-  const installedPill = `<span class="pill ${m.installed ? "ok" : "miss"}">${m.installed ? "Installed" : "Not Installed"}</span>`;
   const safePath = (m.primary_path || m.target_path || "").replace(/'/g, "\\'");
   const copyIcon = `
     <svg class="model-path-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -141,10 +201,10 @@ function renderModelCard(m) {
     </svg>
   `;
   const installBtn = !m.installed
-    ? `<button onclick="pullModel('${m.name}', this)">Install</button>`
+    ? `<button class="btn primary" data-action="install" onclick="pullModel('${m.name}', this)">Install</button>`
     : "";
   const deleteBtn = m.installed
-    ? `<button class="danger" onclick="deleteModel('${m.name}', this)">Delete</button>`
+    ? `<button class="btn danger" onclick="deleteModel('${m.name}', this)">Delete</button>`
     : "";
   const src = m.source || "—";
   const target = m.primary_path || m.target_path || "";
@@ -166,9 +226,12 @@ function renderModelCard(m) {
     <div class="model-source" title="${src}">${src}</div>
     ${pathRow}
     <div class="model-actions">
-      ${installedPill}
       ${installBtn}
       ${deleteBtn}
+    </div>
+    <div class="model-progress">
+      <div class="model-progress-track"><div class="model-progress-bar"></div></div>
+      <div class="model-progress-text"></div>
     </div>
   `;
   return card;
@@ -176,16 +239,45 @@ function renderModelCard(m) {
 
 window.pullModel = async function (name, btn) {
   const original = btn.textContent;
+  const card = btn.closest(".model-card");
   btn.disabled = true;
-  btn.textContent = "Installing...";
+  btn.textContent = "Starting…";
   try {
-    await fetchJson(`/api/models/${encodeURIComponent(name)}/pull`, { method: "POST" });
+    await fetchJson(`/api/models/${encodeURIComponent(name)}/pull/start`, { method: "POST" });
+    if (card) setProgress(card, null, "Downloading…");
+
+    while (true) {
+      const st = await fetchJson(`/api/models/${encodeURIComponent(name)}/pull/status`);
+      if (st && st.state === "running") {
+        const pct = (typeof st.progress_pct === "number") ? st.progress_pct : null;
+        const label = st.last_line || (pct != null ? `${pct}%` : "Downloading…");
+        if (card) setProgress(card, pct, label);
+        btn.textContent = pct != null ? `Downloading ${pct}%` : "Downloading…";
+        await new Promise(r => setTimeout(r, 1000));
+        continue;
+      }
+      if (st && st.state === "done") {
+        if (card) clearProgress(card);
+        break;
+      }
+      if (st && st.state === "error") {
+        const msg = st.error || "Unknown error";
+        if (card) setProgress(card, null, `Failed: ${msg}`);
+        throw new Error(msg);
+      }
+      // idle or unexpected response
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
     await loadModelsTable(true);
   } catch (e) {
     alert(`Pull failed: ${e.message || e}`);
   } finally {
-    btn.disabled = false;
-    btn.textContent = original;
+    // If the table re-rendered, this button may no longer exist.
+    if (btn && btn.isConnected) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
   }
 };
 

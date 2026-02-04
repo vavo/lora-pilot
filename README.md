@@ -121,7 +121,12 @@ DIFFPIPE_PORT=4444
 CODE_SERVER_PORT=8443
 JUPYTER_PORT=8888
 INVOKE_PORT=9090
+AI_TOOLKIT_PORT=8675
 COPILOT_SIDECAR_PORT=7879
+
+## AI Toolkit (optional)
+AI_TOOLKIT_DB_PATH=/workspace/config/ai-toolkit/aitk_db.db
+# DB is persisted under /workspace by default
 
 ## Jupyter (optional)
 JUPYTER_ALLOW_ORIGIN_PAT=...   # extra origin regex appended to defaults (RunPod proxy + localhost + 127.0.0.1)

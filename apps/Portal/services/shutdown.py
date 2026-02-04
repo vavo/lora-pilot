@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 class ShutdownRequest(BaseModel):
     value: int
-    unit: str  # "minutes", "hours", "days"
+    unit: str  # "seconds", "minutes", "hours", "days"
 
 
 class ShutdownStatus(BaseModel):
@@ -82,11 +82,11 @@ def schedule_shutdown(request: ShutdownRequest) -> None:
     """Schedule a shutdown for the specified time."""
     global shutdown_scheduled, shutdown_time, shutdown_thread
 
-    multipliers = {"minutes": 60, "hours": 3600, "days": 86400}
+    multipliers = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
     if request.unit not in multipliers:
         raise HTTPException(
             status_code=400,
-            detail="Invalid unit. Must be: minutes, hours, days",
+            detail="Invalid unit. Must be: seconds, minutes, hours, days",
         )
 
     delay_seconds = request.value * multipliers[request.unit]

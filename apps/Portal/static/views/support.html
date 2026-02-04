@@ -1,15 +1,19 @@
 <h2>Support</h2>
-<div class="card" style="line-height:1.6;">
+<style>
+  .support-card { line-height: 1.6; }
+  .bmc-image { height: 60px; width: 217px; }
+</style>
+<div class="card support-card">
   <p>Made with ❤️ and way too much coffee by vavo.</p>
   <p>If you need help or have questions, feel free to reach out or open an issue on GitHub.</p>
-  <p>
-    Reddit: <a href="https://www.reddit.com/user/no3us" target="_blank">u/no3us</a><br><br>
-    GitHub repo: <a href="https://github.com/vavo/lora-pilot" target="_blank">https://github.com/vavo/lora-pilot</a><br>
-    DockerHub repo: <a href="https://hub.docker.com/r/notrius/lora-pilot" target="_blank">https://hub.docker.com/r/notrius/lora-pilot</a><br>
-    Prebuilt docker image [stable]: <code>docker pull notrius/lora-pilot:stable</code><br>
-    Official Runpod template: <a href="https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n" target="_blank">https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n</a>
-  </p>
-  <div id="bmc-container" style="margin-top:12px;">
-    <a href="https://www.buymeacoffee.com/vavo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+  <div class="grid-2 mt-10">
+    <a class="btn secondary" href="https://www.reddit.com/user/no3us" target="_blank" rel="noopener">Reddit: u/no3us</a>
+    <a class="btn secondary" href="https://github.com/vavo/lora-pilot" target="_blank" rel="noopener">GitHub Repository</a>
+    <a class="btn secondary" href="https://hub.docker.com/r/notrius/lora-pilot" target="_blank" rel="noopener">DockerHub Repository</a>
+    <a class="btn secondary" href="https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n" target="_blank" rel="noopener">Official RunPod Template</a>
+  </div>
+  <p class="mt-12">Prebuilt docker image [stable]: <code>docker pull notrius/lora-pilot:stable</code></p>
+  <div id="bmc-container" class="mt-12">
+    <a href="https://www.buymeacoffee.com/vavo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me A Coffee" class="bmc-image" ></a>
   </div>
 </div>

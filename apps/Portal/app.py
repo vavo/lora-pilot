@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import base64
+import configparser
+import json
 import mimetypes
 import os
 import re
@@ -10,8 +12,10 @@ import subprocess
 import sys
 import time
 import threading
+import tomllib
 import zipfile
 from collections import deque
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
@@ -73,6 +77,115 @@ _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
 _tp_output_dir: Optional[Path] = None
 
+_model_pull_lock = threading.Lock()
+_model_pull_jobs: dict[str, "ModelPullJob"] = {}
+_MODEL_PULL_TTL_SECONDS = 10 * 60
+_MODEL_PULL_PROGRESS_RE = re.compile(r"(?P<pct>\\d{1,3})%")
+
+
+@dataclass
+class ModelPullJob:
+    name: str
+    state: str = "running"  # running | done | error
+    pid: Optional[int] = None
+    progress_pct: Optional[int] = None
+    last_line: str = ""
+    error: Optional[str] = None
+    started_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+    output_tail: deque[str] = field(default_factory=lambda: deque(maxlen=200))
+
+
+def _cleanup_model_pull_jobs(now: Optional[float] = None) -> None:
+    ts = now if now is not None else time.time()
+    with _model_pull_lock:
+        to_delete: list[str] = []
+        for name, job in _model_pull_jobs.items():
+            if job.state in ("done", "error") and (ts - job.updated_at) > _MODEL_PULL_TTL_SECONDS:
+                to_delete.append(name)
+        for name in to_delete:
+            _model_pull_jobs.pop(name, None)
+
+
+def _model_pull_job_to_dict(job: ModelPullJob) -> dict:
+    return {
+        "name": job.name,
+        "state": job.state,
+        "pid": job.pid,
+        "progress_pct": job.progress_pct,
+        "last_line": job.last_line,
+        "error": job.error,
+        "started_at": job.started_at,
+        "updated_at": job.updated_at,
+        "output_tail": list(job.output_tail),
+    }
+
+
+def _update_model_pull_job(job: ModelPullJob, line: str) -> None:
+    line = (line or "").strip()
+    if not line:
+        return
+    job.last_line = line
+    job.updated_at = time.time()
+    job.output_tail.append(line)
+    m = _MODEL_PULL_PROGRESS_RE.search(line)
+    if m:
+        try:
+            pct = int(m.group("pct"))
+            if 0 <= pct <= 100:
+                job.progress_pct = pct
+        except Exception:
+            pass
+
+
+def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
+    try:
+        env = os.environ.copy()
+        env.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "0")
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=env,
+            bufsize=0,
+        )
+        job.pid = proc.pid
+        job.updated_at = time.time()
+
+        assert proc.stdout is not None
+        buf = ""
+        for chunk in iter(lambda: proc.stdout.read(4096), b""):
+            text = chunk.decode("utf-8", errors="replace")
+            buf += text
+            while True:
+                idx_n = buf.find("\\n")
+                idx_r = buf.find("\\r")
+                idxs = [i for i in (idx_n, idx_r) if i != -1]
+                if not idxs:
+                    break
+                idx = min(idxs)
+                seg = buf[:idx]
+                buf = buf[idx + 1 :]
+                _update_model_pull_job(job, seg)
+        if buf.strip():
+            _update_model_pull_job(job, buf)
+        proc.stdout.close()
+        rc = proc.wait()
+        if rc == 0:
+            job.state = "done"
+            job.progress_pct = 100
+        else:
+            job.state = "error"
+            job.error = f"exit code {rc}"
+        job.updated_at = time.time()
+    except Exception as e:
+        job.state = "error"
+        job.error = str(e)
+        job.updated_at = time.time()
+    finally:
+        with _model_pull_lock:
+            _model_pull_jobs[job.name] = job
+
 
 class ServiceEntry(BaseModel):
     name: str  # supervisor program name
@@ -80,6 +193,11 @@ class ServiceEntry(BaseModel):
     state: str
     state_raw: str
     running: bool
+    autostart: Optional[bool] = None
+
+
+class ServiceAutostartRequest(BaseModel):
+    enabled: bool
 
 
 class DiskUsage(BaseModel):
@@ -118,6 +236,34 @@ class DatasetEntry(BaseModel):
     display: str     # friendly name
     images: int      # number of image files found
     size_bytes: int
+
+
+class TrainPilotModelCheckRequest(BaseModel):
+    toml_path: str = ""
+
+
+def _toml_find_first_str(data, key: str) -> Optional[str]:
+    if isinstance(data, dict):
+        v = data.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+        for vv in data.values():
+            found = _toml_find_first_str(vv, key)
+            if found:
+                return found
+    elif isinstance(data, list):
+        for vv in data:
+            found = _toml_find_first_str(vv, key)
+            if found:
+                return found
+    return None
+
+
+def _is_local_path_value(value: str) -> bool:
+    if not value:
+        return False
+    # Kohya configs can accept HF repo ids, which are not local filesystem paths.
+    return value.startswith("/")
     has_tags: bool
     path: str
 
@@ -460,6 +606,47 @@ def pull_model(name: str):
         raise HTTPException(status_code=500, detail=output)
 
 
+@app.post("/api/models/{name}/pull/start")
+def pull_model_start(name: str):
+    """Start a model pull in the background (used by UI for progress updates)."""
+    _cleanup_model_pull_jobs()
+    models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
+    entries = models_service.parse_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
+    if not any(e.name == name for e in entries):
+        raise HTTPException(status_code=404, detail="Unknown model")
+
+    with _model_pull_lock:
+        existing = _model_pull_jobs.get(name)
+        if existing and existing.state == "running":
+            return _model_pull_job_to_dict(existing)
+        job = ModelPullJob(name=name)
+        _model_pull_jobs[name] = job
+
+    cmd = ["/opt/pilot/get-models.sh", "pull", name]
+    threading.Thread(target=_run_model_pull_job, args=(job, cmd), daemon=True).start()
+    return _model_pull_job_to_dict(job)
+
+
+@app.get("/api/models/{name}/pull/status")
+def pull_model_status(name: str):
+    _cleanup_model_pull_jobs()
+    with _model_pull_lock:
+        job = _model_pull_jobs.get(name)
+        if not job:
+            return {"name": name, "state": "idle"}
+        return _model_pull_job_to_dict(job)
+
+
+@app.get("/api/models/pulls")
+def list_model_pulls():
+    """List recent model pull jobs (running + recently completed/failed)."""
+    _cleanup_model_pull_jobs()
+    with _model_pull_lock:
+        jobs = list(_model_pull_jobs.values())
+    jobs.sort(key=lambda j: j.updated_at, reverse=True)
+    return {"jobs": [_model_pull_job_to_dict(j) for j in jobs]}
+
+
 @app.post("/api/models/{name}/delete")
 def delete_model(name: str):
     models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
@@ -519,7 +706,92 @@ def supervisor_status(name: str) -> ServiceEntry:
     state_upper = state_raw.upper()
     running = state_upper in ("RUNNING",)
     display = DISPLAY_NAMES.get(name, name)
-    return ServiceEntry(name=name, display=display, state=state_upper, state_raw=state_raw, running=running)
+    return ServiceEntry(
+        name=name,
+        display=display,
+        state=state_upper,
+        state_raw=state_raw,
+        running=running,
+        autostart=_read_service_autostart(name),
+    )
+
+
+def _supervisor_config_path() -> Optional[Path]:
+    candidates: list[Path] = []
+    env_path = os.environ.get("SUPERVISOR_CONFIG_PATH", "").strip()
+    if env_path:
+        candidates.append(Path(env_path))
+    candidates.extend(
+        [
+            Path("/etc/supervisor/supervisord.conf"),
+            Path("/opt/pilot/supervisor/supervisord.conf"),
+            Path(__file__).resolve().parents[2] / "supervisor" / "supervisord.conf",
+        ]
+    )
+    for path in candidates:
+        try:
+            if path.exists():
+                return path
+        except Exception:
+            continue
+    return None
+
+
+def _read_service_autostart(name: str) -> Optional[bool]:
+    conf_path = _supervisor_config_path()
+    if not conf_path:
+        return None
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.optionxform = str  # preserve option case
+    try:
+        parser.read(conf_path)
+    except Exception:
+        return None
+    section = f"program:{name}"
+    if not parser.has_section(section):
+        return None
+    if not parser.has_option(section, "autostart"):
+        return None
+    try:
+        return parser.getboolean(section, "autostart")
+    except Exception:
+        raw = parser.get(section, "autostart", fallback="").strip().lower()
+        if raw in ("true", "1", "yes", "on"):
+            return True
+        if raw in ("false", "0", "no", "off"):
+            return False
+        return None
+
+
+def _set_service_autostart(name: str, enabled: bool) -> Optional[bool]:
+    conf_path = _supervisor_config_path()
+    if not conf_path:
+        raise HTTPException(status_code=500, detail="Supervisor config not found")
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.optionxform = str
+    try:
+        parser.read(conf_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read supervisor config: {str(e)}")
+
+    section = f"program:{name}"
+    if not parser.has_section(section):
+        raise HTTPException(status_code=404, detail=f"Service section not found in supervisor config: {name}")
+    parser.set(section, "autostart", "true" if enabled else "false")
+
+    try:
+        with conf_path.open("w", encoding="utf-8") as f:
+            parser.write(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write supervisor config: {str(e)}")
+
+    # Best effort: ask supervisor to re-read changed config.
+    try:
+        subprocess.check_output([SUPERVISORCTL, "reread"], text=True, stderr=subprocess.STDOUT)
+    except Exception:
+        # Autostart flag is primarily for next boot; ignore reread failures.
+        pass
+    return _read_service_autostart(name)
 
 
 @app.get("/api/services", response_model=List[ServiceEntry])
@@ -543,6 +815,14 @@ def control_service(name: str, action: str):
         return {"status": "ok"}
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=e.output or str(e))
+
+
+@app.post("/api/services/{name}/autostart")
+def service_autostart(name: str, payload: ServiceAutostartRequest):
+    if name not in SERVICES:
+        raise HTTPException(status_code=404, detail="Unknown service")
+    autostart = _set_service_autostart(name, bool(payload.enabled))
+    return {"status": "ok", "name": name, "autostart": autostart}
 
 
 @app.get("/api/services/{name}/log")
@@ -614,6 +894,7 @@ def get_meminfo():
 # --- tiny cache at module scope (top-level) ---
 _WS_DU_CACHE = {"ts": 0.0, "val": None}
 _WS_DU_CACHE_SECONDS = int(os.environ.get("WORKSPACE_DU_CACHE_SECONDS", "30"))
+_WS_DU_TIMEOUT_SECONDS = float(os.environ.get("WORKSPACE_DU_TIMEOUT_SECONDS", "2.5"))
 
 
 def _du_bytes(path: str) -> int:
@@ -624,28 +905,21 @@ def _du_bytes(path: str) -> int:
     # Try GNU coreutils: du -sb
     for cmd in (["du", "-sb", path], ["du", "-sB1", path]):
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            p = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=_WS_DU_TIMEOUT_SECONDS,
+            )
             # output: "<bytes>\t<path>"
             tok = (p.stdout.strip().split() or ["0"])[0]
             return int(tok)
         except Exception:
             pass
 
-    # Slow fallback: walk filesystem
-    total = 0
-    for root, dirs, files in os.walk(path, topdown=True):
-        # avoid dying on permission errors
-        try:
-            for name in files:
-                fp = os.path.join(root, name)
-                try:
-                    st = os.stat(fp, follow_symlinks=False)
-                    total += int(st.st_size)
-                except Exception:
-                    continue
-        except Exception:
-            continue
-    return total
+    # Avoid Python os.walk fallback here: it can lock up telemetry on very large workspaces.
+    raise RuntimeError("du failed or timed out")
 
 
 def workspace_data_used_bytes(path: str) -> int:
@@ -655,10 +929,16 @@ def workspace_data_used_bytes(path: str) -> int:
     now = time.time()
     if _WS_DU_CACHE["val"] is not None and (now - _WS_DU_CACHE["ts"]) < _WS_DU_CACHE_SECONDS:
         return int(_WS_DU_CACHE["val"])
-    val = _du_bytes(path)
-    _WS_DU_CACHE["ts"] = now
-    _WS_DU_CACHE["val"] = val
-    return int(val)
+    try:
+        val = _du_bytes(path)
+        _WS_DU_CACHE["ts"] = now
+        _WS_DU_CACHE["val"] = val
+        return int(val)
+    except Exception:
+        # Best effort: return last known value if available, otherwise 0.
+        if _WS_DU_CACHE["val"] is not None:
+            return int(_WS_DU_CACHE["val"])
+        return 0
 
 def disk_usage(path: str) -> DiskUsage:
     # Prefer df with the actual mountpoint to honor container quotas/overlays
@@ -730,6 +1010,159 @@ def get_gpus() -> List[GPUInfo]:
         except Exception:
             continue
     return gpus
+
+
+_telemetry_history_lock = threading.Lock()
+_telemetry_history_points: deque[dict] = deque()
+_telemetry_history_started = False
+_telemetry_history_file = CONFIG_DIR / "telemetry_history.jsonl"
+_telemetry_history_sample_seconds = max(5, int(os.environ.get("TELEMETRY_HISTORY_SAMPLE_SECONDS", "30")))
+_telemetry_history_max_seconds = max(60, int(os.environ.get("TELEMETRY_HISTORY_MAX_SECONDS", str(24 * 3600))))
+_telemetry_history_last_compact_ts = 0.0
+_telemetry_history_compact_interval_seconds = max(
+    60, int(os.environ.get("TELEMETRY_HISTORY_COMPACT_SECONDS", "600"))
+)
+
+
+def _cpu_pct_from_load(load_avg: List[float], cpu_count: int) -> int:
+    if not cpu_count:
+        return 0
+    try:
+        return int(min(100, max(0, round(((load_avg[0] if load_avg else 0.0) / cpu_count) * 100))))
+    except Exception:
+        return 0
+
+
+def _telemetry_history_prune(now: float) -> bool:
+    changed = False
+    cutoff = now - float(_telemetry_history_max_seconds)
+    while _telemetry_history_points and float(_telemetry_history_points[0].get("ts", 0.0)) < cutoff:
+        _telemetry_history_points.popleft()
+        changed = True
+    return changed
+
+
+def _telemetry_history_load_from_disk() -> None:
+    if not _telemetry_history_file.exists():
+        return
+    try:
+        now = time.time()
+        points: list[dict] = []
+        for raw in _telemetry_history_file.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+            if not isinstance(obj, dict) or "ts" not in obj:
+                continue
+            try:
+                ts = float(obj["ts"])
+            except Exception:
+                continue
+            if ts < (now - float(_telemetry_history_max_seconds)):
+                continue
+            points.append(obj)
+        points.sort(key=lambda p: float(p.get("ts", 0.0)))
+        with _telemetry_history_lock:
+            _telemetry_history_points.clear()
+            _telemetry_history_points.extend(points)
+            _telemetry_history_prune(now)
+    except Exception:
+        # Best-effort: ignore corrupt history files.
+        return
+
+
+def _telemetry_history_write_all() -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = _telemetry_history_file.with_suffix(".jsonl.tmp")
+    with tmp.open("w", encoding="utf-8") as f:
+        for p in _telemetry_history_points:
+            try:
+                f.write(json.dumps(p, separators=(",", ":"), ensure_ascii=False) + "\n")
+            except Exception:
+                continue
+    tmp.replace(_telemetry_history_file)
+
+
+def _telemetry_history_append(point: dict) -> None:
+    global _telemetry_history_last_compact_ts
+    now = time.time()
+    with _telemetry_history_lock:
+        _telemetry_history_points.append(point)
+        pruned = _telemetry_history_prune(now)
+        do_compact = pruned or (now - _telemetry_history_last_compact_ts) >= _telemetry_history_compact_interval_seconds
+
+        # Append first for durability; compact (rewrite) periodically.
+        try:
+            CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+            with _telemetry_history_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(point, separators=(",", ":"), ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
+        if do_compact:
+            try:
+                _telemetry_history_write_all()
+                _telemetry_history_last_compact_ts = now
+            except Exception:
+                pass
+
+
+def _collect_cpu_gpu_history_point() -> dict:
+    ts = time.time()
+    load_avg = list(os.getloadavg()) if hasattr(os, "getloadavg") else [0.0, 0.0, 0.0]
+    cpu_count = os.cpu_count() or 1
+    cpu_pct = _cpu_pct_from_load(load_avg, cpu_count)
+
+    gpus = []
+    for g in get_gpus():
+        mem_pct = int(min(100, max(0, round((g.mem_used / g.mem_total) * 100)))) if g.mem_total else 0
+        gpus.append(
+            {
+                "index": g.index,
+                "name": g.name,
+                "util": g.util if g.util is not None else 0,
+                "mem_used": g.mem_used if g.mem_used is not None else 0,
+                "mem_total": g.mem_total if g.mem_total is not None else 0,
+                "mem_pct": mem_pct,
+            }
+        )
+    return {
+        "ts": ts,
+        "cpu": {"load_avg": load_avg, "cpu_count": cpu_count, "pct": cpu_pct},
+        "gpus": gpus,
+    }
+
+
+def _telemetry_history_sampler() -> None:
+    # Load once, then sample forever (best-effort).
+    _telemetry_history_load_from_disk()
+    next_ts = time.time()
+    while True:
+        now = time.time()
+        if now < next_ts:
+            time.sleep(min(1.0, next_ts - now))
+            continue
+        next_ts = now + float(_telemetry_history_sample_seconds)
+        try:
+            point = _collect_cpu_gpu_history_point()
+            _telemetry_history_append(point)
+        except Exception:
+            # Never kill the sampler.
+            continue
+
+
+@app.on_event("startup")
+def _start_telemetry_history() -> None:
+    global _telemetry_history_started
+    if _telemetry_history_started:
+        return
+    _telemetry_history_started = True
+    t = threading.Thread(target=_telemetry_history_sampler, daemon=True)
+    t.start()
 
 
 @app.get("/api/telemetry", response_model=Telemetry)
@@ -812,6 +1245,46 @@ def telemetry():
         gpus=gpus,
         workspace_data_used_bytes=ws_data_used,  # <-- NEW
     )
+
+
+@app.get("/api/telemetry/history")
+def telemetry_history(max_seconds: int = 0):
+    """
+    Time-series telemetry for charts (backend-retained).
+
+    - Retention is capped by TELEMETRY_HISTORY_MAX_SECONDS (default 24h).
+    - Default response returns *all retained points* (so the UI can choose the window based on availability).
+    - Use `max_seconds` to request only the last N seconds.
+    """
+    now = time.time()
+    with _telemetry_history_lock:
+        _telemetry_history_prune(now)
+        pts = list(_telemetry_history_points)
+
+    if not pts:
+        return {
+            "sample_seconds": _telemetry_history_sample_seconds,
+            "retention_seconds": _telemetry_history_max_seconds,
+            "available_seconds": 0,
+            "from_ts": None,
+            "to_ts": None,
+            "points": [],
+        }
+
+    to_ts = float(pts[-1].get("ts", now))
+    if max_seconds and max_seconds > 0:
+        cutoff = to_ts - float(max_seconds)
+        pts = [p for p in pts if float(p.get("ts", 0.0)) >= cutoff]
+
+    from_ts = float(pts[0].get("ts", to_ts))
+    return {
+        "sample_seconds": _telemetry_history_sample_seconds,
+        "retention_seconds": _telemetry_history_max_seconds,
+        "available_seconds": max(0.0, to_ts - from_ts),
+        "from_ts": from_ts,
+        "to_ts": to_ts,
+        "points": pts,
+    }
 
 
 # ---------------- TrainPilot (web) ----------------
@@ -914,6 +1387,79 @@ def trainpilot_stop():
     finally:
         _tp_proc = None
     return {"status": "stopped"}
+
+
+@app.post("/api/trainpilot/model-check")
+def trainpilot_model_check(req: TrainPilotModelCheckRequest):
+    """
+    Parse the selected TrainPilot TOML and check that checkpoint + VAE files exist.
+    If they are missing and can be mapped to a manifest entry, return the model name
+    so the UI can offer to download with progress.
+    """
+    toml_path = Path((req.toml_path or "").strip() or "/opt/pilot/apps/TrainPilot/newlora.toml")
+    if not toml_path.exists():
+        raise HTTPException(status_code=404, detail=f"TOML not found: {toml_path}")
+
+    try:
+        raw = toml_path.read_bytes()
+        data = tomllib.loads(raw.decode("utf-8", errors="replace"))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse TOML: {str(e)}")
+
+    ckpt = _toml_find_first_str(data, "pretrained_model_name_or_path")
+    vae = _toml_find_first_str(data, "vae")
+
+    def check_one(kind: str, key: str, value: Optional[str]) -> dict:
+        if not value:
+            return {
+                "kind": kind,
+                "key": key,
+                "value": "",
+                "is_local_path": False,
+                "exists": False,
+                "model_name": None,
+                "reason": f"Missing `{key}` in TOML",
+            }
+        if not _is_local_path_value(value):
+            return {
+                "kind": kind,
+                "key": key,
+                "value": value,
+                "is_local_path": False,
+                "exists": False,
+                "model_name": None,
+                "reason": "Not a local file path",
+            }
+        p = Path(value)
+        exists = p.exists()
+        model_name = None
+        if not exists:
+            try:
+                model_name = models_service.model_name_for_expected_path(
+                    p,
+                    MANIFEST,
+                    DEFAULT_MANIFEST,
+                    MODELS_DIR,
+                    CONFIG_DIR,
+                )
+            except Exception:
+                model_name = None
+        return {
+            "kind": kind,
+            "key": key,
+            "value": value,
+            "is_local_path": True,
+            "exists": bool(exists),
+            "model_name": model_name,
+            "reason": None if exists else "File not found",
+        }
+
+    items = [
+        check_one("checkpoint", "pretrained_model_name_or_path", ckpt),
+        check_one("vae", "vae", vae),
+    ]
+    missing = [it for it in items if not it.get("exists")]
+    return {"toml_path": str(toml_path), "items": items, "missing": missing}
 
 
 @app.get("/api/trainpilot/logs")

@@ -1,53 +1,53 @@
-version: '3.8'
-
 services:
   lora-pilot:
     # Replace with your image tag
-    image: notrius/lora-pilot:latest
-    container_name: lora-pilot
+    image: ${LORA_PILOT_IMAGE:-notrius/lora-pilot:latest}
+    container_name: ${LORA_PILOT_CONTAINER_NAME:-lora-pilot}
     restart: unless-stopped
     
     # GPU support - remove if no GPU available
     runtime: nvidia
     environment:
       # GPU configuration
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,display
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-all}
+      - NVIDIA_DRIVER_CAPABILITIES=${NVIDIA_DRIVER_CAPABILITIES:-compute,utility,display}
       
       # Timezone
-      - TZ=America/New_York
+      - TZ=${TZ:-America/New_York}
       
       # Hugging Face token (optional, for private models)
-      # - HF_TOKEN=your_huggingface_token_here
+      # - HF_TOKEN=${HF_TOKEN:-}
       
       # Supervisor admin password (optional)
-      # - SUPERVISOR_ADMIN_PASSWORD=your_secure_password
+      # - SUPERVISOR_ADMIN_PASSWORD=${SUPERVISOR_ADMIN_PASSWORD:-}
       
       # Custom ports (optional - must match ports above)
-      - JUPYTER_PORT=8888
-      - CODE_SERVER_PORT=8443
-      - COMFY_PORT=5555
-      - KOHYA_PORT=6666
-      - INVOKE_PORT=9090
-      - DIFFPIPE_PORT=4444
+      - PORTAL_PORT=${PORTAL_PORT:-7878}
+      - JUPYTER_PORT=${JUPYTER_PORT:-8888}
+      - CODE_SERVER_PORT=${CODE_SERVER_PORT:-8443}
+      - COMFY_PORT=${COMFY_PORT:-5555}
+      - KOHYA_PORT=${KOHYA_PORT:-6666}
+      - INVOKE_PORT=${INVOKE_PORT:-9090}
+      - DIFFPIPE_PORT=${DIFFPIPE_PORT:-4444}
+      - AI_TOOLKIT_PORT=${AI_TOOLKIT_PORT:-8675}
     
     ports:
       # ControlPilot - Main web interface
-      - "7878:7878"
+      - "${PORTAL_PORT:-7878}:${PORTAL_PORT:-7878}"
       # JupyterLab
-      - "8888:8888"
+      - "${JUPYTER_PORT:-8888}:${JUPYTER_PORT:-8888}"
       # VS Code Server
-      - "8443:8443"
+      - "${CODE_SERVER_PORT:-8443}:${CODE_SERVER_PORT:-8443}"
       # ComfyUI
-      - "5555:5555"
+      - "${COMFY_PORT:-5555}:${COMFY_PORT:-5555}"
       # Kohya SS
-      - "6666:6666"
+      - "${KOHYA_PORT:-6666}:${KOHYA_PORT:-6666}"
       # InvokeAI
-      - "9090:9090"
+      - "${INVOKE_PORT:-9090}:${INVOKE_PORT:-9090}"
       # Diffusion Pipe + TensorBoard
-      - "4444:4444"
+      - "${DIFFPIPE_PORT:-4444}:${DIFFPIPE_PORT:-4444}"
       # AI Toolkit UI (Next.js)
-      - "8675:8675"
+      - "${AI_TOOLKIT_PORT:-8675}:${AI_TOOLKIT_PORT:-8675}"
     
     volumes:
       # Main workspace - persistent storage
@@ -59,7 +59,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7878/api/services"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORTAL_PORT:-7878}/api/services"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -73,5 +73,5 @@ services:
 # Optional: Add networks for better isolation
 networks:
   default:
-    name: lora-pilot-network
+    name: ${LORA_PILOT_NETWORK_NAME:-lora-pilot-network}
     driver: bridge

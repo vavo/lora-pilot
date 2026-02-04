@@ -13,16 +13,15 @@
   .markdown-body img { max-width: 100%; border-radius: 8px; background: var(--card); }
   .markdown-body blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--border); color: var(--muted); }
   .docs-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
-  .docs-tabs button { background: var(--pill); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
-  .docs-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .docs-tabs .btn.active { background: var(--accent-gradient); color: #fff; border-color: transparent; }
 </style>
 
 <h2>Docs</h2>
 <div class="card">
   <div class="docs-tabs">
-    <button id="docs-tab-readme" class="active">README</button>
-    <button id="docs-tab-changelog">Changelog</button>
+    <button class="btn secondary active" id="docs-tab-readme">README</button>
+    <button class="btn secondary" id="docs-tab-changelog">Changelog</button>
   </div>
   <div id="docs-status" class="status">Loading docs...</div>
-  <div id="docs-content" class="markdown-body" style="display:none;"></div>
+  <div id="docs-content" class="markdown-body is-hidden"></div>
 </div>

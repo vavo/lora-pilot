@@ -9,6 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     KOHYA_PORT=6666 \
     INVOKE_PORT=9090 \
     DIFFPIPE_PORT=4444 \
+    AI_TOOLKIT_PORT=8675 \
     HOME=/workspace/home/root \
     SHELL=/bin/bash \
     HF_HUB_ENABLE_HF_TRANSFER=1 \
@@ -285,7 +286,7 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       \
       # Install Invoke-specific torch stack first (kept separate from core)
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
-        --index-url https://download.pytorch.org/whl/cu126 \
+        --index-url "${INVOKE_TORCH_INDEX_URL}" \
         torch==${INVOKE_TORCH_VERSION} \
         torchvision==${INVOKE_TORCHVISION_VERSION} \
         torchaudio==${INVOKE_TORCHAUDIO_VERSION} && \
@@ -295,22 +296,21 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       \
       # Enable HF transfer acceleration in invoke venv
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "huggingface_hub[hf_transfer]" && \
-      \
-	      # Keep numpy/pillow stable (avoid numpy 2.x ABI breakage)
-	      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2" "pillow<11"; \
-	      fi
+      # Keep numpy/pillow stable (avoid numpy 2.x ABI breakage)
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2" "pillow<11"; \
+    fi
 
 # ----- invoke constraints (shared by ai-toolkit installs) -----
 RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
       set -eux; \
-      { \
-        echo "torch==${INVOKE_TORCH_VERSION}"; \
-        echo "torchvision==${INVOKE_TORCHVISION_VERSION}"; \
-        echo "torchaudio==${INVOKE_TORCHAUDIO_VERSION}"; \
-        echo "numpy<2"; \
-        echo "pillow<11"; \
-        echo "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}"; \
-      } > /opt/pilot/config/invoke-constraints.txt; \
+      printf '%s\n' \
+        "torch==${INVOKE_TORCH_VERSION}" \
+        "torchvision==${INVOKE_TORCHVISION_VERSION}" \
+        "torchaudio==${INVOKE_TORCHAUDIO_VERSION}" \
+        "numpy<2" \
+        "pillow<11" \
+        "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}" \
+        > /opt/pilot/config/invoke-constraints.txt; \
     fi
 
 # ----- AI Toolkit (install into invoke venv to reuse torch 2.7/cu126) -----
@@ -322,6 +322,11 @@ RUN if [ "${INSTALL_AI_TOOLKIT}" = "1" ] && [ "${INSTALL_INVOKE}" = "1" ]; then 
         git -C /opt/pilot/repos/ai-toolkit checkout "${AI_TOOLKIT_REF}"; \
       fi && \
       \
+      # AI Toolkit may ship built-in extensions that require newer Diffusers than InvokeAI allows.
+      # Keep InvokeAI pinned (diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}) and disable incompatible extensions.
+      rm -rf /opt/pilot/repos/ai-toolkit/extensions_built_in/diffusion_models/ltx2 && \
+      sed -i '/\\.ltx2/d;/LTX2Model/d' /opt/pilot/repos/ai-toolkit/extensions_built_in/diffusion_models/__init__.py && \
+      \
       # Persist datasets/outputs on the workspace volume (RunPod/local) instead of inside the repo.
       rm -rf /opt/pilot/repos/ai-toolkit/datasets /opt/pilot/repos/ai-toolkit/output /opt/pilot/repos/ai-toolkit/models && \
       ln -s /workspace/datasets /opt/pilot/repos/ai-toolkit/datasets && \
@@ -330,7 +335,9 @@ RUN if [ "${INSTALL_AI_TOOLKIT}" = "1" ] && [ "${INSTALL_INVOKE}" = "1" ]; then 
       \
       # Avoid overriding InvokeAI's stack in this shared venv.
       # Keep optional accel deps (e.g. xformers/bitsandbytes) if ai-toolkit requests them.
-      grep -v -E '^(torch|torchvision|torchaudio|numpy|pillow|Pillow|diffusers|gradio|gradio-client)([<>= ]|$)' \
+      # ai-toolkit may pin diffusers via a VCS URL (git+https://.../diffusers@...). Strip any diffusers lines
+      # so InvokeAI's pinned diffusers stays in control.
+      grep -v -E '^(torch|torchvision|torchaudio|numpy|pillow|Pillow|diffusers|gradio|gradio-client)([<>= ]|$)|diffusers' \
         /opt/pilot/repos/ai-toolkit/requirements.txt > /tmp/ai-toolkit-req.txt && \
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
         -c /opt/pilot/config/invoke-constraints.txt \
@@ -343,16 +350,31 @@ RUN if [ "${INSTALL_AI_TOOLKIT}" = "1" ] && [ "${INSTALL_INVOKE}" = "1" ]; then 
         "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}" \
         "numpy<2" \
         "pillow<11" \
-        torchao==0.10.0 \
-        lycoris-lora==1.8.3 \
+        oyaml \
+        "opencv-python-headless<4.13" \
+        "albucore==0.0.16" \
+        "albumentations==1.4.15" \
+        lpips \
+        "optimum[quanto]" \
+        "torchao==0.10.0" \
+        "lycoris-lora==1.8.3" \
+        "peft==${PEFT_VERSION}" \
+        timm \
+        open-clip-torch \
         k-diffusion \
-        optimum-quanto==0.2.4 \
-        controlnet_aux==0.0.10; \
+        "controlnet_aux==0.0.10" && \
+      /opt/venvs/invoke/bin/python -c 'import peft; import timm; import open_clip; import lycoris; import lycoris.kohya; import torchao; import optimum.quanto' && \
       \
       if [ "${INSTALL_AI_TOOLKIT_UI}" = "1" ]; then \
         cd /opt/pilot/repos/ai-toolkit/ui && \
+        # Persist Prisma DB on /workspace at runtime (RunPod volume) instead of writing into the image.
+        # Upstream uses a fixed sqlite file path (file:../../aitk_db.db); switch to env("DATABASE_URL").
+        sed -i 's|url      = \"file:../../aitk_db.db\"|url      = env(\"DATABASE_URL\")|' prisma/schema.prisma && \
+        # Ensure job runner uses the workspace DB path (UI generates sqlite_db_path for trainers).
+        # Keep this lightweight: patch any hardcoded image-path DB references before building.
+        grep -R -l "/opt/pilot/repos/ai-toolkit/aitk_db.db" . | xargs -r sed -i 's|/opt/pilot/repos/ai-toolkit/aitk_db.db|/workspace/config/ai-toolkit/aitk_db.db|g' && \
         npm install && \
-        npm run update_db && \
+        DATABASE_URL=file:/tmp/aitk_db.db npx prisma generate && \
         npm run build && \
         npm cache clean --force; \
       fi; \
@@ -419,7 +441,7 @@ COPY apps /opt/pilot/apps
 COPY README.md /opt/pilot/README.md
 COPY CHANGELOG /opt/pilot/CHANGELOG
 
-EXPOSE 8888 8443 5555 6666 9090 4444
+EXPOSE 7878 8888 8443 5555 6666 9090 4444 8675
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
 CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]

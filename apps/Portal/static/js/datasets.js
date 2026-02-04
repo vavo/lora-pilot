@@ -10,7 +10,7 @@ async function loadDatasets() {
   if (!status || !list) return;
   status.textContent = "Loading datasets...";
   list.innerHTML = "";
-  if (table) table.style.display = "none";
+  if (table) table.classList.add("is-hidden");
   try {
     const data = await fetchJson("/api/datasets");
     if (!data.length) {
@@ -27,9 +27,9 @@ async function loadDatasets() {
         <td>${d.images || 0}</td>
         <td>${size}</td>
         <td>${d.has_tags ? "Yes" : "No"}</td>
-        <td style="text-align:right;">
-          <button class="pill" data-rename="${d.name}">Rename</button>
-          <button class="pill danger" data-del="${d.name}">Delete</button>
+        <td class="text-right">
+          <button class="btn secondary" data-rename="${d.name}">Rename</button>
+          <button class="btn danger" data-del="${d.name}">Delete</button>
         </td>`;
       list.appendChild(tr);
     });
@@ -80,7 +80,7 @@ async function loadDatasets() {
         }
       });
     });
-    if (table) table.style.display = "";
+    if (table) table.classList.remove("is-hidden");
     status.textContent = "";
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
@@ -150,12 +150,13 @@ window.uploadDataset = async function () {
 
 window.openUploadModal = function () {
   const modal = document.getElementById("ds-modal");
-  if (modal) modal.style.display = "flex";
+  if (modal) modal.classList.add("show");
 };
 
-window.closeUploadModal = function () {
+window.closeUploadModal = function (evt) {
+  if (evt && evt.target && evt.target.id && evt.target.id !== "ds-modal") return;
   const modal = document.getElementById("ds-modal");
-  if (modal) modal.style.display = "none";
+  if (modal) modal.classList.remove("show");
   const status = document.getElementById("ds-upload-status");
   if (status) status.textContent = "";
   const inp = document.getElementById("ds-zip");

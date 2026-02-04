@@ -1,38 +1,98 @@
 <h2>Services</h2>
 <style>
-  .svc-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; }
-  .svc-modal.show { display:flex; align-items:center; justify-content:center; }
-  .svc-modal-content { background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:12px; width:80vw; max-width:1100px; height:70vh; display:flex; flex-direction:column; }
-  .svc-modal-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-bottom:1px solid var(--border); }
-  .svc-modal-body { padding:12px 16px; overflow:auto; flex:1; background:var(--card); }
-  .svc-modal-close { background:none; border:none; font-size:20px; color:var(--muted); cursor:pointer; }
-  .svc-modal-close:hover { color:var(--text); }
-  .svc-log-pre { white-space:pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; line-height:1.4; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:12px; }
+  .services-list { display:flex; flex-direction:column; gap:12px; }
+  .svc-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .svc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .svc-name { display:flex; align-items:center; gap:8px; min-width:0; }
+  .svc-main { min-width: 0; }
+  .svc-name strong { font-weight: 800; }
+  .svc-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .svc-name a { color:var(--text); text-decoration:none; font-weight:800; }
+  .svc-name a:hover { text-decoration:underline; }
+  .svc-open-icon { width: 14px; height: 14px; color: var(--muted); }
+  .svc-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .svc-port {
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: rgba(0,0,0,0.04);
+    color: var(--text);
+  }
+  .svc-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+  .svc-controls { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:flex-end; }
+  .svc-autostart { display:inline-flex; align-items:center; gap:8px; font-size:12px; color:var(--muted); }
+  .svc-switch {
+    appearance: none;
+    width: 36px;
+    height: 20px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--pill);
+    position: relative;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease;
+  }
+  .svc-switch::before {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform .18s ease;
+  }
+  .svc-switch:checked {
+    background: rgba(255, 90, 62, 0.4);
+    border-color: rgba(255, 90, 62, 0.65);
+  }
+  .svc-switch:checked::before {
+    transform: translateX(16px);
+  }
+  .svc-switch:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+  }
+  .svc-pill {
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 10px;
+    border-radius:999px;
+    font-size:12px;
+    background: rgba(0,0,0,0.06);
+    border: 1px solid rgba(0,0,0,0.06);
+    color: var(--text);
+  }
+  :root[data-theme="dark"] .svc-pill { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.08); }
+  :root[data-theme="dark"] .svc-port { border-color: rgba(255,255,255,0.10); background: rgba(255,255,255,0.06); }
+  .svc-pill.running { color: #16a34a; }
+  .svc-pill.stopped { color: #dc2626; }
+  .svc-pill.starting { color: #f97316; }
+  .svc-log-pre { white-space:pre-wrap; font-size:12px; line-height:1.4; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:12px; padding:12px; }
 </style>
 <div class="card">
   <div id="svc-status" class="status">Loading services...</div>
-  <table id="services-table" style="display:none;">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Status</th>
-        <th>Actions</th>
-        <th>Open</th>
-        <th>Logs</th>
-      </tr>
-    </thead>
-    <tbody id="services-body"></tbody>
-  </table>
+  <div id="services-list" class="services-list is-hidden"></div>
 </div>
 
-<div id="svc-log-modal" class="svc-modal" onclick="closeServiceLog(event)">
-  <div class="svc-modal-content">
-    <div class="svc-modal-header">
-      <div id="svc-log-title">Service Log</div>
-      <button class="svc-modal-close" onclick="closeServiceLog(event)">×</button>
+<div id="svc-log-modal" class="modal" onclick="closeServiceLog(event)">
+  <div class="modal-card" data-size="lg">
+    <div class="modal-header">
+      <div class="modal-title" id="svc-log-title">Service Log</div>
+      <button class="modal-close" type="button" aria-label="Close" onclick="closeServiceLog(event)">×</button>
     </div>
-    <div class="svc-modal-body">
-      <pre id="svc-log-content" class="svc-log-pre"></pre>
+    <div class="modal-body">
+      <pre id="svc-log-content" class="svc-log-pre mono"></pre>
     </div>
   </div>
 </div>

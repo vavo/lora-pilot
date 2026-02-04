@@ -1,17 +1,22 @@
-Version 2.0
+v2.0
 
-- Added AI Toolkit (ostris/ai-toolkit) to the image by default.
-- Added AI Toolkit UI (Next.js) on port 8675, managed by Supervisor and exposed in Docker Compose.
-- AI Toolkit now uses workspace paths by default:
-  - datasets: /workspace/datasets
-  - outputs: /workspace/outputs/ai-toolkit
-  - models: /workspace/models (e.g. /workspace/models/checkpoints)
-- Added Node.js 20 install + UI build steps (controlled by INSTALL_AI_TOOLKIT_UI).
-- Added AI Toolkit to ControlPilot Services (start/stop/logs + “Open” link).
-- Removed the standalone Gradio training UI on port 7860 from the image (Node UI is the primary interface).
-- Stabilized shared InvokeAI/AI Toolkit venv by pinning core ABI deps (numpy<2, pillow<11) and using an invoke-specific constraints file (avoids torch/diffusers/gradio churn).
-- updated Makefile and Docker Compose files to reflect integrated changes
-- updated Docs
+- Added AI Toolkit (ostris/ai-toolkit) as a built-in, first-class trainer (UI on port 8675, managed by Supervisor).
+- Complete redesign + refactor of ControlPilot:
+  - unified visual system (buttons, cards, modals, spacing, states)
+  - cleaner Services/Models/Datasets/TrainPilot flows
+  - improved dashboard structure and shutdown scheduler UX
+- Added GitHub Copilot integration via sidecar + SDK-style API bridge:
+  - Copilot service in Supervisor
+  - global chat drawer in ControlPilot
+  - prompt execution from UI with status + output
+- AI Toolkit persistence/runtime improvements:
+  - workspace-native paths for datasets/models/outputs
+  - persistent SQLite DB under `/workspace/config/ai-toolkit/aitk_db.db`
+- Major UX + bugfix pass across ControlPilot:
+  - TrainPilot profile/steps/epoch cap logic fixed and normalized
+  - model download/progress handling, service controls, and navigation polish
+  - multiple reliability fixes for telemetry, logs, and startup behavior
+  - added switch to Services to choose whether the service should be started automatically or not
 
 Version 1.99
 

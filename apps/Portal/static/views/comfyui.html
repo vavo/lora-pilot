@@ -79,6 +79,11 @@
     color: var(--muted);
     margin-top: 8px;
   }
+
+  .comfy-meta {
+    margin-top: 8px;
+    font-size: 13px;
+  }
   
   @media (max-width: 1024px) {
     .comfy-container {
@@ -96,12 +101,12 @@
   }
 </style>
 
-<div style="text-align:center; margin-bottom:12px;">
-  <img src="/logo-comfyui.svg" alt="ComfyUI" class="logo-light" style="width:300px; height:auto; margin:0 auto; display:block;">
-  <img src="/logodark-comfyui.svg" alt="ComfyUI" class="logo-dark" style="width:300px; height:auto; margin:0 auto; display:block;">
+<div class="page-hero">
+  <img src="/logo-comfyui.svg" alt="ComfyUI" class="logo-light page-hero-logo">
+  <img src="/logodark-comfyui.svg" alt="ComfyUI" class="logo-dark page-hero-logo">
 </div>
 
-<h2 style="margin-top:0;">ComfyUI with Live Preview</h2>
+<h2 class="section-title-tight">ComfyUI with Live Preview</h2>
 
 <div class="card">
   <div class="comfy-container">
@@ -115,10 +120,10 @@
       </iframe>
     </div>
     
-    <!-- Live preview panel -->
-    <div class="preview-panel">
-      <div class="card">
-        <h4 style="margin: 0 0 12px 0;">Live Preview</h4>
+      <!-- Live preview panel -->
+      <div class="preview-panel">
+      <div class="panel">
+        <h4 class="section-title-tight mb-12">Live Preview</h4>
         
         <!-- Connection status -->
         <div id="connection-status" class="status-indicator status-connecting">
@@ -133,30 +138,30 @@
         </div>
         
         <!-- Preview info -->
-        <div id="preview-info" class="preview-info" style="display: none;">
+        <div id="preview-info" class="preview-info is-hidden">
           <div>Dimensions: <span id="preview-dimensions">-</span></div>
           <div>Generated: <span id="preview-time">-</span></div>
         </div>
       </div>
       
       <!-- Controls -->
-      <div class="card">
-        <h4 style="margin: 0 0 12px 0;">Controls</h4>
-        <button id="preview-toggle" style="width: 100%; margin-bottom: 8px;">
+      <div class="panel">
+        <h4 class="section-title-tight mb-12">Controls</h4>
+        <button class="btn primary w-full mb-8" id="preview-toggle">
           Pause Preview
         </button>
-        <button id="clear-preview" style="width: 100%;">
+        <button class="btn secondary w-full" id="clear-preview">
           Clear Preview
         </button>
       </div>
       
       <!-- ComfyUI status -->
-      <div class="card">
-        <h4 style="margin: 0 0 12px 0;">ComfyUI Status</h4>
+      <div class="panel">
+        <h4 class="section-title-tight mb-12">ComfyUI Status</h4>
         <div id="comfy-status" class="status-indicator status-connecting">
           Checking status...
         </div>
-        <div style="margin-top: 8px; font-size: 13px;">
+        <div class="comfy-meta">
           <div>Port: <span id="comfy-port">5555</span></div>
           <div>Images: <span id="image-count">0</span></div>
         </div>

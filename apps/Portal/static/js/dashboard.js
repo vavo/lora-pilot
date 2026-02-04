@@ -2,19 +2,16 @@ window.initDashboard = async function () {
   const status = document.getElementById("telemetry-status");
   const content = document.getElementById("telemetry-content");
   if (!status || !content) return;
+  bindShutdownInputs();
 
   status.textContent = "Loading telemetry...";
-  content.style.display = "none";
+  content.classList.add("is-hidden");
 
   try {
     const data = await fetchJson("/api/telemetry");
 
     document.getElementById("t-host").textContent = data.host;
     document.getElementById("t-uptime").textContent = formatUptime(data.uptime_seconds);
-    document.getElementById("t-load").textContent = (data.load_avg || []).map(v => v.toFixed(2)).join(" / ");
-
-    const memLabel = `${formatBytes(data.mem_used)} / ${formatBytes(data.mem_total)} (${pct(data.mem_used, data.mem_total)}%)`;
-    document.getElementById("t-mem").textContent = memLabel;
 
     // CPU
     const cpuPct = Math.min(100, Math.round(((data.load_avg?.[0] || 0) / (data.cpu_count || 1)) * 100));
@@ -22,6 +19,11 @@ window.initDashboard = async function () {
     const cpuLbl = document.getElementById("cpu-label");
     if (cpuBar) cpuBar.style.width = `${cpuPct}%`;
     if (cpuLbl) cpuLbl.textContent = `${cpuPct}% of ${data.cpu_count || 1} cores (load ${(data.load_avg?.[0] || 0).toFixed(2)})`;
+    const memPct = pct(data.mem_used, data.mem_total);
+    const memBar = document.getElementById("mem-bar");
+    const memLbl = document.getElementById("mem-label");
+    if (memBar) memBar.style.width = `${memPct}%`;
+    if (memLbl) memLbl.textContent = `${formatBytes(data.mem_used)} / ${formatBytes(data.mem_total)} (${memPct}%)`;
 
     // GPU(s)
     const gpuWrap = document.getElementById("gpu-bars");
@@ -32,22 +34,26 @@ window.initDashboard = async function () {
         const memPct = pct(g.mem_used, g.mem_total);
 
         const div = document.createElement("div");
-        div.style.marginBottom = "8px";
+        div.className = "dash-gpu-item";
         div.innerHTML = `
-          <div style="font-weight:600; margin-bottom:4px;">GPU ${g.index}: ${g.name}</div>
-          <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+          <div class="dash-gpu-title">GPU ${g.index}: ${g.name}</div>
+          <div class="dash-gpu-row">
             <div>
-              <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Util</div>
-              <div class="bar-wrap"><div class="bar-fill" style="width:${util}%;"></div></div>
-              <div style="font-size:12px; color:var(--muted); margin-top:4px;">${util}%</div>
+              <div class="dash-gpu-label">Util</div>
+              <div class="bar-wrap"><div class="bar-fill gpu-util-bar"></div></div>
+              <div class="dash-gpu-value">${util}%</div>
             </div>
             <div>
-              <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Memory</div>
-              <div class="bar-wrap"><div class="bar-fill" style="width:${memPct}%;"></div></div>
-              <div style="font-size:12px; color:var(--muted); margin-top:4px;">${formatBytes(g.mem_used)} / ${formatBytes(g.mem_total)}</div>
+              <div class="dash-gpu-label">Memory</div>
+              <div class="bar-wrap"><div class="bar-fill gpu-mem-bar"></div></div>
+              <div class="dash-gpu-value">${formatBytes(g.mem_used)} / ${formatBytes(g.mem_total)}</div>
             </div>
           </div>
         `;
+        const utilBar = div.querySelector(".gpu-util-bar");
+        const memBar = div.querySelector(".gpu-mem-bar");
+        if (utilBar) utilBar.style.width = `${util}%`;
+        if (memBar) memBar.style.width = `${memPct}%`;
         gpuWrap.appendChild(div);
       });
     }
@@ -64,7 +70,7 @@ window.initDashboard = async function () {
         tr.innerHTML = `
           <td>/workspace (data)</td>
           <td>${formatBytes(data.workspace_data_used_bytes)}</td>
-          <td style="color:var(--muted); font-size:12px;">data used</td>
+          <td class="dash-disk-meta">data used</td>
         `;
         tbody.appendChild(tr);
       }
@@ -73,23 +79,43 @@ window.initDashboard = async function () {
       (data.disks || []).forEach(d => {
         const tr = document.createElement("tr");
 
-        const bar = `<div class="bar-wrap"><div class="bar-fill" style="width:${d.pct}%;"></div></div>`;
+        const bar = `<div class="bar-wrap"><div class="bar-fill disk-bar"></div></div>`;
         tr.innerHTML = `<td>${d.mount}</td><td>${formatBytes(d.used)} / ${formatBytes(d.total)} (${d.pct}%)</td><td>${bar}</td>`;
+        const diskBar = tr.querySelector(".disk-bar");
+        if (diskBar) diskBar.style.width = `${d.pct}%`;
 
         tbody.appendChild(tr);
       });
     }
 
     status.textContent = "";
-    content.style.display = "";
+    content.classList.remove("is-hidden");
     
     // Load shutdown status
     updateShutdownStatus();
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
-    content.style.display = "none";
+    renderTelemetryFallback();
+    content.classList.remove("is-hidden");
   }
 };
+
+function renderTelemetryFallback() {
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  setText("t-host", "n/a");
+  setText("t-uptime", "n/a");
+  const cpuBar = document.getElementById("cpu-bar");
+  const cpuLbl = document.getElementById("cpu-label");
+  const memBar = document.getElementById("mem-bar");
+  const memLbl = document.getElementById("mem-label");
+  if (cpuBar) cpuBar.style.width = "0%";
+  if (cpuLbl) cpuLbl.textContent = "Telemetry unavailable";
+  if (memBar) memBar.style.width = "0%";
+  if (memLbl) memLbl.textContent = "Telemetry unavailable";
+}
 
 function pct(used, total) {
   if (!total) return 0;
@@ -106,17 +132,56 @@ function formatUptime(sec) {
 // Shutdown scheduler functionality
 let shutdownTimer = null;
 
+function clampInt(v, min, max) {
+  const n = parseInt(v, 10);
+  if (Number.isNaN(n)) return min;
+  return Math.max(min, Math.min(max, n));
+}
+
+function pad2(n) {
+  const x = Math.max(0, Math.min(99, n | 0));
+  return String(x).padStart(2, "0");
+}
+
+function setShutdownScheduledUI(isScheduled) {
+  const picker = document.getElementById("shutdown-picker");
+  const countdown = document.getElementById("shutdown-countdown-box");
+  const scheduleBtn = document.getElementById("schedule-shutdown-btn");
+  const cancelBtn = document.getElementById("cancel-shutdown-btn");
+  if (picker) picker.classList.toggle("is-hidden", isScheduled);
+  if (countdown) countdown.classList.toggle("is-hidden", !isScheduled);
+  if (scheduleBtn) scheduleBtn.classList.toggle("is-hidden", isScheduled);
+  if (cancelBtn) cancelBtn.classList.toggle("is-hidden", !isScheduled);
+}
+
+function setCountdownDigits(totalSeconds) {
+  const hh = document.getElementById("shutdown-hh");
+  const mm = document.getElementById("shutdown-mm");
+  const ss = document.getElementById("shutdown-ss");
+  if (!hh || !mm || !ss) return;
+  const s = Math.max(0, totalSeconds | 0);
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  hh.textContent = pad2(Math.min(99, hours));
+  mm.textContent = pad2(minutes);
+  ss.textContent = pad2(secs);
+}
+
 async function scheduleShutdown() {
-  const valueInput = document.getElementById('shutdown-value');
-  const unitSelect = document.getElementById('shutdown-unit');
-  
-  if (!valueInput || !unitSelect) return;
-  
-  const value = parseInt(valueInput.value);
-  const unit = unitSelect.value;
-  
-  if (!value || value < 1) {
-    alert('Please enter a valid number greater than 0');
+  const hoursEl = document.getElementById("shutdown-hours");
+  const minsEl = document.getElementById("shutdown-mins");
+  const secsEl = document.getElementById("shutdown-secs");
+
+  if (!hoursEl || !minsEl || !secsEl) return;
+
+  const hours = clampInt(hoursEl.value, 0, 99);
+  const mins = clampInt(minsEl.value, 0, 59);
+  const secs = clampInt(secsEl.value, 0, 59);
+  const totalSeconds = (hours * 3600) + (mins * 60) + secs;
+
+  if (totalSeconds < 1) {
+    alert("Set a countdown greater than 0 seconds.");
     return;
   }
   
@@ -124,7 +189,7 @@ async function scheduleShutdown() {
     const response = await fetchJson('/api/shutdown/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value, unit })
+      body: JSON.stringify({ value: totalSeconds, unit: "seconds" })
     });
     
     if (response.status === 'scheduled') {
@@ -156,16 +221,14 @@ async function cancelShutdown() {
 async function updateShutdownStatus() {
   try {
     const status = await fetchJson('/api/shutdown/status');
-    const inputsDiv = document.getElementById('shutdown-inputs');
-    const statusDiv = document.getElementById('shutdown-status');
     const timeSpan = document.getElementById('shutdown-time');
-    const countdownSpan = document.getElementById('shutdown-countdown');
-    if (!inputsDiv || !statusDiv || !timeSpan || !countdownSpan) return;
+    const meta = document.getElementById("shutdown-meta");
+    if (!timeSpan) return;
     
     if (status.scheduled) {
-      inputsDiv.style.display = 'none';
-      statusDiv.style.display = 'block';
+      setShutdownScheduledUI(true);
       timeSpan.textContent = status.shutdown_time || 'Unknown';
+      if (meta) meta.classList.remove("is-hidden");
       
       // Store the initial time and start countdown
       const startTime = Date.now();
@@ -181,8 +244,8 @@ async function updateShutdownStatus() {
       
       updateCountdown(initialRemaining);
     } else {
-      inputsDiv.style.display = 'flex';
-      statusDiv.style.display = 'none';
+      setShutdownScheduledUI(false);
+      if (meta) meta.classList.add("is-hidden");
       if (shutdownTimer) {
         clearInterval(shutdownTimer);
         shutdownTimer = null;
@@ -195,28 +258,34 @@ async function updateShutdownStatus() {
 }
 
 function updateCountdown(seconds) {
-  const countdownSpan = document.getElementById('shutdown-countdown');
-  if (!countdownSpan) return;
-  
   if (seconds <= 0) {
-    countdownSpan.textContent = 'Shutting down...';
+    setCountdownDigits(0);
     if (shutdownTimer) {
       clearInterval(shutdownTimer);
       shutdownTimer = null;
     }
     return;
   }
-  
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  
-  let parts = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-  
-  countdownSpan.textContent = parts.join(' ');
+
+  setCountdownDigits(seconds);
+}
+
+function bindShutdownInputs() {
+  const hoursEl = document.getElementById("shutdown-hours");
+  const minsEl = document.getElementById("shutdown-mins");
+  const secsEl = document.getElementById("shutdown-secs");
+  if (!hoursEl || !minsEl || !secsEl) return;
+  if (hoursEl.dataset.bound) return;
+  hoursEl.dataset.bound = "1";
+
+  const normalize = () => {
+    hoursEl.value = String(clampInt(hoursEl.value, 0, 99));
+    minsEl.value = String(clampInt(minsEl.value, 0, 59));
+    secsEl.value = String(clampInt(secsEl.value, 0, 59));
+  };
+
+  [hoursEl, minsEl, secsEl].forEach(el => {
+    el.addEventListener("blur", normalize);
+    el.addEventListener("change", normalize);
+  });
 }

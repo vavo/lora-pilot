@@ -5,61 +5,118 @@
   :root[data-theme="dark"] .logo-dark { display:block !important; }
   :root[data-theme="light"] .logo-light { display:block !important; }
   :root[data-theme="light"] .logo-dark { display:none !important; }
+
+  .tp-datasets-link {
+    font-size: 13px;
+  }
+
+  .tp-select {
+    min-height: 42px;
+    font-size: 14px;
+  }
+
+  .tp-epoch-example {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .tp-training-indicator {
+    margin-left: 10px;
+    align-items: center;
+  }
+  .tp-training-indicator:not(.is-hidden) {
+    display: inline-flex;
+  }
+
+  .tp-active-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  .tp-active-text {
+    color: #10b981;
+    font-size: 13px;
+  }
+
+  .tp-actions .btn.danger {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+  }
+
+  .tp-primary-panel {
+    border-color: rgba(255, 90, 62, 0.65);
+  }
 </style>
-<div style="text-align:center; margin-bottom:12px;">
-  <img src="/logo-trainpilot.svg" alt="TrainPilot" class="logo-light" style="width:300px; height:auto; margin:0 auto; display:block;">
-  <img src="/logodark-trainpilot.svg" alt="TrainPilot" class="logo-dark" style="width:300px; height:auto; margin:0 auto; display:block;">
+<div class="page-hero">
+  <img src="/logo-trainpilot.svg" alt="TrainPilot" class="logo-light page-hero-logo">
+  <img src="/logodark-trainpilot.svg" alt="TrainPilot" class="logo-dark page-hero-logo">
 </div>
-<h2 style="margin-top:0;">Train with kohya</h2>
+<h2 class="section-title-tight">Train with kohya</h2>
 <div class="card">
-  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px;">
-    <div class="card" style="padding:12px;">
+  <div class="grid-2">
+    <div class="panel stack-md tp-primary-panel">
       <h4>1. Choose dataset</h4>
-      <div style="margin-top:6px;">
-        <select id="tp-dataset" style="width:100%; min-width:260px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); font-size:15px;"></select>
-        <div style="margin-top:6px;">
-          <a href="#" onclick="openDatasets(event)" style="font-size:13px; color:var(--accent); text-decoration:none;">add new dataset</a><br>
+      <div>
+        <select id="tp-dataset" class="select tp-select"></select>
+        <div class="mt-6">
+          <a href="#" class="link-accent tp-datasets-link" onclick="openDatasets(event)">add new dataset</a><br>
         </div>
       </div>
-      <label style="margin-top:12px;">Output name (this will be the name of your LoRA epochs)</label>
-      <input id="tp-output" type="text" placeholder="output name" style="width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); font-size:15px;" />
+      <div class="field">
+        <label>Output name (this will be the name of your LoRA epochs)</label>
+        <input id="tp-output" class="input" type="text" placeholder="output name" />
+        <div id="tp-epoch-example" class="tp-epoch-example">Example epoch name: output_name000001.safetensors</div>
+      </div>
 
-      <h4 style="margin-top:16px;">2. Choose output quality</h4>
-      <select id="tp-profile" style="width:100%; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--text); font-size:15px;">
+      <h4 class="mt-16">2. Choose output quality</h4>
+      <select id="tp-profile" class="select tp-select">
         <option value="quick_test" selected>Quick test (400-600 steps)</option>
         <option value="regular">Normal quality (800-1200 steps)</option>
-        <option value="high_quality">High quality (1600-2200 steps)</option>
+        <option value="high_quality">High quality (1600-2400 steps)</option>
       </select>
     </div>
   </div>
-  <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-    <button onclick="startTrainPilot()">Start</button>
-    <button class="danger" onclick="stopTrainPilot()">Stop</button>
+  <div class="row wrap mt-14 tp-actions">
+    <button class="btn primary" onclick="startTrainPilot()">Start</button>
+    <button class="btn danger" onclick="stopTrainPilot()">Stop</button>
     <span id="tp-status" class="status"></span>
-    <div id="tp-progress-wrap" class="tp-progress-wrap" style="display:none;">
+    <div id="tp-progress-wrap" class="tp-progress-wrap is-hidden">
       <div class="tp-progress">
         <div id="tp-progress-bar" class="tp-progress-bar"></div>
       </div>
       <span id="tp-progress-text" class="tp-progress-text"></span>
     </div>
-    <span id="tp-training-indicator" style="display:none; margin-left:10px;">
-      <span style="display:inline-block; width:8px; height:8px; background:#10b981; border-radius:50%; margin-right:6px; animation:pulse 2s infinite;"></span>
-      <span style="color:#10b981; font-size:13px;">Training Active</span>
+    <div id="tp-modeldl-wrap" class="tp-progress-wrap is-hidden">
+      <div class="tp-progress">
+        <div id="tp-modeldl-bar" class="tp-progress-bar"></div>
+      </div>
+      <span id="tp-modeldl-text" class="tp-progress-text"></span>
+    </div>
+    <span id="tp-training-indicator" class="tp-training-indicator is-hidden">
+      <span class="tp-active-dot"></span>
+      <span class="tp-active-text">Training Active</span>
     </span>
   </div>
-  <div class="card" style="margin-top:12px;">
+  <div class="panel mt-12">
     <h3>TOML Config</h3><br>
-    <code id="toml-config-path" style="cursor:pointer; color:var(--accent); text-decoration:underline;" onclick="showTomlConfig()">/workspace/apps/TrainPilot/newlora.toml</code>
-    <div style="margin-top:8px; font-size:12px; color:var(--muted);">
+    <code id="toml-config-path" class="link-accent code-link" onclick="showTomlConfig()">/workspace/apps/TrainPilot/newlora.toml</code>
+    <div class="mt-8 text-12 muted">
       Click to preview the current training configuration
     </div>
   </div>
-  <div class="card" style="margin-top:12px;">
+  <div class="panel mt-12">
     <h3>Training Logs</h3>
-    <div style="margin-bottom:8px; font-size:12px; color:var(--muted);">
+    <div class="mb-8 text-12 muted">
       Shows TrainPilot process logs + Kohya training output from <code>/workspace/outputs/*/_logs/train.log</code>
     </div>
-    <pre id="tp-logs" style="max-height:300px; overflow:auto; background:var(--card); color:var(--text); padding:12px; border-radius:8px; border:1px solid var(--border); font-family:monospace; font-size:12px; line-height:1.4;"></pre>
+    <pre id="tp-logs" class="log-box mono mono-sm"></pre>
   </div>
  </div>
   
@@ -70,10 +127,12 @@
     }
 
     .tp-progress-wrap {
-      display: inline-flex;
       align-items: center;
       gap: 8px;
       margin-left: 6px;
+    }
+    .tp-progress-wrap:not(.is-hidden) {
+      display: inline-flex;
     }
 
     .tp-progress {
@@ -95,66 +154,6 @@
       font-size: 12px;
       color: var(--muted);
       min-width: 90px;
-    }
-    
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-    }
-    
-    .modal-content {
-      background-color: var(--card);
-      color: var(--text);
-      margin: 5% auto;
-      padding: 20px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      width: 80%;
-      max-width: 800px;
-      max-height: 80vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 24px;
-      cursor: pointer;
-      color: var(--muted);
-      padding: 0;
-      width: 30px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-    }
-    
-    .modal-close:hover {
-      background-color: var(--border);
-      color: var(--text);
-    }
-    
-    .modal-body {
-      overflow-y: auto;
-      flex: 1;
     }
     
     .toml-content {
@@ -200,11 +199,11 @@
   </style>
 
 <!-- TOML Config Modal -->
-<div id="toml-modal" class="modal">
-  <div class="modal-content">
+<div id="toml-modal" class="modal" onclick="closeTomlConfig(event)">
+  <div class="modal-card" data-size="lg">
     <div class="modal-header">
-      <h3 style="margin:0;">Training Configuration (TOML)</h3>
-      <button class="modal-close" onclick="closeTomlConfig()">&times;</button>
+      <div class="modal-title">Training Configuration (TOML)</div>
+      <button class="modal-close" type="button" aria-label="Close" onclick="closeTomlConfig(event)">×</button>
     </div>
     <div class="modal-body">
       <div id="toml-content" class="toml-loading">Loading configuration...</div>
