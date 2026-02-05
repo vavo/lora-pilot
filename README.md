@@ -1,5 +1,5 @@
 # LoRA Pilot (The Last Docker Image You'll Ever Need)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%2 [![GitHub Sponsors](https://img.shields.io/github/sponsors/vavo?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)0a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo)
 
 ![LoRA Pilot logo](apps/Portal/static/logo.svg)
 
