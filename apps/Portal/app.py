@@ -693,6 +693,51 @@ def get_hf_token_status():
     return {"set": bool(token)}
 
 
+@app.get("/api/copilot/token")
+def get_copilot_token_status():
+    token = (
+        os.environ.get("COPILOT_GITHUB_TOKEN")
+        or os.environ.get("GH_TOKEN")
+        or os.environ.get("GITHUB_TOKEN")
+    )
+    if not token:
+        secrets_file = CONFIG_DIR / "secrets.env"
+        if secrets_file.exists():
+            for line in secrets_file.read_text().splitlines():
+                if line.startswith("export COPILOT_GITHUB_TOKEN="):
+                    token = line.split("=", 1)[-1].strip().strip('"')
+                    break
+    return {"set": bool(token)}
+
+
+@app.post("/api/copilot/token")
+def set_copilot_token(payload: dict):
+    token = None
+    if isinstance(payload, dict):
+        token = payload.get("token")
+    if token is None:
+        raise HTTPException(status_code=422, detail="token is required")
+    token = str(token).strip()
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    secrets_file = CONFIG_DIR / "secrets.env"
+    lines = []
+    if secrets_file.exists():
+        lines = secrets_file.read_text().splitlines()
+        lines = [
+            ln for ln in lines
+            if not ln.startswith("export COPILOT_GITHUB_TOKEN=")
+        ]
+    if token:
+        lines.append(f'export COPILOT_GITHUB_TOKEN="{token}"')
+        os.environ["COPILOT_GITHUB_TOKEN"] = token
+    else:
+        os.environ.pop("COPILOT_GITHUB_TOKEN", None)
+
+    secrets_file.write_text("\n".join(lines) + ("\n" if lines else ""))
+    return {"status": "ok", "set": bool(token)}
+
+
 def supervisor_status(name: str) -> ServiceEntry:
     if not SUPERVISORCTL:
         raise HTTPException(status_code=500, detail="supervisorctl not found")
@@ -817,7 +862,7 @@ def control_service(name: str, action: str):
         raise HTTPException(status_code=500, detail=e.output or str(e))
 
 
-@app.post("/api/services/{name}/autostart")
+@app.post("/api/services/{name}/settings/autostart")
 def service_autostart(name: str, payload: ServiceAutostartRequest):
     if name not in SERVICES:
         raise HTTPException(status_code=404, detail="Unknown service")

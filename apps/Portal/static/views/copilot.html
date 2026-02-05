@@ -11,6 +11,12 @@
 <div class="card">
   <h2>Copilot</h2>
   <div class="status" id="copilot-status">Loading...</div>
+  <div class="row wrap gap-8 mt-8">
+    <input id="copilot-token" class="input w-320" type="password" placeholder="GitHub token (COPILOT_GITHUB_TOKEN)" />
+    <button class="btn primary" id="copilot-save-token">Save token</button>
+    <button class="btn secondary" id="copilot-clear-token">Clear token</button>
+    <span class="status" id="copilot-token-status"></span>
+  </div>
   <div class="tip mt-8">
     This uses the container-local <code>copilot</code> CLI with <code>--allow-all-tools</code>.
     Treat it like a terminal with opinions.
@@ -33,7 +39,7 @@
     <span class="status is-hidden" id="copilot-running">Running…</span>
   </div>
   <div class="tip mt-8">
-    First-time setup: open a terminal and run <code>copilot</code>, then <code>/login</code>, and trust <code>/workspace</code>.
+    Save token here and Copilot sidecar will restart with auth loaded from <code>/workspace/config/secrets.env</code>.
   </div>
 </div>
 

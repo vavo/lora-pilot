@@ -122,7 +122,7 @@ window.toggleServiceAutostart = async function (name, toggle) {
   const enabled = !!toggle.checked;
   toggle.disabled = true;
   try {
-    await fetchJson(`/api/services/${encodeURIComponent(name)}/autostart`, {
+    await fetchJson(`/api/services/${encodeURIComponent(name)}/settings/autostart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled }),
