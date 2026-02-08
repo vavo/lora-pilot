@@ -5,7 +5,7 @@
 > Your AI playground in a box - because who has time to configure 17 different tools?
 Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI datasets management, training and image generation into one neat package. No more crying over broken dependencies at 3 AM.
 
-Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev, schnell), Chroma, Lumina-Image 2.0, LTX-Video, HunyuanVideo, Wan2.1, Wan2.2, Cosmos, HiDream, Z-Index** and few more for training and almost every model out there for inference.
+Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev, schnell), Chroma, Lumina-Image 2.0, LTX-Video, HunyuanVideo, Wan2.1, Wan2.2, Cosmos, HiDream, Z-Image** and few more for training and almost every model out there for inference.
 
 ##  What's in the box?
 - **ControlPilot** – one web UI to manage telemetry, services, models, upload and tag/caption datasets or start training using kohya/diffusion-pipe
