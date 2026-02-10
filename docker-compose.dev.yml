@@ -13,6 +13,8 @@ services:
       
       # Timezone
       - TZ=${TZ:-America/New_York}
+      - HF_TOKEN=${HF_TOKEN:-}
+      - SUPERVISOR_ADMIN_PASSWORD=${SUPERVISOR_ADMIN_PASSWORD:-}
       
       # Development mode settings
       - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
@@ -27,6 +29,14 @@ services:
       - INVOKE_PORT=${INVOKE_PORT:-9090}
       - DIFFPIPE_PORT=${DIFFPIPE_PORT:-4444}
       - AI_TOOLKIT_PORT=${AI_TOOLKIT_PORT:-8675}
+      - AI_TOOLKIT_DB_PATH=${AI_TOOLKIT_DB_PATH:-/workspace/config/ai-toolkit/aitk_db.db}
+      - COPILOT_SIDECAR_PORT=${COPILOT_SIDECAR_PORT:-7879}
+      - COPILOT_SIDECAR_URL=${COPILOT_SIDECAR_URL:-http://127.0.0.1:7879}
+      - COPILOT_GITHUB_TOKEN=${COPILOT_GITHUB_TOKEN:-}
+      - COPILOT_HOME=${COPILOT_HOME:-/workspace/home/root}
+      - COPILOT_XDG_CONFIG_HOME=${COPILOT_XDG_CONFIG_HOME:-/workspace/home/root/.config}
+      - COPILOT_CWD=${COPILOT_CWD:-/workspace}
+      - COPILOT_TIMEOUT_SECONDS=${COPILOT_TIMEOUT_SECONDS:-1800}
     
     ports:
       - "${PORTAL_PORT:-7878}:${PORTAL_PORT:-7878}"
@@ -43,6 +53,7 @@ services:
       - ./workspace:/workspace
       # Mount source code for development (optional)
       - ./apps/Portal:/opt/pilot/apps/Portal
+      - ./apps/MediaPilot:/opt/pilot/apps/MediaPilot
       # Mount scripts for development without masking /opt/pilot/repos from the image
       - ./scripts:/opt/pilot/scripts
       - ./scripts/bootstrap.sh:/opt/pilot/bootstrap.sh

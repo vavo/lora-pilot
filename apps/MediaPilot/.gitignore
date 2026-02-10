@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.log
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editor / OS noise
+.vscode/
+.DS_Store
+Thumbs.db
+.ipynb_checkpoints/
+.xdg/*
+.local/
+tmp/
+
+# Runtime data
+data/
+*.db
+*.db-*
+
+# Node/npm (if ever used)
+node_modules/
+
+# Repo metadata (requested)
+.git/

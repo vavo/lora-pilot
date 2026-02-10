@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MediaPilot</title>
+  <script>
+    (() => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const queryTheme = params.get("theme");
+        let theme = queryTheme === "dark" || queryTheme === "light" ? queryTheme : null;
+        if (!theme) {
+          try {
+            const parentTheme = window.parent?.document?.documentElement?.getAttribute("data-theme");
+            if (parentTheme === "dark" || parentTheme === "light") theme = parentTheme;
+          } catch (_) {}
+        }
+        if (!theme) {
+          const savedTheme = localStorage.getItem("theme");
+          theme = savedTheme === "dark" ? "dark" : "light";
+        }
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (_) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
+  <style>
+    /* Critical inline styles to avoid flash */
+    :root {
+      color-scheme: light;
+      --mp-bg: #f8fafc;
+      --mp-text: #0f172a;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --mp-bg: #0b1220;
+      --mp-text: #e2e8f0;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--mp-bg);
+      color: var(--mp-text);
+      width: 100%;
+      height: 100%;
+    }
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: var(--mp-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+  </style>
+
+  <!-- performance hints -->
+  <link rel="preconnect" href="output">
+  <link rel="dns-prefetch" href="output">
+
+  <!-- CSS is versioned by main.js, so no href here -->
+  <link id="style-link" rel="stylesheet">
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <header class="control-bar">
+    <div class="bar-left">
+      <select id="folder-select" class="control-select"></select>
+      <select id="filter-select" class="control-select">
+        <option value="ALL">ALL</option>
+        <option value="LIKED">LIKED</option>
+        <option value="UNLIKED">NOT LIKED</option>
+      </select>
+      <select id="sort-select" class="control-select">
+        <option value="NEWEST">NEW</option>
+        <option value="OLDEST">OLD</option>
+        <option value="ALPHABETICALLY">A-Z</option>
+      </select>
+      <input
+        id="search-input"
+        class="control-search"
+        type="search"
+        placeholder="Search prompt / lora / sampler / steps / cfg"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div class="bar-right">
+      <label class="thumb-size">
+        Thumb size
+        <input type="range" id="thumb-slider" min="80" max="768" step="16" value="225">
+      </label>
+      <div class="bulk-actions">
+        <span id="bulk-count"></span>
+        <button id="bulk-upscale-btn" class="icon-button upscale-icon" aria-label="Upscale selected"></button>
+        <button id="bulk-download-btn" class="icon-button download-icon" aria-label="Download selected"></button>
+        <button id="bulk-like-btn" class="icon-button like-icon" aria-label="Like"></button>
+        <button id="bulk-tag-btn" class="icon-button tag-icon" aria-label="Tag"></button>
+        <button id="bulk-delete-btn" class="delete-btn icon-button trash-icon" aria-label="Delete"></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LOADING SCREEN -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <img
+        src="static/logo-mediapilot.svg"
+        alt="MediaPilot"
+        class="loading-logo"
+      />
+      <div class="loading-title">MediaPilot</div>
+      <div class="loading-progress">
+        <div class="loading-progress-bar" id="loading-progress-bar"></div>
+      </div>
+      <div class="auth-panel hidden" id="auth-panel">
+        <label class="auth-label" for="auth-password">Enter password</label>
+        <div class="auth-row">
+          <input id="auth-password" class="auth-input" type="password" autocomplete="current-password" />
+          <button id="auth-submit" class="auth-submit" type="button">Unlock</button>
+        </div>
+        <div class="auth-error" id="auth-error" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <main>
+    <div id="gallery" class="gallery"></div>
+    <div id="scroll-sentinel"></div>
+  </main>
+
+  <!-- MODAL -->
+  <div id="modal" class="modal hidden" tabindex="-1">
+    <div class="modal-inner">
+
+      <!-- Image -->
+      <div id="modal-image-wrap" class="modal-image-wrap">
+        <img id="modal-img" class="modal-img" src="" alt="Full size image" />
+        <div id="modal-nav-left" class="modal-nav-arrow"></div>
+        <div id="modal-nav-right" class="modal-nav-arrow"></div>
+        <button id="modal-heart-overlay" class="modal-heart-overlay" type="button" aria-label="Like">♡</button>
+      </div>
+
+      <!-- Modal Actions -->
+          <div class="modal-actions">
+            <button id="modal-tag" class="icon-button">Tag</button>
+            <button id="modal-download" class="icon-button download-icon" aria-label="Download"></button>
+            <button id="modal-delete" class="icon-button trash-icon">Delete</button>
+          </div>
+
+    </div>
+  </div>
+
+  <!-- JS MODULE LOADER WITH VERSIONING -->
+  <script type="module">
+    const v = Math.floor(Math.random() * 99999999);
+
+    // apply CSS version
+    const css = document.getElementById("style-link");
+    css.href = `static/styles.css?v=${v}`;
+
+    // load main module (which loads the others)
+    import(`static/main.js?v=${v}`);
+  </script>
+
+</body>
+</html>

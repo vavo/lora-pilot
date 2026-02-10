@@ -1,0 +1,39 @@
+{
+  "1": {
+    "inputs": {
+      "image": "__INPUT_IMAGE__",
+      "upload": "image"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image"
+    }
+  },
+  "2": {
+    "inputs": {
+      "image": [
+        "1",
+        0
+      ],
+      "upscale_method": "lanczos",
+      "scale_by": 2
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Image Scale By"
+    }
+  },
+  "3": {
+    "inputs": {
+      "filename_prefix": "__OUTPUT_PREFIX__",
+      "images": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

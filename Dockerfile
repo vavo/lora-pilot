@@ -45,6 +45,7 @@ ARG INVOKE_TORCH_VERSION=2.7.0
 ARG INVOKE_TORCHVISION_VERSION=0.22.0
 ARG INVOKE_TORCHAUDIO_VERSION=2.7.0
 ARG INVOKE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
+ARG INVOKEAI_VERSION=6.11.1
 ARG CUDA_NVCC_PKG=cuda-nvcc-12-4
 ARG CROC_VERSION=10.3.1
 
@@ -291,8 +292,8 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         torchvision==${INVOKE_TORCHVISION_VERSION} \
         torchaudio==${INVOKE_TORCHAUDIO_VERSION} && \
       \
-      # Install InvokeAI v6.10.0 (latest) after torch is in place
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install "invokeai==6.10.0" && \
+      # Install InvokeAI after torch is in place
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install "invokeai==${INVOKEAI_VERSION}" && \
       \
       # Enable HF transfer acceleration in invoke venv
       PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "huggingface_hub[hf_transfer]" && \
@@ -399,6 +400,7 @@ COPY scripts/invoke.sh /opt/pilot/invoke.sh
 COPY scripts/tagpilot.sh /opt/pilot/tagpilot.sh
 COPY scripts/portal.sh /opt/pilot/portal.sh
 COPY scripts/copilot-sidecar.sh /opt/pilot/copilot-sidecar.sh
+COPY scripts/service-updates-reconcile.py /opt/pilot/service-updates-reconcile.py
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
@@ -422,6 +424,7 @@ RUN set -eux; \
       /opt/pilot/tagpilot.sh \
       /opt/pilot/portal.sh \
       /opt/pilot/copilot-sidecar.sh \
+      /opt/pilot/service-updates-reconcile.py \
       /opt/pilot/get-models.sh \
       /opt/pilot/get-modelsgui.sh \
       /usr/local/bin/pilot \

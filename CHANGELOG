@@ -1,3 +1,42 @@
+v2.2
+
+- Added MediaPilot as a built-in ControlPilot app (single-port embed):
+  - new MediaPilot tab in ControlPilot navigation
+  - MediaPilot mounted under `/mediapilot` in Portal
+  - MediaPilot status endpoint (`/api/mediapilot/status`)
+- Added MediaPilot vendoring workflow:
+  - MediaPilot source now included under `apps/MediaPilot`
+  - helper sync script `scripts/vendor-mediapilot.sh`
+  - upstream commit tracking via `.upstream-commit`
+- Added MediaPilot bootstrap/runtime integration:
+  - auto-seed MediaPilot `.env` from `.env.example` on first run
+  - workspace defaults for outputs/thumbs/db (`/workspace/outputs`, `/workspace/cache`, `/workspace/config`)
+  - Comfy API URL auto-filled from `COMFY_PORT`
+  - optional `MEDIAPILOT_FORCE_ENV_DEFAULTS=1` to force-refresh defaults
+- Made MediaPilot subpath-safe for embedded operation:
+  - frontend/API/static paths updated for `/mediapilot` base path
+  - MediaPilot now loads `.env` from its app directory
+- Refactored MediaPilot UI for ControlPilot visual consistency:
+  - ControlPilot-aligned style tokens, components, and spacing
+  - synchronized light/dark mode with parent ControlPilot theme
+  - moved hardcoded JS color styling to CSS theme layer
+- Expanded Services section with in-app update management:
+  - service version listing endpoint (`/api/services/versions`)
+  - update start/status endpoints (`/api/services/{name}/update/start`, `/api/services/{name}/update/status`)
+  - async update jobs with progress/status output and service restart after update
+  - frontend update controls/status rows on Services cards
+- Added TagPilot incremental save endpoint:
+  - `/api/tagpilot/save-item` for per-item save/reset/finalize ZIP workflows
+- Updated InvokeAI version pin handling:
+  - new build arg `INVOKEAI_VERSION`
+  - default set to `6.11.1` in Dockerfile/build env example
+- Simplified branding/logo pipeline:
+  - removed dark logo variants (`logodark*`)
+  - switched to single transparent logo assets for Portal, ComfyUI, TrainPilot, and TagPilot
+- Models page layout fixes:
+  - model cards now keep consistent width regardless of installed count
+  - model install path row no longer overflows card borders
+
 v2.0
 
 - Added AI Toolkit (ostris/ai-toolkit) as a built-in, first-class trainer (UI on port 8675, managed by Supervisor).

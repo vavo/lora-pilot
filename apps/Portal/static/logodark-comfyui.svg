@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="700" height="300" viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg">
-  <rect width="700" height="300" fill="#111827"/>
-  <text x="360" y="160" text-anchor="middle" font-family="Montserrat, Inter, Arial, sans-serif" font-size="96" font-weight="800" fill="#fb923c" letter-spacing="2">COMFYUI</text>
-  <text x="360" y="210" text-anchor="middle" font-family="Montserrat, Inter, Arial, sans-serif" font-size="26" font-weight="400" fill="#94a3b8" letter-spacing="8">AI IMAGE GENERATION</text>
-</svg>

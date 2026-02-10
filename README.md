@@ -1,20 +1,49 @@
 # LoRA Pilot (The Last Docker Image You'll Ever Need)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo) [![GitHub Sponsors](https://img.shields.io/github/sponsors/vavo?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo) [![GitHub Sponsors](https://img.shields.io/github/sponsors/vavo?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo) [![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on-GitHub-24292F?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)
 ![LoRA Pilot logo](apps/Portal/static/logo.svg)
 
 > Your AI playground in a box - because who has time to configure 17 different tools?
-Ever wanted to train LoRAs but ended up in dependency hell? We've been there. LoRA Pilot is a **magical container** that bundles everything you need for AI datasets management, training and image generation into one neat package. No more crying over broken dependencies at 3 AM.
+Ever wanted to train LoRAs but ended up in dependency hell? LoRA Pilot bundles dataset workflow, model management, training, and generation into one container with one persistent `/workspace`.
 
-Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev, schnell), Chroma, Lumina-Image 2.0, LTX-Video, HunyuanVideo, Wan2.1, Wan2.2, Cosmos, HiDream, Z-Index** and few more for training and almost every model out there for inference.
+## Why this is useful
+- **Redesigned ControlPilot UI** with cleaner service/model/dataset/training flows.
+- **Single-port workflow**: MediaPilot and TagPilot are embedded inside ControlPilot.
+- **Multiple training stacks**: Kohya SS, Diffusion Pipe, AI Toolkit, and TrainPilot.
+- **Integrated coding helper (optional)**: Copilot sidecar accessible from ControlPilot.
+- **No throwaway setup**: outputs, models, datasets, and config persist under `/workspace`.
+
+## Supported LoRA training models
+- Stable Diffusion 1.5
+- Stable Diffusion 2.1
+- SDXL
+- SD3
+- FLUX.1-dev
+- FLUX.1-schnell
+- FLUX.1-kontext
+- OmniGen2
+- PixArt Alpha
+- PixArt Sigma
+- AuraFlow
+- Lumina2
+- HunyuanVideo
+- LTX
+- LTX2
+- Wan 2.1 / 2.2
+- Cosmos
+- Qwen-Image
+- Qwen-Image-Edit
+- Z-Image-Turbo
 
 ##  What's in the box?
-- **ControlPilot** – one web UI to manage telemetry, services, models, upload and tag/caption datasets or start training using kohya/diffusion-pipe
+- **ControlPilot** – redesigned command center for services, models, datasets, docs, and training flows
 - **🎨 ComfyUI** (+ ComfyUI-Manager preinstalled) - Your node-based playground
 - **🏋️ Kohya SS** - Where LoRAs are born (web UI included!)
+- **🧪 AI Toolkit** - first-class trainer wired into the same workspace
 - **📓 JupyterLab** - For when you need to get nerdy
 - **💻 code-server** - VS Code in your browser (because local setups are overrated)
 - **🔮 InvokeAI** - Living in its own virtual environment (the diva of the bunch)
 - **🚂 Diffusion Pipe** - Training + TensorBoard, all cozy together
+- **MediaPilot** – image viewer/manager embedded in ControlPilot (no extra public port)
 - **TagPilot** – dataset tagger embedded on the same port as ControlPilot
 - **TrainPilot** - the easiest way to run SDXL training on kohya
 - **GUI for dpipe** - a web UI for diffusion pipe
@@ -47,9 +76,11 @@ Few of the thoughtful details that really bothered me when I was using other SD 
 | ComfyUI | `5555` |
 | Kohya SS | `6666` |
 | ControlPilot | `7878` |
+| MediaPilot | `7878` (`/mediapilot`) |
 | code-server | `8443` |
 | JupyterLab | `8888` |
 | InvokeAI (optional) | `9090` |
+| AI Toolkit | `8675` |
 | Copilot sidecar (internal) | `7879` |
 
 Expose them in RunPod (or just use my RunPod template - https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n).
@@ -84,8 +115,10 @@ Expected directories (created on boot if possible):
   - Diffusion Pipe under `/workspace/apps/diffusion-pipe`
   - Invoke under `/workspace/apps/invoke`
   - Kohya under `/workspace/apps/kohya`
+  - MediaPilot under `/workspace/apps/MediaPilot` (https://github.com/vavo/MediaPilot)
   - TagPilot under `/workspace/apps/TagPilot` (https://github.com/vavo/TagPilot)
   - TrainPilot under `/workspace/apps/TrainPilot`(not yet on GitHub)
+- `/opt/pilot/repos/ai-toolkit` (source) with persistent links to `/workspace/datasets`, `/workspace/models`, and `/workspace/outputs/ai-toolkit`
 - `/workspace/config`
 - `/workspace/cache`
 - `/workspace/logs`
@@ -191,27 +224,38 @@ models list
 
 ## Support
 
-This is not only my hobby project, but also a docker image I actively use for my own work. I love automation. Effectivity. Cost savings. 
-I create 2-3 new builds a day to keep things fresh and working. I'm also happy to implement any reasonable feature requests.
+This is not only my hobby project, but also a Docker image I actively use for production work.
+I create frequent builds to keep things fresh and working, and I am happy to implement reasonable feature requests.
 If you need help or have questions, feel free to reach out or open an issue on GitHub.
 
 Reddit: u/no3us
+
+## Sponsor
+
+If LoRA Pilot saves you time (or sanity), sponsor the project:
+
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on-GitHub-24292F?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)
 
 ---
 
 ## 🆕 Recent Updates
 
-### Localhost Deployment Support
-- **Fixed ComfyUI proxy** - Resolved httpx import issues for localhost compatibility
-- **Universal deployment** - ComfyUI live preview now works on both RunPod and localhost
-- **Mixed content fixes** - Proper HTTPS/HTTP handling in different environments
-- **Training logs fixed** - Kohya training logs now display correctly on localhost
+### ControlPilot 2.x redesign
+- New design system and cleaner UI flows for services, models, datasets, docs, and training operations.
+- Better service controls and model management UX in one place.
 
-### ComfyUI Integration
-- **Live preview** - Real-time image generation display in ControlPilot
-- **WebSocket proxy** - Seamless ComfyUI WebSocket connection handling
-- **Dynamic URLs** - Automatic detection of RunPod vs localhost deployment
-- **Last image display** - Shows latest generated image when no new images are being generated
+### MediaPilot integrated into ControlPilot
+- MediaPilot is now built-in and mounted under `/mediapilot` (same public port as ControlPilot).
+- Theme synchronization (light/dark) and ControlPilot visual consistency.
+- Bootstrap auto-seeds MediaPilot `.env` defaults for workspace paths and Comfy API URL.
+
+### Services can update themselves from UI
+- Added service version checks and in-app update actions.
+- Update jobs run asynchronously with status/progress reporting and service restart handling.
+
+### Training stack upgrades
+- AI Toolkit integrated as a first-class training service with persistent DB/config under `/workspace`.
+- Copilot sidecar support exposed in ControlPilot for workspace-aware automation flows.
 
 ---
 

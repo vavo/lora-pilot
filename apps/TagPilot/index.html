@@ -18,10 +18,6 @@
         body { font-family: 'Inter', sans-serif; background:#0f172a; color:#e2e8f0; }
         :root[data-theme="dark"] body { background:#0f172a; color:#e2e8f0; }
         :root[data-theme="light"] body { background:#ffffff; color:#0f172a; }
-        .logo-light { display:none !important; }
-        .logo-dark { display:block !important; }
-        :root[data-theme="light"] .logo-light { display:block !important; }
-        :root[data-theme="light"] .logo-dark { display:none !important; }
         :root[data-theme="light"] .bg-gray-800 { background:#f3f4f6 !important; color:#0f172a !important; }
         :root[data-theme="light"] .bg-gray-700 { background:#e5e7eb !important; color:#0f172a !important; }
         :root[data-theme="light"] .bg-gray-900 { background:#ffffff !important; color:#0f172a !important; }
@@ -61,10 +57,6 @@
           theme = saved === "light" ? "light" : "dark";
         }
         document.documentElement.setAttribute("data-theme", theme);
-        // force logo visibility in case of cached CSS
-        const showLight = theme === "light";
-        document.querySelectorAll(".logo-light").forEach(el => el.style.display = showLight ? "block" : "none");
-        document.querySelectorAll(".logo-dark").forEach(el => el.style.display = showLight ? "none" : "block");
       })();
     </script>
 
@@ -106,8 +98,7 @@
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
             <div class="flex justify-center items-center gap-4">
-                <img src="/logo-tagpilot.svg" width="300" alt="TagPilot" class="mx-auto block logo-light">
-                <img src="/logodark-tagpilot.svg" width="300" alt="TagPilot" class="mx-auto block logo-dark">
+                <img src="/logo-tagpilot.svg" width="300" alt="TagPilot" class="mx-auto block">
             </div>
         </header>
 
@@ -893,26 +884,30 @@ Expected outcome is a human-readable continuous text consisting of several sente
             try {
                 showNotification("Saving to /workspace/datasets...");
                 const name = datasetNameInput?.value.trim() || 'dataset';
-                const zip = new JSZip();
-                dataset.forEach(item => {
-                    zip.file(item.file.name, item.file);
-                    const txtName = item.file.name.replace(/\.[^/.]+$/, ".txt");
-                    zip.file(txtName, item.tags);
-                });
-                const blob = await zip.generateAsync({type:"blob"});
-                const fd = new FormData();
-                fd.append("file", new File([blob], `${name}.zip`, {type:"application/zip"}));
-                const resp = await fetch(`${API_BASE}/api/tagpilot/save?name=${encodeURIComponent(name)}`, {
-                    method: 'POST',
-                    body: fd
-                });
-                if (!resp.ok) {
-                    throw new Error(await parseResponseError(resp));
+                const total = dataset.length;
+                showLoader(`Saving dataset 0 / ${total}...`);
+                for (let i = 0; i < total; i++) {
+                    const item = dataset[i];
+                    showLoader(`Saving dataset ${i + 1} / ${total}...`);
+                    const fd = new FormData();
+                    fd.append("file", item.file, item.file.name);
+                    fd.append("tags", item.tags || "");
+                    if (i === 0) fd.append("reset", "true");
+                    if (i === total - 1) fd.append("done", "true");
+                    const resp = await fetch(`${API_BASE}/api/tagpilot/save-item?name=${encodeURIComponent(name)}`, {
+                        method: 'POST',
+                        body: fd
+                    });
+                    if (!resp.ok) {
+                        throw new Error(await parseResponseError(resp));
+                    }
                 }
                 showNotification("Saved to /workspace/datasets");
             } catch (e) {
                 console.error(e);
                 showNotification(`Error saving dataset: ${e.message || e}`);
+            } finally {
+                hideLoader();
             }
         }
 

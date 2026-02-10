@@ -4,7 +4,7 @@
   .svc-card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px; }
   .svc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
   .svc-name { display:flex; align-items:center; gap:8px; min-width:0; }
-  .svc-main { min-width: 0; }
+  .svc-main { min-width: 0; display:flex; flex-direction:column; gap:4px; }
   .svc-name strong { font-weight: 800; }
   .svc-link {
     display: inline-flex;
@@ -15,6 +15,13 @@
   .svc-name a:hover { text-decoration:underline; }
   .svc-open-icon { width: 14px; height: 14px; color: var(--muted); }
   .svc-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .svc-version-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .svc-version { color: var(--muted); }
+  .svc-update-btn { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .svc-update-status { color: var(--muted); min-height: 1.25em; }
+  .svc-update-status.running { color: #f97316; }
+  .svc-update-status.ok { color: #16a34a; }
+  .svc-update-status.error { color: #dc2626; }
   .svc-port {
     display:inline-flex;
     align-items:center;

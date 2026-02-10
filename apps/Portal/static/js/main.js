@@ -1,4 +1,4 @@
-const sections = ["dashboard", "services", "models", "datasets", "comfyui", "tagpilot", "trainpilot", "dpipe", "copilot", "docs", "support"];
+const sections = ["dashboard", "services", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "copilot", "docs", "support"];
 const viewCache = {};
 let currentSection = null;
 const viewMap = {
@@ -6,6 +6,7 @@ const viewMap = {
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
   models: { view: "/views/models.html", init: () => window.initModels && window.initModels() },
   datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
+  mediapilot: { view: "/views/mediapilot.html", init: () => window.initMediapilot && window.initMediapilot() },
   comfyui: { view: "/views/comfyui.html", init: () => window.initComfyUI && window.initComfyUI() },
   tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
@@ -38,8 +39,8 @@ function setTheme(mode) {
   root.setAttribute("data-theme", mode);
   localStorage.setItem("theme", mode);
   const dark = mode === "dark";
-  if (logoImg) logoImg.src = dark ? "/logodark.svg" : "/logo.svg";
-  if (topLogo) topLogo.src = dark ? "/logodark.svg" : "/logo.svg";
+  if (logoImg) logoImg.src = "/logo.svg";
+  if (topLogo) topLogo.src = "/logo.svg";
   if (themeToggle) {
     const compact = sidebar?.classList.contains("compact");
     themeToggle.textContent = compact ? (dark ? "☀️" : "🌙") : (dark ? "☀️ Light mode" : "🌙 Dark mode");

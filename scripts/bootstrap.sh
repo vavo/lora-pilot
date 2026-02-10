@@ -8,6 +8,29 @@ fi
 
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
 
+upsert_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp="${file}.tmp.$$"
+  awk -v key="$key" -v value="$value" '
+    BEGIN { updated = 0 }
+    $0 ~ ("^" key "=") { print key "=" value; updated = 1; next }
+    { print }
+    END { if (!updated) print key "=" value }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+}
+
+ensure_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  if ! grep -qE "^${key}=" "$file"; then
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
 # Workspace layout (avoid chmod/chown loops on mounted volumes)
 mkdir -p \
   "$WORKSPACE_ROOT"/{apps,models,datasets,outputs,logs,cache,config,home} \
@@ -17,6 +40,35 @@ mkdir -p "$WORKSPACE_ROOT/config/ai-toolkit"
 mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke,ai-toolkit}
 mkdir -p "$WORKSPACE_ROOT/datasets"/{images,ZIPs}
 mkdir -p "$WORKSPACE_ROOT/apps"/{comfy,diffusion-pipe,invoke,kohya,codeserver}
+
+SERVICE_UPDATES_CONFIG_FILE="${SERVICE_UPDATES_CONFIG_PATH:-$WORKSPACE_ROOT/config/service-updates.toml}"
+SERVICE_UPDATES_ROLLBACK_LOG="${SERVICE_UPDATES_ROLLBACK_LOG_PATH:-$WORKSPACE_ROOT/config/service-updates-rollback.jsonl}"
+if [ ! -f "$SERVICE_UPDATES_CONFIG_FILE" ]; then
+  cat > "$SERVICE_UPDATES_CONFIG_FILE" <<'EOT'
+enabled = false
+restart_after_update = true
+
+[services.invoke]
+auto_update = false
+target_version = ""
+
+[services.comfy]
+auto_update = false
+target_ref = ""
+
+[services.kohya]
+auto_update = false
+target_ref = ""
+
+[services.diffpipe]
+auto_update = false
+target_ref = ""
+
+[services."ai-toolkit"]
+auto_update = false
+target_ref = ""
+EOT
+fi
 
 # AI Toolkit workspace mapping (avoid storing datasets/models/outputs inside the repo)
 if [ -d /opt/pilot/repos/ai-toolkit ]; then
@@ -61,6 +113,38 @@ if [ -d /opt/pilot/apps ]; then
     fi
   done
   find "$WORKSPACE_ROOT/apps" -type f -name '*.sh' -print0 | xargs -0 -r chmod +x || true
+fi
+
+# MediaPilot defaults (single-port embed under ControlPilot)
+MEDIAPILOT_APP_DIR="$WORKSPACE_ROOT/apps/MediaPilot"
+if [ -d "$MEDIAPILOT_APP_DIR" ]; then
+  MEDIAPILOT_FORCE_ENV_DEFAULTS="${MEDIAPILOT_FORCE_ENV_DEFAULTS:-0}"
+  MEDIAPILOT_ENV_CREATED="0"
+  mkdir -p \
+    "$WORKSPACE_ROOT/config/mediapilot" \
+    "$WORKSPACE_ROOT/cache/mediapilot/thumbs"
+  MEDIAPILOT_ENV_FILE="$MEDIAPILOT_APP_DIR/.env"
+  if [ ! -f "$MEDIAPILOT_ENV_FILE" ] && [ -f "$MEDIAPILOT_APP_DIR/.env.example" ]; then
+    cp "$MEDIAPILOT_APP_DIR/.env.example" "$MEDIAPILOT_ENV_FILE"
+    MEDIAPILOT_ENV_CREATED="1"
+  fi
+  if [ -f "$MEDIAPILOT_ENV_FILE" ]; then
+    if [ "$MEDIAPILOT_ENV_CREATED" = "1" ] || [ "$MEDIAPILOT_FORCE_ENV_DEFAULTS" = "1" ]; then
+      upsert_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_OUTPUT_DIR" "$WORKSPACE_ROOT/outputs/comfy"
+      upsert_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_INVOKEAI_DIR" "$WORKSPACE_ROOT/outputs/invoke"
+      upsert_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_THUMBS_DIR" "$WORKSPACE_ROOT/cache/mediapilot/thumbs"
+      upsert_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_DB_FILE" "$WORKSPACE_ROOT/config/mediapilot/data.db"
+      upsert_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_COMFY_API_URL" "http://127.0.0.1:${COMFY_PORT:-5555}"
+      upsert_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_ALLOW_ORIGINS" "*"
+    else
+      ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_OUTPUT_DIR" "$WORKSPACE_ROOT/outputs/comfy"
+      ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_INVOKEAI_DIR" "$WORKSPACE_ROOT/outputs/invoke"
+      ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_THUMBS_DIR" "$WORKSPACE_ROOT/cache/mediapilot/thumbs"
+      ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_DB_FILE" "$WORKSPACE_ROOT/config/mediapilot/data.db"
+      ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_COMFY_API_URL" "http://127.0.0.1:${COMFY_PORT:-5555}"
+      ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_ALLOW_ORIGINS" "*"
+    fi
+  fi
 fi
 
 # Standard model subdirectories (no chown to avoid RunPod volume issues)
@@ -108,6 +192,21 @@ if [ -n "${HF_TOKEN:-}" ]; then
 fi
 
 chmod 600 "$SECRETS_FILE" 2>/dev/null || true
+
+SERVICE_UPDATES_BOOT_RECONCILE="${SERVICE_UPDATES_BOOT_RECONCILE:-1}"
+case "${SERVICE_UPDATES_BOOT_RECONCILE}" in
+  1|true|TRUE|yes|YES|on|ON)
+    if [ -f /opt/pilot/service-updates-reconcile.py ]; then
+      /opt/venvs/core/bin/python /opt/pilot/service-updates-reconcile.py \
+        --config "$SERVICE_UPDATES_CONFIG_FILE" \
+        --rollback-log "$SERVICE_UPDATES_ROLLBACK_LOG" \
+        || echo "Service update reconcile failed; continuing bootstrap"
+    fi
+    ;;
+  *)
+    echo "Service update reconcile disabled (SERVICE_UPDATES_BOOT_RECONCILE=${SERVICE_UPDATES_BOOT_RECONCILE})"
+    ;;
+esac
 
 echo "=== LoRA Pilot bootstrap complete ==="
 echo "Workspace: $WORKSPACE_ROOT"

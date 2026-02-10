@@ -16,10 +16,10 @@ services:
       - TZ=${TZ:-America/New_York}
       
       # Hugging Face token (optional, for private models)
-      # - HF_TOKEN=${HF_TOKEN:-}
+      - HF_TOKEN=${HF_TOKEN:-}
       
       # Supervisor admin password (optional)
-      # - SUPERVISOR_ADMIN_PASSWORD=${SUPERVISOR_ADMIN_PASSWORD:-}
+      - SUPERVISOR_ADMIN_PASSWORD=${SUPERVISOR_ADMIN_PASSWORD:-}
       
       # Custom ports (optional - must match ports above)
       - PORTAL_PORT=${PORTAL_PORT:-7878}
@@ -30,6 +30,14 @@ services:
       - INVOKE_PORT=${INVOKE_PORT:-9090}
       - DIFFPIPE_PORT=${DIFFPIPE_PORT:-4444}
       - AI_TOOLKIT_PORT=${AI_TOOLKIT_PORT:-8675}
+      - AI_TOOLKIT_DB_PATH=${AI_TOOLKIT_DB_PATH:-/workspace/config/ai-toolkit/aitk_db.db}
+      - COPILOT_SIDECAR_PORT=${COPILOT_SIDECAR_PORT:-7879}
+      - COPILOT_SIDECAR_URL=${COPILOT_SIDECAR_URL:-http://127.0.0.1:7879}
+      - COPILOT_GITHUB_TOKEN=${COPILOT_GITHUB_TOKEN:-}
+      - COPILOT_HOME=${COPILOT_HOME:-/workspace/home/root}
+      - COPILOT_XDG_CONFIG_HOME=${COPILOT_XDG_CONFIG_HOME:-/workspace/home/root/.config}
+      - COPILOT_CWD=${COPILOT_CWD:-/workspace}
+      - COPILOT_TIMEOUT_SECONDS=${COPILOT_TIMEOUT_SECONDS:-1800}
     
     ports:
       # ControlPilot - Main web interface

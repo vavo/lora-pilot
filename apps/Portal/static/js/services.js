@@ -1,3 +1,6 @@
+const serviceVersions = {};
+const serviceUpdatePollers = {};
+
 window.initServices = async function () {
   await loadServices();
 };
@@ -43,6 +46,129 @@ function servicePortLabel(name) {
   return port ? `:${port}` : "";
 }
 
+function serviceDomId(name) {
+  return String(name || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function versionText(info) {
+  if (!info) return "Version: unavailable";
+  if (info.installed && info.latest && info.update_available) return `Version: ${info.installed} -> ${info.latest}`;
+  if (info.installed && info.latest) return `Version: ${info.installed} (latest)`;
+  if (info.installed) return `Version: ${info.installed}`;
+  if (info.detail) return `Version: ${info.detail}`;
+  return "Version: unknown";
+}
+
+function renderServiceVersion(name, info) {
+  const domId = serviceDomId(name);
+  const versionEl = document.getElementById(`svc-version-${domId}`);
+  const buttonEl = document.getElementById(`svc-update-${domId}`);
+  if (!versionEl || !buttonEl) return;
+
+  versionEl.textContent = versionText(info);
+  const canUpdate = !!(info && info.update_supported && info.update_available);
+  if (canUpdate) {
+    buttonEl.classList.remove("is-hidden");
+    buttonEl.disabled = false;
+    buttonEl.title = info.latest ? `Install ${info.latest}` : "Install update";
+  } else {
+    buttonEl.classList.add("is-hidden");
+    buttonEl.disabled = false;
+    buttonEl.title = "No update available";
+  }
+}
+
+function renderServiceUpdateStatus(name, status) {
+  const domId = serviceDomId(name);
+  const statusEl = document.getElementById(`svc-update-status-${domId}`);
+  const buttonEl = document.getElementById(`svc-update-${domId}`);
+  if (!statusEl || !buttonEl || !status) return;
+
+  statusEl.classList.remove("is-hidden", "ok", "error", "running");
+  if (status.state === "running") {
+    const line = (status.last_line || "").trim();
+    statusEl.textContent = line ? `Updating: ${line}` : "Updating...";
+    statusEl.classList.add("running");
+    buttonEl.disabled = true;
+    return;
+  }
+  if (status.state === "done") {
+    statusEl.textContent = status.installed_after ? `Updated: ${status.installed_after}` : "Update finished";
+    statusEl.classList.add("ok");
+    buttonEl.disabled = false;
+    return;
+  }
+  if (status.state === "error") {
+    const msg = status.error || status.last_line || "unknown error";
+    statusEl.textContent = `Update failed: ${msg}`;
+    statusEl.classList.add("error");
+    buttonEl.disabled = false;
+    return;
+  }
+  statusEl.classList.add("is-hidden");
+  statusEl.textContent = "";
+  buttonEl.disabled = false;
+}
+
+async function fetchServiceUpdateStatus(name) {
+  try {
+    return await fetchJson(`/api/services/${encodeURIComponent(name)}/update/status`);
+  } catch (e) {
+    return null;
+  }
+}
+
+function stopServiceUpdatePolling(name) {
+  const poller = serviceUpdatePollers[name];
+  if (!poller) return;
+  clearInterval(poller);
+  delete serviceUpdatePollers[name];
+}
+
+async function startServiceUpdatePolling(name) {
+  if (serviceUpdatePollers[name]) return;
+  const tick = async () => {
+    const status = await fetchServiceUpdateStatus(name);
+    if (!status) return null;
+    renderServiceUpdateStatus(name, status);
+    if (status.state !== "running") {
+      stopServiceUpdatePolling(name);
+      if (status.state === "done") await loadServices();
+    }
+    return status;
+  };
+  const first = await tick();
+  if (!first || first.state !== "running") return;
+  serviceUpdatePollers[name] = setInterval(() => {
+    tick().catch(() => {});
+  }, 2000);
+}
+
+async function loadServiceVersions(services) {
+  try {
+    const versions = await fetchJson("/api/services/versions");
+    const byName = {};
+    versions.forEach(info => {
+      byName[info.name] = info;
+      serviceVersions[info.name] = info;
+    });
+    services.forEach(svc => renderServiceVersion(svc.name, byName[svc.name] || null));
+
+    const supported = services.filter(svc => !!(byName[svc.name] && byName[svc.name].update_supported));
+    const statuses = await Promise.all(supported.map(svc => fetchServiceUpdateStatus(svc.name)));
+    statuses.forEach((status, index) => {
+      const serviceName = supported[index].name;
+      if (!status) return;
+      renderServiceUpdateStatus(serviceName, status);
+      if (status.state === "running") {
+        startServiceUpdatePolling(serviceName).catch(() => {});
+      }
+    });
+  } catch (e) {
+    services.forEach(svc => renderServiceVersion(svc.name, null));
+  }
+}
+
 async function loadServices() {
   const status = document.getElementById("svc-status");
   const list = document.getElementById("services-list");
@@ -59,6 +185,7 @@ async function loadServices() {
 
       const card = document.createElement("div");
       card.className = "svc-card";
+      const domId = serviceDomId(svc.name);
 
       const nameHtml = openUrl
         ? `<a class="svc-link" href="${openUrl}" target="_blank" rel="noopener noreferrer" title="Open ${svc.display}">${svc.display}<span class="svc-open-icon">${iconSvg("external")}</span></a>`
@@ -80,6 +207,11 @@ async function loadServices() {
               <span class="dot ${badge.dotCls}"></span>
               ${nameHtml}
             </div>
+            <div class="svc-version-row">
+              <span class="svc-version mono-sm" id="svc-version-${domId}">Version: checking...</span>
+              <button class="btn secondary svc-update-btn is-hidden" id="svc-update-${domId}" type="button" onclick="startServiceUpdate('${svc.name}')">Update</button>
+            </div>
+            <div class="svc-update-status mono-sm is-hidden" id="svc-update-status-${domId}"></div>
           </div>
           <div class="svc-controls">
             <div class="svc-meta">
@@ -101,6 +233,7 @@ async function loadServices() {
       `;
       list.appendChild(card);
     });
+    await loadServiceVersions(data);
     status.textContent = "";
     list.classList.remove("is-hidden");
   } catch (e) {
@@ -114,6 +247,31 @@ window.serviceAction = async function (name, action) {
     await loadServices();
   } catch (e) {
     alert(`Service action failed: ${e.message || e}`);
+  }
+};
+
+window.startServiceUpdate = async function (name) {
+  const info = serviceVersions[name] || null;
+  const domId = serviceDomId(name);
+  const buttonEl = document.getElementById(`svc-update-${domId}`);
+  if (!buttonEl) return;
+
+  buttonEl.disabled = true;
+  renderServiceUpdateStatus(name, { state: "running", last_line: "Starting update..." });
+  try {
+    const payload = {};
+    if (info && info.source === "pip" && info.latest) payload.target_version = info.latest;
+    const result = await fetchJson(`/api/services/${encodeURIComponent(name)}/update/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    renderServiceUpdateStatus(name, result);
+    await startServiceUpdatePolling(name);
+  } catch (e) {
+    renderServiceUpdateStatus(name, { state: "error", error: e.message || String(e) });
+    alert(`Failed to start update: ${e.message || e}`);
+    buttonEl.disabled = false;
   }
 };
 

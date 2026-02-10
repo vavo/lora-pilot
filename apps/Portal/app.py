@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import base64
 import configparser
+import importlib.util
 import json
 import mimetypes
 import os
@@ -20,7 +21,7 @@ from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
@@ -72,6 +73,19 @@ DISPLAY_NAMES = {
     "copilot": "Copilot Sidecar",
 }
 SERVICES = list(SERVICE_LOGS.keys())
+SERVICE_UPDATE_SPECS: dict[str, dict[str, str]] = {
+    "invoke": {"kind": "pip", "python_bin": "/opt/venvs/invoke/bin/python", "package": "invokeai"},
+    "comfy": {"kind": "git", "repo_dir": "/opt/pilot/repos/ComfyUI"},
+    "kohya": {"kind": "git", "repo_dir": "/opt/pilot/repos/kohya_ss"},
+    "diffpipe": {"kind": "git", "repo_dir": "/opt/pilot/repos/diffusion-pipe"},
+    "ai-toolkit": {"kind": "git", "repo_dir": "/opt/pilot/repos/ai-toolkit"},
+}
+SERVICE_UPDATES_CONFIG_PATH = Path(
+    os.environ.get("SERVICE_UPDATES_CONFIG_PATH", str(WORKSPACE_ROOT / "config" / "service-updates.toml"))
+)
+SERVICE_UPDATES_ROLLBACK_LOG_PATH = Path(
+    os.environ.get("SERVICE_UPDATES_ROLLBACK_LOG_PATH", str(WORKSPACE_ROOT / "config" / "service-updates-rollback.jsonl"))
+)
 TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
@@ -81,6 +95,10 @@ _model_pull_lock = threading.Lock()
 _model_pull_jobs: dict[str, "ModelPullJob"] = {}
 _MODEL_PULL_TTL_SECONDS = 10 * 60
 _MODEL_PULL_PROGRESS_RE = re.compile(r"(?P<pct>\\d{1,3})%")
+
+_service_update_lock = threading.Lock()
+_service_update_jobs: dict[str, "ServiceUpdateJob"] = {}
+_SERVICE_UPDATE_TTL_SECONDS = 30 * 60
 
 
 @dataclass
@@ -187,6 +205,61 @@ def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
             _model_pull_jobs[job.name] = job
 
 
+@dataclass
+class ServiceUpdateJob:
+    name: str
+    state: str = "running"  # running | done | error
+    target_version: Optional[str] = None
+    pid: Optional[int] = None
+    last_line: str = ""
+    error: Optional[str] = None
+    installed_before: Optional[str] = None
+    installed_after: Optional[str] = None
+    rollback_before: Optional[str] = None
+    rollback_after: Optional[str] = None
+    started_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+    output_tail: deque[str] = field(default_factory=lambda: deque(maxlen=300))
+
+
+def _cleanup_service_update_jobs(now: Optional[float] = None) -> None:
+    ts = now if now is not None else time.time()
+    with _service_update_lock:
+        to_delete: list[str] = []
+        for name, job in _service_update_jobs.items():
+            if job.state in ("done", "error") and (ts - job.updated_at) > _SERVICE_UPDATE_TTL_SECONDS:
+                to_delete.append(name)
+        for name in to_delete:
+            _service_update_jobs.pop(name, None)
+
+
+def _service_update_job_to_dict(job: ServiceUpdateJob) -> dict:
+    return {
+        "name": job.name,
+        "state": job.state,
+        "target_version": job.target_version,
+        "pid": job.pid,
+        "last_line": job.last_line,
+        "error": job.error,
+        "installed_before": job.installed_before,
+        "installed_after": job.installed_after,
+        "rollback_before": job.rollback_before,
+        "rollback_after": job.rollback_after,
+        "started_at": job.started_at,
+        "updated_at": job.updated_at,
+        "output_tail": list(job.output_tail),
+    }
+
+
+def _update_service_update_job(job: ServiceUpdateJob, line: str) -> None:
+    line = (line or "").strip()
+    if not line:
+        return
+    job.last_line = line
+    job.updated_at = time.time()
+    job.output_tail.append(line)
+
+
 class ServiceEntry(BaseModel):
     name: str  # supervisor program name
     display: str
@@ -198,6 +271,21 @@ class ServiceEntry(BaseModel):
 
 class ServiceAutostartRequest(BaseModel):
     enabled: bool
+
+
+class ServiceVersionEntry(BaseModel):
+    name: str
+    display: str
+    source: str
+    update_supported: bool
+    installed: Optional[str] = None
+    latest: Optional[str] = None
+    update_available: bool = False
+    detail: Optional[str] = None
+
+
+class ServiceUpdateStartRequest(BaseModel):
+    target_version: Optional[str] = None
 
 
 class DiskUsage(BaseModel):
@@ -280,6 +368,41 @@ class NoCacheStaticFiles(StaticFiles):
         response.headers["CF-Cache-Status"] = "BYPASS"
         response.headers["CDN-Cache-Control"] = "no-store"
         return response
+
+
+MEDIAPILOT_MAIN_CANDIDATES = [
+    WORKSPACE_ROOT / "apps" / "MediaPilot" / "main.py",
+    Path("/opt/pilot/apps/MediaPilot/main.py"),
+]
+MEDIAPILOT_APP_DIR: Optional[Path] = None
+MEDIAPILOT_LOAD_ERROR: Optional[str] = None
+
+
+def _load_mediapilot_app() -> Optional[FastAPI]:
+    global MEDIAPILOT_APP_DIR, MEDIAPILOT_LOAD_ERROR
+    for main_file in MEDIAPILOT_MAIN_CANDIDATES:
+        if not main_file.exists():
+            continue
+        try:
+            spec = importlib.util.spec_from_file_location("embedded_mediapilot", main_file)
+            if spec is None or spec.loader is None:
+                continue
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            sub_app = getattr(module, "app", None)
+            if isinstance(sub_app, FastAPI):
+                MEDIAPILOT_APP_DIR = main_file.parent
+                MEDIAPILOT_LOAD_ERROR = None
+                return sub_app
+            MEDIAPILOT_LOAD_ERROR = f"No FastAPI app found in {main_file}"
+        except Exception as exc:
+            MEDIAPILOT_LOAD_ERROR = f"{main_file}: {exc}"
+    if MEDIAPILOT_LOAD_ERROR is None:
+        MEDIAPILOT_LOAD_ERROR = "MediaPilot source not found"
+    return None
+
+
+MEDIAPILOT_APP = _load_mediapilot_app()
 
 
 
@@ -445,6 +568,28 @@ def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
                 shutil.copyfileobj(src, dst)
 
 
+def _safe_upload_filename(name: str) -> str:
+    base = Path(name or "").name
+    base = base.replace("\\", "_").replace("/", "_").strip()
+    if not base:
+        base = "image.bin"
+    return base
+
+
+def _unique_child_path(parent: Path, filename: str) -> Path:
+    candidate = parent / filename
+    if not candidate.exists():
+        return candidate
+    stem = Path(filename).stem
+    suffix = Path(filename).suffix
+    idx = 1
+    while True:
+        candidate = parent / f"{stem}_{idx}{suffix}"
+        if not candidate.exists():
+            return candidate
+        idx += 1
+
+
 @app.post("/api/datasets/create")
 def create_dataset(payload: dict):
     raw = payload.get("name", "").strip()
@@ -579,6 +724,53 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"status": "saved", "path": str(target), "zip": str(dest)}
+
+
+@app.post("/api/tagpilot/save-item")
+def tagpilot_save_item(
+    name: str,
+    file: UploadFile = File(...),
+    tags: str = Form(""),
+    reset: bool = Form(False),
+    done: bool = Form(False),
+):
+    target = _dataset_dir(name)
+    zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    zip_dir.mkdir(parents=True, exist_ok=True)
+
+    if reset:
+        if target.exists():
+            shutil.rmtree(target, ignore_errors=True)
+        target.mkdir(parents=True, exist_ok=True)
+    elif not target.exists():
+        target.mkdir(parents=True, exist_ok=True)
+
+    safe_name = _safe_upload_filename(file.filename or "")
+    dst_img = _unique_child_path(target, safe_name)
+    dst_txt = dst_img.with_suffix(".txt")
+    zip_path = zip_dir / f"{_clean_name(name)}.zip"
+
+    try:
+        with dst_img.open("wb") as f:
+            shutil.copyfileobj(file.file, f)
+        dst_txt.write_text(tags or "", encoding="utf-8")
+        if done:
+            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                for p in sorted(target.rglob("*")):
+                    if p.is_file():
+                        zf.write(p, p.relative_to(target).as_posix())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    payload = {
+        "status": "saved-item",
+        "path": str(target),
+        "file": dst_img.name,
+        "done": bool(done),
+    }
+    if done:
+        payload["zip"] = str(zip_path)
+    return payload
 
 
 @app.post("/api/models/{name}/pull")
@@ -738,6 +930,445 @@ def set_copilot_token(payload: dict):
     return {"status": "ok", "set": bool(token)}
 
 
+def _run_cmd_capture(cmd: list[str], timeout: int = 30) -> str:
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Timeout running command: {' '.join(cmd)}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Command not found: {cmd[0]}") from e
+    out = (result.stdout or "").strip()
+    if result.returncode != 0:
+        raise RuntimeError(out or f"Command failed ({result.returncode}): {' '.join(cmd)}")
+    return out
+
+
+def _default_service_updates_config() -> dict:
+    return {
+        "enabled": False,
+        "restart_after_update": True,
+        "services": {
+            "invoke": {"auto_update": False, "target_version": ""},
+            "comfy": {"auto_update": False, "target_ref": ""},
+            "kohya": {"auto_update": False, "target_ref": ""},
+            "diffpipe": {"auto_update": False, "target_ref": ""},
+            "ai-toolkit": {"auto_update": False, "target_ref": ""},
+        },
+    }
+
+
+def _toml_quote(v: str) -> str:
+    return '"' + str(v).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _service_updates_config_to_toml(cfg: dict) -> str:
+    lines: list[str] = []
+    lines.append(f"enabled = {'true' if bool(cfg.get('enabled', False)) else 'false'}")
+    lines.append(f"restart_after_update = {'true' if bool(cfg.get('restart_after_update', True)) else 'false'}")
+    services = cfg.get("services", {})
+    if not isinstance(services, dict):
+        services = {}
+    for name in sorted(services.keys()):
+        svc = services.get(name) or {}
+        if not isinstance(svc, dict):
+            continue
+        lines.append("")
+        lines.append(f"[services.{_toml_quote(name)}]")
+        lines.append(f"auto_update = {'true' if bool(svc.get('auto_update', False)) else 'false'}")
+        target_version = str(svc.get("target_version", "") or "").strip()
+        target_ref = str(svc.get("target_ref", "") or "").strip()
+        if target_version:
+            lines.append(f"target_version = {_toml_quote(target_version)}")
+        if target_ref:
+            lines.append(f"target_ref = {_toml_quote(target_ref)}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _read_service_updates_config() -> dict:
+    cfg = _default_service_updates_config()
+    path = SERVICE_UPDATES_CONFIG_PATH
+    if not path.exists():
+        return cfg
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return cfg
+    if isinstance(data, dict):
+        cfg["enabled"] = bool(data.get("enabled", cfg["enabled"]))
+        cfg["restart_after_update"] = bool(data.get("restart_after_update", cfg["restart_after_update"]))
+        services = data.get("services")
+        if isinstance(services, dict):
+            for name, values in services.items():
+                if not isinstance(values, dict):
+                    continue
+                bucket = cfg["services"].setdefault(name, {})
+                bucket["auto_update"] = bool(values.get("auto_update", bucket.get("auto_update", False)))
+                tv = values.get("target_version")
+                tr = values.get("target_ref")
+                if isinstance(tv, str):
+                    bucket["target_version"] = tv.strip()
+                if isinstance(tr, str):
+                    bucket["target_ref"] = tr.strip()
+    return cfg
+
+
+def _write_service_updates_config(cfg: dict) -> None:
+    SERVICE_UPDATES_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    SERVICE_UPDATES_CONFIG_PATH.write_text(_service_updates_config_to_toml(cfg), encoding="utf-8")
+
+
+def _persist_service_update_desired_state(name: str, target: Optional[str]) -> None:
+    spec = SERVICE_UPDATE_SPECS.get(name)
+    if not spec:
+        return
+    cfg = _read_service_updates_config()
+    cfg["enabled"] = True
+    services = cfg.setdefault("services", {})
+    bucket = services.setdefault(name, {})
+    bucket["auto_update"] = True
+    kind = spec.get("kind", "")
+    resolved = (target or "").strip()
+    if kind == "pip":
+        bucket["target_version"] = resolved
+        bucket.pop("target_ref", None)
+    elif kind == "git":
+        bucket["target_ref"] = resolved or str(bucket.get("target_ref", "") or "").strip()
+        bucket.pop("target_version", None)
+    _write_service_updates_config(cfg)
+
+
+def _service_rollback_marker(name: str) -> Optional[str]:
+    spec = SERVICE_UPDATE_SPECS.get(name)
+    if not spec:
+        return None
+    kind = spec.get("kind", "")
+    if kind == "pip":
+        python_bin = spec.get("python_bin", "")
+        package = spec.get("package", "")
+        if not python_bin or not package:
+            return None
+        return _pip_installed_version(python_bin, package)
+    if kind == "git":
+        repo_dir = Path(spec.get("repo_dir", ""))
+        if not repo_dir.exists():
+            return None
+        return _git_local_sha(repo_dir)
+    return None
+
+
+def _append_service_rollback_entry(
+    name: str,
+    state: str,
+    target: Optional[str],
+    rollback_before: Optional[str],
+    rollback_after: Optional[str],
+    error: Optional[str] = None,
+    reason: str = "update",
+) -> None:
+    spec = SERVICE_UPDATE_SPECS.get(name, {})
+    payload = {
+        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "service": name,
+        "kind": spec.get("kind", "unknown"),
+        "reason": reason,
+        "state": state,
+        "target": target,
+        "before": rollback_before,
+        "after": rollback_after,
+    }
+    if error:
+        payload["error"] = str(error)
+    SERVICE_UPDATES_ROLLBACK_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with SERVICE_UPDATES_ROLLBACK_LOG_PATH.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+
+
+def _pip_installed_version(python_bin: str, package: str) -> Optional[str]:
+    if not Path(python_bin).exists():
+        return None
+    code = (
+        "import importlib.metadata as m\n"
+        f"print(m.version({package!r}))\n"
+    )
+    try:
+        out = _run_cmd_capture([python_bin, "-c", code], timeout=12)
+        return out.strip() or None
+    except Exception:
+        return None
+
+
+def _pip_latest_version(python_bin: str, package: str) -> Optional[str]:
+    if not Path(python_bin).exists():
+        return None
+    out = _run_cmd_capture([python_bin, "-m", "pip", "index", "versions", package], timeout=35)
+    match = re.search(r"Available versions:\\s*(.+)", out)
+    if not match:
+        return None
+    versions = [v.strip() for v in match.group(1).split(",") if v.strip()]
+    return versions[0] if versions else None
+
+
+def _git_current_branch(repo: Path) -> Optional[str]:
+    try:
+        branch = _run_cmd_capture(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"], timeout=10)
+    except Exception:
+        return None
+    if branch and branch != "HEAD":
+        return branch
+    try:
+        remote_head = _run_cmd_capture(
+            ["git", "-C", str(repo), "symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
+            timeout=10,
+        )
+        if remote_head.startswith("origin/"):
+            return remote_head.split("/", 1)[1]
+    except Exception:
+        pass
+    return None
+
+
+def _git_local_sha(repo: Path) -> Optional[str]:
+    try:
+        return _run_cmd_capture(["git", "-C", str(repo), "rev-parse", "HEAD"], timeout=10)
+    except Exception:
+        return None
+
+
+def _git_remote_sha(repo: Path, branch: str) -> Optional[str]:
+    try:
+        out = _run_cmd_capture(["git", "-C", str(repo), "ls-remote", "--heads", "origin", branch], timeout=25)
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 1 and re.fullmatch(r"[0-9a-fA-F]{40}", parts[0]):
+                return parts[0]
+    except Exception:
+        pass
+    try:
+        out = _run_cmd_capture(["git", "-C", str(repo), "ls-remote", "origin", "HEAD"], timeout=25)
+        for line in out.splitlines():
+            parts = line.split()
+            if len(parts) >= 1 and re.fullmatch(r"[0-9a-fA-F]{40}", parts[0]):
+                return parts[0]
+    except Exception:
+        pass
+    return None
+
+
+def _service_version_entry(name: str) -> ServiceVersionEntry:
+    display = DISPLAY_NAMES.get(name, name)
+    spec = SERVICE_UPDATE_SPECS.get(name)
+    if not spec:
+        return ServiceVersionEntry(
+            name=name,
+            display=display,
+            source="image",
+            update_supported=False,
+            detail="Managed by image build",
+        )
+
+    kind = spec.get("kind", "unknown")
+    if kind == "pip":
+        python_bin = spec.get("python_bin", "")
+        package = spec.get("package", "")
+        if not python_bin or not package:
+            return ServiceVersionEntry(
+                name=name,
+                display=display,
+                source="pip",
+                update_supported=False,
+                detail="Invalid update spec",
+            )
+        installed = _pip_installed_version(python_bin, package)
+        latest = None
+        detail = None
+        try:
+            latest = _pip_latest_version(python_bin, package)
+        except Exception as e:
+            detail = f"Latest check failed: {str(e)}"
+        update_available = bool(installed and latest and installed != latest)
+        return ServiceVersionEntry(
+            name=name,
+            display=display,
+            source="pip",
+            update_supported=Path(python_bin).exists(),
+            installed=installed,
+            latest=latest,
+            update_available=update_available,
+            detail=detail,
+        )
+
+    if kind == "git":
+        repo_dir = Path(spec.get("repo_dir", ""))
+        if not repo_dir.exists():
+            return ServiceVersionEntry(
+                name=name,
+                display=display,
+                source="git",
+                update_supported=False,
+                detail=f"Repo not found: {repo_dir}",
+            )
+        branch = _git_current_branch(repo_dir) or "main"
+        local_sha = _git_local_sha(repo_dir)
+        remote_sha = _git_remote_sha(repo_dir, branch)
+        installed = f"{branch}@{local_sha[:7]}" if local_sha else None
+        latest = f"{branch}@{remote_sha[:7]}" if remote_sha else None
+        return ServiceVersionEntry(
+            name=name,
+            display=display,
+            source="git",
+            update_supported=True,
+            installed=installed,
+            latest=latest,
+            update_available=bool(local_sha and remote_sha and local_sha != remote_sha),
+            detail=None if remote_sha else "Unable to check remote HEAD",
+        )
+
+    return ServiceVersionEntry(
+        name=name,
+        display=display,
+        source=kind,
+        update_supported=False,
+        detail="Unknown update spec",
+    )
+
+
+def _service_update_commands(name: str, target_version: Optional[str]) -> tuple[list[list[str]], Optional[str]]:
+    spec = SERVICE_UPDATE_SPECS.get(name)
+    if not spec:
+        raise RuntimeError("Updates are not supported for this service")
+    kind = spec.get("kind", "unknown")
+
+    if kind == "pip":
+        python_bin = spec.get("python_bin", "")
+        package = spec.get("package", "")
+        if not python_bin or not package:
+            raise RuntimeError("Invalid pip service update spec")
+        resolved_target = (target_version or "").strip()
+        if not resolved_target:
+            info = _service_version_entry(name)
+            resolved_target = (info.latest or "").strip()
+        pkg_ref = f"{package}=={resolved_target}" if resolved_target else package
+        return [[python_bin, "-m", "pip", "install", "--no-cache-dir", "--upgrade", pkg_ref]], resolved_target or None
+
+    if kind == "git":
+        repo_dir = Path(spec.get("repo_dir", ""))
+        if not repo_dir.exists():
+            raise RuntimeError(f"Repo not found: {repo_dir}")
+        branch = (target_version or "").strip() or (_git_current_branch(repo_dir) or "main")
+        return [
+            ["git", "-C", str(repo_dir), "fetch", "--depth", "1", "origin", branch],
+            ["git", "-C", str(repo_dir), "pull", "--ff-only", "origin", branch],
+        ], branch
+
+    raise RuntimeError(f"Unsupported update kind: {kind}")
+
+
+def _run_service_update_cmd(job: ServiceUpdateJob, cmd: list[str]) -> None:
+    _update_service_update_job(job, f"$ {' '.join(cmd)}")
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=0,
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to start command {' '.join(cmd)}: {str(e)}") from e
+
+    job.pid = proc.pid
+    job.updated_at = time.time()
+    assert proc.stdout is not None
+    buf = ""
+    for chunk in iter(lambda: proc.stdout.read(4096), b""):
+        text = chunk.decode("utf-8", errors="replace")
+        buf += text
+        while True:
+            idx_n = buf.find("\n")
+            idx_r = buf.find("\r")
+            idxs = [idx for idx in (idx_n, idx_r) if idx != -1]
+            if not idxs:
+                break
+            idx = min(idxs)
+            seg = buf[:idx]
+            buf = buf[idx + 1 :]
+            _update_service_update_job(job, seg)
+    if buf.strip():
+        _update_service_update_job(job, buf)
+    proc.stdout.close()
+    rc = proc.wait()
+    if rc != 0:
+        raise RuntimeError(f"Command failed ({rc}): {' '.join(cmd)}")
+
+
+def _run_service_update_job(job: ServiceUpdateJob) -> None:
+    rollback_logged = False
+    try:
+        job.rollback_before = _service_rollback_marker(job.name)
+        commands, resolved_target = _service_update_commands(job.name, job.target_version)
+        if resolved_target:
+            job.target_version = resolved_target
+
+        for cmd in commands:
+            _run_service_update_cmd(job, cmd)
+
+        cfg = _read_service_updates_config()
+        restart_after_update = bool(cfg.get("restart_after_update", True))
+        try:
+            running = supervisor_status(job.name).running
+        except Exception:
+            running = False
+        if running and restart_after_update and SUPERVISORCTL:
+            _update_service_update_job(job, "Restarting service to apply update...")
+            _run_service_update_cmd(job, [SUPERVISORCTL, "restart", job.name])
+
+        current = _service_version_entry(job.name)
+        job.installed_after = current.installed
+        job.rollback_after = _service_rollback_marker(job.name)
+        if current.installed:
+            _update_service_update_job(job, f"Installed version: {current.installed}")
+
+        _persist_service_update_desired_state(job.name, job.target_version)
+        _append_service_rollback_entry(
+            name=job.name,
+            state="done",
+            target=job.target_version,
+            rollback_before=job.rollback_before,
+            rollback_after=job.rollback_after,
+        )
+        rollback_logged = True
+        job.state = "done"
+        job.updated_at = time.time()
+    except Exception as e:
+        job.state = "error"
+        job.error = str(e)
+        if not job.rollback_after:
+            job.rollback_after = _service_rollback_marker(job.name)
+        if not rollback_logged:
+            try:
+                _append_service_rollback_entry(
+                    name=job.name,
+                    state="error",
+                    target=job.target_version,
+                    rollback_before=job.rollback_before,
+                    rollback_after=job.rollback_after,
+                    error=str(e),
+                )
+            except Exception:
+                pass
+        job.updated_at = time.time()
+    finally:
+        job.pid = None
+        with _service_update_lock:
+            _service_update_jobs[job.name] = job
+
+
 def supervisor_status(name: str) -> ServiceEntry:
     if not SUPERVISORCTL:
         raise HTTPException(status_code=500, detail="supervisorctl not found")
@@ -847,6 +1478,14 @@ def list_services():
     return entries
 
 
+@app.get("/api/services/versions", response_model=List[ServiceVersionEntry])
+def list_service_versions():
+    entries: list[ServiceVersionEntry] = []
+    for svc in SERVICES:
+        entries.append(_service_version_entry(svc))
+    return entries
+
+
 @app.post("/api/services/{name}/{action}")
 def control_service(name: str, action: str):
     if name not in SERVICES:
@@ -860,6 +1499,55 @@ def control_service(name: str, action: str):
         return {"status": "ok"}
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=e.output or str(e))
+
+
+@app.post("/api/services/{name}/update/start")
+def service_update_start(name: str, payload: Optional[ServiceUpdateStartRequest] = None):
+    if name not in SERVICES:
+        raise HTTPException(status_code=404, detail="Unknown service")
+    if name not in SERVICE_UPDATE_SPECS:
+        raise HTTPException(status_code=400, detail="Updates are not supported for this service")
+
+    _cleanup_service_update_jobs()
+    target_version = (payload.target_version if payload else None) or None
+    target_version = target_version.strip() if isinstance(target_version, str) else None
+    if not target_version:
+        cfg = _read_service_updates_config()
+        svc_cfg = (cfg.get("services") or {}).get(name, {})
+        if isinstance(svc_cfg, dict):
+            spec = SERVICE_UPDATE_SPECS.get(name, {})
+            kind = spec.get("kind", "")
+            if kind == "pip":
+                tv = svc_cfg.get("target_version")
+                if isinstance(tv, str) and tv.strip():
+                    target_version = tv.strip()
+            elif kind == "git":
+                tr = svc_cfg.get("target_ref")
+                if isinstance(tr, str) and tr.strip():
+                    target_version = tr.strip()
+
+    with _service_update_lock:
+        existing = _service_update_jobs.get(name)
+        if existing and existing.state == "running":
+            return _service_update_job_to_dict(existing)
+        before = _service_version_entry(name).installed
+        job = ServiceUpdateJob(name=name, target_version=target_version, installed_before=before)
+        _service_update_jobs[name] = job
+
+    threading.Thread(target=_run_service_update_job, args=(job,), daemon=True).start()
+    return _service_update_job_to_dict(job)
+
+
+@app.get("/api/services/{name}/update/status")
+def service_update_status(name: str):
+    if name not in SERVICES:
+        raise HTTPException(status_code=404, detail="Unknown service")
+    _cleanup_service_update_jobs()
+    with _service_update_lock:
+        job = _service_update_jobs.get(name)
+        if not job:
+            return {"name": name, "state": "idle"}
+        return _service_update_job_to_dict(job)
 
 
 @app.post("/api/services/{name}/settings/autostart")
@@ -1624,6 +2312,15 @@ def get_changelog():
     raise HTTPException(status_code=404, detail="CHANGELOG not found")
 
 
+@app.get("/api/mediapilot/status")
+def mediapilot_status():
+    return {
+        "available": MEDIAPILOT_APP is not None,
+        "app_dir": str(MEDIAPILOT_APP_DIR) if MEDIAPILOT_APP_DIR else "",
+        "error": MEDIAPILOT_LOAD_ERROR,
+    }
+
+
 # Static assets
 static_dir = Path(__file__).parent / "static"
 tagpilot_dir = Path("/workspace/apps/TagPilot")
@@ -1634,4 +2331,6 @@ if not tagpilot_dir.exists():
 
 # Mount TagPilot assets under /tagpilot (served by the same app/port)
 app.mount("/tagpilot", NoCacheStaticFiles(directory=tagpilot_dir, html=True), name="tagpilot")
+if MEDIAPILOT_APP is not None:
+    app.mount("/mediapilot", MEDIAPILOT_APP, name="mediapilot")
 app.mount("/", NoCacheStaticFiles(directory=static_dir, html=True), name="static")
