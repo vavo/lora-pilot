@@ -34,6 +34,8 @@ Ever wanted to train LoRAs but ended up in dependency hell? LoRA Pilot bundles d
 - Qwen-Image-Edit
 - Z-Image-Turbo
 
+Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev/schnell), Chroma, Lumina-Image 2.0, LTX-Video, HunyuanVideo, Wan2.1, Wan2.2, Cosmos, HiDream, Z-Image** and more for training, plus almost everything for inference.
+
 ##  What's in the box?
 - **ControlPilot** – redesigned command center for services, models, datasets, docs, and training flows
 - **🎨 ComfyUI** (+ ComfyUI-Manager preinstalled) - Your node-based playground
