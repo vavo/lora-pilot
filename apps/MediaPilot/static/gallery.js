@@ -1,9 +1,9 @@
 console.log("GALLERY JS LOADED");
 
 // Versioned import to keep modules in sync and defeat old caches.
-import { openModal } from "./modal.js?v=cb23";
-import * as API from "./gallery-api.js?v=cb23";
-import { initDragSelect } from "./gallery-drag.js?v=cb23";
+import { openModal } from "./modal.js";
+import * as API from "./gallery-api.js";
+import { initDragSelect } from "./gallery-drag.js";
 
 /* -----------------------------------------------------
    STATE

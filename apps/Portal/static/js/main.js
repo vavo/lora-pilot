@@ -91,6 +91,7 @@ async function loadSection(section) {
   if (!viewMap[section]) section = "dashboard";
   // cleanup timers when switching away
   if (currentSection && currentSection !== section) {
+    if (currentSection === "dashboard" && window.stopDashboard) window.stopDashboard();
     if (currentSection === "dpipe" && window.stopDpipeLog) window.stopDpipeLog();
     if (currentSection === "trainpilot" && window.stopTpLogPoll) window.stopTpLogPoll();
     if (currentSection === "comfyui" && window.stopComfyUI) window.stopComfyUI();

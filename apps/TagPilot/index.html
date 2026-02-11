@@ -307,6 +307,7 @@
         let isBatchProcessing = false;
         let cropper = null;
         let currentCropIndex = -1;
+        let currentPreviewIndex = -1;
 
         const DEFAULT_TAG_PROMPT = `You are an expert for creating photorealistic AI training datasets. Your task is to generate descriptive tags for the provided image for the purpose of SDXL lora training using kohya_ss.
 Follow these rules strictly:
@@ -431,6 +432,12 @@ Expected outcome is a human-readable continuous text consisting of several sente
         });
         previewModal.addEventListener('click', (e) => e.target === previewModal && hidePreview());
         document.addEventListener('keydown', (e) => {
+            const isPreviewOpen = previewModal.style.display === 'flex';
+            if (isPreviewOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                navigatePreview(e.key === 'ArrowRight' ? 1 : -1);
+                return;
+            }
             if (e.key === 'Escape') {
                 hidePreview();
                 cancelCrop();
@@ -486,7 +493,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         function getApiKey() { return localStorage.getItem(getModel() + 'ApiKey') || ''; }
         function getWDKey() { return localStorage.getItem('wd14ApiKey') || ''; }
         const GEMINI_MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
-        const GROK_MODEL_CANDIDATES = ['grok-4-latest', 'grok-vision-latest'];
+        const GROK_MODEL_CANDIDATES = ['grok-4-latest'];
 
         async function fileToBase64(file) {
             return new Promise((resolve) => {
@@ -541,13 +548,27 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
                 const err = await parseResponseError(resp);
                 const low = String(err || '').toLowerCase();
+                const invalidApiKey = resp.status === 400 && (
+                    low.includes('api key not valid') ||
+                    low.includes('invalid api key') ||
+                    low.includes('api_key_invalid')
+                );
+                if (invalidApiKey) {
+                    throw new Error('Gemini API key is invalid. Use a valid Google AI Studio API key.');
+                }
                 const oauthOnly = resp.status === 401 && (
                     low.includes('api keys are not supported') ||
                     low.includes('oauth2 access token') ||
                     low.includes('assert a principal')
                 );
                 if (oauthOnly) {
-                    throw new Error('Gemini credentials rejected. Use a Google AI Studio API key (not Vertex OAuth credentials).');
+                    throw new Error('Gemini credentials rejected. Use a Google AI Studio API key (Vertex/OAuth credentials are not supported here).');
+                }
+                if (resp.status === 401 || resp.status === 403) {
+                    throw new Error(`Gemini auth error (${modelName}): ${err}`);
+                }
+                if (resp.status === 429) {
+                    throw new Error(`Gemini rate limited (${modelName}). Check quota and retry.`);
                 }
 
                 const missingModel = resp.status === 404 && (low.includes('not found') || low.includes('not supported'));
@@ -1043,6 +1064,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
             tagSettingsConfig.classList.add('hidden');
             tagSettingsProgress.classList.remove('hidden');
             isBatchProcessing = true;
+            let failedMessage = '';
 
             let processed = 0;
             const total = dataset.length;
@@ -1070,9 +1092,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
                         if (wrapper) renderTagsInCard(wrapper, i);
                     } catch (e) {
+                        failedMessage = e?.message || String(e);
                         isBatchProcessing = false;
                         console.error(e);
-                        showNotification(`Tagging error: ${e.message || e}`);
                     }
                 }
                 processed++;
@@ -1081,9 +1103,16 @@ Expected outcome is a human-readable continuous text consisting of several sente
             }
 
             renderTagViewer();
+            const stoppedEarly = !failedMessage && processed < total;
             isBatchProcessing = false;
             closeTagSettings();
-            showNotification("Tagging complete");
+            if (failedMessage) {
+                showNotification(`Tagging failed (${processed}/${total}): ${failedMessage}`);
+            } else if (stoppedEarly) {
+                showNotification(`Tagging stopped (${processed}/${total})`);
+            } else {
+                showNotification(`Tagging complete (${processed}/${total})`);
+            }
         }
 
         async function startBatchCaptioning() {
@@ -1092,6 +1121,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
             captionSettingsConfig.classList.add('hidden');
             captionSettingsProgress.classList.remove('hidden');
             isBatchProcessing = true;
+            let failedMessage = '';
 
             let processed = 0;
             const total = dataset.length;
@@ -1112,9 +1142,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
                         if (wrapper) renderTagsInCard(wrapper, i);
                     } catch (e) {
+                        failedMessage = e?.message || String(e);
                         isBatchProcessing = false;
                         console.error(e);
-                        showNotification(`Captioning error: ${e.message || e}`);
                     }
                 }
                 processed++;
@@ -1123,9 +1153,16 @@ Expected outcome is a human-readable continuous text consisting of several sente
             }
 
             renderTagViewer();
+            const stoppedEarly = !failedMessage && processed < total;
             isBatchProcessing = false;
             closeCaptionSettings();
-            showNotification("Captioning complete");
+            if (failedMessage) {
+                showNotification(`Captioning failed (${processed}/${total}): ${failedMessage}`);
+            } else if (stoppedEarly) {
+                showNotification(`Captioning stopped (${processed}/${total})`);
+            } else {
+                showNotification(`Captioning complete (${processed}/${total})`);
+            }
         }
 
         function render() {
@@ -1151,7 +1188,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
                     <div class="p-4 h-full flex items-center justify-center">
                         <span class="text-2xl font-bold text-gray-500">${index + 1}</span>
                     </div>
-                    <div class="w-2/5 flex-shrink-0 cursor-pointer thumbnail-container h-full" onclick="showPreview('${imageUrl}')">
+                    <div class="w-2/5 flex-shrink-0 cursor-pointer thumbnail-container h-full" onclick="showPreview(${index})">
                         <img src="${imageUrl}" class="w-full h-full object-cover">
                     </div>
                     <div class="p-4 flex flex-col flex-grow min-w-0 h-full">
@@ -1356,12 +1393,31 @@ Expected outcome is a human-readable continuous text consisting of several sente
             cropModal.style.display = 'none';
         }
 
-        function showPreview(url) {
-            previewImage.src = url;
+        function navigatePreview(step) {
+            if (!dataset.length || currentPreviewIndex < 0) return;
+            const nextIndex = (currentPreviewIndex + step + dataset.length) % dataset.length;
+            showPreview(nextIndex);
+        }
+
+        function showPreview(index) {
+            if (!Number.isInteger(index) || index < 0 || index >= dataset.length) return;
+            if (previewImage.dataset.objectUrl) {
+                URL.revokeObjectURL(previewImage.dataset.objectUrl);
+            }
+            const objectUrl = URL.createObjectURL(dataset[index].file);
+            previewImage.dataset.objectUrl = objectUrl;
+            previewImage.src = objectUrl;
+            currentPreviewIndex = index;
             previewModal.style.display = 'flex';
         }
 
         function hidePreview() {
+            if (previewImage.dataset.objectUrl) {
+                URL.revokeObjectURL(previewImage.dataset.objectUrl);
+                delete previewImage.dataset.objectUrl;
+            }
+            previewImage.src = '';
+            currentPreviewIndex = -1;
             previewModal.style.display = 'none';
         }
 

@@ -118,6 +118,25 @@ fi
 # MediaPilot defaults (single-port embed under ControlPilot)
 MEDIAPILOT_APP_DIR="$WORKSPACE_ROOT/apps/MediaPilot"
 if [ -d "$MEDIAPILOT_APP_DIR" ]; then
+  MEDIAPILOT_SOURCE_DIR="/opt/pilot/apps/MediaPilot"
+  MEDIAPILOT_SYNC_ON_BOOT="${MEDIAPILOT_SYNC_ON_BOOT:-1}"
+  if [ "$MEDIAPILOT_SYNC_ON_BOOT" = "1" ] && [ -d "$MEDIAPILOT_SOURCE_DIR" ]; then
+    SRC_COMMIT_FILE="$MEDIAPILOT_SOURCE_DIR/.upstream-commit"
+    DST_COMMIT_FILE="$MEDIAPILOT_APP_DIR/.upstream-commit"
+    SRC_COMMIT="$(cat "$SRC_COMMIT_FILE" 2>/dev/null | tr -d '\r\n')"
+    DST_COMMIT="$(cat "$DST_COMMIT_FILE" 2>/dev/null | tr -d '\r\n')"
+    if [ -n "$SRC_COMMIT" ] && [ "$SRC_COMMIT" != "$DST_COMMIT" ]; then
+      echo "Syncing MediaPilot workspace copy to upstream commit ${SRC_COMMIT}"
+      (
+        cd "$MEDIAPILOT_SOURCE_DIR"
+        tar cf - --exclude='.env' --exclude='data' --exclude='__pycache__' .
+      ) | (
+        cd "$MEDIAPILOT_APP_DIR"
+        tar xf -
+      )
+    fi
+  fi
+
   MEDIAPILOT_FORCE_ENV_DEFAULTS="${MEDIAPILOT_FORCE_ENV_DEFAULTS:-0}"
   MEDIAPILOT_ENV_CREATED="0"
   mkdir -p \
@@ -144,6 +163,24 @@ if [ -d "$MEDIAPILOT_APP_DIR" ]; then
       ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_COMFY_API_URL" "http://127.0.0.1:${COMFY_PORT:-5555}"
       ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_ALLOW_ORIGINS" "*"
     fi
+  fi
+fi
+
+# TagPilot sync: keep workspace copy aligned with bundled app updates.
+TAGPILOT_APP_DIR="$WORKSPACE_ROOT/apps/TagPilot"
+TAGPILOT_SOURCE_DIR="/opt/pilot/apps/TagPilot"
+TAGPILOT_SYNC_ON_BOOT="${TAGPILOT_SYNC_ON_BOOT:-1}"
+if [ "$TAGPILOT_SYNC_ON_BOOT" = "1" ] && [ -d "$TAGPILOT_SOURCE_DIR" ]; then
+  mkdir -p "$TAGPILOT_APP_DIR"
+  if [ ! -f "$TAGPILOT_APP_DIR/index.html" ] || ! cmp -s "$TAGPILOT_SOURCE_DIR/index.html" "$TAGPILOT_APP_DIR/index.html"; then
+    echo "Syncing TagPilot workspace copy from bundled source"
+    (
+      cd "$TAGPILOT_SOURCE_DIR"
+      tar cf - --exclude='__pycache__' .
+    ) | (
+      cd "$TAGPILOT_APP_DIR"
+      tar xf -
+    )
   fi
 fi
 
@@ -180,6 +217,11 @@ fi
 : "${JUPYTER_TOKEN:=$(openssl rand -hex 16)}"
 : "${CODE_SERVER_PASSWORD:=$(openssl rand -hex 16)}"
 : "${SUPERVISOR_ADMIN_PASSWORD:=$(openssl rand -hex 32)}"
+
+# RunPod secret compatibility: map legacy/lowercase token name.
+if [ -z "${HF_TOKEN:-}" ] && [ -n "${hf_token:-}" ]; then
+  export HF_TOKEN="${hf_token}"
+fi
 
 cat > "$SECRETS_FILE" <<EOT
 export JUPYTER_TOKEN="${JUPYTER_TOKEN}"

@@ -1,5 +1,5 @@
 // Cache-busting query for module imports to avoid stale browser caches.
-import { loadFolders, loadImages, resetGallery, ensureTagsLoaded } from "./gallery.js?v=cb23";
+import { loadFolders, loadImages, resetGallery, ensureTagsLoaded } from "./gallery.js";
 
 console.log("MAIN JS LOADED");
 

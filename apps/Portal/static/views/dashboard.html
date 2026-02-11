@@ -1,14 +1,76 @@
 <style>
   .dash-pills { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
   .dash-section { margin-bottom:12px; }
-  .dash-cpu-wrap { display:flex; gap:24px; flex-wrap:wrap; align-items:center; }
-  .dash-muted-sm { font-size:12px; color:var(--muted); margin-top:4px; }
-  .dash-gpu-item { margin-bottom: 8px; }
-  .dash-gpu-title { font-weight: 600; margin-bottom: 4px; }
-  .dash-gpu-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-  .dash-gpu-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .dash-gpu-value { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dash-telemetry-grid { display:grid; grid-template-columns:minmax(340px, 1.1fr) minmax(320px, 1fr); gap:14px; }
+  .dash-metric-stack { display:flex; flex-direction:column; gap:10px; }
+  .dash-metric-box {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-soft);
+    padding: 10px 12px;
+  }
+  .dash-metric-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .dash-metric-title { font-weight:700; }
+  .dash-metric-value { font-size: 12px; color: var(--muted); margin-top:6px; }
+  .dash-metric-box .bar-wrap { height: 10px; background: rgba(148, 163, 184, 0.22); border: none; }
+  .dash-metric-box .bar-fill { background: linear-gradient(90deg, #f97316, #ff5a3e); }
+  .dash-gpus-stack { display:flex; flex-direction:column; gap:10px; }
+  .dash-gpu-item {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-soft);
+    padding: 10px 12px;
+  }
+  .dash-gpu-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px; }
+  .dash-gpu-title { font-weight: 700; min-width: 0; overflow-wrap:anywhere; }
+  .dash-gpu-pill {
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 3px 8px;
+    border: 1px solid rgba(249,115,22,0.35);
+    background: rgba(249,115,22,0.14);
+    color: #ea580c;
+    white-space: nowrap;
+  }
+  :root[data-theme="dark"] .dash-gpu-pill { color: #fdba74; border-color: rgba(251,146,60,0.45); background: rgba(251,146,60,0.18); }
+  .dash-gpu-row { display: grid; grid-template-columns: repeat(2, minmax(140px, 1fr)); gap: 12px; }
+  .dash-gpu-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+  .dash-gpu-value { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .dash-gpu-util .bar-fill { background: linear-gradient(90deg, #f97316, #ff5a3e); }
+  .dash-gpu-mem .bar-fill { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+  .dash-history-stack { display:flex; flex-direction:column; gap:10px; }
+  .dash-history-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-soft);
+    padding: 10px 12px;
+  }
+  .dash-history-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+  .dash-history-title { font-weight:700; }
+  .dash-history-window { font-size: 11px; color: var(--muted); }
+  .dash-chart {
+    width: 100%;
+    height: 112px;
+    display: block;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.10), rgba(148, 163, 184, 0.02));
+  }
+  .dash-chart-empty {
+    font-size: 12px;
+    color: var(--muted);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height: 112px;
+  }
   .dash-disk-meta { color: var(--muted); font-size: 12px; }
+  @media (max-width: 980px) {
+    .dash-telemetry-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    .dash-gpu-row { grid-template-columns: 1fr; }
+  }
   .shutdown-card-wrap {
     width: 33.333%;
     min-width: 360px;
@@ -36,16 +98,40 @@
     </div>
     <div class="panel dash-section">
       <h3>CPU / GPU</h3>
-      <div class="dash-cpu-wrap">
-        <div>
-          <div class="fw-600">CPU Load</div>
-          <div class="bar-wrap"><div class="bar-fill" id="cpu-bar"></div></div>
-          <div class="dash-muted-sm" id="cpu-label"></div>
-          <div class="fw-600 mt-8">Memory</div>
-          <div class="bar-wrap"><div class="bar-fill" id="mem-bar"></div></div>
-          <div class="dash-muted-sm" id="mem-label"></div>
+      <div class="dash-telemetry-grid">
+        <div class="dash-metric-stack">
+          <div class="dash-metric-box">
+            <div class="dash-metric-head">
+              <div class="dash-metric-title">CPU Load</div>
+            </div>
+            <div class="bar-wrap"><div class="bar-fill" id="cpu-bar"></div></div>
+            <div class="dash-metric-value" id="cpu-label"></div>
+          </div>
+          <div class="dash-metric-box">
+            <div class="dash-metric-head">
+              <div class="dash-metric-title">Memory</div>
+            </div>
+            <div class="bar-wrap"><div class="bar-fill" id="mem-bar"></div></div>
+            <div class="dash-metric-value" id="mem-label"></div>
+          </div>
+          <div id="gpu-bars" class="dash-gpus-stack"></div>
         </div>
-        <div id="gpu-bars"></div>
+        <div class="dash-history-stack">
+          <div class="dash-history-card">
+            <div class="dash-history-head">
+              <div class="dash-history-title">CPU Usage Trend</div>
+              <div class="dash-history-window" id="history-window-label">No history yet</div>
+            </div>
+            <svg id="cpu-history-chart" class="dash-chart" viewBox="0 0 400 112" preserveAspectRatio="none" aria-label="CPU usage history"></svg>
+          </div>
+          <div class="dash-history-card">
+            <div class="dash-history-head">
+              <div class="dash-history-title">GPU Usage Trend</div>
+              <div class="dash-history-window" id="gpu-history-label">No history yet</div>
+            </div>
+            <svg id="gpu-history-chart" class="dash-chart" viewBox="0 0 400 112" preserveAspectRatio="none" aria-label="GPU usage history"></svg>
+          </div>
+        </div>
       </div>
     </div>
     <div class="panel dash-section">

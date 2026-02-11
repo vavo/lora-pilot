@@ -1824,6 +1824,19 @@ def disk_usage(path: str) -> DiskUsage:
 
 def get_gpus() -> List[GPUInfo]:
     gpus: List[GPUInfo] = []
+
+    def _parse_metric(value: str) -> Optional[int]:
+        s = (value or "").strip()
+        if not s or s.lower() in {"n/a", "[n/a]", "not supported", "[not supported]"}:
+            return None
+        m = re.search(r"-?\d+", s)
+        if not m:
+            return None
+        try:
+            return int(m.group(0))
+        except Exception:
+            return None
+
     candidates = [
         shutil.which("nvidia-smi"),
         "/usr/bin/nvidia-smi",
@@ -1835,21 +1848,36 @@ def get_gpus() -> List[GPUInfo]:
             out = subprocess.check_output(
                 [
                     exe,
-                    "--query-gpu=index,name,utilization.gpu,memory.used,memory.total",
+                    "--query-gpu=index,name,utilization.gpu,utilization.memory,memory.used,memory.total",
                     "--format=csv,noheader,nounits",
                 ],
                 text=True,
             )
             for line in out.strip().splitlines():
                 parts = [p.strip() for p in line.split(",")]
-                if len(parts) >= 5:
+                if len(parts) >= 6:
+                    index = _parse_metric(parts[0])
+                    util_gpu = _parse_metric(parts[2])
+                    util_mem = _parse_metric(parts[3])
+                    mem_used_mb = _parse_metric(parts[4])
+                    mem_total_mb = _parse_metric(parts[5])
+                    if index is None:
+                        continue
+
+                    # Some drivers/backends report 0 or N/A for GPU util while memory util is available.
+                    util = util_gpu if util_gpu is not None else util_mem
+                    if (util is None or util <= 0) and util_mem is not None and util_mem > 0:
+                        util = util_mem
+                    if util is None:
+                        util = 0
+
                     gpus.append(
                         GPUInfo(
-                            index=int(parts[0]),
+                            index=index,
                             name=parts[1],
-                            util=int(parts[2]),
-                            mem_used=int(parts[3]) * 1024 * 1024,
-                            mem_total=int(parts[4]) * 1024 * 1024,
+                            util=max(0, min(100, util)),
+                            mem_used=max(0, mem_used_mb or 0) * 1024 * 1024,
+                            mem_total=max(0, mem_total_mb or 0) * 1024 * 1024,
                         )
                     )
             if gpus:

@@ -1,6 +1,6 @@
 console.log("MODAL JS LOADED");
 
-// Versioned import to keep modules aligned with cache-busting.
+// Module imports (subpath-safe, no hardcoded query versions).
 import {
   resetGallery,
   loadImages,
@@ -15,8 +15,8 @@ import {
   toggleLike as galleryToggleLike,
   markImageDeleted,
   ensureTagsLoaded,
-} from "./gallery.js?v=cb23";
-import * as API from "./gallery-api.js?v=cb23";
+} from "./gallery.js";
+import * as API from "./gallery-api.js";
 
 let modalFilename = null;
 

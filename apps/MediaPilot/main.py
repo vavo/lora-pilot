@@ -9,6 +9,7 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from sqlite3 import connect
 from typing import Any, Dict, List, Optional, Set
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request, Response
@@ -701,6 +702,14 @@ def normalize_selected_filename(value: str) -> str:
     return cleaned
 
 
+def encode_url_segment(value: str) -> str:
+    return quote(str(value), safe="")
+
+
+def encode_folder_for_url(folder: str) -> str:
+    return "/".join(encode_url_segment(part) for part in str(folder).split("/") if part)
+
+
 def remove_temp_file(path: str):
     try:
         os.remove(path)
@@ -936,19 +945,21 @@ def get_images(
         metadata = metadata_cache.get(f)
         if metadata is None:
             metadata = extract_metadata(full_path)
+        safe_filename = encode_url_segment(f)
 
         if folder == "_root":
             thumb_path = os.path.join(THUMBS_DIR, f + THUMB_EXT)
-            thumb_url = f"/thumbs/{f}{THUMB_EXT}"
-            full_url = f"/output/{f}"
+            thumb_url = f"./thumbs/{safe_filename}{THUMB_EXT}"
+            full_url = f"./output/{safe_filename}"
         elif folder == "InvokeAI":
             thumb_path = os.path.join(THUMBS_DIR, "InvokeAI", f + THUMB_EXT)
-            thumb_url = f"/thumbs/InvokeAI/{f}{THUMB_EXT}"
-            full_url = f"/invoke/{f}"
+            thumb_url = f"./thumbs/InvokeAI/{safe_filename}{THUMB_EXT}"
+            full_url = f"./invoke/{safe_filename}"
         else:
             thumb_path = os.path.join(THUMBS_DIR, folder, f + THUMB_EXT)
-            thumb_url = f"/thumbs/{folder}/{f}{THUMB_EXT}"
-            full_url = f"/output/{folder}/{f}"
+            folder_url = encode_folder_for_url(folder)
+            thumb_url = f"./thumbs/{folder_url}/{safe_filename}{THUMB_EXT}"
+            full_url = f"./output/{folder_url}/{safe_filename}"
 
         make_thumb(full_path, thumb_path)
 
@@ -972,6 +983,7 @@ def get_images(
 
 @app.post("/like/{filename}")
 def like_file(filename: str):
+    filename = normalize_selected_filename(filename)
     conn = get_db()
     conn.execute("INSERT OR REPLACE INTO likes(filename) VALUES (?)", (filename,))
     conn.commit()
@@ -980,6 +992,7 @@ def like_file(filename: str):
 
 @app.post("/unlike/{filename}")
 def unlike_file(filename: str):
+    filename = normalize_selected_filename(filename)
     conn = get_db()
     conn.execute("DELETE FROM likes WHERE filename = ?", (filename,))
     conn.commit()
@@ -993,6 +1006,7 @@ def unlike_file(filename: str):
 @app.delete("/image/{folder:path}/{filename}")
 @app.delete("/image/{filename}")
 def delete_file(filename: str, folder: str = "_root"):
+    filename = normalize_selected_filename(filename)
     folder = normalize_folder(folder)
     if folder == "_root":
         base_dir = OUTPUT_DIR
@@ -1028,6 +1042,7 @@ def delete_file(filename: str, folder: str = "_root"):
 
 @app.post("/tag")
 def tag_file(filename: str, old_folder: str, new_folder: str):
+    filename = normalize_selected_filename(filename)
     old_folder = normalize_folder(old_folder)
     new_folder = normalize_folder(new_folder)
     if old_folder == "_root":

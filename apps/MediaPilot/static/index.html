@@ -57,10 +57,6 @@
     }
   </style>
 
-  <!-- performance hints -->
-  <link rel="preconnect" href="output">
-  <link rel="dns-prefetch" href="output">
-
   <!-- CSS is versioned by main.js, so no href here -->
   <link id="style-link" rel="stylesheet">
 </head>
@@ -163,10 +159,21 @@
 
     // apply CSS version
     const css = document.getElementById("style-link");
-    css.href = `static/styles.css?v=${v}`;
+    css.href = `./static/styles.css?v=${v}`;
 
     // load main module (which loads the others)
-    import(`static/main.js?v=${v}`);
+    import(`./static/main.js?v=${v}`).catch((err) => {
+      console.error("Failed to load MediaPilot frontend module", err);
+      const loading = document.getElementById("loading-screen");
+      const content = loading ? loading.querySelector(".loading-content") : null;
+      if (content) {
+        const msg = document.createElement("div");
+        msg.className = "auth-error";
+        msg.style.marginTop = "12px";
+        msg.textContent = "Failed to load MediaPilot frontend. Refresh and check console.";
+        content.appendChild(msg);
+      }
+    });
   </script>
 
 </body>

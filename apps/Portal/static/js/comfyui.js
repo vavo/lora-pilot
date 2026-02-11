@@ -6,6 +6,8 @@ let previewEnabled = true;
 let imageCount = 0;
 let lastGeneratedImage = null;
 let comfyPort = "5555";
+let comfyStatusFailures = 0;
+const COMFY_STATUS_FAILURE_THRESHOLD = 3;
 
 function isComfyViewMounted() {
   return !!document.getElementById("comfy-iframe");
@@ -25,6 +27,7 @@ function clearComfyTimers() {
 window.stopComfyUI = function () {
   comfyActive = false;
   clearComfyTimers();
+  comfyStatusFailures = 0;
   if (comfyWebSocket) {
     try {
       comfyWebSocket.onclose = null;
@@ -32,6 +35,12 @@ window.stopComfyUI = function () {
       comfyWebSocket.close();
     } catch (e) {}
     comfyWebSocket = null;
+  }
+  const iframeEl = document.getElementById("comfy-iframe");
+  if (iframeEl) {
+    try {
+      iframeEl.src = "about:blank";
+    } catch (e) {}
   }
 };
 
@@ -48,6 +57,7 @@ window.initComfyUI = function () {
   previewEnabled = true;
   imageCount = 0;
   lastGeneratedImage = null;
+  comfyStatusFailures = 0;
   updateImageCount();
 
   updateConnectionStatus("connecting", "Connecting to ComfyUI...");
@@ -75,6 +85,7 @@ async function checkComfyUIStatus() {
     const iframeEl = document.getElementById("comfy-iframe");
 
     if (status.status === "running") {
+      comfyStatusFailures = 0;
       comfyPort = status.port || "5555";
       if (statusEl) {
         statusEl.className = "status-indicator status-connected";
@@ -85,19 +96,25 @@ async function checkComfyUIStatus() {
         iframeEl.src = getComfyUIUrl(comfyPort);
       }
     } else {
+      comfyStatusFailures += 1;
+      const stillRetrying = comfyStatusFailures < COMFY_STATUS_FAILURE_THRESHOLD;
       if (statusEl) {
-        statusEl.className = "status-indicator status-disconnected";
-        statusEl.textContent = "Stopped";
+        statusEl.className = stillRetrying ? "status-indicator status-connecting" : "status-indicator status-disconnected";
+        statusEl.textContent = stillRetrying ? `Checking... (${comfyStatusFailures}/${COMFY_STATUS_FAILURE_THRESHOLD})` : "Stopped";
       }
-      if (portEl) portEl.textContent = status.port || "5555";
-      if (iframeEl) iframeEl.src = "about:blank";
+      if (portEl) portEl.textContent = status.port || comfyPort || "5555";
+      if (!stillRetrying && iframeEl) iframeEl.src = "about:blank";
     }
   } catch (error) {
+    comfyStatusFailures += 1;
+    const stillRetrying = comfyStatusFailures < COMFY_STATUS_FAILURE_THRESHOLD;
     const statusEl = document.getElementById("comfy-status");
+    const iframeEl = document.getElementById("comfy-iframe");
     if (statusEl) {
-      statusEl.className = "status-indicator status-disconnected";
-      statusEl.textContent = "Error";
+      statusEl.className = stillRetrying ? "status-indicator status-connecting" : "status-indicator status-disconnected";
+      statusEl.textContent = stillRetrying ? `Retrying... (${comfyStatusFailures}/${COMFY_STATUS_FAILURE_THRESHOLD})` : "Error";
     }
+    if (!stillRetrying && iframeEl) iframeEl.src = "about:blank";
   }
 }
 
@@ -221,11 +238,10 @@ function connectWebSocket() {
 
     comfyWebSocket.onerror = function (error) {
       updateConnectionStatus("disconnected", "Connection error");
-      console.error("WebSocket error:", error);
+      // Comfy websocket errors are often transient when the service restarts.
     };
   } catch (error) {
     updateConnectionStatus("disconnected", "Failed to connect");
-    console.error("Failed to create WebSocket:", error);
   }
 }
 
