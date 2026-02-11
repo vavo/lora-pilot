@@ -19,7 +19,7 @@ Welcome to the LoRA Pilot user guide! This section covers how to use all the fea
 4. **[Training Workflows](training-workflows.md)** - Train your first LoRA
 
 ### Intermediate Users
-1. **[Advanced Training](training-workflows.md#advanced-training)** - Fine-tune training parameters
+1. **[Advanced Training](training-workflows.md#advanced-training-techniques)** - Fine-tune training parameters
 2. **[Inference Techniques](inference.md)** - Master ComfyUI workflows
 3. **[Batch Operations](model-management.md#batch-operations)** - Manage multiple projects
 
