@@ -602,6 +602,9 @@ CHANGELOG_FALLBACK = Path("/workspace/CHANGELOG")
 DOCS_ROOT_PRIMARY = Path("/opt/pilot/docs")
 DOCS_ROOT_FALLBACK = Path("/workspace/docs")
 DOCS_ROOT_DEV = Path(__file__).resolve().parents[2] / "docs"
+DOCS_ROOT_WORKSPACE_REPO = WORKSPACE_ROOT / "lora-pilot" / "docs"
+DOCS_ROOT_CWD = Path.cwd() / "docs"
+DOCS_ROOT_ENV = os.environ.get("DOCS_ROOT", "").strip()
 DOCS_SITEMAP_PRIMARY = DOCS_ROOT_PRIMARY / "README.md"
 DOCS_SITEMAP_FALLBACK = DOCS_ROOT_FALLBACK / "README.md"
 DOCS_SITEMAP_DEV = DOCS_ROOT_DEV / "README.md"
@@ -609,14 +612,52 @@ DOCS_SITEMAP_DEV = DOCS_ROOT_DEV / "README.md"
 
 def _docs_root_candidates() -> list[Path]:
     roots: list[Path] = []
-    for candidate in (DOCS_ROOT_PRIMARY, DOCS_ROOT_FALLBACK, DOCS_ROOT_DEV):
+    raw_candidates = [
+        DOCS_ROOT_PRIMARY,
+        DOCS_ROOT_FALLBACK,
+        DOCS_ROOT_DEV,
+        DOCS_ROOT_WORKSPACE_REPO,
+        DOCS_ROOT_CWD,
+    ]
+    if DOCS_ROOT_ENV:
+        raw_candidates.insert(0, Path(DOCS_ROOT_ENV))
+
+    for candidate in raw_candidates:
         try:
             resolved = candidate.resolve()
         except Exception:
             continue
         if resolved.exists() and resolved.is_dir():
-            roots.append(resolved)
+            if resolved not in roots:
+                roots.append(resolved)
     return roots
+
+
+def _build_docs_sitemap_fallback() -> str:
+    root = next(iter(_docs_root_candidates()), None)
+    if root is None:
+        return (
+            "# Documentation\n\n"
+            "Docs sitemap was not found in this runtime image.\n\n"
+            "- `docs/README.md`: Not found in runtime filesystem\n"
+            "- Set `DOCS_ROOT` to a valid docs directory if you mount docs externally.\n"
+            "- For bundled docs, use an image build that includes `docs/`.\n"
+        )
+
+    files = sorted(p for p in root.rglob("*.md") if p.is_file())
+    lines = [
+        "# Documentation",
+        "",
+        f"_Auto-generated sitemap from `{root}` because `docs/README.md` was not found._",
+        "",
+    ]
+    for p in files:
+        rel = p.relative_to(root).as_posix()
+        title = p.stem.replace("-", " ").replace("_", " ").strip().title() or rel
+        lines.append(f"- [{title}]({rel})")
+    if len(lines) == 4:
+        lines.append("- No markdown files found under resolved docs root.")
+    return "\n".join(lines) + "\n"
 
 
 def _validate_docs_relative_path(raw_path: str) -> Optional[PurePosixPath]:
@@ -2549,10 +2590,11 @@ def get_changelog():
 
 @app.get("/api/docs/sitemap")
 def get_docs_sitemap():
-    for candidate in (DOCS_SITEMAP_PRIMARY, DOCS_SITEMAP_FALLBACK, DOCS_SITEMAP_DEV):
+    for root in _docs_root_candidates():
+        candidate = root / "README.md"
         if candidate.exists():
             return {"content": candidate.read_text(encoding="utf-8"), "source": "docs/README.md"}
-    raise HTTPException(status_code=404, detail="docs/README.md not found")
+    return {"content": _build_docs_sitemap_fallback(), "source": "docs/README.md"}
 
 
 @app.get("/api/docs/file")

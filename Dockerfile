@@ -441,6 +441,7 @@ RUN set -eux; \
 
 # Copy app/UI sources late to improve build caching on frequent code changes
 COPY apps /opt/pilot/apps
+COPY docs /opt/pilot/docs
 COPY README.md /opt/pilot/README.md
 COPY CHANGELOG /opt/pilot/CHANGELOG
 

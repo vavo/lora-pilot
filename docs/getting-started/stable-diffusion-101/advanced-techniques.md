@@ -161,6 +161,8 @@ Recommended Settings:
 
 ## 🎯 Region Prompting
 
+**(Note: Specific UI for this feature not found in repo; may require manual ComfyUI workflow configuration.)**
+
 ### What Is Region Prompting?
 
 Region prompting allows you to specify different prompts for different areas of the same image. Think of it as giving the AI different instructions for different parts of the canvas.

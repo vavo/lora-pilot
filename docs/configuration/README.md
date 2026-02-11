@@ -14,10 +14,10 @@ This section is the index for LoRA Pilot configuration docs.
   Managed programs, autostart/log behavior, and ControlPilot service endpoints.
 
 - [Docker Compose](docker-compose.md)  
-  Status: draft stub (detailed page not written yet).
+  Compose file matrix (`standard`, `dev`, `cpu`), runtime behavior, and operational commands.
 
 - [Custom Setup](custom-setup.md)  
-  Status: draft stub (detailed page not written yet).
+  Practical override patterns for images, mounts, ports, bootstrap toggles, and update policy files.
 
 ## Source Of Truth In Repo
 

@@ -115,6 +115,11 @@ if [ -d /opt/pilot/apps ]; then
   find "$WORKSPACE_ROOT/apps" -type f -name '*.sh' -print0 | xargs -0 -r chmod +x || true
 fi
 
+# Seed bundled docs into workspace (without clobbering existing)
+if [ -d /opt/pilot/docs ] && [ ! -e "$WORKSPACE_ROOT/docs" ]; then
+  cp -a /opt/pilot/docs "$WORKSPACE_ROOT/docs"
+fi
+
 # MediaPilot defaults (single-port embed under ControlPilot)
 MEDIAPILOT_APP_DIR="$WORKSPACE_ROOT/apps/MediaPilot"
 if [ -d "$MEDIAPILOT_APP_DIR" ]; then
