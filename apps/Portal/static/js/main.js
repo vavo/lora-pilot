@@ -51,6 +51,27 @@ function isDesktopLayout() {
   return !window.matchMedia || !window.matchMedia("(max-width: 768px)").matches;
 }
 
+function updateSidebarNavTooltips() {
+  const links = nav?.querySelectorAll("a");
+  if (!links) return;
+  const compact = !!sidebar?.classList.contains("compact") && isDesktopLayout();
+  links.forEach((link) => {
+    const label = link.querySelector(".nav-label")?.textContent?.trim() || "";
+    if (!label) {
+      link.removeAttribute("title");
+      link.removeAttribute("aria-label");
+      return;
+    }
+    if (compact) {
+      link.setAttribute("title", label);
+      link.setAttribute("aria-label", label);
+    } else {
+      link.removeAttribute("title");
+      link.removeAttribute("aria-label");
+    }
+  });
+}
+
 function setSidebarCompact(compact) {
   if (!sidebar || !isDesktopLayout()) return;
   sidebar.classList.toggle("compact", compact);
@@ -58,6 +79,7 @@ function setSidebarCompact(compact) {
   // Refresh theme toggle label text for compact vs full.
   const mode = document.documentElement.getAttribute("data-theme") || "light";
   setTheme(mode);
+  updateSidebarNavTooltips();
   if (sidebarCompactToggle) {
     sidebarCompactToggle.title = compact ? "Expand sidebar" : "Collapse sidebar";
     sidebarCompactToggle.setAttribute("aria-label", sidebarCompactToggle.title);
@@ -71,6 +93,7 @@ async function loadSection(section) {
   if (currentSection && currentSection !== section) {
     if (currentSection === "dpipe" && window.stopDpipeLog) window.stopDpipeLog();
     if (currentSection === "trainpilot" && window.stopTpLogPoll) window.stopTpLogPoll();
+    if (currentSection === "comfyui" && window.stopComfyUI) window.stopComfyUI();
   }
   document.querySelectorAll(".nav a").forEach(a => a.classList.remove("active"));
   const active = document.querySelector(`.nav a[data-section="${section}"]`);
@@ -216,6 +239,7 @@ if (sidebarCompactToggle) {
     setSidebarCompact(!compact);
   });
 }
+window.addEventListener("resize", updateSidebarNavTooltips);
 
 // Init theme & default section
 (function init() {
@@ -226,6 +250,7 @@ if (sidebarCompactToggle) {
   }
   const saved = localStorage.getItem("theme");
   setTheme(saved === "dark" ? "dark" : "light");
+  updateSidebarNavTooltips();
   initShutdownNotice();
   loadSection("dashboard");
 })();

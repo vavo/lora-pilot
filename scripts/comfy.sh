@@ -11,6 +11,13 @@ MODELS_ROOT="$WORKSPACE_ROOT/models"
 ensure_model_dirs() {
   mkdir -p "$MODELS_ROOT"/{audio_encoders,checkpoints,clip,clip_vision,configs,controlnet,diffusers,diffusion_models,embeddings,gligen,hypernetworks,latent_upscale_models,loras,model_patches,photomaker,style_models,text_encoders,unet,upscale_models,vae,vae_approx}
 }
+link_optional_asset_dir() {
+  local target_dir="$1"
+  [ -d "$target_dir" ] || return 0
+  ln -sf "${USER_CSS}" "${target_dir}/user.css"
+  ln -sf "${USERDATA}" "${target_dir}/userdata"
+  ln -sf "${TEMPLATES}" "${target_dir}/comfy.templates.json"
+}
 
 # Stable, writable "home" and caches (RunPod volumes + root-owned /home is common)
 export HOME="${HOME:-$WORKSPACE_ROOT/home/root}"
@@ -61,25 +68,39 @@ fi
 
 rm -rf "${COMFY_DIR}/user"
 ln -s "${USER_DIR}" "${COMFY_DIR}/user"
-# Also expose user assets at the ComfyUI web root when possible
-ln -sf "${USER_CSS}" "${COMFY_DIR}/user.css"
-ln -sf "${USERDATA}" "${COMFY_DIR}/userdata"
-ln -sf "${TEMPLATES}" "${COMFY_DIR}/comfy.templates.json"
-# Mirror user assets into the frontend package static root if present
-FRONTEND_STATIC="$(
+# Expose user assets in all common frontend/static roots.
+link_optional_asset_dir "${COMFY_DIR}"
+link_optional_asset_dir "${COMFY_DIR}/web"
+link_optional_asset_dir "${COMFY_DIR}/web/static"
+link_optional_asset_dir "${COMFY_DIR}/web/assets"
+link_optional_asset_dir "${COMFY_DIR}/web/dist"
+
+# Mirror user assets into installed frontend package roots if present.
+FRONTEND_STATIC_DIRS="$(
   python - <<'PY' || true
 import importlib.util
 import pathlib
-spec = importlib.util.find_spec("comfyui_frontend_package")
-if not spec or not spec.origin:
-    raise SystemExit(1)
-print(pathlib.Path(spec.origin).resolve().parent / "static")
+
+seen = set()
+for module_name in ("comfyui_frontend_package", "comfyui_frontend"):
+    spec = importlib.util.find_spec(module_name)
+    if not spec or not spec.origin:
+        continue
+    pkg_dir = pathlib.Path(spec.origin).resolve().parent
+    for rel in ("static", "dist", "web", "web/static", "web/dist"):
+        candidate = pkg_dir / rel
+        if candidate.is_dir():
+            s = str(candidate)
+            if s not in seen:
+                seen.add(s)
+                print(s)
 PY
 )"
-if [[ -n "${FRONTEND_STATIC}" && -d "${FRONTEND_STATIC}" ]]; then
-  ln -sf "${USER_CSS}" "${FRONTEND_STATIC}/user.css"
-  ln -sf "${USERDATA}" "${FRONTEND_STATIC}/userdata"
-  ln -sf "${TEMPLATES}" "${FRONTEND_STATIC}/comfy.templates.json"
+if [[ -n "${FRONTEND_STATIC_DIRS}" ]]; then
+  while IFS= read -r frontend_dir; do
+    [[ -n "${frontend_dir}" ]] || continue
+    link_optional_asset_dir "${frontend_dir}"
+  done <<< "${FRONTEND_STATIC_DIRS}"
 fi
 # Ensure ComfyUI-Manager is present in workspace custom_nodes before rewiring
 if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager" ]; then

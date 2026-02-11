@@ -378,12 +378,114 @@ MEDIAPILOT_APP_DIR: Optional[Path] = None
 MEDIAPILOT_LOAD_ERROR: Optional[str] = None
 
 
+def _normalize_env_value(raw: str) -> str:
+    value = (raw or "").strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1]
+    return value.strip()
+
+
+def _set_mediapilot_env_defaults(app_dir: Path) -> None:
+    comfy_port = os.environ.get("COMFY_PORT", "5555")
+    defaults = {
+        "MEDIAPILOT_OUTPUT_DIR": str(WORKSPACE_ROOT / "outputs" / "comfy"),
+        "MEDIAPILOT_INVOKEAI_DIR": str(WORKSPACE_ROOT / "outputs" / "invoke"),
+        "MEDIAPILOT_THUMBS_DIR": str(WORKSPACE_ROOT / "cache" / "mediapilot" / "thumbs"),
+        "MEDIAPILOT_DB_FILE": str(WORKSPACE_ROOT / "config" / "mediapilot" / "data.db"),
+        "MEDIAPILOT_COMFY_API_URL": f"http://127.0.0.1:{comfy_port}",
+        "MEDIAPILOT_ALLOW_ORIGINS": "*",
+    }
+    legacy_values = {
+        "MEDIAPILOT_OUTPUT_DIR": {"./data/output", "data/output"},
+        "MEDIAPILOT_INVOKEAI_DIR": {"./data/invokeai", "data/invokeai"},
+        "MEDIAPILOT_THUMBS_DIR": {"./data/thumbs", "data/thumbs"},
+        "MEDIAPILOT_DB_FILE": {"./data/data.db", "data/data.db"},
+        "MEDIAPILOT_COMFY_API_URL": {"http://127.0.0.1:8188"},
+    }
+    password_placeholders = {"changeme", "your_password_here", "replace-me", "replace_me", "password"}
+
+    for path in (
+        WORKSPACE_ROOT / "outputs" / "comfy",
+        WORKSPACE_ROOT / "outputs" / "invoke",
+        WORKSPACE_ROOT / "cache" / "mediapilot" / "thumbs",
+        WORKSPACE_ROOT / "config" / "mediapilot",
+    ):
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+
+    env_file = app_dir / ".env"
+    env_example = app_dir / ".env.example"
+    try:
+        if not env_file.exists() and env_example.exists():
+            shutil.copy2(env_example, env_file)
+    except Exception:
+        pass
+
+    for key, default_value in defaults.items():
+        current = _normalize_env_value(os.environ.get(key, ""))
+        if not current or current in legacy_values.get(key, set()):
+            os.environ[key] = default_value
+
+    current_password = _normalize_env_value(os.environ.get("MEDIAPILOT_ACCESS_PASSWORD", ""))
+    if current_password.lower() in password_placeholders:
+        os.environ["MEDIAPILOT_ACCESS_PASSWORD"] = ""
+
+    if not env_file.exists():
+        return
+
+    try:
+        lines = env_file.read_text(encoding="utf-8").splitlines(keepends=True)
+    except Exception:
+        return
+
+    changed = False
+
+    def upsert_line(key: str, value: str) -> None:
+        nonlocal changed
+        prefix = f"{key}="
+        for idx, line in enumerate(lines):
+            if line.lstrip().startswith(prefix):
+                new_line = f"{key}={value}\n"
+                if lines[idx] != new_line:
+                    lines[idx] = new_line
+                    changed = True
+                return
+        lines.append(f"{key}={value}\n")
+        changed = True
+
+    file_values: dict[str, str] = {}
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        file_values[key.strip()] = _normalize_env_value(value)
+
+    for key, default_value in defaults.items():
+        current = file_values.get(key, "")
+        if not current or current in legacy_values.get(key, set()):
+            upsert_line(key, default_value)
+
+    file_password = file_values.get("MEDIAPILOT_ACCESS_PASSWORD", "")
+    if _normalize_env_value(file_password).lower() in password_placeholders:
+        upsert_line("MEDIAPILOT_ACCESS_PASSWORD", "")
+
+    if changed:
+        try:
+            env_file.write_text("".join(lines), encoding="utf-8")
+        except Exception:
+            pass
+
+
 def _load_mediapilot_app() -> Optional[FastAPI]:
     global MEDIAPILOT_APP_DIR, MEDIAPILOT_LOAD_ERROR
     for main_file in MEDIAPILOT_MAIN_CANDIDATES:
         if not main_file.exists():
             continue
         try:
+            _set_mediapilot_env_defaults(main_file.parent)
             spec = importlib.util.spec_from_file_location("embedded_mediapilot", main_file)
             if spec is None or spec.loader is None:
                 continue
@@ -505,7 +607,19 @@ async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[d
 
 @app.get("/api/copilot/status")
 async def copilot_status():
-    return await _copilot_sidecar_request("GET", "/status")
+    try:
+        return await _copilot_sidecar_request("GET", "/status")
+    except HTTPException as exc:
+        if exc.status_code in (503, 504):
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "sidecar_reachable": False,
+                    "copilot_in_path": False,
+                    "detail": str(exc.detail),
+                },
+            )
+        raise
 
 
 @app.post("/api/copilot/chat")
@@ -2314,9 +2428,17 @@ def get_changelog():
 
 @app.get("/api/mediapilot/status")
 def mediapilot_status():
+    env_file = MEDIAPILOT_APP_DIR / ".env" if MEDIAPILOT_APP_DIR else None
     return {
         "available": MEDIAPILOT_APP is not None,
         "app_dir": str(MEDIAPILOT_APP_DIR) if MEDIAPILOT_APP_DIR else "",
+        "env_file": str(env_file) if env_file else "",
+        "env_file_exists": bool(env_file and env_file.exists()),
+        "output_dir": os.environ.get("MEDIAPILOT_OUTPUT_DIR", ""),
+        "invoke_dir": os.environ.get("MEDIAPILOT_INVOKEAI_DIR", ""),
+        "thumbs_dir": os.environ.get("MEDIAPILOT_THUMBS_DIR", ""),
+        "db_file": os.environ.get("MEDIAPILOT_DB_FILE", ""),
+        "comfy_api_url": os.environ.get("MEDIAPILOT_COMFY_API_URL", ""),
         "error": MEDIAPILOT_LOAD_ERROR,
     }
 

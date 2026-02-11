@@ -1,111 +1,72 @@
 # LoRA Pilot (The Last Docker Image You'll Ever Need)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo) [![GitHub Sponsors](https://img.shields.io/github/sponsors/vavo?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo) [![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on-GitHub-24292F?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo) [![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on-GitHub-24292F?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)
 ![LoRA Pilot logo](apps/Portal/static/logo.svg)
 
-> Your AI playground in a box - because who has time to configure 17 different tools?
-Ever wanted to train LoRAs but ended up in dependency hell? LoRA Pilot bundles dataset workflow, model management, training, and generation into one container with one persistent `/workspace`.
+> End-to-end Stable Diffusion workspace in one container, with one persistent `/workspace`.
+LoRA Pilot bundles dataset prep, model management, training, inference, and media workflow into one integrated stack, so you can spend time creating instead of fixing broken envs.
 
-## Why this is useful
-- **Redesigned ControlPilot UI** with cleaner service/model/dataset/training flows.
-- **Single-port workflow**: MediaPilot and TagPilot are embedded inside ControlPilot.
-- **Multiple training stacks**: Kohya SS, Diffusion Pipe, AI Toolkit, and TrainPilot.
-- **Integrated coding helper (optional)**: Copilot sidecar accessible from ControlPilot.
-- **No throwaway setup**: outputs, models, datasets, and config persist under `/workspace`.
+Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
-## Supported LoRA training models
-- Stable Diffusion 1.5
-- Stable Diffusion 2.1
-- SDXL
-- SD3
-- FLUX.1-dev
-- FLUX.1-schnell
-- FLUX.1-kontext
-- OmniGen2
-- PixArt Alpha
-- PixArt Sigma
-- AuraFlow
-- Lumina2
-- HunyuanVideo
-- LTX
-- LTX2
-- Wan 2.1 / 2.2
-- Cosmos
-- Qwen-Image
-- Qwen-Image-Edit
-- Z-Image-Turbo
+## Why LoRA Pilot
+- **Three proven LoRA trainer stacks** in one place: Kohya SS, AI Toolkit, and Diffusion Pipe (plus TrainPilot for quick Kohya setup).
+- **30+ training model families** without juggling five half-compatible environments.
+- **ComfyUI + InvokeAI for rendering** with shared models, persistent outputs, and built-in model pulling.
+- **Full SD lifecycle covered**: dataset tagging/prep, model/dataset management, training, inference tuning, and media review.
+- **One control panel for ops**: ControlPilot handles services, downloads, logs, docs, and runtime controls.
+- **Persistent by design**: models, datasets, outputs, configs, and logs all live under `/workspace`.
 
-Currently supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev/schnell), Chroma, Lumina-Image 2.0, LTX-Video, HunyuanVideo, Wan2.1, Wan2.2, Cosmos, HiDream, Z-Image** and more for training, plus almost everything for inference.
+## What's in the box?
+- **Kohya SS** - battle-tested LoRA trainer UI with broad model support.
+- **AI Toolkit** - modern trainer stack wired into the same workspace and model store.
+- **Diffusion Pipe + TensorBoard** - scalable training pipeline plus live experiment telemetry.
+- **ComfyUI** (+ ComfyUI-Manager, ComfyUI-Downloader) - node-based inference playground and workflow automation.
+- **InvokeAI** - dedicated inference stack in its own venv, ready when you need it.
+- **ControlPilot** - central command center for services, models, datasets, docs, and training orchestration.
+- **TagPilot** - fast dataset tagging/prep flow.
+- **TrainPilot** - guided Kohya run flow with sane profile defaults.
+- **MediaPilot** - generated image browser/organizer for curation and review.
+- **JupyterLab** and **code-server** for notebook/dev workflows.
+- **Copilot sidecar (optional)** - workspace-aware assistant integration.
 
-##  What's in the box?
-- **ControlPilot** – redesigned command center for services, models, datasets, docs, and training flows
-- **🎨 ComfyUI** (+ ComfyUI-Manager preinstalled) - Your node-based playground
-- **🏋️ Kohya SS** - Where LoRAs are born (web UI included!)
-- **🧪 AI Toolkit** - first-class trainer wired into the same workspace
-- **📓 JupyterLab** - For when you need to get nerdy
-- **💻 code-server** - VS Code in your browser (because local setups are overrated)
-- **🔮 InvokeAI** - Living in its own virtual environment (the diva of the bunch)
-- **🚂 Diffusion Pipe** - Training + TensorBoard, all cozy together
-- **MediaPilot** – image viewer/manager embedded in ControlPilot (no extra public port)
-- **TagPilot** – dataset tagger embedded on the same port as ControlPilot
-- **TrainPilot** - the easiest way to run SDXL training on kohya
-- **GUI for dpipe** - a web UI for diffusion pipe
-- **🤖 Copilot (optional)** - a sidecar that wraps the `copilot` CLI so it can operate on `/workspace` with tools (via ControlPilot tab)
-
+## Supported training families
+Short version: it supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev/schnell/kontext), Chroma, Lumina-Image 2.0, LTX/LTX2, HunyuanVideo, Wan2.1/Wan2.2, Cosmos, HiDream, Qwen-Image, Z-Image** and more for training, plus almost everything for inference.
 
 ![Control Pilot screenshot](apps/Portal/static/lora-pilot-UI.heic)
 Screenshot of Control Pilot UI
 
-Everything is orchestrated by **supervisord** and writes to **/workspace** so you can actually keep your work. Imagine that! 
+Everything is orchestrated by **supervisord** and writes to **/workspace**, so reboots do not nuke your progress.
 
-Few of the thoughtful details that really bothered me when I was using other SD (Stable Diffusion) docker images:
-- If you want stabiity, just choose :stable and you'll always have 100% working image. Why change anything if it works? (I promise not to break things in :latest though)
-- when you login to Jupyter or VS code server, change the theme, add some plugins or setup a workspace - unlike with other containers, your settings and extensions will persist between reboots
-- no need to change venvs once you login - everything is already set up in the container
-- did you always had to install mc, nano or unzip after every reboot? No more!
-- there are loads of custom made scripts to make your workflow smoother and more efficient if you are a CLI guy; 
-- Need SDXL1.0 base model? "models pull sdxl-base", that's it! 
-- Want to run another kohya training without spending 30 minutes editing toml file?Just run "trainpilot", choose a dataset from the select box, desired lora quality and a proven-to-always-work toml will be generated for you based on the size of your dataset.
-- ControlPilot gives you a web UI to manage all services without needing to use the command line
-- prefer CLI and want to manage your services? Never been easier: "pilot status", "pilot start", "pilot stop" - all managed by supervisord
+Nice quality-of-life bits:
+- Want max stability? Use `:stable`. Want newest features? Use `:latest`.
+- Jupyter and code-server settings/plugins persist between restarts.
+- Venv switching gymnastics are gone; the stack is prewired.
+- Handy CLI tools (`mc`, `nano`, `unzip`, model scripts) are already there.
+- Need SDXL base? `models pull sdxl-base` and continue with your life.
+- Need a quick Kohya run? `trainpilot` builds a sane config from dataset size + selected quality.
+- Prefer UI? ControlPilot handles service state, logs, and workflows.
+- Prefer CLI? `pilot status`, `pilot start`, `pilot stop` are right there.
 
----
+## Installation
 
-## Default ports
+### Option 1: RunPod template (fastest)
+- One-click deploy: https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n
 
-| Service | Port |
-|---|---:|
-| Diffusion Pipe (TensorBoard) | `4444` |
-| ComfyUI | `5555` |
-| Kohya SS | `6666` |
-| ControlPilot | `7878` |
-| MediaPilot | `7878` (`/mediapilot`) |
-| code-server | `8443` |
-| JupyterLab | `8888` |
-| InvokeAI (optional) | `9090` |
-| AI Toolkit | `8675` |
-| Copilot sidecar (internal) | `7879` |
-
-Expose them in RunPod (or just use my RunPod template - https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n).
-
----
-
-## Local Docker (Compose)
-
-LoRA Pilot also runs on localhost via Docker Compose (GPU, CPU, and dev setups included).
-
-Quick start:
+### Option 2: Local Docker (Compose)
 ```bash
 cp .env.example .env
 docker compose -f docker-compose.yml up -d
 ```
 
-See `DOCKER_COMPOSE.md` for a short overview and `docker-compose/README.md` for the full guide.
+More setup docs:
+- Linux/macOS/local compose: `DOCKER_COMPOSE.md`
+- Full compose guide: `docker-compose/README.md`
+- Windows guide: `docs/WINDOWS_INSTALLATION.md`
 
 ---
 
 ## Storage layout
 
-The container treats **`/workspace`** as the only place that matters.
+`/workspace` is home base. Keep that persisted and you keep your project.
 
 Expected directories (created on boot if possible):
 
@@ -127,7 +88,7 @@ Expected directories (created on boot if possible):
 
 ### RunPod volume guidance
 
-The `/workspace` directory is the only volume that needs to be persisted. All your models, datasets, outputs, and configurations will be stored here. Whether you choose to use a network volume or local storage, this is the only directory that needs to be backed up.
+The `/workspace` directory is the only volume that truly matters. Models, datasets, outputs, and config all live there, so that is the one you back up.
 
 **Disk sizing (practical, not theoretical):**
 - Root/container disk: **20–30 GB** recommended 
@@ -146,6 +107,21 @@ Typical entries:
 - `CODE_SERVER_PASSWORD=...`
 
 ---
+
+## Default ports
+
+| Service | Port |
+|---|---:|
+| Diffusion Pipe (TensorBoard) | `4444` |
+| ComfyUI | `5555` |
+| Kohya SS | `6666` |
+| ControlPilot | `7878` |
+| MediaPilot | `7878` (`/mediapilot`) |
+| code-server | `8443` |
+| AI Toolkit | `8675` |
+| JupyterLab | `8888` |
+| InvokeAI (optional) | `9090` |
+| Copilot sidecar (internal) | `7879` |
 
 
 ## Ports (optional overrides)
@@ -226,38 +202,36 @@ models list
 
 ## Support
 
-This is not only my hobby project, but also a Docker image I actively use for production work.
-I create frequent builds to keep things fresh and working, and I am happy to implement reasonable feature requests.
+LoRA Pilot is not just a side project, it is actively used in real production workflows.
+Builds are frequent, breakages are taken seriously, and reasonable feature requests are welcome.
 If you need help or have questions, feel free to reach out or open an issue on GitHub.
 
 Reddit: u/no3us
 
 ## Sponsor
-
-If LoRA Pilot saves you time (or sanity), sponsor the project:
-
-[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on-GitHub-24292F?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo)
+[![Sponsor on GitHub](https://img.shields.io/badge/Sponsor%20on-GitHub-24292F?style=for-the-badge&logo=github)](https://github.com/sponsors/vavo) [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-vavo-5F7FFF?style=for-the-badge&logo=buy-me-a-coffee&logoColor=white)](https://www.buymeacoffee.com/vavo)
 
 ---
 
 ## 🆕 Recent Updates
 
+See full details in [`CHANGELOG`](CHANGELOG).
+
 ### ControlPilot 2.x redesign
-- New design system and cleaner UI flows for services, models, datasets, docs, and training operations.
-- Better service controls and model management UX in one place.
+- Unified command center for services, model/dataset management, trainers, logs, and docs.
+- Cleaner operations UX with better service actions, autostart control, model pulls, and dashboard telemetry.
 
-### MediaPilot integrated into ControlPilot
-- MediaPilot is now built-in and mounted under `/mediapilot` (same public port as ControlPilot).
-- Theme synchronization (light/dark) and ControlPilot visual consistency.
-- Bootstrap auto-seeds MediaPilot `.env` defaults for workspace paths and Comfy API URL.
+### MediaPilot and TagPilot workflow integration
+- **MediaPilot** is now the built-in output browser for fast curation, comparison, and cleanup.
+- **TagPilot** handles dataset tagging/prep in the same stack, including reliable large dataset saves to `/workspace`.
 
-### Services can update themselves from UI
-- Added service version checks and in-app update actions.
-- Update jobs run asynchronously with status/progress reporting and service restart handling.
+### Service maintenance and updateability
+- Added service version checks and in-app update actions in Services.
+- Added rollback metadata + boot-time reconcile flow driven by `/workspace/config/service-updates.toml`.
 
-### Training stack upgrades
-- AI Toolkit integrated as a first-class training service with persistent DB/config under `/workspace`.
-- Copilot sidecar support exposed in ControlPilot for workspace-aware automation flows.
+### Training + inference stack updates
+- Added AI Toolkit as a first-class trainer with persistent DB/config under `/workspace`.
+- Upgraded InvokeAI to `6.11.1`.
 
 ---
 
@@ -265,11 +239,13 @@ If LoRA Pilot saves you time (or sanity), sponsor the project:
 - ComfyUI - Node-based magic
 - ComfyUI-Manager - The organizer
 - Kohya SS - LoRA whisperer
+- AI Toolkit - modern trainer stack
 - code-server - Code anywhere
 - JupyterLab - Data scientist's best friend
 - InvokeAI - The fancy pants option
 - Diffusion Pipe - Training powerhouse
 - TensorBoard - Visualization tool
+- GitHub Copilot SDK/CLI - assistant foundation
 
 ## 📜 License
 MIT License - go wild, make cool stuff, just don't blame us if your AI starts writing poetry about toast.
@@ -278,5 +254,10 @@ Made with ❤️ and way too much coffee by vavo
 
 "If it works, don't touch it. If it doesn't, reboot. If that fails, we have Docker." 
     - Ancient sysadmin wisdom
+
+## Project links
+- GitHub repo: https://github.com/vavo/lora-pilot
+- Docker Hub image: https://hub.docker.com/r/notrius/lora-pilot
+- RunPod template: https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n
 
 ---

@@ -1,13 +1,44 @@
 let comfyWebSocket = null;
 let comfyStatusTimer = null;
+let comfyReconnectTimer = null;
+let comfyActive = false;
 let previewEnabled = true;
 let imageCount = 0;
 let lastGeneratedImage = null;
 let comfyPort = "5555";
 
+function isComfyViewMounted() {
+  return !!document.getElementById("comfy-iframe");
+}
+
+function clearComfyTimers() {
+  if (comfyStatusTimer) {
+    clearInterval(comfyStatusTimer);
+    comfyStatusTimer = null;
+  }
+  if (comfyReconnectTimer) {
+    clearTimeout(comfyReconnectTimer);
+    comfyReconnectTimer = null;
+  }
+}
+
+window.stopComfyUI = function () {
+  comfyActive = false;
+  clearComfyTimers();
+  if (comfyWebSocket) {
+    try {
+      comfyWebSocket.onclose = null;
+      comfyWebSocket.onerror = null;
+      comfyWebSocket.close();
+    } catch (e) {}
+    comfyWebSocket = null;
+  }
+};
+
 window.initComfyUI = function () {
   const iframeEl = document.getElementById("comfy-iframe");
   if (!iframeEl) return;
+  comfyActive = true;
 
   const toggleBtn = document.getElementById("preview-toggle");
   const clearBtn = document.getElementById("clear-preview");
@@ -23,7 +54,7 @@ window.initComfyUI = function () {
   checkComfyUIStatus();
   connectWebSocket();
 
-  if (comfyStatusTimer) clearInterval(comfyStatusTimer);
+  clearComfyTimers();
   comfyStatusTimer = setInterval(checkComfyUIStatus, 10000);
 
   setTimeout(loadLastGeneratedImage, 2000);
@@ -145,6 +176,7 @@ function showPlaceholder(message) {
 }
 
 function connectWebSocket() {
+  if (!comfyActive || !isComfyViewMounted()) return;
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl = `${protocol}//${window.location.host}/ws/comfy`;
 
@@ -183,7 +215,8 @@ function connectWebSocket() {
 
     comfyWebSocket.onclose = function () {
       updateConnectionStatus("disconnected", "Disconnected from ComfyUI");
-      setTimeout(connectWebSocket, 3000);
+      if (!comfyActive || !isComfyViewMounted()) return;
+      comfyReconnectTimer = setTimeout(connectWebSocket, 3000);
     };
 
     comfyWebSocket.onerror = function (error) {

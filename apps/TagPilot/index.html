@@ -98,7 +98,7 @@
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
             <div class="flex justify-center items-center gap-4">
-                <img src="/logo-tagpilot.svg" width="300" alt="TagPilot" class="mx-auto block">
+                <img src="./logo-tagpilot.svg" onerror="this.onerror=null;this.src='/logo-tagpilot.svg';" width="300" alt="TagPilot" class="mx-auto block">
             </div>
         </header>
 
@@ -485,6 +485,8 @@ Expected outcome is a human-readable continuous text consisting of several sente
         function getModel() { return localStorage.getItem('selectedModel') || 'gemini'; }
         function getApiKey() { return localStorage.getItem(getModel() + 'ApiKey') || ''; }
         function getWDKey() { return localStorage.getItem('wd14ApiKey') || ''; }
+        const GEMINI_MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+        const GROK_MODEL_CANDIDATES = ['grok-4-latest', 'grok-vision-latest'];
 
         async function fileToBase64(file) {
             return new Promise((resolve) => {
@@ -513,6 +515,90 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 if (text) return text;
             } catch (e) {}
             return `HTTP ${resp.status}`;
+        }
+
+        async function generateWithGemini(imageFile, apiKey, base64) {
+            const body = {
+                contents: [{ parts: [
+                    { text: "Provide detailed comma-separated tags for LoRA training." },
+                    { inline_data: { mime_type: imageFile.type, data: base64.split(',')[1] } }
+                ] }]
+            };
+            let lastModelError = '';
+
+            for (const modelName of GEMINI_MODEL_CANDIDATES) {
+                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const cand = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!cand) throw new Error(`Gemini response missing content (${modelName})`);
+                    return cand;
+                }
+
+                const err = await parseResponseError(resp);
+                const low = String(err || '').toLowerCase();
+                const oauthOnly = resp.status === 401 && (
+                    low.includes('api keys are not supported') ||
+                    low.includes('oauth2 access token') ||
+                    low.includes('assert a principal')
+                );
+                if (oauthOnly) {
+                    throw new Error('Gemini credentials rejected. Use a Google AI Studio API key (not Vertex OAuth credentials).');
+                }
+
+                const missingModel = resp.status === 404 && (low.includes('not found') || low.includes('not supported'));
+                if (!missingModel) {
+                    throw new Error(`Gemini error (${modelName}): ${err}`);
+                }
+                lastModelError = `${modelName}: ${err}`;
+            }
+
+            throw new Error(`Gemini error: no compatible model available. ${lastModelError}`.trim());
+        }
+
+        async function generateWithGrok(apiKey, base64) {
+            let lastModelError = '';
+            for (const modelName of GROK_MODEL_CANDIDATES) {
+                const resp = await fetch('https://api.x.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({
+                        model: modelName,
+                        messages: [{ role: 'user', content: [
+                            { type: 'text', text: 'Provide detailed comma-separated tags for LoRA training.' },
+                            { type: 'image_url', image_url: { url: base64 } }
+                        ] }],
+                        max_tokens: 300,
+                        stream: false,
+                        temperature: 0
+                    })
+                });
+
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const choice = data?.choices?.[0]?.message?.content;
+                    if (!choice) throw new Error(`Grok response missing content (${modelName})`);
+                    return choice;
+                }
+
+                const err = await parseResponseError(resp);
+                const low = String(err || '').toLowerCase();
+                const missingModel = resp.status === 404 && (
+                    low.includes('does not exist') ||
+                    low.includes('not found') ||
+                    low.includes('not have access')
+                );
+                if (!missingModel) {
+                    throw new Error(`Grok error (${modelName}): ${err}`);
+                }
+                lastModelError = `${modelName}: ${err}`;
+            }
+
+            throw new Error(`Grok error: no compatible model available. ${lastModelError}`.trim());
         }
 
         async function generateCaption(imageFile) {
@@ -561,42 +647,30 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
             let responseText = '';
             if (model === 'gemini') {
-                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [
-                            { text: "Provide detailed comma-separated tags for LoRA training." },
-                            { inline_data: { mime_type: imageFile.type, data: base64.split(',')[1] } }
-                        ] }]
-                    })
-                });
-                if (!resp.ok) throw new Error(`Gemini error: ${await parseResponseError(resp)}`);
-                const data = await resp.json();
-                const cand = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!cand) throw new Error('Gemini response missing content');
-                responseText = cand;
+                responseText = await generateWithGemini(imageFile, apiKey, base64);
             } else {
                 const isGrok = model === 'grok';
-                const endpoint = isGrok ? 'https://api.x.ai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions';
-                const modelName = isGrok ? 'grok-vision-latest' : 'gpt-4o';
-                const resp = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: modelName,
-                        messages: [{ role: 'user', content: [
-                            { type: 'text', text: 'Provide detailed comma-separated tags for LoRA training.' },
-                            { type: 'image_url', image_url: { url: base64 } }
-                        ] }],
-                        max_tokens: 300
-                    })
-                });
-                if (!resp.ok) throw new Error(`Completions error: ${await parseResponseError(resp)}`);
-                const data = await resp.json();
-                const choice = data?.choices?.[0]?.message?.content;
-                if (!choice) throw new Error('Completions response missing content');
-                responseText = choice;
+                if (isGrok) {
+                    responseText = await generateWithGrok(apiKey, base64);
+                } else {
+                    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: 'gpt-4o',
+                            messages: [{ role: 'user', content: [
+                                { type: 'text', text: 'Provide detailed comma-separated tags for LoRA training.' },
+                                { type: 'image_url', image_url: { url: base64 } }
+                            ] }],
+                            max_tokens: 300
+                        })
+                    });
+                    if (!resp.ok) throw new Error(`Completions error: ${await parseResponseError(resp)}`);
+                    const data = await resp.json();
+                    const choice = data?.choices?.[0]?.message?.content;
+                    if (!choice) throw new Error('Completions response missing content');
+                    responseText = choice;
+                }
             }
             return responseText.trim();
         }
@@ -1126,7 +1200,24 @@ Expected outcome is a human-readable continuous text consisting of several sente
             sorted.forEach(([tag, count]) => {
                 const pill = document.createElement('span');
                 pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-700 text-gray-300 hover:bg-gray-600';
-                pill.innerHTML = `${tag} <span class="ml-1 text-gray-500">(${count})</span> <button class="ml-2 hover:text-red-500" onclick="deleteTagGlobally('${tag}')">×</button>`;
+                const tagText = document.createElement('span');
+                tagText.textContent = tag;
+
+                const countText = document.createElement('span');
+                countText.className = 'ml-1 text-gray-500';
+                countText.textContent = `(${count})`;
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'ml-2 hover:text-red-500';
+                deleteBtn.textContent = '×';
+                deleteBtn.addEventListener('click', () => deleteTagGlobally(tag));
+
+                pill.appendChild(tagText);
+                pill.appendChild(document.createTextNode(' '));
+                pill.appendChild(countText);
+                pill.appendChild(document.createTextNode(' '));
+                pill.appendChild(deleteBtn);
                 tagViewerList.appendChild(pill);
             });
             totalTagsBadge.textContent = `${sorted.length} tags`;
@@ -1149,7 +1240,18 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 tags.forEach((tag, ti) => {
                     const pill = document.createElement('span');
                     pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-300';
-                    pill.innerHTML = `${tag} <button class="ml-1 hover:text-red-500" onclick="removeTagFromImage(${index}, ${ti})">×</button>`;
+                    const tagText = document.createElement('span');
+                    tagText.textContent = tag;
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'ml-1 hover:text-red-500';
+                    removeBtn.textContent = '×';
+                    removeBtn.addEventListener('click', () => removeTagFromImage(index, ti));
+
+                    pill.appendChild(tagText);
+                    pill.appendChild(document.createTextNode(' '));
+                    pill.appendChild(removeBtn);
                     wrapper.appendChild(pill);
                 });
                 const input = document.createElement('input');
@@ -1164,8 +1266,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                             tags.push(v);
                             item.tags = tags.join(', ');
                             renderTagsInCard(wrapper, index);
-                            input.value = '';
                             renderTagViewer();
+                            const nextInput = wrapper.querySelector('input[type="text"]');
+                            if (nextInput) nextInput.focus();
                         }
                     }
                 };
