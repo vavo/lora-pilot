@@ -4,6 +4,7 @@ console.log("GALLERY JS LOADED");
 import { openModal } from "./modal.js";
 import * as API from "./gallery-api.js";
 import { initDragSelect } from "./gallery-drag.js";
+import { appUrl } from "./base-path.js";
 
 /* -----------------------------------------------------
    STATE
@@ -79,19 +80,19 @@ function encodeFolderPath(folder) {
 function buildThumbUrl(filename, folder) {
   if (!isNonEmptyString(filename)) return "";
   const safeFilename = `${encodeURIComponent(filename)}${THUMB_EXT}`;
-  if (folder === "_root") return `./thumbs/${safeFilename}`;
-  if (folder === "InvokeAI") return `./thumbs/InvokeAI/${safeFilename}`;
+  if (folder === "_root") return appUrl(`thumbs/${safeFilename}`);
+  if (folder === "InvokeAI") return appUrl(`thumbs/InvokeAI/${safeFilename}`);
   const safeFolder = encodeFolderPath(folder);
-  return `./thumbs/${safeFolder}/${safeFilename}`;
+  return appUrl(`thumbs/${safeFolder}/${safeFilename}`);
 }
 
 function buildFullUrl(filename, folder) {
   if (!isNonEmptyString(filename)) return "";
   const safeFilename = encodeURIComponent(filename);
-  if (folder === "_root") return `./output/${safeFilename}`;
-  if (folder === "InvokeAI") return `./invoke/${safeFilename}`;
+  if (folder === "_root") return appUrl(`output/${safeFilename}`);
+  if (folder === "InvokeAI") return appUrl(`invoke/${safeFilename}`);
   const safeFolder = encodeFolderPath(folder);
-  return `./output/${safeFolder}/${safeFilename}`;
+  return appUrl(`output/${safeFolder}/${safeFilename}`);
 }
 
 const MAX_RETRIES = 2;

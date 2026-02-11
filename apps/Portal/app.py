@@ -385,7 +385,66 @@ def _normalize_env_value(raw: str) -> str:
     return value.strip()
 
 
+def _sync_mediapilot_static_hotfix(app_dir: Path) -> None:
+    source_static_dir = Path("/opt/pilot/apps/MediaPilot/static")
+    target_static_dir = app_dir / "static"
+    if not source_static_dir.exists() or not target_static_dir.exists():
+        return
+
+    index_file = target_static_dir / "index.html"
+    main_file = target_static_dir / "main.js"
+    base_path_file = target_static_dir / "base-path.js"
+
+    needs_sync = not base_path_file.exists()
+
+    try:
+        index_text = index_file.read_text(encoding="utf-8")
+    except Exception:
+        index_text = ""
+        needs_sync = True
+
+    if (
+        "import(`static/main.js" in index_text
+        or 'import("static/main.js' in index_text
+        or "import('static/main.js" in index_text
+        or "const staticBase = `${appBase}/static`;" not in index_text
+    ):
+        needs_sync = True
+
+    try:
+        main_text = main_file.read_text(encoding="utf-8")
+    except Exception:
+        main_text = ""
+        needs_sync = True
+
+    if 'from "./base-path.js"' not in main_text:
+        needs_sync = True
+
+    if not needs_sync:
+        return
+
+    for rel in (
+        "index.html",
+        "main.js",
+        "gallery.js",
+        "gallery-api.js",
+        "modal.js",
+        "base-path.js",
+    ):
+        src = source_static_dir / rel
+        dst = target_static_dir / rel
+        if not src.exists():
+            continue
+        try:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+        except Exception:
+            continue
+
+
 def _set_mediapilot_env_defaults(app_dir: Path) -> None:
+    _sync_mediapilot_static_hotfix(app_dir)
+
     comfy_port = os.environ.get("COMFY_PORT", "5555")
     defaults = {
         "MEDIAPILOT_OUTPUT_DIR": str(WORKSPACE_ROOT / "outputs" / "comfy"),
@@ -540,6 +599,40 @@ README_PRIMARY = Path("/opt/pilot/README.md")
 README_FALLBACK = Path("/workspace/README.md")
 CHANGELOG_PRIMARY = Path("/opt/pilot/CHANGELOG")
 CHANGELOG_FALLBACK = Path("/workspace/CHANGELOG")
+DOCS_ROOT_PRIMARY = Path("/opt/pilot/docs")
+DOCS_ROOT_FALLBACK = Path("/workspace/docs")
+DOCS_ROOT_DEV = Path(__file__).resolve().parents[2] / "docs"
+DOCS_SITEMAP_PRIMARY = DOCS_ROOT_PRIMARY / "README.md"
+DOCS_SITEMAP_FALLBACK = DOCS_ROOT_FALLBACK / "README.md"
+DOCS_SITEMAP_DEV = DOCS_ROOT_DEV / "README.md"
+
+
+def _docs_root_candidates() -> list[Path]:
+    roots: list[Path] = []
+    for candidate in (DOCS_ROOT_PRIMARY, DOCS_ROOT_FALLBACK, DOCS_ROOT_DEV):
+        try:
+            resolved = candidate.resolve()
+        except Exception:
+            continue
+        if resolved.exists() and resolved.is_dir():
+            roots.append(resolved)
+    return roots
+
+
+def _validate_docs_relative_path(raw_path: str) -> Optional[PurePosixPath]:
+    value = (raw_path or "").strip().replace("\\", "/")
+    if not value:
+        return None
+    path = PurePosixPath(value)
+    if path.is_absolute():
+        return None
+    if ".." in path.parts:
+        return None
+    if any(":" in part for part in path.parts):
+        return None
+    if path.suffix.lower() != ".md":
+        return None
+    return path
 
 @app.get("/api/models", response_model=List[models_service.ModelEntry])
 def list_models():
@@ -2439,19 +2532,47 @@ def get_trainpilot_toml():
 @app.get("/api/docs")
 def get_docs():
     if README_PRIMARY.exists():
-        return {"content": README_PRIMARY.read_text(encoding="utf-8")}
+        return {"content": README_PRIMARY.read_text(encoding="utf-8"), "source": "README.md"}
     if README_FALLBACK.exists():
-        return {"content": README_FALLBACK.read_text(encoding="utf-8")}
+        return {"content": README_FALLBACK.read_text(encoding="utf-8"), "source": "README.md"}
     raise HTTPException(status_code=404, detail="README not found")
 
 
 @app.get("/api/changelog")
 def get_changelog():
     if CHANGELOG_PRIMARY.exists():
-        return {"content": CHANGELOG_PRIMARY.read_text(encoding="utf-8")}
+        return {"content": CHANGELOG_PRIMARY.read_text(encoding="utf-8"), "source": "CHANGELOG"}
     if CHANGELOG_FALLBACK.exists():
-        return {"content": CHANGELOG_FALLBACK.read_text(encoding="utf-8")}
+        return {"content": CHANGELOG_FALLBACK.read_text(encoding="utf-8"), "source": "CHANGELOG"}
     raise HTTPException(status_code=404, detail="CHANGELOG not found")
+
+
+@app.get("/api/docs/sitemap")
+def get_docs_sitemap():
+    for candidate in (DOCS_SITEMAP_PRIMARY, DOCS_SITEMAP_FALLBACK, DOCS_SITEMAP_DEV):
+        if candidate.exists():
+            return {"content": candidate.read_text(encoding="utf-8"), "source": "docs/README.md"}
+    raise HTTPException(status_code=404, detail="docs/README.md not found")
+
+
+@app.get("/api/docs/file")
+def get_docs_file(path: str):
+    rel_path = _validate_docs_relative_path(path)
+    if rel_path is None:
+        raise HTTPException(status_code=400, detail="Invalid docs path")
+
+    for root in _docs_root_candidates():
+        candidate = (root / Path(*rel_path.parts)).resolve()
+        try:
+            if os.path.commonpath([str(root), str(candidate)]) != str(root):
+                continue
+        except Exception:
+            continue
+        if candidate.exists() and candidate.is_file():
+            source = f"docs/{rel_path.as_posix()}"
+            return {"content": candidate.read_text(encoding="utf-8"), "source": source}
+
+    raise HTTPException(status_code=404, detail="Requested docs file not found")
 
 
 @app.get("/api/mediapilot/status")

@@ -1,5 +1,6 @@
 // Cache-busting query for module imports to avoid stale browser caches.
 import { loadFolders, loadImages, resetGallery, ensureTagsLoaded } from "./gallery.js";
+import { appUrl } from "./base-path.js";
 
 console.log("MAIN JS LOADED");
 
@@ -142,13 +143,13 @@ function setAuthError(message) {
 }
 
 async function fetchAuthStatus() {
-  const res = await fetch("./auth/status");
+  const res = await fetch(appUrl("auth/status"));
   if (!res.ok) throw new Error(`Failed to fetch auth status: ${res.status}`);
   return res.json();
 }
 
 async function login(password) {
-  const res = await fetch("./auth/login", {
+  const res = await fetch(appUrl("auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),

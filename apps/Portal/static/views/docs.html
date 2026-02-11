@@ -1,14 +1,18 @@
 <style>
-  .markdown-body { font-size: 14px; line-height: 1.6; color: var(--text); }
-  .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { margin: 16px 0 8px; }
+  .markdown-body { font-size: 14px; line-height: 1.6; color: var(--text); word-break: break-word; }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 { margin: 16px 0 8px; scroll-margin-top: 84px; }
   .markdown-body p { margin: 8px 0; }
-  .markdown-body a { color: var(--accent); text-decoration: none; }
+  .markdown-body a { color: var(--accent); text-decoration: none; cursor: pointer; }
   .markdown-body a:hover { text-decoration: underline; }
   .markdown-body ul, .markdown-body ol { padding-left: 22px; margin: 8px 0; }
   .markdown-body li { margin: 4px 0; }
+  .markdown-body input[type="checkbox"] { margin-right: 8px; pointer-events: none; vertical-align: middle; }
   .markdown-body code { background: var(--pill); padding: 2px 4px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   .markdown-body pre { background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 8px; overflow: auto; }
   .markdown-body pre code { background: transparent; padding: 0; }
+  .markdown-body table { width: 100%; border-collapse: collapse; margin: 12px 0; display: block; overflow-x: auto; }
+  .markdown-body table thead th { background: var(--pill); }
+  .markdown-body th, .markdown-body td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; white-space: normal; }
   .markdown-body hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
   .markdown-body img { max-width: 100%; border-radius: 8px; background: var(--card); }
   .markdown-body blockquote { margin: 8px 0; padding-left: 12px; border-left: 3px solid var(--border); color: var(--muted); }
@@ -20,6 +24,7 @@
 <div class="card">
   <div class="docs-tabs">
     <button class="btn secondary active" id="docs-tab-readme">README</button>
+    <button class="btn secondary" id="docs-tab-documentation">Documentation</button>
     <button class="btn secondary" id="docs-tab-changelog">Changelog</button>
   </div>
   <div id="docs-status" class="status">Loading docs...</div>

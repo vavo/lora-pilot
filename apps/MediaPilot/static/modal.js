@@ -17,6 +17,7 @@ import {
   ensureTagsLoaded,
 } from "./gallery.js";
 import * as API from "./gallery-api.js";
+import { appUrl } from "./base-path.js";
 
 let modalFilename = null;
 
@@ -412,13 +413,13 @@ function buildFullUrl(filename) {
 
 function buildFullUrlForFolder(filename, folder) {
   const safeFilename = encodeURIComponent(filename);
-  if (folder === "_root") return `./output/${safeFilename}`;
-  if (folder === "InvokeAI") return `./invoke/${safeFilename}`;
+  if (folder === "_root") return appUrl(`output/${safeFilename}`);
+  if (folder === "InvokeAI") return appUrl(`invoke/${safeFilename}`);
   const safeFolder = (folder || "")
     .split("/")
     .map((part) => encodeURIComponent(part))
     .join("/");
-  return `./output/${safeFolder}/${safeFilename}`;
+  return appUrl(`output/${safeFolder}/${safeFilename}`);
 }
 
 /* -----------------------------------------------------

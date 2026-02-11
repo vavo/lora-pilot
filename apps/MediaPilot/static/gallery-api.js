@@ -2,15 +2,17 @@
    API HELPER
 ----------------------------------------------------- */
 
+import { appUrl } from "./base-path.js";
+
 export async function fetchFolders() {
-  const res = await fetch("./folders");
+  const res = await fetch(appUrl("folders"));
   if (!res.ok) throw new Error(`Failed to load folders: ${res.status}`);
   return res.json();
 }
 
 export async function createTag(name) {
   assertString("name", name);
-  const res = await fetch("./folders", {
+  const res = await fetch(appUrl("folders"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -80,7 +82,7 @@ export async function fetchImages(page, limit, folder, sort, search = "") {
   if (search && search.trim() !== "") {
     params.set("search", search.trim());
   }
-  const res = await fetch(`./images?${params.toString()}`);
+  const res = await fetch(appUrl(`images?${params.toString()}`));
   if (!res.ok) throw new Error(`Failed to load images: ${res.status}`);
   return res.json();
 }
@@ -90,9 +92,11 @@ export async function sendLike(filename, liked) {
   if (typeof liked !== "boolean") {
     throw new Error("Invalid liked state");
   }
-  const endpoint = liked
-    ? `./like/${encodeURIComponent(filename)}`
-    : `./unlike/${encodeURIComponent(filename)}`;
+  const endpoint = appUrl(
+    liked
+      ? `like/${encodeURIComponent(filename)}`
+      : `unlike/${encodeURIComponent(filename)}`
+  );
 
   const res = await fetch(endpoint, { method: "POST" });
   if (!res.ok) throw new Error(`Server returned ${res.status}`);
@@ -106,7 +110,9 @@ export async function sendTag(filename, oldFolder, newFolder) {
   const safeOldFolder = encodeURIComponent(oldFolder);
   const safeNewFolder = encodeURIComponent(newFolder);
   const res = await fetch(
-    `./tag?filename=${encodeURIComponent(filename)}&old_folder=${safeOldFolder}&new_folder=${safeNewFolder}`,
+    appUrl(
+      `tag?filename=${encodeURIComponent(filename)}&old_folder=${safeOldFolder}&new_folder=${safeNewFolder}`
+    ),
     { method: "POST" }
   );
   if (!res.ok) throw new Error(`Failed to tag ${filename}`);
@@ -120,9 +126,11 @@ export async function deleteImage(filename, folder) {
     .split("/")
     .map((part) => encodeURIComponent(part))
     .join("/");
-  const endpoint = folder === "_root"
-    ? `./image/${safeFilename}`
-    : `./image/${safeFolder}/${safeFilename}`;
+  const endpoint = appUrl(
+    folder === "_root"
+      ? `image/${safeFilename}`
+      : `image/${safeFolder}/${safeFilename}`
+  );
   const res = await fetch(endpoint, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to delete ${filename}`);
 }
@@ -131,7 +139,7 @@ export async function downloadBulk(folder, filenames) {
   assertString("folder", folder);
   assertStringArray("filenames", filenames);
 
-  const res = await fetch("./download/bulk", {
+  const res = await fetch(appUrl("download/bulk"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ folder, filenames }),
@@ -149,7 +157,7 @@ export async function upscaleBulk(folder, filenames) {
   assertString("folder", folder);
   assertStringArray("filenames", filenames);
 
-  const res = await fetch("./upscale/bulk", {
+  const res = await fetch(appUrl("upscale/bulk"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ folder, filenames }),
