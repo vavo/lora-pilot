@@ -6,6 +6,8 @@ Welcome to LoRA Training 101! This comprehensive chapter covers everything you n
 
 This chapter is structured to help you master LoRA training progressively:
 
+![LoRA Training 101 Concept Snapshot](../../assets/images/learning-101/lora-training-101-overview.svg)
+
 ### 📚 Learning Path
 1. **[What is LoRA Training?](what-is-loRA-training.md)** - Basic concepts and how it works
 2. **[Training Methods Compared](training-methods-compared.md)** - DreamBooth vs LoRA vs LyCORIS
@@ -96,6 +98,8 @@ Let's begin your journey into LoRA training!
 - **Day 15-21**: Advanced training projects
 - **Day 22-28**: Portfolio development and refinement
 - **Day 29-30**: Experimentation and optimization
+
+![LoRA Training 101 Learning Path](../../assets/images/learning-101/lora-training-101-learning-path.svg)
 
 ---
 

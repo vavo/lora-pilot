@@ -6,6 +6,8 @@ Welcome to Stable Diffusion 101! This comprehensive chapter is designed for abso
 
 This chapter is structured to help you learn progressively:
 
+![Stable Diffusion 101 Concept Snapshot](../../assets/images/learning-101/stable-diffusion-101-overview.svg)
+
 ### 📚 Learning Path
 1. **[What is Stable Diffusion?](what-is-stable-diffusion.md)** - Basic concepts and how it works
 2. **[Model Components Explained](model-components.md)** - Understanding checkpoints, LoRA, VAE, and more
@@ -93,6 +95,8 @@ Let's begin your journey into AI image generation!
 
 #### Week 4: Mastery
 - **Day 22-28**: Portfolio development and refinement
+
+![Stable Diffusion 101 Learning Path](../../assets/images/learning-101/stable-diffusion-101-learning-path.svg)
 
 ## 🎨 What Makes This Chapter Different
 

@@ -68,7 +68,6 @@ const ALLOWED_ATTRS = {
   input: new Set(["type", "checked", "disabled"]),
 };
 
-let docsContentClickBound = false;
 let currentDocSource = "";
 
 window.initDocs = async function () {
@@ -80,9 +79,9 @@ window.initDocs = async function () {
   tabDocumentation.onclick = () => loadDocsTab("documentation");
   tabChangelog.onclick = () => loadDocsTab("changelog");
 
-  if (!docsContentClickBound) {
+  if (!content.dataset.docsClickBound) {
     content.addEventListener("click", onDocsContentClick);
-    docsContentClickBound = true;
+    content.dataset.docsClickBound = "1";
   }
 
   await loadDocsTab("readme");
@@ -165,13 +164,39 @@ function renderDocIntoContent(contentNode, markdown, sourcePath) {
 }
 
 function onDocsContentClick(event) {
-  const anchor = event.target?.closest?.("a[data-doc-path]");
+  const anchor = event.target?.closest?.("a");
   if (!anchor) return;
-  event.preventDefault();
+
+  const tab = anchor.getAttribute("data-doc-tab") || "";
+  if (tab) {
+    event.preventDefault();
+    const fragment = anchor.getAttribute("data-doc-fragment") || "";
+    void (async () => {
+      await loadDocsTab(tab);
+      if (fragment) {
+        const nodes = getDocsNodes();
+        if (nodes) {
+          requestAnimationFrame(() => applyFragmentNavigation(fragment, nodes.content));
+        }
+      }
+    })();
+    return;
+  }
+
   const docPath = anchor.getAttribute("data-doc-path") || "";
-  const fragment = anchor.getAttribute("data-doc-fragment") || "";
-  if (!docPath) return;
-  void loadDocsPath(docPath, fragment);
+  if (docPath) {
+    event.preventDefault();
+    const fragment = anchor.getAttribute("data-doc-fragment") || "";
+    void loadDocsPath(docPath, fragment);
+    return;
+  }
+
+  const fragmentOnly = anchor.getAttribute("data-doc-fragment-only") || "";
+  if (fragmentOnly) {
+    event.preventDefault();
+    const nodes = getDocsNodes();
+    if (nodes) applyFragmentNavigation(fragmentOnly, nodes.content);
+  }
 }
 
 function renderMarkdown(markdown, sourcePath) {
@@ -268,6 +293,18 @@ function applyAllowedAttributes(sourceEl, targetEl, tag, sourcePath) {
         if (link.fragment) {
           targetEl.setAttribute("data-doc-fragment", link.fragment);
         }
+      } else if (link.kind === "tab") {
+        targetEl.setAttribute("href", "#");
+        targetEl.setAttribute("data-doc-tab", link.tab);
+        if (link.fragment) {
+          targetEl.setAttribute("data-doc-fragment", link.fragment);
+        }
+      } else if (link.kind === "anchor") {
+        const fragmentHref = link.fragment ? `#${link.fragment}` : "#";
+        targetEl.setAttribute("href", fragmentHref);
+        if (link.fragment) {
+          targetEl.setAttribute("data-doc-fragment-only", link.fragment);
+        }
       } else {
         targetEl.setAttribute("href", link.href);
         if (link.kind === "external") {
@@ -312,7 +349,7 @@ function sanitizeLinkReference(rawHref, sourcePath) {
   const href = String(rawHref || "").trim();
   if (!href) return null;
   if (/[\u0000-\u001F\u007F]/.test(href)) return null;
-  if (href.startsWith("#")) return { kind: "anchor", href };
+  if (href.startsWith("#")) return { kind: "anchor", fragment: href.slice(1) };
   if (/^\/\//.test(href)) return { kind: "external", href };
 
   const schemeMatch = href.match(/^([a-zA-Z][a-zA-Z\d+\-.]*):/);
@@ -325,6 +362,9 @@ function sanitizeLinkReference(rawHref, sourcePath) {
   }
 
   const { path, fragment } = splitPathAndFragment(href);
+  if (isChangelogLinkPath(path)) {
+    return { kind: "tab", tab: "changelog", fragment };
+  }
   const lowerPath = path.toLowerCase();
   const inDocsContext = (sourcePath || "").startsWith("docs/");
   const looksLikeDocsPath = path.startsWith("docs/") || path.startsWith("/docs/");
@@ -335,6 +375,19 @@ function sanitizeLinkReference(rawHref, sourcePath) {
   }
 
   return { kind: "relative", href };
+}
+
+function normalizeSimplePath(rawPath) {
+  return String(rawPath || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\.\/+/, "")
+    .replace(/^\/+/, "");
+}
+
+function isChangelogLinkPath(rawPath) {
+  const path = normalizeSimplePath(rawPath).toLowerCase();
+  return path === "changelog" || path === "changelog.md";
 }
 
 function sanitizeImageReference(rawSrc) {

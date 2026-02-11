@@ -6,6 +6,8 @@ Welcome to Datasets 101! This comprehensive chapter covers everything you need t
 
 This chapter is structured to help you master dataset creation and management:
 
+![Datasets 101 Concept Snapshot](../../assets/images/learning-101/datasets-101-overview.svg)
+
 ### 📚 Learning Path
 1. **[Dataset Terminology](dataset-terminology.md)** - Basic terms and concepts
 2. **[What Makes a Good Dataset](what-makes-a-good-dataset.md)** - Quality standards and principles
@@ -84,6 +86,8 @@ Let's begin your journey into creating amazing datasets!
 ### 🔍 Quality Assurance Section (Document 9)
 **Focus**: Ensuring dataset quality
 - **Dataset Validation and Testing**: Quality assurance methods
+
+![Datasets 101 Learning Path](../../assets/images/learning-101/datasets-101-learning-path.svg)
 
 ---
 

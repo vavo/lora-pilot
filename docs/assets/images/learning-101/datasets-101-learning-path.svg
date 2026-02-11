@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="740" viewBox="0 0 1400 740" role="img" aria-labelledby="title desc">
+  <title id="title">Datasets 101 Learning Path</title>
+  <desc id="desc">Nine-document path for dataset quality and validation.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#eff6ff"/>
+      <stop offset="100%" stop-color="#dbeafe"/>
+    </linearGradient>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#2563eb"/>
+    </marker>
+    <style>
+      .h1 { font: 800 40px 'Inter', 'Segoe UI', sans-serif; fill: #1e3a8a; }
+      .p  { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #1d4ed8; }
+      .s  { font: 700 17px 'Inter', 'Segoe UI', sans-serif; fill: #1e40af; }
+      .b  { font: 600 13px 'Inter', 'Segoe UI', sans-serif; fill: #1e3a8a; }
+      .n  { font: 800 18px 'Inter', 'Segoe UI', sans-serif; fill: #fff; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="740" fill="url(#bg)"/>
+  <text x="60" y="74" class="h1">Datasets 101: The Path from "Random Images" to "Trainable Data"</text>
+  <text x="60" y="108" class="p">Nine docs, one goal: eliminate silent dataset problems before training.</text>
+
+  <!-- top row -->
+  <g transform="translate(60,152)">
+    <rect width="240" height="138" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#3b82f6"/><text x="24" y="36" class="n">1</text>
+    <text x="58" y="40" class="s">Terminology</text>
+    <text x="58" y="64" class="b">Get shared language first.</text>
+    <text x="58" y="86" class="b">Less confusion later.</text>
+  </g>
+  <g transform="translate(320,152)">
+    <rect width="240" height="138" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#3b82f6"/><text x="24" y="36" class="n">2</text>
+    <text x="58" y="40" class="s">Good Dataset</text>
+    <text x="58" y="64" class="b">Quality criteria.</text>
+    <text x="58" y="86" class="b">What to optimize for.</text>
+  </g>
+  <g transform="translate(580,152)">
+    <rect width="240" height="138" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#3b82f6"/><text x="24" y="36" class="n">3</text>
+    <text x="58" y="40" class="s">Collection Strategy</text>
+    <text x="58" y="64" class="b">Gather with intent,</text>
+    <text x="58" y="86" class="b">not screenshot roulette.</text>
+  </g>
+  <g transform="translate(840,152)">
+    <rect width="240" height="138" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#3b82f6"/><text x="24" y="36" class="n">4</text>
+    <text x="58" y="40" class="s">Caption + Tagging</text>
+    <text x="58" y="64" class="b">Text supervision quality.</text>
+    <text x="58" y="86" class="b">Where many runs die.</text>
+  </g>
+  <g transform="translate(1100,152)">
+    <rect width="240" height="138" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#3b82f6"/><text x="24" y="36" class="n">5</text>
+    <text x="58" y="40" class="s">Image Processing</text>
+    <text x="58" y="64" class="b">Resize/crop hygiene.</text>
+    <text x="58" y="86" class="b">Keep signal consistent.</text>
+  </g>
+
+  <!-- bottom row -->
+  <g transform="translate(140,380)">
+    <rect width="260" height="142" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#2563eb"/><text x="24" y="36" class="n">6</text>
+    <text x="58" y="40" class="s">Organization</text>
+    <text x="58" y="64" class="b">Naming, folders, versions.</text>
+    <text x="58" y="86" class="b">Future-you says thanks.</text>
+  </g>
+  <g transform="translate(430,380)">
+    <rect width="260" height="142" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#2563eb"/><text x="24" y="36" class="n">7</text>
+    <text x="58" y="40" class="s">Image LoRA Datasets</text>
+    <text x="58" y="64" class="b">Character/style-focused rules.</text>
+    <text x="58" y="86" class="b">Practical boundaries.</text>
+  </g>
+  <g transform="translate(720,380)">
+    <rect width="260" height="142" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#2563eb"/><text x="24" y="36" class="n">8</text>
+    <text x="58" y="40" class="s">Video LoRA Datasets</text>
+    <text x="58" y="64" class="b">Temporal consistency matters.</text>
+    <text x="58" y="86" class="b">Frames are not free images.</text>
+  </g>
+  <g transform="translate(1010,380)">
+    <rect width="330" height="142" rx="16" fill="#fff" stroke="#93c5fd"/>
+    <circle cx="30" cy="30" r="18" fill="#2563eb"/><text x="24" y="36" class="n">9</text>
+    <text x="58" y="40" class="s">Validation + Testing</text>
+    <text x="58" y="64" class="b">Run small tests before long training.</text>
+    <text x="58" y="86" class="b">Catch bad assumptions early.</text>
+  </g>
+
+  <line x1="300" y1="221" x2="312" y2="221" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="560" y1="221" x2="572" y2="221" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="820" y1="221" x2="832" y2="221" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1080" y1="221" x2="1092" y2="221" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <line x1="1220" y1="296" x2="1220" y2="364" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1010" y1="452" x2="992" y2="452" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="720" y1="452" x2="702" y2="452" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="430" y1="452" x2="412" y2="452" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="60" y="574" width="1280" height="100" rx="16" fill="#fff" stroke="#93c5fd"/>
+  <text x="86" y="618" class="s">Production rule: if dataset validation is skipped, debugging time doubles later.</text>
+  <text x="86" y="644" class="b">Expensive training is a terrible place to discover basic data issues.</text>
+</svg>

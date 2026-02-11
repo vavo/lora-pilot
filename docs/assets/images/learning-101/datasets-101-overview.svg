@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">Datasets 101 Overview</title>
+  <desc id="desc">Dataset pipeline from collection to validation for LoRA training.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f0fdf4"/>
+      <stop offset="100%" stop-color="#dcfce7"/>
+    </linearGradient>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#15803d"/>
+    </marker>
+    <style>
+      .h1 { font: 800 42px 'Inter', 'Segoe UI', sans-serif; fill: #14532d; }
+      .h2 { font: 700 23px 'Inter', 'Segoe UI', sans-serif; fill: #14532d; }
+      .p { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #166534; }
+      .small { font: 500 14px 'Inter', 'Segoe UI', sans-serif; fill: #166534; }
+      .n { font: 800 18px 'Inter', 'Segoe UI', sans-serif; fill: #fff; }
+      .k { font: 700 16px 'Inter', 'Segoe UI', sans-serif; fill: #14532d; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="760" fill="url(#bg)"/>
+  <text x="58" y="76" class="h1">Datasets 101: Garbage In, Garbage Out (Still True)</text>
+  <text x="58" y="110" class="p">Model quality is mostly dataset quality with fancy branding on top.</text>
+
+  <g transform="translate(58,154)">
+    <rect width="238" height="180" rx="18" fill="#fff" stroke="#86efac"/>
+    <circle cx="34" cy="34" r="18" fill="#16a34a"/><text x="28" y="40" class="n">1</text>
+    <text x="62" y="42" class="h2">Collect</text>
+    <text x="24" y="78" class="small">Diverse angles</text>
+    <text x="24" y="102" class="small">Consistent subject/style</text>
+    <text x="24" y="126" class="small">Enough coverage</text>
+    <text x="24" y="150" class="small">No random junk shots</text>
+  </g>
+
+  <g transform="translate(326,154)">
+    <rect width="238" height="180" rx="18" fill="#fff" stroke="#86efac"/>
+    <circle cx="34" cy="34" r="18" fill="#16a34a"/><text x="28" y="40" class="n">2</text>
+    <text x="62" y="42" class="h2">Clean</text>
+    <text x="24" y="78" class="small">Drop duplicates</text>
+    <text x="24" y="102" class="small">Fix broken crops</text>
+    <text x="24" y="126" class="small">Normalize dimensions</text>
+    <text x="24" y="150" class="small">Remove outliers</text>
+  </g>
+
+  <g transform="translate(594,154)">
+    <rect width="238" height="180" rx="18" fill="#fff" stroke="#86efac"/>
+    <circle cx="34" cy="34" r="18" fill="#16a34a"/><text x="28" y="40" class="n">3</text>
+    <text x="62" y="42" class="h2">Caption</text>
+    <text x="24" y="78" class="small">Descriptive, specific</text>
+    <text x="24" y="102" class="small">Stable naming style</text>
+    <text x="24" y="126" class="small">Avoid contradictions</text>
+    <text x="24" y="150" class="small">Tag what matters</text>
+  </g>
+
+  <g transform="translate(862,154)">
+    <rect width="238" height="180" rx="18" fill="#fff" stroke="#86efac"/>
+    <circle cx="34" cy="34" r="18" fill="#16a34a"/><text x="28" y="40" class="n">4</text>
+    <text x="62" y="42" class="h2">Organize</text>
+    <text x="24" y="78" class="small">Clear folder structure</text>
+    <text x="24" y="102" class="small">Consistent filenames</text>
+    <text x="24" y="126" class="small">Version snapshots</text>
+    <text x="24" y="150" class="small">Reproducible pipeline</text>
+  </g>
+
+  <g transform="translate(1130,154)">
+    <rect width="212" height="180" rx="18" fill="#fff" stroke="#86efac"/>
+    <circle cx="34" cy="34" r="18" fill="#16a34a"/><text x="28" y="40" class="n">5</text>
+    <text x="62" y="42" class="h2">Validate</text>
+    <text x="24" y="78" class="small">Small test run</text>
+    <text x="24" y="102" class="small">Check drift/artifacts</text>
+    <text x="24" y="126" class="small">Adjust and repeat</text>
+  </g>
+
+  <line x1="296" y1="244" x2="316" y2="244" stroke="#15803d" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="564" y1="244" x2="584" y2="244" stroke="#15803d" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="832" y1="244" x2="852" y2="244" stroke="#15803d" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1100" y1="244" x2="1120" y2="244" stroke="#15803d" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="58" y="384" width="1284" height="312" rx="20" fill="#fff" stroke="#86efac"/>
+  <text x="86" y="430" class="h2">Fast Quality Check Before Training</text>
+
+  <rect x="86" y="458" width="610" height="208" rx="14" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="112" y="494" class="k">Green Flags</text>
+  <text x="112" y="524" class="small">- Subject is recognizable across all images</text>
+  <text x="112" y="550" class="small">- Captions describe visible facts, not fan fiction</text>
+  <text x="112" y="576" class="small">- Pose, lighting, and framing vary enough</text>
+  <text x="112" y="602" class="small">- No heavy blur/compression garbage</text>
+  <text x="112" y="628" class="small">- 20-40 solid images beats 400 inconsistent ones</text>
+
+  <rect x="726" y="458" width="586" height="208" rx="14" fill="#fef2f2" stroke="#fca5a5"/>
+  <text x="752" y="494" class="k">Red Flags</text>
+  <text x="752" y="524" class="small">- Duplicate spam with tiny crop differences</text>
+  <text x="752" y="550" class="small">- Contradictory captions for the same visual pattern</text>
+  <text x="752" y="576" class="small">- Mixing different identities/styles in one concept set</text>
+  <text x="752" y="602" class="small">- Captions full of irrelevant fluff and prompt noise</text>
+  <text x="752" y="628" class="small">- No test run before a long expensive training job</text>
+</svg>

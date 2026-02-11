@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="740" viewBox="0 0 1400 740" role="img" aria-labelledby="title desc">
+  <title id="title">Stable Diffusion 101 Learning Path</title>
+  <desc id="desc">Eight-step learning map from fundamentals to practical output.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fff7ed"/>
+      <stop offset="100%" stop-color="#ffedd5"/>
+    </linearGradient>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#ea580c"/>
+    </marker>
+    <style>
+      .h1 { font: 800 40px 'Inter', 'Segoe UI', sans-serif; fill: #7c2d12; }
+      .p { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #9a3412; }
+      .s { font: 700 18px 'Inter', 'Segoe UI', sans-serif; fill: #7c2d12; }
+      .b { font: 600 14px 'Inter', 'Segoe UI', sans-serif; fill: #9a3412; }
+      .n { font: 800 20px 'Inter', 'Segoe UI', sans-serif; fill: #ffffff; }
+    </style>
+  </defs>
+  <rect width="1400" height="740" fill="url(#bg)"/>
+
+  <text x="60" y="74" class="h1">Stable Diffusion 101: The Non-Overwhelming Route</text>
+  <text x="60" y="108" class="p">Read in this order so you stop guessing and start shipping images.</text>
+
+  <!-- Row 1 -->
+  <g transform="translate(60,150)">
+    <rect x="0" y="0" width="300" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#f97316"/><text x="30" y="43" class="n">1</text>
+    <text x="70" y="46" class="s">What is SD?</text>
+    <text x="70" y="74" class="b">Mental model: noise -> image.</text>
+    <text x="70" y="96" class="b">No math panic required.</text>
+  </g>
+
+  <g transform="translate(390,150)">
+    <rect x="0" y="0" width="300" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#f97316"/><text x="30" y="43" class="n">2</text>
+    <text x="70" y="46" class="s">Model Components</text>
+    <text x="70" y="74" class="b">Checkpoint, LoRA, VAE, CLIP.</text>
+    <text x="70" y="96" class="b">Who does what.</text>
+  </g>
+
+  <g transform="translate(720,150)">
+    <rect x="0" y="0" width="300" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#f97316"/><text x="30" y="43" class="n">3</text>
+    <text x="70" y="46" class="s">Complete Model Guide</text>
+    <text x="70" y="74" class="b">Pick the right base model.</text>
+    <text x="70" y="96" class="b">Avoid random trial-and-error.</text>
+  </g>
+
+  <g transform="translate(1050,150)">
+    <rect x="0" y="0" width="290" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#f97316"/><text x="30" y="43" class="n">4</text>
+    <text x="70" y="46" class="s">Generation Parameters</text>
+    <text x="70" y="74" class="b">Steps, CFG, sampler, seed.</text>
+    <text x="70" y="96" class="b">The knobs that matter.</text>
+  </g>
+
+  <!-- Row 2 -->
+  <g transform="translate(60,380)">
+    <rect x="0" y="0" width="300" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#ea580c"/><text x="30" y="43" class="n">5</text>
+    <text x="70" y="46" class="s">Prompting Fundamentals</text>
+    <text x="70" y="74" class="b">Describe intent, not vibes only.</text>
+    <text x="70" y="96" class="b">Get predictable results.</text>
+  </g>
+
+  <g transform="translate(390,380)">
+    <rect x="0" y="0" width="300" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#ea580c"/><text x="30" y="43" class="n">6</text>
+    <text x="70" y="46" class="s">Advanced Techniques</text>
+    <text x="70" y="74" class="b">Inpaint, outpaint, ControlNet.</text>
+    <text x="70" y="96" class="b">Edit instead of regenerate.</text>
+  </g>
+
+  <g transform="translate(720,380)">
+    <rect x="0" y="0" width="300" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#ea580c"/><text x="30" y="43" class="n">7</text>
+    <text x="70" y="46" class="s">Character Consistency</text>
+    <text x="70" y="74" class="b">Reuse identity across scenes.</text>
+    <text x="70" y="96" class="b">LoRA-driven continuity.</text>
+  </g>
+
+  <g transform="translate(1050,380)">
+    <rect x="0" y="0" width="290" height="150" rx="18" fill="#fff" stroke="#fdba74"/>
+    <circle cx="36" cy="36" r="20" fill="#ea580c"/><text x="30" y="43" class="n">8</text>
+    <text x="70" y="46" class="s">Practical Examples</text>
+    <text x="70" y="74" class="b">Real projects, not toy prompts.</text>
+    <text x="70" y="96" class="b">From concept to deliverable.</text>
+  </g>
+
+  <line x1="360" y1="225" x2="378" y2="225" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="690" y1="225" x2="708" y2="225" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1020" y1="225" x2="1038" y2="225" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <line x1="1200" y1="312" x2="1200" y2="360" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1050" y1="455" x2="1032" y2="455" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="720" y1="455" x2="702" y2="455" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="390" y1="455" x2="372" y2="455" stroke="#ea580c" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="60" y="586" width="1280" height="96" rx="16" fill="#fff" stroke="#fdba74"/>
+  <text x="86" y="628" class="s">Cheat code: Documents 1-4 make you competent. Documents 5-8 make you dangerous.</text>
+  <text x="86" y="654" class="b">Translation: stop random toggling and start intentional generation.</text>
+</svg>
