@@ -140,6 +140,60 @@ docker compose exec lora-pilot supervisorctl status
 docker compose exec lora-pilot ls -la /workspace/{models,datasets,outputs,config,logs}
 ```
 
+## 11) Common Override Recipes
+
+### Keep default workspace, move only models to fast disk
+
+```yaml
+services:
+  lora-pilot:
+    volumes:
+      - ./workspace:/workspace
+      - /mnt/nvme/models:/workspace/models
+```
+
+### Run on alternate host ports (no internal path changes)
+
+```yaml
+services:
+  lora-pilot:
+    ports:
+      - "8787:7878"
+      - "5655:5555"
+      - "9190:9090"
+```
+
+### Disable boot reconcile for service updates in staging
+
+```yaml
+services:
+  lora-pilot:
+    environment:
+      - SERVICE_UPDATES_BOOT_RECONCILE=0
+```
+
+### Enable faster troubleshooting loop in dev
+
+Use `docker-compose.dev.yml` so Portal/scripts/supervisor config are mounted from repo and editable without rebuilding image.
+
+## 12) Change Application Matrix
+
+| Change Type | Needs `supervisorctl restart` | Needs container recreate (`docker compose up -d`) |
+|---|---:|---:|
+| UI/API-level settings only | sometimes | no |
+| Edit `/workspace/config/service-updates.toml` | no | no |
+| Edit mounted script in dev compose | yes (target service) | no |
+| Change `.env` port/image/runtime vars | no | yes |
+| Change volume mappings | no | yes |
+| Change Dockerfile build args | no | yes (new image + recreate) |
+
+## 13) Anti-Patterns
+
+- Editing `docker-compose.yml` directly for local-only changes: use `docker-compose.override.yml`.
+- Storing models outside `/workspace/models` without mount mapping: tools won’t see them consistently.
+- Mixing old `docker-compose` and new `docker compose` command styles in team docs/scripts.
+- Restarting entire container for every issue: prefer `supervisorctl restart <service>` first.
+
 ## Related
 
 - [Docker Compose](docker-compose.md)

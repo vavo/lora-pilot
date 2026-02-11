@@ -17,6 +17,8 @@ Current implementation provides:
 - **Supervisor service name**: `diffpipe`
 - **Startup script**: `/opt/pilot/diffusion-pipe.sh`
 
+![Diffusion Pipe ControlPilot Tab](../assets/images/controlpilot/controlpilot-train-dpipes.png)
+
 ## ⚙️ Runtime Modes
 
 The supervisor service behaves differently based on `DIFFPIPE_CONFIG`:

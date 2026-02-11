@@ -13,6 +13,10 @@ TagPilot supports:
 - Batch tagging/captioning with multiple AI providers
 - Export ZIP or save directly to workspace dataset folders
 
+![TagPilot Dark Mode Edit View](../assets/images/controlpilot/controlpilot-tag-images-dark-edit-tags.png)
+![TagPilot Settings Modal with Model Dropdown](../assets/images/controlpilot/controlpilot-tag-images-dark-settings-model-dropdown.png)
+![TagPilot Tagging Settings Modal](../assets/images/controlpilot/controlpilot-tag-images-dark-tagging-settings-modal.png)
+
 ## 🚀 Access
 
 - **ControlPilot tab**: `TagPilot`
@@ -65,6 +69,18 @@ Notes:
 5. Manually fix tags in card editor or global tag viewer.
 6. Click `Save to /workspace/datasets`.
 7. Train with Kohya/AI Toolkit/TrainPilot using that dataset.
+
+## ⌨️ Keyboard Shortcuts
+
+Shortcuts currently implemented in `apps/TagPilot/index.html`:
+
+| Context | Shortcut | Action |
+|---|---|---|
+| Preview modal open | `ArrowLeft` / `ArrowRight` | Previous / next preview image |
+| Global | `Escape` | Close preview, cancel crop, and close tag/caption settings modals (when batch processing is not running) |
+| Tag input field (`Add tag...`) | `Enter` or `,` | Commit typed tag as a tag pill |
+
+Additional global navigation/edit shortcuts beyond the above are **Not found in repo**.
 
 ## 🔌 Integration Endpoints
 

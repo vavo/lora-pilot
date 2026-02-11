@@ -38,6 +38,9 @@ ControlPilot Dashboard
 
 ### Home Dashboard
 
+![ControlPilot Dashboard](../assets/images/controlpilot/controlpilot-dashboard.png)
+![ControlPilot Dashboard Shutdown Countdown](../assets/images/controlpilot/controlpilot-dashboard-shutdown-countdown.png)
+
 #### Quick Stats
 - **Active Services**: Number of running services
 - **GPU Usage**: Current GPU memory utilization
@@ -56,6 +59,9 @@ ControlPilot Dashboard
 - **Recent Logs**: Latest system events and errors
 
 ### Services Management
+
+![ControlPilot Services](../assets/images/controlpilot/controlpilot-services.png)
+![ControlPilot Services Invoke Log Modal](../assets/images/controlpilot/controlpilot-services-invoke-log-modal.png)
 
 #### Service Overview
 Each service card displays:
@@ -85,6 +91,8 @@ Click on any service to see:
 
 ### Model Management
 
+![ControlPilot Models](../assets/images/controlpilot/controlpilot-models.png)
+
 #### Model Library
 - **Available Models**: Browse downloadable models
 - **Installed Models**: View installed models
@@ -111,6 +119,8 @@ For each model, you can see:
 
 ### Dataset Tools
 
+![ControlPilot Datasets Upload Modal](../assets/images/controlpilot/controlpilot-datasets-upload-modal.png)
+
 #### TagPilot Integration
 - **Launch TagPilot**: Open dataset tagging interface
 - **Recent Datasets**: View recently created datasets
@@ -122,6 +132,11 @@ For each model, you can see:
 - **Image Gallery**: Browse generated images
 - **Batch Operations**: Organize and process images
 - **Export Options**: Download or share collections
+
+### Docs and Support Tabs
+
+![ControlPilot Docs Tab](../assets/images/controlpilot/controlpilot-docs.png)
+![ControlPilot Support Tab](../assets/images/controlpilot/controlpilot-support.png)
 
 ### Training Orchestration
 

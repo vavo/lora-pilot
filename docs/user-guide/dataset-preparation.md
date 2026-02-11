@@ -42,6 +42,8 @@ Caption/tag files are plain `.txt` files next to images.
 4. Save back to `/workspace/datasets` (full save or incremental save flow).
 5. Use the dataset name (for example `1_my_set`) in training tools.
 
+![ControlPilot Dataset Upload Modal](../assets/images/controlpilot/controlpilot-datasets-upload-modal.png)
+
 ## API Workflow (Equivalent)
 
 ### Create a dataset

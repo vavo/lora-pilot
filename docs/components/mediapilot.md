@@ -83,6 +83,32 @@ Metadata is extracted from image metadata and ComfyUI prompt JSON where availabl
 2. Use placeholder `__INPUT_IMAGE__` for input image and `__OUTPUT_PREFIX__` for output prefix.
 3. Select images and run bulk upscale.
 
+## ⌨️ Keyboard Shortcuts
+
+### Gallery view
+
+| Shortcut | Action |
+|---|---|
+| `Delete` / `Backspace` | Delete selected images |
+| `Space` (`Spacebar` legacy) | Like/unlike selected images |
+| `Enter` | Open tag menu for selected images |
+
+Notes:
+- Gallery shortcuts work only when at least one image is selected.
+- Shortcuts are ignored while typing in inputs/textareas/contenteditable fields.
+
+### Modal view
+
+| Shortcut | Action |
+|---|---|
+| `Escape` | Close modal |
+| `Delete` / `Backspace` | Delete current image |
+| `ArrowLeft` / `ArrowRight` | Previous / next image |
+| `ArrowUp` / `ArrowDown` | Move up / down by grid row |
+| `Space` | Like/unlike current image |
+| `Enter` | Open tag dropdown |
+| `M` | Toggle magnifier at cursor |
+
 ## 🔌 API Reference (Core)
 
 | Endpoint | Method | Description |

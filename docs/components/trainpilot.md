@@ -19,6 +19,8 @@ Current implementation runs `sd-scripts/sdxl_train_network.py` and is SDXL-focus
 - Open `TrainPilot` tab in ControlPilot (`http://localhost:7878`)
 - Select dataset, output name, profile, then `Start`
 
+![TrainPilot with Copilot Drawer](../assets/images/controlpilot/controlpilot-train-kohya-copilot.png)
+
 ### Script path
 - `/workspace/apps/TrainPilot/trainpilot.sh`
 

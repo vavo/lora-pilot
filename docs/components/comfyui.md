@@ -19,6 +19,8 @@ ComfyUI offers:
 2. **Direct URL**: http://localhost:5555
 3. **CLI**: `docker exec lora-pilot supervisorctl status comfyui`
 
+![ComfyUI Embedded in ControlPilot](../assets/images/controlpilot/controlpilot-comfyui.png)
+
 ### First Workflow
 
 1. **Load Model**: Add "CheckpointLoader" node and select a model

@@ -2,6 +2,32 @@
 
 This page documents environment variables currently used by LoRA Pilot runtime scripts, ControlPilot services, Docker Compose files, and Docker image build args.
 
+## High-Impact Quick Reference
+
+If you only care about the knobs that usually matter:
+
+| Area | Variables |
+|---|---|
+| Container image/runtime | `LORA_PILOT_IMAGE`, `TZ`, `NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES` |
+| Core ports | `PORTAL_PORT`, `COMFY_PORT`, `KOHYA_PORT`, `INVOKE_PORT`, `DIFFPIPE_PORT`, `AI_TOOLKIT_PORT` |
+| Auth/secrets | `HF_TOKEN`, `SUPERVISOR_ADMIN_PASSWORD`, `JUPYTER_TOKEN`, `CODE_SERVER_PASSWORD` |
+| Service update controls | `SERVICE_UPDATES_BOOT_RECONCILE`, `SERVICE_UPDATES_CONFIG_PATH`, `SERVICE_UPDATES_ROLLBACK_LOG_PATH` |
+| Diffusion Pipe behavior | `DIFFPIPE_CONFIG`, `DIFFPIPE_NUM_GPUS`, `DIFFPIPE_LOGDIR`, `DIFFPIPE_TENSORBOARD` |
+| Media/Tag sync behavior | `MEDIAPILOT_SYNC_ON_BOOT`, `MEDIAPILOT_FORCE_ENV_DEFAULTS`, `TAGPILOT_SYNC_ON_BOOT` |
+
+## Inspect Effective Values
+
+```bash
+# Show container env (running values)
+docker exec lora-pilot env | sort
+
+# Show bootstrapped secrets
+docker exec lora-pilot sed -n '1,160p' /workspace/config/secrets.env
+
+# Show MediaPilot app env file (if present)
+docker exec lora-pilot sed -n '1,200p' /workspace/apps/MediaPilot/.env
+```
+
 ## Runtime Config Sources
 
 Runtime values are layered in this order:
@@ -10,6 +36,11 @@ Runtime values are layered in this order:
 2. Defaults from `docker-compose*.yml` and `config/env.defaults`.
 3. Bootstrapping in `scripts/bootstrap.sh` (creates `/workspace/config/secrets.env` and sets defaults).
 4. Per-service startup scripts (for example `scripts/start-jupyter.sh`, `scripts/comfy.sh`).
+
+Practical implication:
+- Same variable can be defined in multiple places.
+- Later layers can override earlier defaults.
+- Some startup scripts force values regardless of base env defaults.
 
 ## Compose/Host Variables
 
@@ -61,6 +92,9 @@ Notes:
 | `JUPYTER_ALLOW_ORIGIN_PAT` | empty | Appended to RunPod/localhost default allowlist regex |
 | `JUPYTER_RUNTIME_DIR` | forced to `/tmp/jupyter-runtime` in `start-jupyter.sh` | Runtime files kept off workspace mount |
 
+Note:
+- `start-jupyter.sh` forces `HOME` and XDG paths under `/workspace/home/root` and sets runtime dir to `/tmp/jupyter-runtime`.
+
 ### Diffusion Pipe
 
 | Variable | Default | Notes |
@@ -91,6 +125,16 @@ Notes:
 | `COPILOT_XDG_CONFIG_HOME` | `/workspace/home/root/.config` | Sidecar config root |
 | `COPILOT_CWD` | `/workspace` | Default execution cwd |
 | `COPILOT_TIMEOUT_SECONDS` | `1800` | Sidecar request timeout |
+
+### code-server Runtime
+
+| Variable | Default | Notes |
+|---|---|---|
+| `CODE_SERVER_PORT` | `8443` | Bind port |
+| `CODE_SERVER_PASSWORD` | generated when missing | Loaded from `/workspace/config/secrets.env` |
+
+Note:
+- `start-code-server.sh` uses fixed workspace-backed dirs under `/workspace/code-server/*` and `/workspace/home/root` for state.
 
 ### Model Management + ControlPilot Internals
 
@@ -171,6 +215,23 @@ TZ=America/New_York
 PORTAL_PORT=7878
 SUPERVISOR_ADMIN_PASSWORD=change_me
 HF_TOKEN=
+```
+
+## When Changes Take Effect
+
+| Change | Restart service | Recreate container |
+|---|---:|---:|
+| Update token via API (`/api/hf-token`, `/api/copilot/token`) | usually no | no |
+| Edit `service-updates.toml` | no | no |
+| Change `.env` port/image/GPU vars | no | yes |
+| Change compose environment mappings | no | yes |
+| Change script-forced values (for example jupyter runtime behavior) | yes (service) | maybe (if script not mounted) |
+| Change Dockerfile build args | no | yes (new image required) |
+
+Typical recreate command:
+
+```bash
+docker compose -f docker-compose.yml up -d --force-recreate
 ```
 
 ## Related

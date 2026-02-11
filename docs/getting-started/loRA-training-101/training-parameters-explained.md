@@ -442,7 +442,7 @@ Now that you understand training parameters, you're ready to:
 1. **[Dataset Preparation](dataset-preparation.md)** - Prepare your training data
 2. **[Training Workflows](training-workflows.md)** - Learn step-by-step processes
 3. **[Practical Training Projects](practical-training-projects.md)** - Start your first training project
-4. **[Advanced Training Techniques](advanced-training-techniques.md)** - Master professional methods
+4. **[Advanced Training Techniques](../stable-diffusion-101/advanced-techniques.md)** - Master professional methods
 
 ---
 

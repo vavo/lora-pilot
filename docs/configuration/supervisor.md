@@ -26,22 +26,23 @@ Defined in config:
 
 ## Managed Programs
 
-| Program | Autostart | Command |
-|---|---:|---|
-| `jupyter` | `true` | `/opt/pilot/start-jupyter.sh` |
-| `code-server` | `true` | `/opt/pilot/start-code-server.sh` |
-| `comfy` | `true` | `/bin/bash -lc '/opt/pilot/comfy.sh'` |
-| `kohya` | `true` | `/bin/bash -lc '/opt/pilot/start-kohya.sh'` |
-| `diffpipe` | `true` | `/bin/bash -lc 'exec /opt/pilot/diffusion-pipe.sh'` |
-| `invoke` | `true` | `/bin/bash -lc 'exec /opt/pilot/invoke.sh'` |
-| `controlpilot` | `true` | `/bin/bash -lc 'exec /opt/pilot/portal.sh'` |
-| `copilot` | `false` | `/bin/bash -lc '... exec /opt/pilot/copilot-sidecar.sh'` |
-| `ai-toolkit` | `true` | `/bin/bash -lc '... npm run update_db; exec npm run start'` |
+| Program | Autostart | Autorestart | Startsecs | Command |
+|---|---:|---:|---:|---|
+| `jupyter` | `true` | `true` | `2` | `/opt/pilot/start-jupyter.sh` |
+| `code-server` | `true` | `true` | `2` | `/opt/pilot/start-code-server.sh` |
+| `comfy` | `true` | `true` | `2` | `/bin/bash -lc '/opt/pilot/comfy.sh'` |
+| `kohya` | `true` | `true` | `2` | `/bin/bash -lc '/opt/pilot/start-kohya.sh'` |
+| `diffpipe` | `true` | `true` | `2` | `/bin/bash -lc 'exec /opt/pilot/diffusion-pipe.sh'` |
+| `invoke` | `true` | `true` | `5` | `/bin/bash -lc 'exec /opt/pilot/invoke.sh'` |
+| `controlpilot` | `true` | `true` | `2` | `/bin/bash -lc 'exec /opt/pilot/portal.sh'` |
+| `copilot` | `false` | `true` | `2` | `/bin/bash -lc '... exec /opt/pilot/copilot-sidecar.sh'` |
+| `ai-toolkit` | `true` | `unexpected` | `5` | `/bin/bash -lc '... npm run update_db; exec npm run start'` |
 
 Notes:
 
 - `copilot` loads `/workspace/config/secrets.env` when present and maps `COPILOT_GITHUB_TOKEN` into `GH_TOKEN`/`GITHUB_TOKEN`.
 - `ai-toolkit` exits cleanly if UI assets/node are unavailable (build without UI).
+- `ai-toolkit` is configured with `stopasgroup=true` and `killasgroup=true`.
 
 ## Logs
 
@@ -57,6 +58,8 @@ Examples:
 - `/workspace/logs/controlpilot.out.log`
 - `/workspace/logs/comfy.err.log`
 
+![ControlPilot Service Log Modal (Invoke)](../assets/images/controlpilot/controlpilot-services-invoke-log-modal.png)
+
 ## Control Surface in ControlPilot API
 
 Service control is implemented in `apps/Portal/app.py`.
@@ -70,6 +73,13 @@ Service control is implemented in `apps/Portal/app.py`.
 Service names accepted by API:
 
 - `jupyter`, `code-server`, `comfy`, `kohya`, `diffpipe`, `invoke`, `ai-toolkit`, `controlpilot`, `copilot`
+
+Example:
+
+```bash
+curl -s http://localhost:7878/api/services
+curl -s -X POST http://localhost:7878/api/services/comfy/restart
+```
 
 ### Autostart settings
 
@@ -88,6 +98,14 @@ Config file lookup order:
 3. `/opt/pilot/supervisor/supervisord.conf`
 4. repo path fallback when running from source
 
+Example:
+
+```bash
+curl -s -X POST http://localhost:7878/api/services/invoke/settings/autostart \
+  -H "Content-Type: application/json" \
+  -d '{"enabled":false}'
+```
+
 ## In-App Service Updates
 
 ControlPilot includes update orchestration for selected services:
@@ -105,14 +123,41 @@ Config + audit files (under `/workspace/config` by default):
 
 Boot-time reconcile is controlled by `SERVICE_UPDATES_BOOT_RECONCILE` and runs `service-updates-reconcile.py` when enabled.
 
-## Quick CLI Ops (Inside Container)
+## Operational Runbook
+
+### Check system state quickly
 
 ```bash
-supervisorctl status
-supervisorctl restart controlpilot
-supervisorctl stop comfy
-supervisorctl start comfy
+docker exec lora-pilot supervisorctl status
+curl -s http://localhost:7878/api/services
 ```
+
+### Restart one service cleanly
+
+```bash
+docker exec lora-pilot supervisorctl restart controlpilot
+```
+
+### Diagnose a flapping service
+
+```bash
+docker exec lora-pilot supervisorctl status <service>
+docker exec lora-pilot tail -n 200 /workspace/logs/<service>.err.log
+docker exec lora-pilot tail -n 200 /workspace/logs/<service>.out.log
+```
+
+### After editing supervisor config manually
+
+```bash
+docker exec lora-pilot supervisorctl reread
+docker exec lora-pilot supervisorctl update
+```
+
+## Compose vs Supervisor
+
+- `docker compose restart lora-pilot` restarts the whole container.
+- `supervisorctl restart <service>` restarts only one in-container program.
+- Prefer supervisor-level restarts for surgical fixes.
 
 ## Security Notes
 
@@ -124,6 +169,7 @@ supervisorctl start comfy
 
 - [Environment Variables](environment-variables.md)
 - [Docker Compose](docker-compose.md)
+- [Custom Setup](custom-setup.md)
 - [Section Index](README.md)
 - [Documentation Home](../README.md)
 

@@ -10,6 +10,8 @@ It is designed for workspace-local execution and persists Copilot config/auth un
 - Bridges ControlPilot UI requests (`/api/copilot/*`) to sidecar endpoints.
 - Stores Copilot config in workspace-backed paths so auth survives restarts.
 
+![ControlPilot Copilot Page](../assets/images/controlpilot/controlpilot-copilot.png)
+
 ## Runtime Wiring
 
 - Supervisor program: `copilot` (`autostart=false`) in `supervisor/supervisord.conf`.
