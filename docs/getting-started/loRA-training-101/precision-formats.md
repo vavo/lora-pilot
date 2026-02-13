@@ -2,7 +2,7 @@
 
 Precision formats determine how AI models store and process numbers. Understanding these helps you optimize for quality vs. performance.
 
-## 🎯 Overview
+##  Overview
 
 ### What Precision Means
 Think of precision like decimal places in math:
@@ -17,7 +17,7 @@ Think of precision like decimal places in math:
 
 ---
 
-## 📊 Format Details
+##  Format Details
 
 ### FP32 (Full Precision)
 
@@ -89,7 +89,7 @@ Standard 32-bit floating point numbers used in most traditional computing.
 
 ---
 
-## 🎯 Precision in Training
+##  Precision in Training
 
 ### Training Precision Impact
 
@@ -131,7 +131,7 @@ Video Models: FP16 or BF16
 
 ---
 
-## 🎯 Precision in Generation
+##  Precision in Generation
 
 ### Generation Precision Impact
 
@@ -178,7 +178,7 @@ FP8 Generation: Noticeable quality loss
 
 ---
 
-## 🔧 Precision Trade-offs
+##  Precision Trade-offs
 
 ### Quality vs. Memory
 
@@ -247,7 +247,7 @@ FP8 Generation: Noticeable quality loss
 
 ---
 
-## 🔍 Precision in LoRA Pilot
+##  Precision in LoRA Pilot
 
 ### Default Settings
 
@@ -281,7 +281,7 @@ training:
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand precision formats, you're ready to:
 
@@ -291,4 +291,8 @@ Now that you understand precision formats, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

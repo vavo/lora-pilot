@@ -133,7 +133,7 @@ volumes:
   - /build:/workspace/build
 ```
 
-## 🔧 Service Architecture
+##  Service Architecture
 
 ### Supervisor Configuration
 
@@ -221,7 +221,7 @@ class ServiceManager:
         return await httpx.get(url)
 ```
 
-## 📊 Data Architecture
+##  Data Architecture
 
 ### Workspace Structure
 
@@ -457,7 +457,7 @@ HF_TOKEN=your_token_here
 SUPERVISOR_ADMIN_PASSWORD=secure_password
 ```
 
-## 🚀 Performance Architecture
+##  Performance Architecture
 
 ### Resource Management
 
@@ -545,7 +545,7 @@ class DatasetCache:
         return None
 ```
 
-## 🔄 Scalability Architecture
+##  Scalability Architecture
 
 ### Horizontal Scaling
 
@@ -610,7 +610,7 @@ class ResourceScaler:
             await self.scale_down()
 ```
 
-## 📊 Monitoring Architecture
+##  Monitoring Architecture
 
 ### Health Monitoring
 
@@ -795,4 +795,8 @@ class CloudStorageManager:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

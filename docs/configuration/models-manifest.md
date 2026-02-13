@@ -133,3 +133,11 @@ For shared top-level model folders, repo-file selection has an extra guard to av
 ---
 
 _Last updated: 2026-02-11_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

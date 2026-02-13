@@ -2,7 +2,7 @@
 
 Diffusion Pipe in LoRA Pilot is an experimental DeepSpeed-based training path with TensorBoard baked in. It is exposed as the `diffpipe` supervisor service and as the `Dpipe` training tab in ControlPilot.
 
-## 🎯 Overview
+##  Overview
 
 Current implementation provides:
 - TensorBoard service on port `4444` (default)
@@ -10,7 +10,7 @@ Current implementation provides:
 - ControlPilot API/UI for start/stop/logs and config generation
 - Single-run process guard in the API (one active training process at a time)
 
-## 🚀 Access
+##  Access
 
 - **ControlPilot Dpipe tab**: `http://localhost:7878` -> `Dpipe`
 - **TensorBoard URL**: `http://localhost:4444`
@@ -42,7 +42,7 @@ Notes:
 | `/workspace/configs/dataset_config.toml` | Generated dataset config (ControlPilot API flow) |
 | `/workspace/configs/training_config.toml` | Generated training config (ControlPilot API flow) |
 
-## 🔧 Environment Variables
+##  Environment Variables
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -86,7 +86,7 @@ docker exec lora-pilot tail -n 200 /workspace/logs/diffpipe.err.log
 curl -s "http://localhost:7878/dpipe/train/logs?limit=200"
 ```
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Port `4444` opens but no training runs
 - Expected when `DIFFPIPE_CONFIG` is unset: service is TensorBoard-only.
@@ -117,3 +117,11 @@ curl -s -X POST http://localhost:7878/dpipe/train/stop
 ---
 
 _Last updated: 2026-02-11_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

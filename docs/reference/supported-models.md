@@ -2,7 +2,7 @@
 
 LoRA Pilot supports a comprehensive range of AI models for training and inference. This reference covers all supported model families, their requirements, and use cases.
 
-## 🎯 Model Families Overview
+##  Model Families Overview
 
 | Family | Training | Inference | VRAM Required | Best For |
 |--------|----------|-----------|---------------|-----------|
@@ -140,7 +140,7 @@ LoRA Pilot supports a comprehensive range of AI models for training and inferenc
 - Prototyping
 - Real-time applications
 
-## 🎨 Artistic Models
+##  Artistic Models
 
 ### Chroma
 
@@ -250,7 +250,7 @@ LoRA Pilot supports a comprehensive range of AI models for training and inferenc
 - Research applications
 - Advanced workflows
 
-## 🔧 Multimodal Models
+##  Multimodal Models
 
 ### Wan2.1/Wan2.2
 
@@ -316,7 +316,7 @@ LoRA Pilot supports a comprehensive range of AI models for training and inferenc
 - Cutting-edge features
 - Prototyping
 
-## 📋 Model Requirements by GPU
+##  Model Requirements by GPU
 
 ### NVIDIA RTX 20xx Series (6-8GB VRAM)
 **Recommended Models:**
@@ -339,7 +339,7 @@ LoRA Pilot supports a comprehensive range of AI models for training and inferenc
 - ✅ Batch processing
 - ✅ Experimental features
 
-## 🔄 Training Compatibility Matrix
+##  Training Compatibility Matrix
 
 | Model | Kohya SS | AI Toolkit | Diffusion Pipe | DreamBooth | LoRA | Textual Inversion |
 |-------|----------|------------|----------------|------------|------|-------------------|
@@ -402,7 +402,7 @@ models list --type checkpoint
 models list --installed
 ```
 
-## 🎯 Model Selection Guide
+##  Model Selection Guide
 
 ### For Beginners
 1. **Start with SD1.5** - Lower requirements, extensive community
@@ -444,4 +444,8 @@ models list --installed
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

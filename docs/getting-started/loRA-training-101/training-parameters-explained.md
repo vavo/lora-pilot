@@ -2,7 +2,17 @@
 
 Training parameters are like the controls on a professional camera. Understanding what each parameter does helps you get the results you want. This guide explains all the important training settings in simple terms.
 
-## 🎯 The Big Picture
+## Beginner Terms (Before You Dive In)
+
+- **Steps**: number of training updates
+- **Learning rate**: size of each update
+- **Batch size**: how many images are used per update
+- **Rank**: how much detail the LoRA can store
+- **Alpha**: how strongly the LoRA effect is expressed
+- **Gradient checkpointing**: memory-saving mode (slower, but lighter on VRAM)
+- **Mixed precision**: memory/speed optimization using FP16/BF16
+
+##  The Big Picture
 
 ### What Training Parameters Do
 
@@ -23,7 +33,7 @@ Photos of cat + "Learn these features" → Model that knows your cat
 
 ---
 
-## 📊 Core Training Parameters
+##  Core Training Parameters
 
 ### Steps (Training Iterations)
 
@@ -80,7 +90,7 @@ Low Learning Rate: Small changes each step (slow but safe)
 - **Use Schedulers**: Learning rate schedulers help optimize
 - **Model-Specific**: Different models may prefer different rates
 
-### Batch Size
+### Batch Size (Images Per Update)
 
 #### What It Is
 How many training examples the AI looks at before updating its understanding.
@@ -94,7 +104,7 @@ Batch Size 4: Look at 4 photos → Update understanding
 
 #### Batch Size Guidelines
 
-| Batch Size | VRAM Needed | Effect | When to Use |
+| Batch Size | GPU Memory Needed (VRAM) | Effect | When to Use |
 |-------------|---------------|---------|--------------|
 | 1 | Low | Stable, safe | Most training scenarios |
 | 2 | Medium | Faster training | When you have enough VRAM |
@@ -109,12 +119,12 @@ Batch Size 4: Look at 4 photos → Update understanding
 
 ---
 
-## 🎨 Model Architecture Parameters
+##  Model Architecture Parameters
 
-### Network Rank (Dimension)
+### Network Rank (How Much the LoRA Can Learn)
 
 #### What It Is
-The "size" or "complexity" of your LoRA model. Higher rank = more capacity to learn details.
+Think of rank as LoRA capacity. Higher rank can learn more detail, but creates larger files.
 
 #### How It Works
 ```
@@ -138,10 +148,10 @@ High Rank (128): Can learn complex details, larger file
 - **Monitor Quality**: Higher rank doesn't always mean better results
 - **File Size**: Higher rank = larger files
 
-### Network Alpha
+### Network Alpha (Effect Strength)
 
 #### What It Is
-Controls how strongly the LoRA influences the base model. Think of it as "volume control."
+Controls how strongly the LoRA influences the base model. Think of it as an effect strength slider.
 
 #### How It Works
 ```
@@ -166,7 +176,7 @@ High Alpha (32): Strong influence, overpowers base model
 
 ---
 
-## 🔧 Optimization Parameters
+##  Optimization Parameters
 
 ### Gradient Checkpointing
 
@@ -218,7 +228,7 @@ FP16 Training: Uses half precision numbers (slightly less accurate but saves mem
 
 ---
 
-## 📊 Regularization Parameters
+##  Regularization Parameters
 
 ### Weight Decay
 
@@ -271,7 +281,7 @@ Dropout: Model randomly ignores some neurons (learns more robustly)
 
 ---
 
-## 🎯 Advanced Parameters
+##  Advanced Parameters
 
 ### Learning Rate Scheduler
 
@@ -318,7 +328,7 @@ Step 101+: Learning rate stays at target rate
 
 ---
 
-## 🔍 Parameter Combinations
+##  Parameter Combinations
 
 ### Beginner-Friendly Combinations
 
@@ -397,7 +407,7 @@ Mixed Precision: BF16
 
 ---
 
-## 🔧 Troubleshooting Parameters
+##  Troubleshooting Parameters
 
 ### Common Issues
 
@@ -435,7 +445,7 @@ Mixed Precision: BF16
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand training parameters, you're ready to:
 
@@ -446,4 +456,7 @@ Now that you understand training parameters, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+

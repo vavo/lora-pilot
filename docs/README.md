@@ -2,17 +2,23 @@
 
 Welcome to the comprehensive documentation for LoRA Pilot, your all-in-one Stable Diffusion workspace. This documentation covers everything from initial setup to advanced configuration and development.
 
-## 📚 Documentation Structure
+## Documentation Structure
 
-### 🚀 Getting Started
+### 🎓 Beginner Path
+
+New to AI and LoRA training? Follow our structured learning path from zero to proficiency.
+
+- [Stable Diffusion 101](getting-started/stable-diffusion-101/README.md) - **Start Here** - Learn generation fundamentals and prompting basics
+- [Datasets 101](getting-started/datasets-101/README.md) - **Step 2** - Master dataset creation, collection, and quality standards
+- [LoRA Training 101](getting-started/loRA-training-101/README.md) - **Step 3** - Learn LoRA methods, parameters, and training workflows
+- [Inference 101](getting-started/inference-101/README.md) - **Step 4** - Master inference stacks and practical workflows
+
+###  Getting Started
 New to LoRA Pilot? Start here for installation and first-run guidance.
 - [Installation Guide](getting-started/installation.md) - Complete setup instructions
 - [System Requirements](getting-started/system-requirements.md) - Hardware and software requirements
 - [First Run](getting-started/first-run.md) - Initial configuration and setup
 - [Troubleshooting](getting-started/troubleshooting.md) - Common installation issues
-- [Stable Diffusion 101](getting-started/stable-diffusion-101/README.md) - Generation fundamentals and prompting
-- [LoRA Training 101](getting-started/loRA-training-101/README.md) - LoRA methods, parameters, and workflows
-- [Datasets 101](getting-started/datasets-101/README.md) - Dataset terminology, collection, and quality
 
 ### 👥 User Guide
 Learn how to use LoRA Pilot's features and workflows.
@@ -50,7 +56,7 @@ For developers who want to contribute or extend LoRA Pilot.
 - [Debugging](development/debugging.md) - Debugging guide
 - [API Reference](development/api-reference.md) - Complete API documentation
 
-### 🚀 Deployment
+###  Deployment
 Deploy LoRA Pilot in production environments.
 - [Production](deployment/production.md) - Production deployment
 - [Cloud Platforms](deployment/cloud-platforms.md) - Cloud deployment options
@@ -65,7 +71,7 @@ Quick reference materials and troubleshooting.
 - [Troubleshooting](reference/troubleshooting.md) - Common issues and solutions
 - [Changelog](reference/changelog.md) - Version history
 
-## 🎯 Quick Start
+##  Quick Start
 
 1. **Install Docker Desktop** - [Installation Guide](getting-started/installation.md)
 2. **Clone and Run** - [First Run](getting-started/first-run.md)
@@ -90,11 +96,15 @@ Everything is orchestrated by supervisord and persists to `/workspace`, ensuring
 - **Community**: [Discussions on GitHub](https://github.com/vavo/lora-pilot/discussions)
 - **Issues**: [Bug Reports and Feature Requests](https://github.com/vavo/lora-pilot/issues)
 
-## 📝 Contributing to Documentation
+##  Contributing to Documentation
 
-Found an error or want to improve the documentation? Please see the [Contributing Guide](development/contributing.md) for guidelines on how to submit documentation updates.
+Found an error or want to improve the documentation? Please see the [Contributing Guide](development/contributing.md) for guidelines on how to submit documentation updates.  
+*Documentation version: 2.0*
 
 ---
 
-*Last updated: 2025-02-11*  
-*Documentation version: 2.0*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

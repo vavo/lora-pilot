@@ -2,7 +2,7 @@
 
 Your training dataset is the foundation of your LoRA model's quality. Garbage in, garbage out - this guide shows you how to prepare high-quality datasets that train well.
 
-## 🎯 The Big Picture
+##  The Big Picture
 
 ### Why Dataset Quality Matters
 
@@ -21,7 +21,7 @@ Good Photos + Right Format + Good Captions = Model that works perfectly
 
 ---
 
-## 📸 Image Collection Guidelines
+##  Image Collection Guidelines
 
 ### Image Quality Standards
 
@@ -65,7 +65,7 @@ Good Photos + Right Format + Good Captions = Model that works perfectly
 
 ---
 
-## 📝 Captioning Guidelines
+##  Captioning Guidelines
 
 ### What Are Captions
 
@@ -129,7 +129,7 @@ Better: "fantasy sword, glowing blue crystal blade, ornate silver hilt, magical 
 
 ---
 
-## 🔧 Dataset Organization
+##  Dataset Organization
 
 ### Folder Structure
 
@@ -210,7 +210,7 @@ dataset/
 
 ---
 
-## 🎨 Image Processing
+##  Image Processing
 
 ### Resolution Standardization
 
@@ -260,7 +260,7 @@ FLUX.1 Training:
 
 ---
 
-## 📊 Dataset Size Guidelines
+##  Dataset Size Guidelines
 
 ### Minimum Requirements
 
@@ -298,7 +298,7 @@ FLUX.1 Training:
 
 ---
 
-## 🔍 Quality Assurance
+##  Quality Assurance
 
 ### Image Quality Check
 
@@ -375,7 +375,7 @@ FLUX.1 Training:
 
 ---
 
-## 🚀 Practical Tips
+##  Practical Tips
 
 ### Collection Strategy
 
@@ -413,7 +413,7 @@ FLUX.1 Training:
 
 ---
 
-## 🔧 Tools and Resources
+##  Tools and Resources
 
 ### Image Processing Tools
 
@@ -445,7 +445,7 @@ FLUX.1 Training:
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you know how to prepare datasets, you're ready to:
 
@@ -456,4 +456,8 @@ Now that you know how to prepare datasets, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

@@ -26,8 +26,22 @@ docker compose -f docker-compose.yml up -d
 ## Learning Tracks
 
 - [Stable Diffusion 101](stable-diffusion-101/README.md)
-- [LoRA Training 101](loRA-training-101/README.md)
 - [Datasets 101](datasets-101/README.md)
+- [LoRA Training 101](loRA-training-101/README.md)
+- [Inference 101](inference-101/README.md)
+
+## Beginner Learning Flow
+
+```mermaid
+flowchart LR
+  A["Beginner"] --> B["Stable Diffusion 101"]
+  B --> C["Datasets 101"]
+  C --> D["LoRA Training 101"]
+  D --> E["Inference 101"]
+  E --> F{"Next?"}
+  F --> G["Component docs"]
+  F --> H["Troubleshooting"]
+```
 
 ## Continue To
 
@@ -43,4 +57,12 @@ docker compose -f docker-compose.yml up -d
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-02-12_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

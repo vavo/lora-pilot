@@ -2,7 +2,7 @@
 
 Welcome to your first step into custom model training! LoRA training is one of the most powerful and accessible ways to teach AI your specific characters, styles, or concepts. Let's break it down in simple terms.
 
-## 🎯 The Big Picture
+##  The Big Picture
 
 ### What LoRA Training Does
 
@@ -70,7 +70,7 @@ LoRA Training: Already know how to draw, learn to add a mustache (takes hours)
 
 ---
 
-## 🎨 What You Can Train
+##  What You Can Train
 
 ### Character LoRA
 Teach the AI your specific characters:
@@ -126,7 +126,7 @@ After LoRA: "person wearing my_jacket_style" → YOUR specific jacket style
 
 ---
 
-## 🚀 Why LoRA Training is Amazing
+##  Why LoRA Training is Amazing
 
 ### Efficient and Fast
 
@@ -178,7 +178,7 @@ Concept LoRA + Style LoRA: "my_weapon in oil_painting_style"
 
 ---
 
-## 🔧 The Technical Side (Made Simple)
+##  The Technical Side (Made Simple)
 
 ### What "Low-Rank" Means
 
@@ -212,7 +212,7 @@ The trigger word tells the AI: "Use the special knowledge from this LoRA."
 
 ---
 
-## 🎯 When to Use LoRA Training
+##  When to Use LoRA Training
 
 ### Perfect For
 
@@ -304,7 +304,7 @@ After: "fantasy scene with crystal, my_crystal" → YOUR magical crystal
 
 ---
 
-## 🔍 Common Misconceptions
+##  Common Misconceptions
 
 ### Misconception 1: "LoRA is just for characters"
 
@@ -341,7 +341,7 @@ After: "fantasy scene with crystal, my_crystal" → YOUR magical crystal
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand what LoRA training is, you're ready to:
 
@@ -352,4 +352,8 @@ Now that you understand what LoRA training is, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

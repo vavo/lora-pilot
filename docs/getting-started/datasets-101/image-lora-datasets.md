@@ -2,7 +2,7 @@
 
 Image LoRA datasets are specifically designed for training image generation models. This guide covers the unique requirements and best practices for creating effective image LoRA datasets.
 
-## 🎯 Overview
+##  Overview
 
 ### Image LoRA vs. Other Training Types
 
@@ -20,7 +20,7 @@ Image LoRA datasets are specifically designed for training image generation mode
 
 ---
 
-## 📸 Image Requirements
+##  Image Requirements
 
 ### Resolution Standards
 
@@ -66,7 +66,7 @@ FLUX.1 Image LoRA:
 
 ---
 
-## 🎨 Character Image LoRA Datasets
+##  Character Image LoRA Datasets
 
 ### Character Dataset Requirements
 
@@ -118,7 +118,7 @@ Character Dataset Shot List:
 
 ---
 
-## 🎨 Style Image LoRA Datasets
+##  Style Image LoRA Datasets
 
 ### Style Dataset Requirements
 
@@ -222,7 +222,7 @@ Concept Dataset Elements:
 
 ---
 
-## 🔧 Image Processing for LoRA
+##  Image Processing for LoRA
 
 ### Preprocessing Steps
 
@@ -266,7 +266,7 @@ Concept Dataset Elements:
 
 ---
 
-## 📊 Dataset Organization
+##  Dataset Organization
 
 ### Folder Structure
 
@@ -318,7 +318,7 @@ image_lora_dataset/
 
 ---
 
-## 🎯 Quality Assurance
+##  Quality Assurance
 
 ### Validation Checklist
 
@@ -381,7 +381,7 @@ image_lora_dataset/
 
 ---
 
-## 🚀 Practical Examples
+##  Practical Examples
 
 ### Character LoRA Dataset Example
 
@@ -435,7 +435,7 @@ watercolor_style/
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand image LoRA datasets, you're ready to:
 
@@ -445,4 +445,8 @@ Now that you understand image LoRA datasets, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

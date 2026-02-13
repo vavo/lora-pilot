@@ -176,7 +176,7 @@ docker-compose -f docker-compose.dev.yml up -d
    - **InvokeAI**: http://localhost:9090
    - **Diffusion Pipe**: http://localhost:4444
 
-## 🛠️ Common Windows Issues & Solutions
+##  Common Windows Issues & Solutions
 
 ### Issue 1: "Docker daemon is not running"
 **Solution:**
@@ -235,7 +235,7 @@ C:\lora-pilot\workspace\
 └── config\         # Configuration files
 ```
 
-## 🔄 Management Commands
+##  Management Commands
 
 ### 🖱️ Using Docker Desktop GUI
 
@@ -295,7 +295,7 @@ docker-compose pull
 docker-compose up -d --force-recreate
 ```
 
-## 🎯 Quick Start Workflow
+##  Quick Start Workflow
 
 ### 1. Download a Model
 ```powershell
@@ -339,4 +339,12 @@ If you encounter issues:
 
 ---
 
-**Happy AI creating! 🎨🤖**
+**Happy AI creating! 🤖**
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

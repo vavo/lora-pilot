@@ -2,7 +2,7 @@
 
 TagPilot is the dataset preparation UI for LoRA Pilot. It is a browser-first tool for loading images, generating tags/captions, editing labels, and saving datasets into `/workspace/datasets`.
 
-## 🎯 Overview
+##  Overview
 
 TagPilot supports:
 - Upload individual images or full ZIP datasets
@@ -17,7 +17,7 @@ TagPilot supports:
 ![TagPilot Settings Modal with Model Dropdown](../assets/images/controlpilot/controlpilot-tag-images-dark-settings-model-dropdown.png)
 ![TagPilot Tagging Settings Modal](../assets/images/controlpilot/controlpilot-tag-images-dark-tagging-settings-modal.png)
 
-## 🚀 Access
+##  Access
 
 - **ControlPilot tab**: `TagPilot`
 - **Direct route**: `http://localhost:7878/tagpilot/`
@@ -96,7 +96,7 @@ Additional global navigation/edit shortcuts beyond the above are **Not found in 
 - Provider API keys are browser-side values (`localStorage`), not server secrets.
 - Do not run TagPilot in shared browsers with persistent sessions if that is a problem for your workflow.
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### TagPilot opens but cannot load/save datasets
 - Confirm ControlPilot API is reachable at `http://localhost:7878`.
@@ -127,3 +127,11 @@ docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 ---
 
 _Last updated: 2026-02-11_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

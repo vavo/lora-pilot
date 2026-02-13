@@ -2,7 +2,7 @@
 
 AI Toolkit is a modern training stack for diffusion models, specifically designed for training FLUX.1 and other latest models. It provides a Next.js interface with Gradio backend and integrates seamlessly with the LoRA Pilot workspace.
 
-## 🎯 Overview
+##  Overview
 
 AI Toolkit offers:
 - **Modern Architecture**: Built for latest diffusion models
@@ -11,7 +11,7 @@ AI Toolkit offers:
 - **Gradio Backend**: Python-based training backend
 - **Workspace Integration**: Full integration with LoRA Pilot
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Access AI Toolkit
 
@@ -25,7 +25,7 @@ AI Toolkit offers:
 2. **Configure Training**: Use the web interface to set parameters
 3. **Start Training**: Monitor progress through the UI
 
-## 📋 Training Configuration
+##  Training Configuration
 
 ### Basic Configuration File
 
@@ -181,7 +181,7 @@ model:
 3. Validate configuration
 4. Save changes
 
-## 📊 Training Profiles
+##  Training Profiles
 
 ### Quick Test Profile
 ```yaml
@@ -229,7 +229,7 @@ save:
   max_step_saves_to_keep: 8
 ```
 
-## 🔧 Advanced Features
+##  Advanced Features
 
 ### Model Support
 
@@ -310,7 +310,7 @@ sample:
   sample_steps: 25               # Sampling steps
 ```
 
-## 🛠️ CLI Usage
+##  CLI Usage
 
 ### Command Line Interface
 
@@ -345,7 +345,7 @@ npx prisma db push --force-reset
 sqlite3 /workspace/config/ai-toolkit/aitk_db.db ".tables"
 ```
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -408,7 +408,7 @@ except Exception as e:
 "
 ```
 
-## 🎯 Best Practices
+##  Best Practices
 
 ### Configuration Best Practices
 1. **Start Small**: Test with 500 steps first
@@ -428,7 +428,7 @@ except Exception as e:
 3. **Cache Latents**: Faster training after initial setup
 4. **Monitor Resources**: Keep an eye on GPU memory
 
-## 📚 Integration with Other Tools
+##  Integration with Other Tools
 
 ### Using Trained Models
 
@@ -464,4 +464,8 @@ cp /workspace/outputs/ai-toolkit/your_model_name/*.safetensors /workspace/models
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

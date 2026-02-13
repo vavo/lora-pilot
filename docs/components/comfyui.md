@@ -2,7 +2,7 @@
 
 ComfyUI is a powerful node-based interface for Stable Diffusion that allows you to create complex image generation workflows through a visual programming interface. It's integrated into LoRA Pilot with custom nodes and workspace integration.
 
-## 🎯 Overview
+##  Overview
 
 ComfyUI offers:
 - **Node-Based Interface**: Visual workflow creation
@@ -11,7 +11,7 @@ ComfyUI offers:
 - **High Performance**: Optimized for batch processing
 - **Extensible**: Large ecosystem of custom nodes
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Access ComfyUI
 
@@ -86,7 +86,7 @@ SaveImage:
   - Parameters: filename_prefix, output_path
 ```
 
-## 📋 Basic Workflow Templates
+##  Basic Workflow Templates
 
 ### Simple Text-to-Image
 ```
@@ -114,7 +114,7 @@ CheckpointLoader → CLIPTextEncode → KSampler → VAEDecode → SaveImage
 LoadImage → VAEEncode ↗
 ```
 
-## 🎨 Custom Nodes
+##  Custom Nodes
 
 ### Pre-installed Custom Nodes
 
@@ -157,7 +157,7 @@ git clone https://github.com/author/custom-node.git
 docker-compose restart comfyui
 ```
 
-## 📊 Performance Optimization
+##  Performance Optimization
 
 ### Memory Optimization
 
@@ -203,7 +203,7 @@ KSampler:
 # FP16 versions when available
 ```
 
-## 🔧 Advanced Features
+##  Advanced Features
 
 ### Workflow Automation
 
@@ -287,7 +287,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 }
 ```
 
-## 🎯 Workflow Examples
+##  Workflow Examples
 
 ### Portrait Photography
 ```
@@ -320,7 +320,7 @@ CheckpointLoader → CLIPTextEncode → KSampler → VAEDecode → SaveImage
 LoadImage → VAEEncode → KSampler ↗
 ```
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -376,7 +376,7 @@ print('✅ Model loads successfully')
 "
 ```
 
-## 📚 Integration with LoRA Pilot
+##  Integration with LoRA Pilot
 
 ### Model Integration
 - **Shared Models**: Access all LoRA Pilot models
@@ -393,7 +393,7 @@ print('✅ Model loads successfully')
 - **Log Access**: View logs through ControlPilot
 - **Resource Monitoring**: Track GPU and memory usage
 
-## 🎨 Best Practices
+##  Best Practices
 
 ### Workflow Design
 1. **Modular Design**: Create reusable workflow components
@@ -415,4 +415,8 @@ print('✅ Model loads successfully')
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

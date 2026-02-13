@@ -2,11 +2,11 @@
 
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
 
-## 🎯 Overview
+##  Overview
 
 LoRA Pilot uses a multi-stage Docker build process that creates a comprehensive AI workspace. Understanding the build process helps with customization, debugging, and contribution.
 
-## 📋 Prerequisites
+##  Prerequisites
 
 ### System Requirements
 - **Docker**: 20.10+ with buildx support
@@ -92,7 +92,7 @@ ARG VCS_REF
 ARG VERSION
 ```
 
-## 🛠️ Build Commands
+##  Build Commands
 
 ### Standard Build
 
@@ -146,7 +146,7 @@ docker buildx build \
   .
 ```
 
-## 🔧 Custom Builds
+##  Custom Builds
 
 ### Component Selection
 
@@ -329,7 +329,7 @@ docker run --rm lora-pilot:test pytest tests/
 docker-compose -f docker-compose.test.yml up --abort-on-container-exit
 ```
 
-## 🔍 Build Debugging
+##  Build Debugging
 
 ### Build Issues
 
@@ -386,7 +386,7 @@ docker buildx prune -f
 docker system df -v
 ```
 
-## 🚀 Deployment Builds
+##  Deployment Builds
 
 ### Production Build
 
@@ -447,7 +447,7 @@ docker buildx build \
   --load .
 ```
 
-## 📋 Build Configuration
+##  Build Configuration
 
 ### Makefile Integration
 
@@ -533,7 +533,7 @@ docker build \
 echo "Build completed: lora-pilot:$VERSION"
 ```
 
-## 🔧 Customization Guide
+##  Customization Guide
 
 ### Adding New Components
 
@@ -595,7 +595,7 @@ ENV ANOTHER_VAR=another_value
 COPY config/custom.conf /opt/pilot/config/
 ```
 
-## 📊 Build Performance
+##  Build Performance
 
 ### Build Time Optimization
 
@@ -634,7 +634,7 @@ docker build \
   -t lora-pilot:latest .
 ```
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Build Failures
 
@@ -691,4 +691,8 @@ docker run --rm -it --pid=host lora-pilot:latest \
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

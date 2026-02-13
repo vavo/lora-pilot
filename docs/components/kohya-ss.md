@@ -2,7 +2,7 @@
 
 Kohya SS is a battle-tested LoRA training interface that provides extensive configuration options and broad model support. It's one of the most popular tools for training custom Stable Diffusion models.
 
-## 🎯 Overview
+##  Overview
 
 Kohya SS offers:
 - **Extensive Model Support**: SD1.5, SDXL, SD3, and custom architectures
@@ -10,7 +10,7 @@ Kohya SS offers:
 - **Proven Track Record**: Used by thousands of artists and developers
 - **Community Support**: Extensive documentation and community resources
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Access Kohya SS
 
@@ -24,7 +24,7 @@ Kohya SS offers:
 2. **Configure Training**: Set basic parameters in the UI
 3. **Start Training**: Monitor progress in real-time
 
-## 📋 Training Configuration
+##  Training Configuration
 
 ### Basic Settings
 
@@ -105,7 +105,7 @@ sample: {
 }
 ```
 
-## 📊 Training Profiles
+##  Training Profiles
 
 ### Quick Test Profile
 ```yaml
@@ -277,7 +277,7 @@ cache_latents_to_disk: true
 # Uses disk space for cache
 ```
 
-## 🔧 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -336,7 +336,7 @@ docker exec lora-pilot find /workspace/datasets/images/1_my_dataset -name "*.jpg
 docker exec lora-pilot find /workspace/datasets/images/1_my_dataset -name "*.txt" | wc -l
 ```
 
-## 📚 Advanced Features
+##  Advanced Features
 
 ### Custom Training Scripts
 
@@ -390,7 +390,7 @@ cp /workspace/outputs/my_lora/last.safetensors /workspace/models/loras/
 3. Generate images
 ```
 
-## 🎯 Best Practices
+##  Best Practices
 
 ### Dataset Preparation
 1. **Quality over quantity**: 10-20 high-quality images better than 100 poor ones
@@ -412,4 +412,8 @@ cp /workspace/outputs/my_lora/last.safetensors /workspace/models/loras/
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

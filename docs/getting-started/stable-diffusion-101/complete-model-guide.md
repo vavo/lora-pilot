@@ -2,7 +2,7 @@
 
 LoRA Pilot supports an incredible variety of AI models - from classic Stable Diffusion to cutting-edge experimental models. This guide covers every model available, helping you choose the perfect one for your needs.
 
-## 🎯 Model Categories
+##  Model Categories
 
 ### 🖼️ Image Generation Models
 Create images from text prompts
@@ -10,7 +10,7 @@ Create images from text prompts
 ### 🎥 Video Generation Models  
 Create videos from text or images
 
-### 🎨 Specialized Models
+###  Specialized Models
 Focused on specific styles or tasks
 
 ---
@@ -250,7 +250,7 @@ Focused on specific styles or tasks
 
 ---
 
-## 🎨 Specialized Models
+##  Specialized Models
 
 ### Chroma Family
 
@@ -375,7 +375,7 @@ Focused on specific styles or tasks
 
 ---
 
-## 🎯 Model Comparison Tables
+##  Model Comparison Tables
 
 ### Quality vs Speed Comparison
 
@@ -447,7 +447,7 @@ Focused on specific styles or tasks
 2. **SDXL**: Industry standard
 3. **FLUX.1 Schnell**: Modern but manageable
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you know all the models, you're ready to:
 
@@ -457,4 +457,8 @@ Now that you know all the models, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

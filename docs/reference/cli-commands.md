@@ -2,7 +2,7 @@
 
 LoRA Pilot provides a comprehensive command-line interface for managing services, models, datasets, and workflows. This reference covers all available commands and their usage.
 
-## 🚀 Quick Start
+##  Quick Start
 
 ```bash
 # Access container shell
@@ -12,7 +12,7 @@ docker exec -it lora-pilot bash
 docker exec lora-pilot pilot --help
 ```
 
-## 📋 Command Categories
+##  Command Categories
 
 ### Service Management
 - `pilot status` - Check service status
@@ -40,7 +40,7 @@ docker exec lora-pilot pilot --help
 - `trainpilot status` - Training status
 - `trainpilot config` - Configuration management
 
-## 🛠️ Service Management Commands
+##  Service Management Commands
 
 ### pilot status
 
@@ -310,7 +310,7 @@ datasets validate my-dataset --strict
 datasets validate my-dataset --fix
 ```
 
-## 🎯 Training Commands
+##  Training Commands
 
 ### trainpilot
 
@@ -410,7 +410,7 @@ trainpilot profiles full_training
 - `full_training` - 1000+ steps, high quality
 - `experimental` - Latest features, experimental
 
-## 🔧 Utility Commands
+##  Utility Commands
 
 ### workspace
 
@@ -463,7 +463,7 @@ system health
 system benchmark
 ```
 
-## 📝 Configuration Commands
+##  Configuration Commands
 
 ### config
 
@@ -507,7 +507,7 @@ env export > .env.backup
 env import .env.backup
 ```
 
-## 🔍 Debug Commands
+##  Debug Commands
 
 ### debug
 
@@ -545,7 +545,7 @@ logs analyze --service kohya --last 1h
 logs monitor --service kohya
 ```
 
-## 🚀 Advanced Commands
+##  Advanced Commands
 
 ### batch
 
@@ -609,7 +609,7 @@ Enable tab completion for LoRA Pilot commands:
 source /opt/pilot/scripts/completion.sh
 ```
 
-## 🔧 Custom Commands
+##  Custom Commands
 
 ### Creating Custom Commands
 
@@ -628,7 +628,7 @@ Make it executable:
 chmod +x /workspace/scripts/my-custom-command
 ```
 
-## 📊 Performance Monitoring
+##  Performance Monitoring
 
 ### Real-time Monitoring
 
@@ -661,4 +661,8 @@ benchmark inference --model sdxl-base --batch-size 1
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

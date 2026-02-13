@@ -2,7 +2,7 @@
 
 Ready to level up your AI art skills? These advanced techniques will give you professional-level control over your image generation.
 
-## 🎯 Overview of Advanced Techniques
+##  Overview of Advanced Techniques
 
 ### What You'll Learn
 - **Inpainting**: Fix or modify parts of images
@@ -159,7 +159,7 @@ Recommended Settings:
 
 ---
 
-## 🎯 Region Prompting
+##  Region Prompting
 
 **(Note: Specific UI for this feature not found in repo; may require manual ComfyUI workflow configuration.)**
 
@@ -244,7 +244,7 @@ Region Prompting Methods:
 
 ---
 
-## 🔄 Image-to-Image (Img2Img)
+##  Image-to-Image (Img2Img)
 
 ### What Is Image-to-Image?
 
@@ -397,7 +397,7 @@ Result: Targeted changes while preserving structure
 
 ---
 
-## 🔄 Multi-Generation Workflows
+##  Multi-Generation Workflows
 
 ### Complex Scene Creation
 
@@ -480,7 +480,7 @@ Generated image → Upscaling/Color correction → Professional image
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you've mastered advanced techniques, you're ready to:
 
@@ -490,4 +490,8 @@ Now that you've mastered advanced techniques, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

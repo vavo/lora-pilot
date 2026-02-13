@@ -2,7 +2,7 @@
 
 Creating consistent characters across multiple images is one of the biggest challenges in AI art. LoRA (Low-Rank Adaptation) is the perfect solution - let's learn how to use it effectively.
 
-## 🎯 The Character Consistency Problem
+##  The Character Consistency Problem
 
 ### Why Characters Change
 
@@ -18,7 +18,7 @@ Without special training, AI treats each prompt as completely new:
 - Same clothing and accessories
 - Recognizable personality across images
 
-## 🎨 LoRA Solution
+##  LoRA Solution
 
 ### How LoRA Solves Consistency
 
@@ -39,7 +39,7 @@ After LoRA:
 3. **Use Trigger Word**: Special word activates your character
 4. **Generate Consistently**: Same character in any situation
 
-## 📸 Creating Character LoRA
+##  Creating Character LoRA
 
 ### Step 1: Collect Reference Images
 
@@ -103,7 +103,7 @@ Advanced Settings:
 4. **Start Training**: Monitor progress
 5. **Test Results**: Check sample images during training
 
-## 🎯 Using Character LoRA
+##  Using Character LoRA
 
 ### Basic Usage
 
@@ -144,7 +144,7 @@ Character + Concept:
 - **Weight Experimentation**: Find optimal LoRA weight
 - **Style LoRA**: Combine with style LoRA for consistent look
 
-## 🎨 Practical Examples
+##  Practical Examples
 
 ### Example 1: Portrait Series
 ```
@@ -179,7 +179,7 @@ Prompts:
 - "brand_mascot interacting with customers"
 ```
 
-## 🔧 Troubleshooting Character LoRA
+##  Troubleshooting Character LoRA
 
 ### Common Issues
 
@@ -235,7 +235,7 @@ Prompts:
 - **Sampler Choice**: DPM++ or DDIM for consistency
 - **Seed Control**: Use same seed for similar compositions
 
-## 🎯 Advanced Character Techniques
+##  Advanced Character Techniques
 
 ### Multi-Character Scenes
 ```
@@ -280,7 +280,7 @@ Benefits:
 - Emotional narrative possible
 ```
 
-## 📚 Best Practices
+##  Best Practices
 
 ### Training Best Practices
 - **Start Simple**: 15-20 good images better than 50 poor ones
@@ -300,7 +300,7 @@ Benefits:
 - **Backup Models**: Save successful LoRA files
 - **Documentation**: Record training settings and results
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you can create consistent characters, you're ready to:
 
@@ -310,4 +310,8 @@ Now that you can create consistent characters, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

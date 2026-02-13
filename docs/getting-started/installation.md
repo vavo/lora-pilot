@@ -2,7 +2,7 @@
 
 This comprehensive guide will walk you through installing LoRA Pilot on Windows, macOS, and Linux. LoRA Pilot uses Docker to provide a consistent, isolated environment for all AI tools.
 
-## 🚀 Quick Install (Recommended)
+##  Quick Install (Recommended)
 
 For most users, the Docker Compose method is the simplest and most reliable:
 
@@ -18,7 +18,7 @@ docker-compose up -d
 open http://localhost:7878
 ```
 
-## 📋 Prerequisites
+##  Prerequisites
 
 Before installing, ensure you have:
 
@@ -237,7 +237,7 @@ services:
       - "9090:9090"    # InvokeAI
 ```
 
-## 🔄 Verification Steps
+##  Verification Steps
 
 After installation, verify everything is working:
 
@@ -262,7 +262,7 @@ docker-compose logs -f
 docker exec lora-pilot nvidia-smi
 ```
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -333,7 +333,7 @@ docker build -t lora-pilot:local .
 docker-compose up -d
 ```
 
-## 🎯 Next Steps
+##  Next Steps
 
 After successful installation:
 
@@ -343,4 +343,8 @@ After successful installation:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

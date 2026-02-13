@@ -2,7 +2,7 @@
 
 InvokeAI is the second inference engine bundled in LoRA Pilot. It runs as a supervised service and is wired to the shared workspace model tree so it can reuse the same assets as ComfyUI and training tools.
 
-## 🎯 Overview
+##  Overview
 
 LoRA Pilot’s InvokeAI integration provides:
 - Web UI served on port `9090` (default)
@@ -11,7 +11,7 @@ LoRA Pilot’s InvokeAI integration provides:
 - Supervisor management (`invoke` service)
 - Update support through ControlPilot service updates (pip-based)
 
-## 🚀 Access
+##  Access
 
 - **Services tab** in ControlPilot: open `Invoke AI`
 - **Direct URL**: `http://localhost:9090`
@@ -53,7 +53,7 @@ Startup behavior in `scripts/invoke.sh`:
    - Invoke itself (`/workspace/outputs/invoke`)
    - MediaPilot (`/mediapilot/`), which scans Invoke outputs by default.
 
-## 🔄 Service Operations
+##  Service Operations
 
 ```bash
 # Status
@@ -67,7 +67,7 @@ docker exec lora-pilot tail -n 200 /workspace/logs/invoke.out.log
 docker exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
 ```
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### InvokeAI UI does not open
 - Verify service is running:
@@ -110,3 +110,11 @@ docker exec lora-pilot tail -n 300 /workspace/logs/invoke.err.log
 ---
 
 _Last updated: 2026-02-11_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

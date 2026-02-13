@@ -2,7 +2,7 @@
 
 This guide covers creating a Windows installer for LoRA Pilot, providing a native Windows experience for users who prefer not to use Docker Desktop directly.
 
-## 🎯 Overview
+##  Overview
 
 The Windows installer provides:
 - **Native Windows Installation**: Traditional installer experience
@@ -60,7 +60,7 @@ graph TD
     I --> J[Complete Installation]
 ```
 
-## 🛠️ Installer Technologies
+##  Installer Technologies
 
 ### NSIS (Nullsoft Scriptable Install System)
 
@@ -126,7 +126,7 @@ SolidCompression=yes
 PrivilegesRequired=admin
 ```
 
-## 📋 Prerequisites Management
+##  Prerequisites Management
 
 ### System Requirements Check
 
@@ -337,7 +337,7 @@ Function InstallWindowsService
 FunctionEnd
 ```
 
-## 🎨 User Interface Integration
+##  User Interface Integration
 
 ### Start Menu Integration
 
@@ -434,7 +434,7 @@ Section "File Associations" SecFileAssoc
 SectionEnd
 ```
 
-## 📝 Scripts and Utilities
+##  Scripts and Utilities
 
 ### Batch Scripts
 
@@ -557,7 +557,7 @@ foreach ($service in $services) {
 Write-Host "Health check completed." -ForegroundColor Green
 ```
 
-## 🔧 Advanced Features
+##  Advanced Features
 
 ### Auto-Update System
 
@@ -637,7 +637,7 @@ Function SetupWizard
   FunctionEnd
 ```
 
-## 📊 Build Process
+##  Build Process
 
 ### Build Script
 
@@ -725,7 +725,7 @@ jobs:
         path: dist/LoRA-Pilot-*.exe
 ```
 
-## 🔍 Testing and Validation
+##  Testing and Validation
 
 ### Installation Testing
 
@@ -817,7 +817,7 @@ class TestHealthCheck:
             assert response.status_code == 200
 ```
 
-## 📋 Distribution
+##  Distribution
 
 ### Release Process
 
@@ -851,7 +851,7 @@ MAJOR.MINOR.PATCH
 - **Beta**: Pre-release testing
 - **Alpha**: Development builds
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Common Installation Issues
 
@@ -919,4 +919,8 @@ FunctionEnd
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

@@ -2,7 +2,7 @@
 
 Comprehensive guide to managing AI models in LoRA Pilot, including downloading, organizing, validating, and maintaining your model library.
 
-## 🎯 Overview
+##  Overview
 
 LoRA Pilot provides a unified model management system that handles:
 - **Model Downloads**: Automatic downloading from Hugging Face and other repositories
@@ -51,7 +51,7 @@ LoRA Pilot provides a unified model management system that handles:
 - **VAE**: Variational Autoencoder models
 - **Embeddings**: Text embedding files
 
-## 🚀 Model Downloads
+##  Model Downloads
 
 ### Using ControlPilot
 
@@ -119,7 +119,7 @@ huggingface-cli login --token your_token_here
 huggingface-cli download stabilityai/stable-diffusion-xl-base-1.0 --local-dir /workspace/models/stable-diffusion/sdxl-base
 ```
 
-## 📋 Model Configuration
+##  Model Configuration
 
 ### Models Manifest
 
@@ -189,7 +189,7 @@ metadata:
   incompatible_with: ["sd15-base"]
 ```
 
-## 🔍 Model Validation
+##  Model Validation
 
 ### Integrity Checking
 
@@ -244,7 +244,7 @@ print('Generation time:', time.time() - start)
 "
 ```
 
-## 📊 Model Organization
+##  Model Organization
 
 ### Tagging System
 
@@ -323,7 +323,7 @@ docker exec lora-pilot models update sdxl-base
 docker exec lora-pilot models update --all
 ```
 
-## 🔄 Integration with Components
+##  Integration with Components
 
 ### ComfyUI Integration
 
@@ -376,7 +376,7 @@ model:
 # Automatic model registration
 ```
 
-## 🔧 Advanced Management
+##  Advanced Management
 
 ### Batch Operations
 
@@ -454,7 +454,7 @@ docker exec lora-pilot models restore --source /backup/models/
 docker exec lora-pilot models restore --models sdxl-base --source /backup/models/
 ```
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -520,7 +520,7 @@ docker exec lora-pilot models test-compatibility sdxl-base
 docker exec lora-pilot models report --output /workspace/models-report.txt
 ```
 
-## 🎯 Best Practices
+##  Best Practices
 
 ### Model Selection
 1. **Choose Appropriate Models**: Match model to use case
@@ -548,4 +548,8 @@ docker exec lora-pilot models report --output /workspace/models-report.txt
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

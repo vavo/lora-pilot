@@ -296,7 +296,7 @@ Training is very slow due to disk bottlenecks.
    ln -s /ramdisk/datasets /workspace/datasets
    ```
 
-## 🔧 Service-Specific Issues
+##  Service-Specific Issues
 
 ### Kohya SS Won't Start
 
@@ -361,7 +361,7 @@ DatabaseError: unable to open database file
    docker-compose restart ai-toolkit
    ```
 
-## 🔄 Reset and Recovery
+##  Reset and Recovery
 
 ### Full Reset
 
@@ -444,4 +444,8 @@ supervisorctl status
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

@@ -2,23 +2,32 @@
 
 Welcome to Stable Diffusion 101! This comprehensive chapter is designed for absolute beginners with zero or low knowledge of AI image generation. We'll take you from basic concepts to advanced techniques, covering all models available in LoRA Pilot.
 
-## 🎯 Chapter Overview
+## Beginner Terms (Plain English)
+
+- **Model / Checkpoint**: the main "brain" that draws images
+- **LoRA**: a small add-on that teaches one style/character/concept
+- **VAE**: the part that affects final image clarity/colors
+- **Sampler**: the method the model uses to build an image
+- **CFG**: how strongly the model follows your prompt
+- **Seed**: randomness number (same seed = similar result)
+
+##  Chapter Overview
 
 This chapter is structured to help you learn progressively:
 
 ![Stable Diffusion 101 Concept Snapshot](../../assets/images/learning-101/stable-diffusion-101-overview.svg)
 
-### 📚 Learning Path
+###  Learning Path
 1. **[What is Stable Diffusion?](what-is-stable-diffusion.md)** - Basic concepts and how it works
-2. **[Model Components Explained](model-components.md)** - Understanding checkpoints, LoRA, VAE, and more
+2. **[Model Components Explained](model-components.md)** - Understanding the model "brain" and add-ons
 3. **[Complete Model Guide](complete-model-guide.md)** - All models supported by LoRA Pilot
-4. **[Generation Parameters](generation-parameters.md)** - Samplers, CFG, seeds, and settings
+4. **[Generation Parameters](generation-parameters.md)** - Core controls: sampler, guidance, seed, and steps
 5. **[Prompting Fundamentals](prompting-fundamentals.md)** - How to write effective prompts
 6. **[Advanced Techniques](advanced-techniques.md)** - Inpainting, outpainting, and more
 7. **[Character Consistency](character-consistency.md)** - Using LoRA for consistent characters
 8. **[Practical Examples](practical-examples.md)** - Real-world projects and workflows
 
-### 🎯 Learning Goals
+###  Learning Goals
 
 After completing this chapter, you'll be able to:
 - **Understand** how Stable Diffusion creates images from text
@@ -29,7 +38,7 @@ After completing this chapter, you'll be able to:
 - **Create** consistent characters across multiple images
 - **Optimize** your workflow for best results
 
-### 🚀 Quick Start
+###  Quick Start
 
 If you're eager to start, here's the fastest path:
 
@@ -37,14 +46,14 @@ If you're eager to start, here's the fastest path:
 2. **[Model Components Explained](model-components.md)** - 10 minute read
 3. **[Practical Examples](practical-examples.md)** - Start creating immediately!
 
-### 📋 Prerequisites
+###  Prerequisites
 
 No prior knowledge needed! We assume:
 - Basic computer skills
 - Interest in AI image generation
 - Willingness to experiment and learn
 
-### 🎨 Why This Chapter Matters
+###  Why This Chapter Matters
 
 Stable Diffusion can seem overwhelming with all the technical terms and options. This chapter breaks everything down into simple, understandable concepts with practical examples. By the end, you'll have the confidence to create amazing images and understand exactly what you're doing.
 
@@ -57,7 +66,7 @@ Stable Diffusion can seem overwhelming with all the technical terms and options.
 
 Let's begin your journey into AI image generation!
 
-## 📊 Chapter Structure
+##  Chapter Structure
 
 ### 🌅 Beginner Section (Documents 1-3)
 **Focus**: Understanding the basics
@@ -65,18 +74,18 @@ Let's begin your journey into AI image generation!
 - **Model Components**: Understanding all the pieces
 - **Complete Model Guide**: All available models explained
 
-### 🎨 Intermediate Section (Documents 4-5)
+###  Intermediate Section (Documents 4-5)
 **Focus**: Practical application
 - **Generation Parameters**: Mastering the controls
 - **Prompting Fundamentals**: Writing effective prompts
 
-### 🚀 Advanced Section (Documents 6-8)
+###  Advanced Section (Documents 6-8)
 **Focus**: Professional techniques
 - **Advanced Techniques**: Inpainting, outpainting, ControlNet
 - **Character Consistency**: Creating consistent characters with LoRA
 - **Practical Examples**: Real-world projects
 
-### 🎯 Learning Timeline
+###  Learning Timeline
 
 #### Week 1: Foundations
 - **Day 1-2**: What is Stable Diffusion? + Model Components
@@ -98,29 +107,29 @@ Let's begin your journey into AI image generation!
 
 ![Stable Diffusion 101 Learning Path](../../assets/images/learning-101/stable-diffusion-101-learning-path.svg)
 
-## 🎨 What Makes This Chapter Different
+##  What Makes This Chapter Different
 
-### 🎯 Beginner-Focused
+###  Beginner-Focused
 - **Simple Language**: No technical jargon without explanation
 - **Visual Analogies**: Complex concepts compared to everyday things
 - **Step-by-Step**: Each concept broken into manageable steps
 - **Practice Exercises**: Hands-on learning with each section
 
-### 📚 Comprehensive Coverage
+###  Comprehensive Coverage
 - **All Models**: Every model in LoRA Pilot explained
 - **Complete Techniques**: From basic to professional workflows
 - **Real Examples**: Practical projects you can actually build
 - **Troubleshooting**: Common problems and solutions
 
-### 🚀 Progressive Learning
+###  Progressive Learning
 - **Builds Knowledge**: Each section uses previous concepts
 - **Confidence Building**: Start simple, gradually increase complexity
 - **Practical Focus**: Emphasis on creating actual images
 - **Portfolio Ready**: End with professional-quality work
 
-## 🎯 Success Metrics
+##  Success Metrics
 
-### 🌟 After This Chapter, You'll Be Able To:
+###  After This Chapter, You'll Be Able To:
 
 #### Technical Skills
 - ✅ Understand how Stable Diffusion works
@@ -144,7 +153,7 @@ Let's begin your journey into AI image generation!
 - ✅ Create portfolio-ready images
 - ✅ Understand the AI art ecosystem
 
-## 🚀 Let's Begin Your Journey!
+##  Let's Begin Your Journey!
 
 Ready to start creating amazing AI images? 
 
@@ -154,4 +163,7 @@ Remember: Every expert was once a beginner. Take your time, experiment freely, a
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+

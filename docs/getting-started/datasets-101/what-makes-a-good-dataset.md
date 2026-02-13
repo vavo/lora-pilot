@@ -2,7 +2,7 @@
 
 A good dataset is the foundation of a great AI model. This guide covers the essential qualities and standards that separate mediocre datasets from exceptional ones.
 
-## 🎯 The Big Picture
+##  The Big Picture
 
 ### The 80/20 Rule
 Think of model training as:
@@ -23,7 +23,7 @@ Great Dataset + Great Training = Excellent Model
 
 ---
 
-## 📸 Image Quality Standards
+##  Image Quality Standards
 
 ### Resolution Requirements
 
@@ -73,7 +73,7 @@ FLUX.1:
 
 ---
 
-## 🎨 Subject Consistency
+##  Subject Consistency
 
 ### Character Consistency
 
@@ -155,7 +155,7 @@ Poor Concept Dataset:
 
 ---
 
-## 📝 Caption Quality Standards
+##  Caption Quality Standards
 
 ### Caption Accuracy
 
@@ -231,7 +231,7 @@ Incomplete Caption:
 
 ---
 
-## 🔧 Dataset Organization
+##  Dataset Organization
 
 ### Folder Structure
 
@@ -266,7 +266,7 @@ dataset/
 
 ---
 
-## 📊 Diversity and Variety
+##  Diversity and Variety
 
 ### Pose and Angle Variety
 
@@ -423,7 +423,7 @@ Process of checking dataset quality and identifying issues before training.
 
 ---
 
-## 🎯 Dataset Quality Checklist
+##  Dataset Quality Checklist
 
 ### Image Quality Checklist
 - [ ] **Resolution**: All images meet minimum resolution requirements
@@ -456,7 +456,7 @@ Process of checking dataset quality and identifying issues before training.
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand what makes a good dataset, you're ready to:
 
@@ -467,4 +467,8 @@ Now that you understand what makes a good dataset, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

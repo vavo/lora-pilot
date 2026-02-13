@@ -2,7 +2,7 @@
 
 Image processing and preparation transforms your collected images into optimal training data. This guide covers the technical aspects of preparing images for AI model training.
 
-## 🎯 Overview
+##  Overview
 
 ### Why Processing Matters
 
@@ -22,7 +22,7 @@ Collected → Resized → Color Corrected → Ready for Training
 
 ---
 
-## 📸 Resolution Standardization
+##  Resolution Standardization
 
 ### Why Standardize
 - **Consistent Input**: All images same size for training
@@ -112,7 +112,7 @@ FLUX.1 Training:
 
 ---
 
-## 🎨 Color Space and Correction
+##  Color Space and Correction
 
 ### Color Space Considerations
 
@@ -151,7 +151,7 @@ FLUX.1 Training:
 
 ---
 
-## 🔧 Cropping and Composition
+##  Cropping and Composition
 
 ### Cropping Strategies
 
@@ -188,7 +188,7 @@ FLUX.1 Training:
 
 ---
 
-## 📊 Noise Reduction
+##  Noise Reduction
 
 ### Noise Sources
 - **Digital Noise**: Sensor noise from camera
@@ -247,7 +247,7 @@ FLUX.1 Training:
 
 ---
 
-## 🔧 Batch Processing
+##  Batch Processing
 
 ### Automation Tools
 
@@ -297,7 +297,7 @@ resize_images("raw_images", "processed_images", (1024, 1024))
 
 ---
 
-## 📊 Quality Control
+##  Quality Control
 
 ### Quality Assessment
 
@@ -320,7 +320,7 @@ resize_images("raw_images", "processed_images", (1024, 1024))
 
 ---
 
-## 🔧 Image Enhancement
+##  Image Enhancement
 
 ### Sharpening Techniques
 
@@ -360,7 +360,7 @@ resize_images("raw_images", "processed_images", (1024, 1024))
 
 ---
 
-## 🎯 File Organization
+##  File Organization
 
 ### Naming Conventions
 
@@ -402,7 +402,7 @@ processed/
 
 ---
 
-## 📊 Validation and Testing
+##  Validation and Testing
 
 ### Automated Validation
 
@@ -460,7 +460,7 @@ processed/
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand image processing and preparation, you're ready to:
 
@@ -471,4 +471,8 @@ Now that you understand image processing and preparation, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

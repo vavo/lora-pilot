@@ -2,6 +2,14 @@
 
 Think of AI image generation like building with LEGOs. You need different pieces to create something amazing. In Stable Diffusion, these pieces are called "model components." Let's understand each one in simple terms.
 
+## Beginner Terms (Quick Glossary)
+
+- **Base model / checkpoint**: the main model that creates images
+- **LoRA**: a small add-on model for one style/character/concept
+- **VAE**: the part that affects final image clarity and color rendering
+- **Refiner**: an optional second pass for extra detail
+- **ControlNet**: a way to guide pose/composition more strictly
+
 ## 🧩 Base Models (Checkpoints)
 
 ### What Are Base Models?
@@ -37,11 +45,11 @@ Different base models are like different artists:
 - **Art Models**: Trained on paintings and illustrations
 - **General Models**: Trained on everything
 
-## 🎨 LoRA (Low-Rank Adaptation)
+##  LoRA (Small Add-On Model)
 
-### What Are LoRA?
+### What Is a LoRA?
 
-LoRA are like special add-ons or plugins for base models. They teach the base model new things without changing the original model.
+A LoRA is a small add-on model. It teaches the base model new behavior without changing the original model.
 
 ### The LoRA Magic
 
@@ -81,11 +89,11 @@ Example: Creating a Character LoRA
    - "your_character as a superhero"
 ```
 
-## 🖼️ VAE (Variational Autoencoder)
+## 🖼️ VAE (Image Decode Helper)
 
-### What Are VAE?
+### What Is a VAE?
 
-VAE are like the camera lens of the AI system. They handle how images are compressed and decompressed during the generation process.
+A VAE is the part that helps decode the final image cleanly. In practice, it affects sharpness, contrast, and color feel.
 
 ### How VAE Work
 
@@ -120,7 +128,7 @@ Image Generation Process:
 - **High Quality**: Better detail and clarity
 - **Style-Specific**: Optimized for certain art styles
 
-## 🎯 Refiner Models
+##  Refiner Models
 
 ### What Are Refiners?
 
@@ -159,7 +167,7 @@ Result: High-quality, detailed image
 - **Fine Details**: When small details matter
 - **Art Prints**: When every detail counts
 
-## 🔧 ControlNet
+##  ControlNet
 
 ### What Are ControlNet?
 
@@ -196,7 +204,7 @@ ControlNet Process:
 - **Tile Control**: Repeat patterns
 - **Reference Control**: Match reference image style
 
-## 🎭 Textual Inversion
+##  Textual Inversion
 
 ### What Are Textual Inversions?
 
@@ -223,7 +231,7 @@ Teaching Process:
 - **Simple Training**: Easier to create than LoRA
 - **Easy Sharing**: Very easy to distribute
 
-## 🎪 Embeddings
+##  Embeddings
 
 ### What Are Embeddings?
 
@@ -280,7 +288,7 @@ Base Model + LoRA + ControlNet + VAE + Refiner
 = Professional quality with precise control
 ```
 
-## 🎯 Choosing Your Components
+##  Choosing Your Components
 
 ### For Beginners
 - **Start Simple**: Base model + default VAE
@@ -319,7 +327,7 @@ Base Model + LoRA + ControlNet + VAE + Refiner
 - **Memory Usage**: Complex setups need more computer power
 - **Compatibility**: Not all components work together
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand all the components, you're ready to:
 
@@ -329,4 +337,7 @@ Now that you understand all the components, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+

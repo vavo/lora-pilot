@@ -2,7 +2,7 @@
 
 Proper dataset organization makes your data manageable, shareable, and professional. This guide covers best practices for structuring and managing AI training datasets.
 
-## 🎯 Overview
+##  Overview
 
 ### Why Organization Matters
 
@@ -125,7 +125,7 @@ closeup_001.jpg
 
 ---
 
-## 📊 Metadata Management
+##  Metadata Management
 
 ### Dataset Metadata
 
@@ -219,7 +219,7 @@ For questions or collaboration, contact: your@email.com
 
 ---
 
-## 🔄 Version Control
+##  Version Control
 
 ### Git Integration
 
@@ -276,7 +276,7 @@ git tag -a v1.0.1 -m "Fixed caption errors"
 
 ---
 
-## 📂 Split Management
+##  Split Management
 
 ### Training Splits
 
@@ -346,7 +346,7 @@ create_splits("images", "captions", "splits")
 
 ---
 
-## 🔧 Automation Tools
+##  Automation Tools
 
 ### Dataset Management Scripts
 
@@ -443,7 +443,7 @@ print(json.dumps(stats, indent=2))
 
 ---
 
-## 📊 Documentation Standards
+##  Documentation Standards
 
 ### Documentation Structure
 
@@ -505,7 +505,7 @@ Brief description of the dataset.
 
 ---
 
-## 🔄 Backup and Recovery
+##  Backup and Recovery
 
 ### Backup Strategy
 
@@ -569,7 +569,7 @@ Brief description of the dataset.
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand dataset organization, you're ready to:
 
@@ -579,4 +579,8 @@ Now that you understand dataset organization, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

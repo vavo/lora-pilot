@@ -68,7 +68,7 @@ This guide outlines the hardware and software requirements for running LoRA Pilo
 - **VS Code** - For configuration file editing
 - **Terminal/PowerShell** - For command-line operations
 
-## 📊 Storage Requirements
+##  Storage Requirements
 
 ### Base Installation
 - **Docker Image**: ~15-20GB
@@ -103,7 +103,7 @@ LoRA Pilot uses the following ports by default:
 - **8443** - Code Server
 - **8675** - AI Toolkit UI
 
-## 🔍 Performance Benchmarks
+##  Performance Benchmarks
 
 ### Training Speed (Images/Second)
 | GPU | SD1.5 | SDXL | FLUX.1 |
@@ -146,7 +146,7 @@ LoRA Pilot uses the following ports by default:
 - **VirtualBox**: Limited GPU support (CPU only)
 - **Proxmox**: GPU passthrough with PCIe configuration
 
-## 🎯 Recommendations by Use Case
+##  Recommendations by Use Case
 
 ### Casual Users (Inference Only)
 - **GPU**: RTX 3060 (12GB) or M1/M2 Mac
@@ -165,4 +165,8 @@ LoRA Pilot uses the following ports by default:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

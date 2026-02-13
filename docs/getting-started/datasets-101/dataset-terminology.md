@@ -2,7 +2,7 @@
 
 Welcome to Dataset Terminology! This guide covers all the essential terms and concepts you need to understand when working with AI training datasets. Think of this as learning the language of dataset creation.
 
-## 🎯 The Big Picture
+##  The Big Picture
 
 ### Why Terminology Matters
 
@@ -14,7 +14,7 @@ Understanding dataset terminology is like learning the vocabulary of a new langu
 
 ---
 
-## 📸 Core Dataset Concepts
+##  Core Dataset Concepts
 
 ### Dataset
 
@@ -89,7 +89,7 @@ my_dataset/
 
 ---
 
-## 📝 Caption Terminology
+##  Caption Terminology
 
 ### Caption Types
 
@@ -150,7 +150,7 @@ dataset/
 
 ---
 
-## 🔧 Processing Terminology
+##  Processing Terminology
 
 ### Preprocessing
 
@@ -187,7 +187,7 @@ Applying consistent processing to all images in dataset.
 
 ---
 
-## 📊 Quality Terminology
+##  Quality Terminology
 
 ### Dataset Quality
 
@@ -224,7 +224,7 @@ When a model doesn't learn enough from training data.
 
 ---
 
-## 🎯 Training-Specific Terminology
+##  Training-Specific Terminology
 
 ### Training Splits
 
@@ -287,7 +287,7 @@ One complete pass through the entire training dataset.
 
 ---
 
-## 🔍 Validation Terminology
+##  Validation Terminology
 
 ### Validation
 
@@ -316,7 +316,7 @@ Process of checking dataset quality and correctness.
 
 ---
 
-## 🎯 Common Acronyms and Abbreviations
+##  Common Acronyms and Abbreviations
 
 ### Dataset Formats
 
@@ -380,7 +380,7 @@ Process of checking dataset quality and correctness.
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand dataset terminology, you're ready to:
 
@@ -391,4 +391,8 @@ Now that you understand dataset terminology, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

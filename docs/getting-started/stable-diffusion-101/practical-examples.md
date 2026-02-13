@@ -2,7 +2,7 @@
 
 Time to put your knowledge into practice! These real-world projects will help you master Stable Diffusion through hands-on experience.
 
-## 🎯 Project-Based Learning
+##  Project-Based Learning
 
 Each project teaches specific skills:
 - **Beginner Projects**: Build confidence with simple creations
@@ -184,7 +184,7 @@ Negative: "painting, drawing, traditional art"
 
 ---
 
-## 🎨 Intermediate Projects
+##  Intermediate Projects
 
 ### Project 4: Character Design Series
 
@@ -374,7 +374,7 @@ Prompt: "fantasy illustration, Elena being transformed by magic, glowing energy 
 
 ---
 
-## 🚀 Advanced Projects
+##  Advanced Projects
 
 ### Project 7: Professional Character Creation
 
@@ -503,7 +503,7 @@ Combine and refine:
 
 ---
 
-## 🎯 Portfolio Development
+##  Portfolio Development
 
 ### Project 9: Themed Portfolio
 
@@ -606,7 +606,7 @@ Professional presentation:
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 After completing these projects, you'll have:
 
@@ -623,4 +623,8 @@ You're now ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

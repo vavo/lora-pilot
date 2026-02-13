@@ -2,7 +2,7 @@
 
 Effective captions and tags are the "instructions" that tell your AI model what to learn. This guide covers how to write compelling descriptions and tags that train excellent models.
 
-## 🎯 Overview
+##  Overview
 
 ### Why Captions Matter
 
@@ -21,7 +21,7 @@ Clear Subject + Accurate Details + Style Information = Effective Caption
 
 ---
 
-## 📝 Caption Writing Principles
+##  Caption Writing Principles
 
 ### Be Specific and Descriptive
 
@@ -145,7 +145,7 @@ Clear Subject + Accurate Details + Style Information = Effective Caption
 
 ---
 
-## 📝 Caption Examples
+##  Caption Examples
 
 ### Character Training Captions
 
@@ -200,7 +200,7 @@ Clear Subject + Accurate Details + Style Information = Effective Caption
 
 ---
 
-## 🔧 Captioning Tools and Techniques
+##  Captioning Tools and Techniques
 
 ### Captioning Software
 
@@ -237,7 +237,7 @@ Clear Subject + Accurate Details + Style Information = Effective Caption
 
 ---
 
-## 📊 Tagging Systems
+##  Tagging Systems
 
 ### Hierarchical Tagging
 
@@ -275,7 +275,7 @@ scene, outdoor, park, garden, office
 
 ---
 
-## 🎯 Quality Assurance
+##  Quality Assurance
 
 ### Caption Quality Check
 
@@ -363,7 +363,7 @@ Better: "professional photography, sharp focus, good lighting, high quality"
 
 ---
 
-## 🚀 Advanced Captioning Techniques
+##  Advanced Captioning Techniques
 
 ### Weighted Captions
 
@@ -414,7 +414,7 @@ Combined: "A young woman with long brown hair, [image]"
 
 ---
 
-## 🎯 Captioning for Different Training Types
+##  Captioning for Different Training Types
 
 ### Character Training Captions
 
@@ -478,7 +478,7 @@ Combined: "A young woman with long brown hair, [image]"
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand captioning and tagging, you're ready to:
 
@@ -490,4 +490,8 @@ Now that you understand captioning and tagging, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

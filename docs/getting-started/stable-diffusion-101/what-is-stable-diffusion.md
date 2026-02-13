@@ -2,7 +2,7 @@
 
 Welcome to your first step into AI image generation! Let's break down what Stable Diffusion is in simple terms, without the technical jargon.
 
-## 🎯 The Big Picture
+##  The Big Picture
 
 Imagine you have a magic box that can create any image you describe. You type "a cute cat sitting on a windowsill," and the box creates that exact image. That's essentially what Stable Diffusion does - it's an AI that turns text descriptions into images.
 
@@ -38,7 +38,7 @@ The AI then goes through a step-by-step process:
 #### 3. Image Creation
 The final step produces the actual image file you can save and share.
 
-## 🎨 Why It's Called "Stable" Diffusion
+##  Why It's Called "Stable" Diffusion
 
 ### "Stable" Means Reliable
 - **Consistent Results**: Same prompt = similar results
@@ -50,7 +50,7 @@ The final step produces the actual image file you can save and share.
 - **Noise Reduction**: Slowly removes randomness
 - **Refinement**: Gets better with each step
 
-## 🚀 What Makes Stable Diffusion Special
+##  What Makes Stable Diffusion Special
 
 ### It's Open Source
 - **Free to Use**: No subscription fees
@@ -67,7 +67,7 @@ The final step produces the actual image file you can save and share.
 - **Community Models**: People train specialized versions
 - **Technique Advances**: New ways to control the output
 
-## 🎯 Real-World Examples
+##  Real-World Examples
 
 ### Example 1: Simple Portrait
 ```
@@ -107,7 +107,7 @@ AI Process:
 8. Final: Detailed cyberpunk night scene
 ```
 
-## 🎨 The Creative Possibilities
+##  The Creative Possibilities
 
 ### What You Can Create
 - **Art**: Any style you can imagine
@@ -125,7 +125,7 @@ AI Process:
 - **Education**: Illustrations and diagrams
 - **Personal**: Creative projects and hobbies
 
-## 🔧 Key Concepts to Remember
+##  Key Concepts to Remember
 
 ### Prompts Are Your Instructions
 - **Be Specific**: More detail = better results
@@ -142,7 +142,7 @@ AI Process:
 - **Needs Guidance**: Your prompt quality matters a lot
 - **Improving**: Gets better with each new version
 
-## 🎯 Why This Matters for You
+##  Why This Matters for You
 
 ### You're Now an Artist
 - **No Drawing Skills Needed**: Your words are your brush
@@ -159,7 +159,7 @@ AI Process:
 - **Combine Ideas**: Mix concepts in new ways
 - **Stand Out**: Create images no one has seen before
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand the basics, you're ready to learn about:
 
@@ -179,4 +179,8 @@ This is exactly how you'll start creating your own images!
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

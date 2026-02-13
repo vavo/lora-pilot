@@ -2,7 +2,7 @@
 
 Effective image collection is the foundation of great datasets. This guide covers proven strategies for gathering high-quality images for different training scenarios.
 
-## 🎯 Overview
+##  Overview
 
 ### Collection Philosophy
 - **Quality Over Quantity**: 20 excellent images > 100 mediocre images
@@ -20,7 +20,7 @@ Define Needs → Gather Images → Choose Best → Prepare → Structure Dataset
 
 ---
 
-## 📸 Character Image Collection
+##  Character Image Collection
 
 ### Character Training Goals
 
@@ -86,7 +86,7 @@ Essential Shots:
 
 ---
 
-## 🎨 Style Image Collection
+##  Style Image Collection
 
 ### Style Training Goals
 
@@ -222,7 +222,7 @@ Use Cases:
 
 ---
 
-## 🔧 Technical Collection Strategies
+##  Technical Collection Strategies
 
 ### Resolution Planning
 
@@ -353,7 +353,7 @@ collection/
 
 ---
 
-## 🔍 Quality Assurance
+##  Quality Assurance
 
 ### Review Process
 
@@ -385,7 +385,7 @@ collection/
 
 ---
 
-## 🚀 Practical Tips
+##  Practical Tips
 
 ### Time Management
 
@@ -417,7 +417,7 @@ collection/
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand collection strategies, you're ready to:
 
@@ -428,4 +428,8 @@ Now that you understand collection strategies, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

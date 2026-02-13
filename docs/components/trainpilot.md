@@ -2,7 +2,7 @@
 
 TrainPilot is the quick-start training automation layer for Kohya in LoRA Pilot. It wraps a curated SDXL training flow around dataset selection, profile presets, and TOML patching.
 
-## 🎯 Overview
+##  Overview
 
 TrainPilot provides:
 - Fast profile-based LoRA training startup
@@ -13,7 +13,7 @@ TrainPilot provides:
 
 Current implementation runs `sd-scripts/sdxl_train_network.py` and is SDXL-focused.
 
-## 🚀 Access
+##  Access
 
 ### Through ControlPilot (recommended)
 - Open `TrainPilot` tab in ControlPilot (`http://localhost:7878`)
@@ -106,7 +106,7 @@ Minimum requirements:
 
 If those model files are missing, ControlPilot can offer manifest-based download before start.
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### TrainPilot fails immediately
 - Check executable/script presence:
@@ -147,3 +147,11 @@ tail -n 200 /workspace/outputs/<output_name>/_logs/train.log
 ---
 
 _Last updated: 2026-02-11_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

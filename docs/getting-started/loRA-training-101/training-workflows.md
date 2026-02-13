@@ -2,28 +2,36 @@
 
 Training workflows are step-by-step processes that guide you from dataset to trained model. This guide covers the complete training process using LoRA Pilot's tools.
 
-## 🎯 Overview of Training Workflows
+## Beginner Terms (Quick)
 
-### The Training Pipeline
+- **Workflow**: a step-by-step process
+- **Checkpoint**: saved model during training
+- **Sampler**: generation method used when previewing results
+- **CFG**: how strongly prompts are followed during preview generation
+- **Gradient checkpointing**: memory-saving mode while training
+
+##  Overview of Training Workflows
+
+### The Training Path
 
 ```
 Dataset Preparation → Training Configuration → Training Execution → Model Testing → Model Refinement
 ```
 
-### Available Tools in LoRA Pilot
+### Available Training Tools in LoRA Pilot
 
 1. **Kohya SS** - Traditional, feature-rich training interface
 2. **AI Toolkit** - Modern, FLUX.1-optimized training
 3. **TrainPilot** - Simplified training automation
-4. **Manual Training** - Command-line training for advanced users
+4. **Manual Training** - command-line option for advanced users
 
 ---
 
-## 🎨 Kohya SS Workflow
+##  Kohya SS Workflow
 
 ### Overview
 
-Kohya SS is the most established LoRA training tool with extensive configuration options and proven reliability.
+Kohya SS is the most established LoRA training tool with many settings and proven reliability.
 
 ### Step-by-Step Workflow
 
@@ -117,7 +125,7 @@ Logging: /workspace/outputs/my_character/logs
 
 ---
 
-## 🚀 AI Toolkit Workflow
+##  AI Toolkit Workflow
 
 ### Overview
 
@@ -203,7 +211,7 @@ AI Toolkit is a modern training interface optimized for FLUX.1 and latest models
 
 ---
 
-## 🎯 TrainPilot Workflow
+##  TrainPilot Workflow
 
 ### Overview
 
@@ -263,7 +271,7 @@ TrainPilot is a simplified training automation tool that makes training easy for
 
 ---
 
-## 🔧 Manual Training Workflow
+##  Manual Training Workflow
 
 ### Overview
 
@@ -311,7 +319,7 @@ For advanced users who want complete control over the training process.
 
 ---
 
-## 📊 Workflow Comparison
+##  Workflow Comparison
 
 ### Ease of Use
 
@@ -392,7 +400,7 @@ For advanced users who want complete control over the training process.
 
 ---
 
-## 🔍 Troubleshooting Workflows
+##  Troubleshooting Workflows
 
 ### Common Training Issues
 
@@ -430,7 +438,7 @@ For advanced users who want complete control over the training process.
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand training workflows, you're ready to:
 
@@ -441,4 +449,7 @@ Now that you understand training workflows, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+

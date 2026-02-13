@@ -2,7 +2,7 @@
 
 Dataset validation and testing ensures your data is ready for training and will produce good results. This guide covers comprehensive quality assurance methods for AI training datasets.
 
-## 🎯 Overview
+##  Overview
 
 ### Why Validation Matters
 
@@ -22,7 +22,7 @@ Comprehensive Check + Measurement Standards + Problem Fixing = Reliable Dataset
 
 ---
 
-## 🔍 Validation Types
+##  Validation Types
 
 ### File Validation
 
@@ -54,7 +54,7 @@ Comprehensive Check + Measurement Standards + Problem Fixing = Reliable Dataset
 
 ---
 
-## 📊 Quality Metrics
+##  Quality Metrics
 
 ### Image Quality Metrics
 
@@ -98,7 +98,7 @@ Comprehensive Check + Measurement Standards + Problem Fixing = Reliable Dataset
 
 ---
 
-## 🔧 Validation Tools
+##  Validation Tools
 
 ### Automated Validation
 
@@ -284,7 +284,7 @@ print(json.dumps(scores, indent=2))
 
 ---
 
-## 📋 Validation Checklists
+##  Validation Checklists
 
 ### Pre-Training Validation
 
@@ -332,7 +332,7 @@ print(json.dumps(scores, indent=2))
 
 ---
 
-## 🔧 Testing Methods
+##  Testing Methods
 
 ### Manual Testing
 
@@ -364,7 +364,7 @@ print(json.dumps(scores, indent=2))
 
 ---
 
-## 📊 Validation Reports
+##  Validation Reports
 
 ### Report Structure
 
@@ -486,7 +486,7 @@ print(json.dumps(scores, indent=2))
 
 ---
 
-## 🚀 Best Practices
+##  Best Practices
 
 ### Systematic Approach
 
@@ -518,7 +518,7 @@ print(json.dumps(scores, indent=2))
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand dataset validation and testing, you're ready to:
 
@@ -528,4 +528,8 @@ Now that you understand dataset validation and testing, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

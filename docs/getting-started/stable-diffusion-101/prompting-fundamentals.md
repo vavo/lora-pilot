@@ -2,7 +2,7 @@
 
 Think of prompting like talking to a very talented but very literal artist. The more clearly and specifically you describe what you want, the better the results. This guide teaches you to speak AI's language fluently.
 
-## 🎯 The Prompting Mindset
+##  The Prompting Mindset
 
 ### Think Like a Director
 Instead of just describing an image, imagine you're directing a photoshoot:
@@ -22,7 +22,7 @@ Specific: "a mountain landscape at sunset, with pine trees and a lake"
 
 ---
 
-## 📝 Basic Prompt Structure
+##  Basic Prompt Structure
 
 ### The Formula
 ```
@@ -58,7 +58,7 @@ Specific: "a mountain landscape at sunset, with pine trees and a lake"
 
 ---
 
-## 🎨 Prompt Examples by Category
+##  Prompt Examples by Category
 
 ### Portrait Photography
 
@@ -234,7 +234,7 @@ Negative: text, watermark, signature, username, logo, copyright, words, letters,
 
 ---
 
-## 🎯 Advanced Prompting Techniques
+##  Advanced Prompting Techniques
 
 ### Step-by-Step Prompting
 
@@ -287,7 +287,7 @@ Same subject, different styles:
 
 ---
 
-## 🎨 Model-Specific Prompting
+##  Model-Specific Prompting
 
 ### SD1.5 Prompting
 
@@ -339,7 +339,7 @@ Better: "A breathtaking fantasy landscape where ancient stone towers rise from m
 
 ---
 
-## 🔧 Prompting Troubleshooting
+##  Prompting Troubleshooting
 
 ### Common Issues and Solutions
 
@@ -400,7 +400,7 @@ Solutions:
 
 ---
 
-## 🎯 Prompting Practice Exercises
+##  Prompting Practice Exercises
 
 ### Exercise 1: Subject Focus
 ```
@@ -454,7 +454,7 @@ Steps:
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand prompting fundamentals, you're ready to:
 
@@ -464,4 +464,8 @@ Now that you understand prompting fundamentals, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

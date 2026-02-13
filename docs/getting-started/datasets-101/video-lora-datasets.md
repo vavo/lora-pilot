@@ -2,7 +2,7 @@
 
 Video LoRA datasets are specifically designed for training video generation models. This guide covers the unique requirements and best practices for creating effective video LoRA datasets.
 
-## 🎯 Overview
+##  Overview
 
 ### Video LoRA vs. Image LoRA
 
@@ -67,7 +67,7 @@ FLUX.1 Video LoRA:
 
 ---
 
-## 🎨 Character Video LoRA Datasets
+##  Character Video LoRA Datasets
 
 ### Character Video Requirements
 
@@ -119,7 +119,7 @@ Character Video Dataset Types:
 
 ---
 
-## 🎨 Style Video LoRA Datasets
+##  Style Video LoRA Datasets
 
 ### Style Video Requirements
 
@@ -223,7 +223,7 @@ Video Concept Dataset Elements:
 
 ---
 
-## 🔧 Video Processing for LoRA
+##  Video Processing for LoRA
 
 ### Preprocessing Steps
 
@@ -267,7 +267,7 @@ Video Concept Dataset Elements:
 
 ---
 
-## 📊 Dataset Organization
+##  Dataset Organization
 
 ### Folder Structure
 
@@ -324,7 +324,7 @@ video_lora_dataset/
 
 ---
 
-## 🎯 Quality Assurance
+##  Quality Assurance
 
 ### Validation Checklist
 
@@ -394,7 +394,7 @@ video_lora_dataset/
 
 ---
 
-## 🚀 Practical Examples
+##  Practical Examples
 
 ### Character LoRA Dataset Example
 
@@ -456,7 +456,7 @@ cinematic_style_video/
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand video LoRA datasets, you're ready to:
 
@@ -466,4 +466,8 @@ Now that you understand video LoRA datasets, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

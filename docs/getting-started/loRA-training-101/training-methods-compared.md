@@ -2,7 +2,7 @@
 
 When it comes to customizing AI models, you have several methods to choose from. Each has different strengths and use cases. Let's compare them so you can choose the right one for your needs.
 
-## 🎯 Overview of Methods
+##  Overview of Methods
 
 ### The Main Training Methods
 
@@ -22,7 +22,7 @@ When it comes to customizing AI models, you have several methods to choose from.
 
 ---
 
-## 🎨 DreamBooth
+##  DreamBooth
 
 ### What It Is
 
@@ -139,7 +139,7 @@ Knows "person" + "John's features" → Can draw "John" efficiently
 
 ---
 
-## 🔥 LyCORIS (Low-Rank Adaptation of Large Language Models)
+##  LyCORIS (Low-Rank Adaptation of Large Language Models)
 
 ### What It Is
 
@@ -203,7 +203,7 @@ Knows "person" + "Advanced John features" → High-quality "John"
 
 ---
 
-## 🔧 Full Fine-Tuning
+##  Full Fine-Tuning
 
 ### What It Is
 
@@ -267,7 +267,7 @@ Knows "person" + Your examples → Model that knows your examples deeply
 
 ---
 
-## 📊 Detailed Comparison
+##  Detailed Comparison
 
 ### Quality vs Efficiency
 
@@ -311,7 +311,7 @@ Knows "person" + Your examples → Model that knows your examples deeply
 
 ---
 
-## 🎯 Choosing the Right Method
+##  Choosing the Right Method
 
 ### Decision Tree
 
@@ -384,7 +384,7 @@ Be realistic about your constraints:
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand the different training methods, you're ready to:
 
@@ -395,4 +395,8 @@ Now that you understand the different training methods, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

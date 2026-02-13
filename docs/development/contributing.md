@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to LoRA Pilot! This guide covers how to contribute effectively, including development setup, contribution guidelines, and community practices.
 
-## 🎯 Contribution Overview
+##  Contribution Overview
 
 LoRA Pilot welcomes contributions in many forms:
 - **Code Contributions**: Bug fixes, new features, improvements
@@ -11,7 +11,7 @@ LoRA Pilot welcomes contributions in many forms:
 - **Community**: Support, discussions, feedback
 - **Design**: UI/UX improvements, visual assets
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Development Setup
 
@@ -87,7 +87,7 @@ apps/
     └── static/              # Static assets
 ```
 
-## 📝 Contribution Guidelines
+##  Contribution Guidelines
 
 ### Code Standards
 
@@ -465,7 +465,7 @@ Any other relevant information
 - [ ] Error handling
 ```
 
-## 📚 Documentation Contributions
+##  Documentation Contributions
 
 ### Documentation Types
 
@@ -607,7 +607,7 @@ Links to related documentation
 - **Contributor Spotlight**: Featured in community posts
 - **Annual Recognition**: Year-end contributor highlights
 
-## 📋 Development Workflow
+##  Development Workflow
 
 ### Branch Strategy
 
@@ -668,7 +668,7 @@ protection:
 - **Security Scan**: No vulnerabilities
 - **Performance**: No performance regressions
 
-## 🚀 Getting Help
+##  Getting Help
 
 ### Support Channels
 
@@ -728,4 +728,8 @@ protection:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

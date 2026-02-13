@@ -2,7 +2,7 @@
 
 MediaPilot is the built-in gallery and curation layer for generated images in LoRA Pilot. It is embedded into ControlPilot and optimized for large output directories.
 
-## 🎯 Overview
+##  Overview
 
 MediaPilot gives you:
 - Fast gallery browsing with generated WebP thumbnails
@@ -11,7 +11,7 @@ MediaPilot gives you:
 - Bulk actions: ZIP download and ComfyUI upscale queue
 - Optional password gate for shared environments
 
-## 🚀 Access
+##  Access
 
 - **ControlPilot tab**: `MediaPilot`
 - **Direct route**: `http://localhost:7878/mediapilot/`
@@ -19,7 +19,7 @@ MediaPilot gives you:
 
 In LoRA Pilot, MediaPilot is mounted inside ControlPilot (same host/port), not exposed as a separate default port.
 
-## 📂 Data Sources and Paths
+##  Data Sources and Paths
 
 Default LoRA Pilot bootstrap values:
 - `MEDIAPILOT_OUTPUT_DIR=/workspace/outputs/comfy`
@@ -48,7 +48,7 @@ Key variables:
 | `MEDIAPILOT_ACCESS_PASSWORD` | Enables auth when non-empty | empty |
 | `MEDIAPILOT_ALLOW_ORIGINS` | CORS origins (comma-separated) | `*` |
 
-## 🔍 Search and Filtering
+##  Search and Filtering
 
 Search supports free text and field filters:
 
@@ -136,7 +136,7 @@ cd /workspace/apps/MediaPilot
 /opt/venvs/core/bin/python pregenerate_thumbs.py
 ```
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### MediaPilot section is blank in ControlPilot
 - Check status API:
@@ -169,3 +169,11 @@ curl -s http://localhost:7878/api/mediapilot/status
 ---
 
 _Last updated: 2026-02-11_
+
+---
+
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

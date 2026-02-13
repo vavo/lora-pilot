@@ -2,7 +2,7 @@
 
 ControlPilot is the central web interface for LoRA Pilot, providing a unified dashboard for managing all services, models, datasets, and training workflows. It's your command center for the entire AI workspace.
 
-## 🎯 Overview
+##  Overview
 
 ControlPilot offers:
 - **Service Management**: Start, stop, and monitor all LoRA Pilot services
@@ -12,7 +12,7 @@ ControlPilot offers:
 - **File Browser**: Navigate and manage workspace files
 - **System Monitoring**: Track resource usage and system health
 
-## 🚀 Access and Navigation
+##  Access and Navigation
 
 ### Accessing ControlPilot
 
@@ -28,10 +28,10 @@ ControlPilot Dashboard
 ├── 🧩 Services          - Service management and control
 ├── 📦 Models            - Model downloading and management
 ├── 📁 Datasets          - Dataset tools and management
-├── 🎯 Training          - Training job orchestration
-├── 📂 File Browser      - Workspace file management
-├── 📊 System            - Resource monitoring and logs
-└── 📚 Docs              - Integrated documentation
+├──  Training          - Training job orchestration
+├──  File Browser      - Workspace file management
+├──  System            - Resource monitoring and logs
+└──  Docs              - Integrated documentation
 ```
 
 ## 🖥️ Interface Guide
@@ -200,7 +200,7 @@ For each model, you can see:
 - **Log Filtering**: Filter by service or error level
 - **Log Export**: Download logs for analysis
 
-## 🔧 Advanced Features
+##  Advanced Features
 
 ### API Access
 
@@ -268,7 +268,7 @@ CONTROLPILOT_LOG_LEVEL=INFO
 - **Code Generation**: AI-powered code assistance
 - **Workspace Awareness**: Context-aware suggestions
 
-## 📊 Performance Optimization
+##  Performance Optimization
 
 ### Interface Optimization
 
@@ -294,7 +294,7 @@ CONTROLPILOT_LOG_LEVEL=INFO
 - **Resource Usage Alerts**: Alert on high resource usage
 - **Performance Metrics**: Track system performance over time
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -361,7 +361,7 @@ docker exec lora-pilot grep -i error /workspace/logs/controlpilot.out.log
 docker exec lora-pilot top -bn1 | head -20
 ```
 
-## 🎯 Best Practices
+##  Best Practices
 
 ### Service Management
 1. **Start Services Gradually**: Start core services first
@@ -389,4 +389,8 @@ docker exec lora-pilot top -bn1 | head -20
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+
+

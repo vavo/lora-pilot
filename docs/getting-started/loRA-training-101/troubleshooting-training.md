@@ -2,7 +2,7 @@
 
 Training problems can be frustrating, but most issues have clear solutions. This guide covers common training problems and their fixes.
 
-## 🎯 Overview
+##  Overview
 
 ### Why Troubleshooting Matters
 
@@ -22,7 +22,7 @@ Observe Issue + Understand Why + Apply Fix = Success
 
 ---
 
-## 🔧 Common Training Issues
+##  Common Training Issues
 
 ### Training Won't Start
 
@@ -247,7 +247,7 @@ warmup_steps: 100  # Gradual increase
 
 ---
 
-## 🔍 Advanced Issues
+##  Advanced Issues
 
 ### Model Corruption
 
@@ -451,7 +451,7 @@ for issue in issues:
 
 ---
 
-## 🚀 Prevention Strategies
+##  Prevention Strategies
 
 ### Before Training
 
@@ -483,7 +483,7 @@ for issue in issues:
 
 ---
 
-## 📋 Quick Reference
+##  Quick Reference
 
 ### Common Issues and Fixes
 
@@ -508,7 +508,7 @@ for issue in issues:
 
 ---
 
-## 🚀 Emergency Procedures
+##  Emergency Procedures
 
 ### Training Crashes
 
@@ -540,7 +540,7 @@ for issue in issues:
 
 ---
 
-## 🚀 Getting Help
+##  Getting Help
 
 ### Community Resources
 
@@ -572,7 +572,7 @@ for issue in issues:
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you can troubleshoot training issues, you're ready to:
 
@@ -583,4 +583,8 @@ Now that you can troubleshoot training issues, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

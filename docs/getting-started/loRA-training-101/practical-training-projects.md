@@ -2,7 +2,7 @@
 
 Practical training projects help you apply your knowledge and build real-world experience. This guide provides step-by-step projects from beginner to advanced levels.
 
-## 🎯 Overview
+##  Overview
 
 ### Why Practical Projects Matter
 
@@ -146,7 +146,7 @@ Train a simple artistic style LoRA with 20-25 images to learn style training.
 
 ---
 
-## 🎨 Intermediate Projects
+##  Intermediate Projects
 
 ### Project 3: Multi-Concept Character
 
@@ -270,7 +270,7 @@ Train a professional artistic style with 40-50 images for high-quality results.
 
 ---
 
-## 🚀 Advanced Projects
+##  Advanced Projects
 
 ### Project 5: Character Evolution Series
 
@@ -430,7 +430,7 @@ Train multiple related styles that can be fused for unique combinations.
 
 ---
 
-## 🎯 Project Selection Guide
+##  Project Selection Guide
 
 ### Beginner Recommendations
 
@@ -470,7 +470,7 @@ Train multiple related styles that can be fused for unique combinations.
 
 ---
 
-## 🚀 Next Steps
+##  Next Steps
 
 ### After Completing Projects
 
@@ -488,7 +488,7 @@ Train multiple related styles that can be fused for unique combinations.
 
 ---
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you have practical project experience, you're ready to:
 
@@ -499,4 +499,8 @@ Now that you have practical project experience, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+

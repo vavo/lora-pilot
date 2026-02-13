@@ -2,7 +2,15 @@
 
 Think of generation parameters like camera settings on a professional camera. Just as a photographer adjusts aperture, shutter speed, and ISO, you'll adjust AI parameters to get the perfect image. This guide explains each parameter in simple terms.
 
-## 🎯 The Big Picture
+## Beginner Terms (Before You Start)
+
+- **Steps**: how many refinement passes the model runs
+- **CFG**: how strongly the model follows your prompt
+- **Sampler**: the method used to build the image
+- **Scheduler**: timing strategy used by some samplers
+- **Seed**: randomness number (same seed = similar result)
+
+##  The Big Picture
 
 Generation parameters control **how** the AI creates your image, not **what** it creates. Your prompt determines the content, but parameters determine the style, quality, and characteristics.
 
@@ -131,11 +139,11 @@ CFG 15: Strictly dreamlike forest, less creative
 
 ---
 
-## 🎯 Samplers (Denoising Methods)
+##  Samplers (Image-Building Methods)
 
 ### What Are Samplers?
 
-Samplers are different methods the AI uses to remove noise during generation. Think of them as different artistic techniques for the same result.
+Samplers are different methods the AI uses to turn random noise into an image. Think of them as different routes to the same destination.
 
 ### How Samplers Work
 
@@ -301,7 +309,7 @@ After about 30-40 steps, additional steps provide minimal improvement:
 
 ---
 
-## 🎨 Scheduler (Timing Control)
+##  Scheduler (Timing Control)
 
 ### What Are Schedulers?
 
@@ -361,7 +369,7 @@ Temperature controls the randomness in the AI's decisions. Higher temperature = 
 
 ---
 
-## 🎯 Parameter Combinations
+##  Parameter Combinations
 
 ### Beginner-Friendly Combinations
 
@@ -454,7 +462,7 @@ Result: Identical images for testing
 - **SDXL**: Benefits from more steps (30-40)
 - **FLUX.1**: Needs more steps for best quality (30-50)
 
-## 🔧 Troubleshooting Parameters
+##  Troubleshooting Parameters
 
 ### Common Issues
 
@@ -478,7 +486,7 @@ Result: Identical images for testing
 - **Use Creative Sampler**: Try DPM++ SDE
 - **Lower CFG**: Allow more creativity
 
-## 🚀 What's Next?
+##  What's Next?
 
 Now that you understand parameters, you're ready to:
 
@@ -488,4 +496,7 @@ Now that you understand parameters, you're ready to:
 
 ---
 
-*Last updated: 2025-02-11*
+## 📝 Feedback
+
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
