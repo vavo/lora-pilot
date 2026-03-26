@@ -39,8 +39,12 @@ ARG JUPYTERLAB_VERSION=4.5.6
 ARG IPYWIDGETS_VERSION=8.1.8
 ARG COMFYUI_REF=v0.18.0
 ARG COMFYUI_MANAGER_REF=3.39.2
+ARG KOHYA_REF=4161d1d80ad554f7801c584632665d6825994062
+ARG DIFFPIPE_REF=a17e5c1da254afeae66cab809e3ca547501dd067
 ARG AI_TOOLKIT_REF=35b1cde3cb7b0151a51bf8547bab0931fd57d72d
 ARG AI_TOOLKIT_DIFFUSERS_VERSION=0.36.0
+ARG DIFFPIPE_DIFFUSERS_VERSION=0.36.0
+ARG DIFFPIPE_TRANSFORMERS_VERSION=4.57.3
 
 ARG TORCH_VERSION=2.6.0
 ARG TORCHVISION_VERSION=0.21.0
@@ -48,13 +52,16 @@ ARG TORCHAUDIO_VERSION=2.6.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
 ARG XFORMERS_VERSION=0.0.29.post3
 ARG CORE_DIFFUSERS_VERSION=0.32.2
-ARG TRANSFORMERS_VERSION=4.44.2
+ARG TRANSFORMERS_VERSION=4.48.3
 ARG PEFT_VERSION=0.17.0
 ARG INVOKE_TORCH_VERSION=2.7.0
 ARG INVOKE_TORCHVISION_VERSION=0.22.0
 ARG INVOKE_TORCHAUDIO_VERSION=2.7.0
 ARG INVOKE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu126
 ARG INVOKEAI_VERSION=6.11.1
+ARG INVOKE_TRANSFORMERS_VERSION=4.57.3
+ARG INVOKE_ACCELERATE_VERSION=1.11.0
+ARG INVOKE_HF_HUB_VERSION=0.36.0
 ARG CUDA_NVCC_PKG=cuda-nvcc-12-4
 ARG CROC_VERSION=10.4.2
 
@@ -183,6 +190,36 @@ transformers==${TRANSFORMERS_VERSION}
 peft==${PEFT_VERSION}
 EOF
 
+RUN set -eux; \
+    cat > /opt/pilot/config/invoke-constraints.txt <<EOF
+torch==${INVOKE_TORCH_VERSION}
+torchvision==${INVOKE_TORCHVISION_VERSION}
+torchaudio==${INVOKE_TORCHAUDIO_VERSION}
+numpy<2
+pillow<11
+diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}
+transformers==${INVOKE_TRANSFORMERS_VERSION}
+accelerate==${INVOKE_ACCELERATE_VERSION}
+huggingface-hub==${INVOKE_HF_HUB_VERSION}
+peft==${PEFT_VERSION}
+EOF
+
+RUN set -eux; \
+    cat > /opt/pilot/config/diffpipe-constraints.txt <<EOF
+torch==${TORCH_VERSION}
+torchvision==${TORCHVISION_VERSION}
+torchaudio==${TORCHAUDIO_VERSION}
+xformers==${XFORMERS_VERSION}
+bitsandbytes==0.46.0
+numpy<2
+pillow<12
+huggingface-hub<1.0
+diffusers==${DIFFPIPE_DIFFUSERS_VERSION}
+transformers==${DIFFPIPE_TRANSFORMERS_VERSION}
+accelerate==${INVOKE_ACCELERATE_VERSION}
+peft==${PEFT_VERSION}
+EOF
+
 # ----- GPU stack (core venv) -----
 RUN if [ "${INSTALL_GPU_STACK}" = "1" ]; then \
       set -eux; \
@@ -271,6 +308,14 @@ RUN if [ "${INSTALL_KOHYA}" = "1" ]; then \
       set -eux && \
       git clone --depth 1 --recurse-submodules https://github.com/bmaltais/kohya_ss.git /opt/pilot/repos/kohya_ss && \
       cd /opt/pilot/repos/kohya_ss && \
+      if [ -n "${KOHYA_REF}" ]; then \
+        if git -C /opt/pilot/repos/kohya_ss rev-parse -q --verify "${KOHYA_REF}^{commit}" >/dev/null; then \
+          git -C /opt/pilot/repos/kohya_ss checkout "${KOHYA_REF}"; \
+        else \
+          git -C /opt/pilot/repos/kohya_ss fetch --depth 1 origin "${KOHYA_REF}" && \
+          git -C /opt/pilot/repos/kohya_ss checkout FETCH_HEAD; \
+        fi; \
+      fi && \
       \
       # Disable Windows torch requirements to prevent accidental reinstall attempts.
       if [ -f "requirements_pytorch_windows.txt" ]; then \
@@ -307,7 +352,32 @@ RUN if [ "${INSTALL_DIFFPIPE}" = "1" ]; then \
       set -eux && \
       git clone --depth 1 --recurse-submodules \
         https://github.com/tdrussell/diffusion-pipe.git /opt/pilot/repos/diffusion-pipe && \
-      /opt/venvs/core/bin/pip install --no-cache-dir \
+      if [ -n "${DIFFPIPE_REF}" ]; then \
+        if git -C /opt/pilot/repos/diffusion-pipe rev-parse -q --verify "${DIFFPIPE_REF}^{commit}" >/dev/null; then \
+          git -C /opt/pilot/repos/diffusion-pipe checkout "${DIFFPIPE_REF}"; \
+        else \
+          git -C /opt/pilot/repos/diffusion-pipe fetch --depth 1 origin "${DIFFPIPE_REF}" && \
+          git -C /opt/pilot/repos/diffusion-pipe checkout FETCH_HEAD; \
+        fi; \
+      fi && \
+      python -m venv /opt/venvs/diffpipe && \
+      /opt/venvs/diffpipe/bin/pip install --upgrade pip setuptools wheel && \
+      /opt/venvs/diffpipe/bin/pip install --no-cache-dir \
+        torch==${TORCH_VERSION} \
+        torchvision==${TORCHVISION_VERSION} \
+        torchaudio==${TORCHAUDIO_VERSION} \
+        --index-url ${TORCH_INDEX_URL} && \
+      /opt/venvs/diffpipe/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/diffpipe-constraints.txt \
+        xformers==${XFORMERS_VERSION} \
+        bitsandbytes==0.46.0 \
+        "diffusers==${DIFFPIPE_DIFFUSERS_VERSION}" \
+        "transformers==${DIFFPIPE_TRANSFORMERS_VERSION}" \
+        "accelerate==${INVOKE_ACCELERATE_VERSION}" \
+        "peft==${PEFT_VERSION}" \
+        tensorboard && \
+      /opt/venvs/diffpipe/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/diffpipe-constraints.txt \
         -r /opt/pilot/repos/diffusion-pipe/requirements.txt; \
     fi
 
@@ -325,25 +395,21 @@ RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
         torchaudio==${INVOKE_TORCHAUDIO_VERSION} && \
       \
       # Install InvokeAI after torch is in place
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install "invokeai==${INVOKEAI_VERSION}" && \
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install \
+        -c /opt/pilot/config/invoke-constraints.txt \
+        "invokeai==${INVOKEAI_VERSION}" && \
       \
       # Enable HF transfer acceleration in invoke venv
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "huggingface_hub[hf_transfer]" && \
-      # Keep numpy/pillow stable (avoid numpy 2.x ABI breakage)
-      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir "numpy<2" "pillow<11"; \
-    fi
-
-# ----- invoke constraints (shared by ai-toolkit installs) -----
-RUN if [ "${INSTALL_INVOKE}" = "1" ]; then \
-      set -eux; \
-      printf '%s\n' \
-        "torch==${INVOKE_TORCH_VERSION}" \
-        "torchvision==${INVOKE_TORCHVISION_VERSION}" \
-        "torchaudio==${INVOKE_TORCHAUDIO_VERSION}" \
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/invoke-constraints.txt \
+        "huggingface_hub[hf_transfer]==${INVOKE_HF_HUB_VERSION}" && \
+      PIP_CONSTRAINT= /opt/venvs/invoke/bin/pip install --no-cache-dir \
+        -c /opt/pilot/config/invoke-constraints.txt \
+        "transformers==${INVOKE_TRANSFORMERS_VERSION}" \
+        "accelerate==${INVOKE_ACCELERATE_VERSION}" \
+        "peft==${PEFT_VERSION}" \
         "numpy<2" \
-        "pillow<11" \
-        "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}" \
-        > /opt/pilot/config/invoke-constraints.txt; \
+        "pillow<11"; \
     fi
 
 # ----- AI Toolkit (install into invoke venv to reuse torch 2.7/cu126) -----

@@ -62,11 +62,6 @@ async function syncPullStatusesOnce() {
 }
 
 window.initModels = async function () {
-  const hf = document.getElementById("hf-token");
-  if (hf && !hf.dataset.bound) {
-    hf.dataset.bound = "1";
-  }
-  await loadHFTokenStatus();
   const search = document.getElementById("models-search");
   if (search && !search.dataset.bound) {
     search.dataset.bound = "1";
@@ -76,26 +71,6 @@ window.initModels = async function () {
     });
   }
   await loadModelsTable(true);
-};
-
-window.saveHFToken = async function () {
-  const hf = document.getElementById("hf-token");
-  const token = hf ? hf.value.trim() : "";
-  if (!token) { alert("Enter a token"); return; }
-  try {
-    await fetchJson("/api/hf-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    if (hf) {
-      hf.value = "";
-      hf.placeholder = "HF_TOKEN saved";
-    }
-    alert("HF_TOKEN saved.");
-  } catch (e) {
-    alert(`Failed to save token: ${e.message || e}`);
-  }
 };
 
 window.copyModelPath = async function (path) {
@@ -118,19 +93,6 @@ window.copyModelPath = async function (path) {
     alert(`Copy failed: ${e.message || e}`);
   }
 };
-
-async function loadHFTokenStatus() {
-  const hf = document.getElementById("hf-token");
-  if (!hf) return;
-  try {
-    const res = await fetchJson("/api/hf-token");
-    if (res && res.set) {
-      hf.placeholder = "HF_TOKEN saved";
-    }
-  } catch (e) {
-    // Ignore; token status is optional UI polish.
-  }
-}
 
 async function loadModelsTable(forceReload) {
   const status = document.getElementById("status");

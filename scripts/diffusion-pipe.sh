@@ -14,7 +14,7 @@ export NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"
 
 mkdir -p "${BASE_APP_DIR}" "${LOGDIR}"
 
-source /opt/venvs/core/bin/activate
+source /opt/venvs/diffpipe/bin/activate
 cd "${REPO}"
 
 extra_args=()
@@ -27,12 +27,12 @@ if [[ -n "${CONFIG}" ]]; then
   if [[ "${DIFFPIPE_TENSORBOARD:-1}" == "1" ]]; then
     # Silence pkg_resources deprecation warning from tensorboard
     PYTHONWARNINGS="${PYTHONWARNINGS:-ignore:pkg_resources is deprecated as an API:UserWarning}" \
-      /opt/venvs/core/bin/tensorboard --logdir "${LOGDIR}" --bind_all --port "${PORT}" &
+      /opt/venvs/diffpipe/bin/tensorboard --logdir "${LOGDIR}" --bind_all --port "${PORT}" &
     TB_PID=$!
     trap 'kill "${TB_PID}" 2>/dev/null || true' EXIT
   fi
-  exec deepspeed --num_gpus="${NUM_GPUS}" train.py --deepspeed --config "${CONFIG}" "${extra_args[@]}"
+  exec /opt/venvs/diffpipe/bin/deepspeed --num_gpus="${NUM_GPUS}" train.py --deepspeed --config "${CONFIG}" "${extra_args[@]}"
 fi
 
 echo "DIFFPIPE_CONFIG not set. Starting TensorBoard only on port ${PORT}."
-exec /opt/venvs/core/bin/tensorboard --logdir "${LOGDIR}" --bind_all --port "${PORT}"
+exec /opt/venvs/diffpipe/bin/tensorboard --logdir "${LOGDIR}" --bind_all --port "${PORT}"

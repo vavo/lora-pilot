@@ -1,0 +1,54 @@
+<style>
+  .settings-grid { display:grid; gap:16px; }
+  .settings-card { display:flex; flex-direction:column; gap:12px; }
+  .settings-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .settings-note { font-size:13px; color:var(--muted); }
+  .settings-status { min-height:20px; }
+  .settings-section-title { margin:0; }
+</style>
+
+<h2>Settings</h2>
+<div class="settings-grid">
+  <div class="card settings-card">
+    <h3 class="settings-section-title">Access Protection</h3>
+    <div class="settings-note">Protect ControlPilot with a password. This guards the Portal UI and API with a session login.</div>
+    <label class="svc-autostart" title="Require password for ControlPilot">
+      <input id="settings-password-enabled" class="svc-switch" type="checkbox" />
+      <span>Require password</span>
+    </label>
+    <div class="field">
+      <label>Password</label>
+      <input id="settings-password" class="input w-320" type="password" placeholder="Set ControlPilot password" />
+    </div>
+    <div class="settings-row">
+      <button id="settings-password-save" class="btn primary" type="button">Save protection</button>
+      <button id="settings-logout" class="btn secondary" type="button">Log out</button>
+      <span id="settings-password-status" class="status settings-status"></span>
+    </div>
+  </div>
+
+  <div class="card settings-card">
+    <h3 class="settings-section-title">Credentials</h3>
+    <div class="field">
+      <label>Hugging Face Token</label>
+      <div class="settings-row">
+        <input id="settings-hf-token" class="input w-320" type="password" placeholder="HF_TOKEN" />
+        <button id="settings-hf-save" class="btn primary" type="button">Save</button>
+        <button id="settings-hf-clear" class="btn secondary" type="button">Clear</button>
+      </div>
+      <div class="tip">Used for gated model downloads. <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">Manage tokens</a>.</div>
+      <div id="settings-hf-status" class="status settings-status"></div>
+    </div>
+
+    <div class="field">
+      <label>Copilot GitHub Token</label>
+      <div class="settings-row">
+        <input id="settings-copilot-token" class="input w-320" type="password" placeholder="COPILOT_GITHUB_TOKEN" />
+        <button id="settings-copilot-save" class="btn primary" type="button">Save</button>
+        <button id="settings-copilot-clear" class="btn secondary" type="button">Clear</button>
+      </div>
+      <div class="tip">After changing this token, the Copilot sidecar is restarted so the drawer picks it up.</div>
+      <div id="settings-copilot-status" class="status settings-status"></div>
+    </div>
+  </div>
+</div>

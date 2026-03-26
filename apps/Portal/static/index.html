@@ -105,6 +105,27 @@
       font-weight: 500;
     }
     .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.2); z-index:30; }
+    .auth-gate {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.62);
+      z-index: 95;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-gate.show { display: flex; }
+    .auth-card {
+      width: min(440px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.24);
+    }
+    .auth-card h2 { margin: 0 0 8px; }
+    .auth-card .tip { margin-top: 0; margin-bottom: 14px; }
     @media (max-width: 768px) {
       .layout { flex-direction:column; }
       .sidebar { position:fixed; left:0; top:0; height:100vh; transform:translateX(-100%); overflow-y:hidden; padding-top:70px; width:260px; max-width:260px; }
@@ -250,17 +271,17 @@
             </span>
             <span class="nav-label">MediaPilot</span>
           </a>
-          <a data-section="copilot">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none"><path d="M9 3a3 3 0 0 0-3 3v2H5a2 2 0 0 0-2 2v3a5 5 0 0 0 5 5h1v1a2 2 0 0 0 4 0v-1h2v1a2 2 0 0 0 4 0v-1h1a5 5 0 0 0 5-5v-3a2 2 0 0 0-2-2h-1V6a3 3 0 0 0-3-3H9Zm0 2h10a1 1 0 0 1 1 1v2H8V6a1 1 0 0 1 1-1Zm-2 8a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm10 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" fill="currentColor"/></svg>
-            </span>
-            <span class="nav-label">Copilot</span>
-          </a>
           <a data-section="docs">
             <span class="nav-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none"><path d="M6 2h9l3 3v17H6V2Zm8 1.5V6h2.5L14 3.5ZM8 10h8v2H8v-2Zm0 4h8v2H8v-2Zm0 4h6v2H8v-2Z" fill="currentColor"/></svg>
             </span>
             <span class="nav-label">Docs</span>
+          </a>
+          <a data-section="settings">
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2a2 2 0 0 1 2 2v1.1a7.01 7.01 0 0 1 2.04.85l.78-.78a2 2 0 1 1 2.83 2.83l-.78.78c.36.64.65 1.32.85 2.04H20a2 2 0 1 1 0 4h-1.1a7.01 7.01 0 0 1-.85 2.04l.78.78a2 2 0 1 1-2.83 2.83l-.78-.78c-.64.36-1.32.65-2.04.85V20a2 2 0 1 1-4 0v-1.1a7.01 7.01 0 0 1-2.04-.85l-.78.78a2 2 0 1 1-2.83-2.83l.78-.78A7.01 7.01 0 0 1 5.1 13H4a2 2 0 1 1 0-4h1.1c.2-.72.49-1.4.85-2.04l-.78-.78A2 2 0 1 1 8 3.35l.78.78c.64-.36 1.32-.65 2.04-.85V4a2 2 0 0 1 2-2Zm0 7a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" fill="currentColor"/></svg>
+            </span>
+            <span class="nav-label">Settings</span>
           </a>
           <a data-section="support">
             <span class="nav-icon" aria-hidden="true">
@@ -322,6 +343,20 @@
       </div>
     </div>
   </div>
+  <div id="auth-gate" class="auth-gate" aria-hidden="true">
+    <div class="auth-card">
+      <h2>ControlPilot Locked</h2>
+      <div class="tip">Enter the ControlPilot password to continue.</div>
+      <div class="field">
+        <label>Password</label>
+        <input id="auth-password" class="input" type="password" placeholder="ControlPilot password" />
+      </div>
+      <div class="row wrap gap-8 items-center">
+        <button id="auth-login" class="btn primary" type="button">Unlock</button>
+        <span id="auth-status" class="status"></span>
+      </div>
+    </div>
+  </div>
   
   <!-- Polyfills for older browser compatibility -->
   <script>
@@ -348,13 +383,13 @@
   <script src="/js/comfyui.js?v=20260211b"></script>
   <script src="/js/trainpilot.js?v=20260204d"></script>
   <script src="/js/dpipe.js?v=20260204d"></script>
-  <script src="/js/copilot.js?v=20260204d"></script>
   <script src="/js/copilot-global.js?v=20260204d"></script>
+  <script src="/js/settings.js?v=20260326a"></script>
   <script src="/vendor/marked.min.js?v=20260211a"></script>
   <script src="/js/docs.js?v=20260211c"></script>
   <script src="/js/support.js?v=20260204d"></script>
   <script src="/js/tagpilot.js?v=20260204d"></script>
   <script src="/js/mediapilot.js?v=20260210a"></script>
-  <script src="/js/main.js?v=20260211a"></script>
+  <script src="/js/main.js?v=20260326a"></script>
 </body>
 </html>

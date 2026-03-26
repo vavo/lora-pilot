@@ -1,6 +1,7 @@
-const sections = ["dashboard", "services", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "copilot", "docs", "support"];
+const sections = ["dashboard", "services", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
 const viewCache = {};
 let currentSection = null;
+let controlPilotUnlocked = false;
 const viewMap = {
   dashboard: { view: "/views/dashboard.html", init: () => window.initDashboard && window.initDashboard() },
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
@@ -11,8 +12,8 @@ const viewMap = {
   tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
   dpipe: { view: "/views/dpipe.html", init: () => window.initDpipe && window.initDpipe() },
-  copilot: { view: "/views/copilot.html", init: () => window.initCopilot && window.initCopilot() },
   docs: { view: "/views/docs.html", init: () => window.initDocs && window.initDocs() },
+  settings: { view: "/views/settings.html", init: () => window.initSettings && window.initSettings() },
   support: { view: "/views/support.html", init: () => window.initSupport && window.initSupport() },
 };
 
@@ -25,6 +26,10 @@ const themeToggle = document.getElementById("theme-toggle");
 const logoImg = document.getElementById("logo-img");
 const topLogo = document.getElementById("top-logo");
 const sidebarCompactToggle = document.getElementById("sidebar-compact-toggle");
+const authGate = document.getElementById("auth-gate");
+const authPassword = document.getElementById("auth-password");
+const authLoginBtn = document.getElementById("auth-login");
+const authStatus = document.getElementById("auth-status");
 
 let shutdownNoticeCountdownTimer = null;
 let shutdownNoticePollTimer = null;
@@ -87,6 +92,7 @@ function setSidebarCompact(compact) {
 }
 
 async function loadSection(section) {
+  if (!controlPilotUnlocked) return;
   if (!contentEl) return;
   if (!viewMap[section]) section = "dashboard";
   // cleanup timers when switching away
@@ -115,6 +121,38 @@ async function loadSection(section) {
 }
 // expose for other modules
 window.loadSection = loadSection;
+
+function setAuthGateVisible(visible, message = "") {
+  if (!authGate) return;
+  authGate.classList.toggle("show", visible);
+  authGate.setAttribute("aria-hidden", visible ? "false" : "true");
+  if (authStatus) authStatus.textContent = message || "";
+  if (visible) {
+    authPassword?.focus();
+  } else if (authPassword) {
+    authPassword.value = "";
+  }
+}
+
+window.showControlPilotLogin = function (message = "ControlPilot password required") {
+  controlPilotUnlocked = false;
+  setAuthGateVisible(true, message);
+};
+
+async function initControlPilotAuth() {
+  try {
+    const status = await fetchJson("/api/settings/auth/status");
+    const enabled = !!(status && status.enabled);
+    const authenticated = !!(status && status.authenticated);
+    controlPilotUnlocked = !enabled || authenticated;
+    setAuthGateVisible(enabled && !authenticated);
+    return controlPilotUnlocked;
+  } catch (e) {
+    controlPilotUnlocked = true;
+    setAuthGateVisible(false);
+    return true;
+  }
+}
 
 function formatHMS(totalSeconds) {
   const s = Math.max(0, totalSeconds | 0);
@@ -240,10 +278,47 @@ if (sidebarCompactToggle) {
     setSidebarCompact(!compact);
   });
 }
+if (authLoginBtn && !authLoginBtn.dataset.bound) {
+  authLoginBtn.dataset.bound = "1";
+  authLoginBtn.addEventListener("click", async () => {
+    const password = authPassword?.value || "";
+    if (!password.trim()) {
+      if (authStatus) authStatus.textContent = "Enter the password.";
+      authPassword?.focus();
+      return;
+    }
+    authLoginBtn.disabled = true;
+    if (authStatus) authStatus.textContent = "Unlocking...";
+    try {
+      await fetchJson("/api/settings/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      controlPilotUnlocked = true;
+      setAuthGateVisible(false);
+      initShutdownNotice();
+      loadSection(currentSection || "dashboard");
+    } catch (e) {
+      if (authStatus) authStatus.textContent = e.message || String(e);
+    } finally {
+      authLoginBtn.disabled = false;
+    }
+  });
+}
+if (authPassword && !authPassword.dataset.bound) {
+  authPassword.dataset.bound = "1";
+  authPassword.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      authLoginBtn?.click();
+    }
+  });
+}
 window.addEventListener("resize", updateSidebarNavTooltips);
 
 // Init theme & default section
-(function init() {
+(async function init() {
   // Desktop-only: restore compact state.
   const compactSaved = localStorage.getItem("sidebarCompact");
   if (compactSaved === "1") {
@@ -252,6 +327,8 @@ window.addEventListener("resize", updateSidebarNavTooltips);
   const saved = localStorage.getItem("theme");
   setTheme(saved === "dark" ? "dark" : "light");
   updateSidebarNavTooltips();
+  const unlocked = await initControlPilotAuth();
+  if (!unlocked) return;
   initShutdownNotice();
   loadSection("dashboard");
 })();

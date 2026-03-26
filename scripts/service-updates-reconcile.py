@@ -163,6 +163,9 @@ def run_reconcile(config_path: Path, rollback_log_path: Path) -> int:
             continue
 
         kind = spec.get("kind", "unknown")
+        if kind == "git":
+            print(f"[service-updates] {name}: skipped (git services are image-managed)", flush=True)
+            continue
         target = None
         before = service_marker(name, spec)
 
@@ -232,4 +235,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -1,5 +1,7 @@
 v2.3
 
+- hardening(build): pinned Kohya and diffusion-pipe to explicit refs, moved diffusion-pipe into its own venv, and added explicit Invoke/AI Toolkit shared-stack constraints
+- hotfix(kohya): bumped core `transformers` to `4.48.3` and added a Kohya startup self-repair when older images are missing `Dinov2WithRegistersConfig`
 - Docker/build dependency pinning refresh:
   - pinned ComfyUI to `v0.18.0` and switched clone source to `Comfy-Org/ComfyUI`
   - pinned ComfyUI-Manager to `3.39.2` (latest compatible non-beta tag for current Comfy startup layout)

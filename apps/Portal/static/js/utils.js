@@ -10,6 +10,9 @@ window.formatBytes = function (bytes) {
 window.fetchJson = async function (url, opts = {}) {
   const res = await fetch(url, opts);
   if (!res.ok) {
+    if (res.status === 401 && typeof window.showControlPilotLogin === "function") {
+      window.showControlPilotLogin("ControlPilot password required");
+    }
     const txt = await res.text();
     throw new Error(txt || res.statusText);
   }

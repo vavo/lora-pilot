@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 import base64
 import configparser
+import hashlib
+import hmac
 import importlib.util
 import json
 import mimetypes
 import os
 import re
+import secrets
 import shutil
 import signal
 import stat
@@ -89,6 +92,10 @@ SERVICE_UPDATES_ROLLBACK_LOG_PATH = Path(
 SERVICE_AUTOSTART_CONFIG_PATH = Path(
     os.environ.get("SERVICE_AUTOSTART_CONFIG_PATH", str(WORKSPACE_ROOT / "config" / "service-autostart.toml"))
 )
+CONTROLPILOT_SETTINGS_PATH = Path(
+    os.environ.get("CONTROLPILOT_SETTINGS_PATH", str(WORKSPACE_ROOT / "config" / "controlpilot-settings.json"))
+)
+CONTROLPILOT_SESSION_COOKIE = "controlpilot_session"
 TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
@@ -291,6 +298,15 @@ class ServiceUpdateStartRequest(BaseModel):
     target_version: Optional[str] = None
 
 
+class ControlPilotPasswordRequest(BaseModel):
+    enabled: bool
+    password: str = ""
+
+
+class ControlPilotLoginRequest(BaseModel):
+    password: str
+
+
 class DiskUsage(BaseModel):
     mount: str
     total: int
@@ -318,6 +334,121 @@ class Telemetry(BaseModel):
     mem_free: int
     disks: List[DiskUsage]
     gpus: List[GPUInfo]
+
+
+def _default_controlpilot_settings() -> dict:
+    return {
+        "password_enabled": False,
+        "password_hash": "",
+        "session_secret": secrets.token_hex(32),
+    }
+
+
+def _read_controlpilot_settings() -> dict:
+    settings = _default_controlpilot_settings()
+    if CONTROLPILOT_SETTINGS_PATH.exists():
+        try:
+            data = json.loads(CONTROLPILOT_SETTINGS_PATH.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                if isinstance(data.get("password_enabled"), bool):
+                    settings["password_enabled"] = data["password_enabled"]
+                if isinstance(data.get("password_hash"), str):
+                    settings["password_hash"] = data["password_hash"].strip()
+                if isinstance(data.get("session_secret"), str) and data["session_secret"].strip():
+                    settings["session_secret"] = data["session_secret"].strip()
+        except Exception:
+            pass
+    return settings
+
+
+def _write_controlpilot_settings(settings: dict) -> None:
+    payload = _default_controlpilot_settings()
+    payload["password_enabled"] = bool(settings.get("password_enabled", False))
+    payload["password_hash"] = str(settings.get("password_hash", "") or "").strip()
+    payload["session_secret"] = str(settings.get("session_secret", "") or "").strip() or secrets.token_hex(32)
+    CONTROLPILOT_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    CONTROLPILOT_SETTINGS_PATH.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _hash_controlpilot_password(password: str, *, salt_b64: Optional[str] = None) -> str:
+    raw_password = (password or "").encode("utf-8")
+    salt = base64.b64decode(salt_b64) if salt_b64 else os.urandom(16)
+    digest = hashlib.pbkdf2_hmac("sha256", raw_password, salt, 200_000)
+    return "pbkdf2_sha256$200000$%s$%s" % (
+        base64.b64encode(salt).decode("ascii"),
+        base64.b64encode(digest).decode("ascii"),
+    )
+
+
+def _verify_controlpilot_password(password: str, stored_hash: str) -> bool:
+    try:
+        algo, rounds, salt_b64, expected_b64 = (stored_hash or "").split("$", 3)
+        if algo != "pbkdf2_sha256" or int(rounds) != 200_000:
+            return False
+        candidate = _hash_controlpilot_password(password, salt_b64=salt_b64)
+        return hmac.compare_digest(candidate, stored_hash)
+    except Exception:
+        return False
+
+
+def _controlpilot_session_value(settings: Optional[dict] = None) -> str:
+    cfg = settings or _read_controlpilot_settings()
+    session_secret = str(cfg.get("session_secret", "") or "")
+    password_hash = str(cfg.get("password_hash", "") or "")
+    msg = f"controlpilot:{password_hash}".encode("utf-8")
+    return hmac.new(session_secret.encode("utf-8"), msg, hashlib.sha256).hexdigest()
+
+
+def _controlpilot_auth_enabled(settings: Optional[dict] = None) -> bool:
+    cfg = settings or _read_controlpilot_settings()
+    return bool(cfg.get("password_enabled")) and bool(str(cfg.get("password_hash", "") or "").strip())
+
+
+def _controlpilot_request_authenticated(request: Request) -> bool:
+    settings = _read_controlpilot_settings()
+    if not _controlpilot_auth_enabled(settings):
+        return True
+    cookie = (request.cookies.get(CONTROLPILOT_SESSION_COOKIE) or "").strip()
+    if not cookie:
+        return False
+    return hmac.compare_digest(cookie, _controlpilot_session_value(settings))
+
+
+def _read_secrets_env_lines() -> list[str]:
+    secrets_file = CONFIG_DIR / "secrets.env"
+    if not secrets_file.exists():
+        return []
+    try:
+        return secrets_file.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return []
+
+
+def _write_secrets_env_vars(updates: dict[str, Optional[str]]) -> None:
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    secrets_file = CONFIG_DIR / "secrets.env"
+    existing = _read_secrets_env_lines()
+    remove_prefixes = tuple(f"export {key}=" for key in updates.keys())
+    lines = [ln for ln in existing if not ln.startswith(remove_prefixes)]
+    for key, value in updates.items():
+        resolved = None if value is None else str(value)
+        if resolved:
+            lines.append(f'export {key}="{resolved}"')
+            os.environ[key] = resolved
+        else:
+            os.environ.pop(key, None)
+    secrets_file.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+
+def _read_secret_env_var(key: str) -> str:
+    value = os.environ.get(key, "").strip()
+    if value:
+        return value
+    for line in _read_secrets_env_lines():
+        prefix = f"export {key}="
+        if line.startswith(prefix):
+            return line.split("=", 1)[-1].strip().strip('"')
+    return ""
     workspace_data_used_bytes: Optional[int] = None
     docs: Optional[str] = None  # unused in telemetry, kept for future
 
@@ -597,6 +728,19 @@ async def add_no_cache_headers(request: Request, call_next):
         response.headers["CF-Cache-Status"] = "BYPASS"
         response.headers["CDN-Cache-Control"] = "no-store"
     return response
+
+
+@app.middleware("http")
+async def controlpilot_auth_middleware(request: Request, call_next):
+    path = request.url.path
+    if path.startswith("/api/"):
+        public_api_paths = {
+            "/api/settings/auth/status",
+            "/api/settings/auth/login",
+        }
+        if path not in public_api_paths and not _controlpilot_request_authenticated(request):
+            return JSONResponse(status_code=401, content={"detail": "ControlPilot password required"})
+    return await call_next(request)
 
 README_PRIMARY = Path("/opt/pilot/README.md")
 README_FALLBACK = Path("/workspace/README.md")
@@ -1109,48 +1253,97 @@ async def set_hf_token(request: Request, token: Optional[str] = None):
             token = payload.get("token") if isinstance(payload, dict) else None
         except Exception:
             token = None
-    if not token:
-        raise HTTPException(status_code=422, detail="token is required")
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    secrets_file = CONFIG_DIR / "secrets.env"
-    lines = []
-    if secrets_file.exists():
-        lines = secrets_file.read_text().splitlines()
-        lines = [ln for ln in lines if not ln.startswith("export HF_TOKEN=")]
-    lines.append(f'export HF_TOKEN="{token}"')
-    secrets_file.write_text("\n".join(lines) + "\n")
-    os.environ["HF_TOKEN"] = token
-    return {"status": "ok"}
+    token = "" if token is None else str(token).strip()
+    _write_secrets_env_vars({"HF_TOKEN": token or None})
+    return {"status": "ok", "set": bool(token)}
 
 
 @app.get("/api/hf-token")
 def get_hf_token_status():
-    token = os.environ.get("HF_TOKEN")
-    if not token:
-        secrets_file = CONFIG_DIR / "secrets.env"
-        if secrets_file.exists():
-            for line in secrets_file.read_text().splitlines():
-                if line.startswith("export HF_TOKEN="):
-                    token = line.split("=", 1)[-1].strip().strip('"')
-                    break
+    token = _read_secret_env_var("HF_TOKEN")
     return {"set": bool(token)}
 
 
 @app.get("/api/copilot/token")
 def get_copilot_token_status():
-    token = (
-        os.environ.get("COPILOT_GITHUB_TOKEN")
-        or os.environ.get("GH_TOKEN")
-        or os.environ.get("GITHUB_TOKEN")
-    )
+    token = _read_secret_env_var("COPILOT_GITHUB_TOKEN")
     if not token:
-        secrets_file = CONFIG_DIR / "secrets.env"
-        if secrets_file.exists():
-            for line in secrets_file.read_text().splitlines():
-                if line.startswith("export COPILOT_GITHUB_TOKEN="):
-                    token = line.split("=", 1)[-1].strip().strip('"')
-                    break
+        token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
+        token = token.strip()
     return {"set": bool(token)}
+
+
+@app.get("/api/settings")
+def get_controlpilot_settings(request: Request):
+    return {
+        "password_enabled": _controlpilot_auth_enabled(),
+        "authenticated": _controlpilot_request_authenticated(request),
+        "hf_token_set": bool(_read_secret_env_var("HF_TOKEN")),
+        "copilot_token_set": bool(_read_secret_env_var("COPILOT_GITHUB_TOKEN")),
+    }
+
+
+@app.get("/api/settings/auth/status")
+def get_controlpilot_auth_status(request: Request):
+    return {
+        "enabled": _controlpilot_auth_enabled(),
+        "authenticated": _controlpilot_request_authenticated(request),
+    }
+
+
+@app.post("/api/settings/auth/login")
+def controlpilot_login(payload: ControlPilotLoginRequest):
+    settings = _read_controlpilot_settings()
+    if not _controlpilot_auth_enabled(settings):
+        return {"status": "ok", "enabled": False, "authenticated": True}
+    if not _verify_controlpilot_password(payload.password, str(settings.get("password_hash", ""))):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    response = JSONResponse({"status": "ok", "enabled": True, "authenticated": True})
+    response.set_cookie(
+        CONTROLPILOT_SESSION_COOKIE,
+        _controlpilot_session_value(settings),
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        path="/",
+    )
+    return response
+
+
+@app.post("/api/settings/auth/logout")
+def controlpilot_logout():
+    response = JSONResponse({"status": "ok"})
+    response.delete_cookie(CONTROLPILOT_SESSION_COOKIE, path="/")
+    return response
+
+
+@app.post("/api/settings/password")
+def set_controlpilot_password(request: Request, payload: ControlPilotPasswordRequest):
+    settings = _read_controlpilot_settings()
+    enabled = bool(payload.enabled)
+    raw_password = (payload.password or "").strip()
+    settings["password_enabled"] = enabled
+    if enabled:
+        if not raw_password:
+            raise HTTPException(status_code=422, detail="Password is required when protection is enabled")
+        settings["password_hash"] = _hash_controlpilot_password(raw_password)
+    else:
+        settings["password_hash"] = ""
+    settings["session_secret"] = settings.get("session_secret") or secrets.token_hex(32)
+    _write_controlpilot_settings(settings)
+    response = JSONResponse({"status": "ok", "password_enabled": enabled})
+    if enabled:
+        response.set_cookie(
+            CONTROLPILOT_SESSION_COOKIE,
+            _controlpilot_session_value(settings),
+            httponly=True,
+            samesite="lax",
+            secure=False,
+            path="/",
+        )
+    else:
+        response.delete_cookie(CONTROLPILOT_SESSION_COOKIE, path="/")
+    return response
 
 
 @app.post("/api/copilot/token")
@@ -1161,24 +1354,19 @@ def set_copilot_token(payload: dict):
     if token is None:
         raise HTTPException(status_code=422, detail="token is required")
     token = str(token).strip()
-
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    secrets_file = CONFIG_DIR / "secrets.env"
-    lines = []
-    if secrets_file.exists():
-        lines = secrets_file.read_text().splitlines()
-        lines = [
-            ln for ln in lines
-            if not ln.startswith("export COPILOT_GITHUB_TOKEN=")
-        ]
-    if token:
-        lines.append(f'export COPILOT_GITHUB_TOKEN="{token}"')
-        os.environ["COPILOT_GITHUB_TOKEN"] = token
-    else:
-        os.environ.pop("COPILOT_GITHUB_TOKEN", None)
-
-    secrets_file.write_text("\n".join(lines) + ("\n" if lines else ""))
+    _write_secrets_env_vars({"COPILOT_GITHUB_TOKEN": token or None})
     return {"status": "ok", "set": bool(token)}
+
+
+@app.post("/api/settings/copilot/restart")
+def restart_copilot_sidecar():
+    if not SUPERVISORCTL:
+        raise HTTPException(status_code=500, detail="supervisorctl not found")
+    try:
+        subprocess.check_output([SUPERVISORCTL, "restart", "copilot"], text=True, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        raise HTTPException(status_code=500, detail=e.output or str(e))
+    return {"status": "ok"}
 
 
 def _run_cmd_capture(cmd: list[str], timeout: int = 30) -> str:
@@ -1467,18 +1655,16 @@ def _service_version_entry(name: str) -> ServiceVersionEntry:
             )
         branch = _git_current_branch(repo_dir) or "main"
         local_sha = _git_local_sha(repo_dir)
-        remote_sha = _git_remote_sha(repo_dir, branch)
         installed = f"{branch}@{local_sha[:7]}" if local_sha else None
-        latest = f"{branch}@{remote_sha[:7]}" if remote_sha else None
         return ServiceVersionEntry(
             name=name,
             display=display,
             source="git",
-            update_supported=True,
+            update_supported=False,
             installed=installed,
-            latest=latest,
-            update_available=bool(local_sha and remote_sha and local_sha != remote_sha),
-            detail=None if remote_sha else "Unable to check remote HEAD",
+            latest=None,
+            update_available=False,
+            detail="Managed by image build; rebuild the image to update",
         )
 
     return ServiceVersionEntry(
@@ -1799,6 +1985,9 @@ def service_update_start(name: str, payload: Optional[ServiceUpdateStartRequest]
         raise HTTPException(status_code=404, detail="Unknown service")
     if name not in SERVICE_UPDATE_SPECS:
         raise HTTPException(status_code=400, detail="Updates are not supported for this service")
+    spec = SERVICE_UPDATE_SPECS.get(name) or {}
+    if spec.get("kind") == "git":
+        raise HTTPException(status_code=400, detail="This service is managed by the image build; rebuild to update it")
 
     _cleanup_service_update_jobs()
     target_version = (payload.target_version if payload else None) or None
