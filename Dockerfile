@@ -99,24 +99,7 @@ RUN /opt/pilot/build/install-ai-toolkit.sh
 # ----- project files -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY config/models.manifest /opt/pilot/config/models.manifest.default
-COPY scripts/get-models.sh /opt/pilot/get-models.sh
-COPY scripts/get-modelsgui.sh /opt/pilot/get-modelsgui.sh
-
-COPY scripts/bootstrap.sh /opt/pilot/bootstrap.sh
-COPY scripts/gpu-smoke-test.sh /opt/pilot/gpu-smoke-test.sh
-COPY scripts/start-jupyter.sh /opt/pilot/start-jupyter.sh
-COPY scripts/start-code-server.sh /opt/pilot/start-code-server.sh
-COPY scripts/comfy.sh /opt/pilot/comfy.sh
-COPY scripts/start-kohya.sh /opt/pilot/start-kohya.sh
-COPY scripts/kohya.sh /opt/pilot/kohya.sh
-COPY scripts/diffusion-pipe.sh /opt/pilot/diffusion-pipe.sh
-COPY scripts/invoke.sh /opt/pilot/invoke.sh
-COPY scripts/tagpilot.sh /opt/pilot/tagpilot.sh
-COPY scripts/portal.sh /opt/pilot/portal.sh
-COPY scripts/copilot-sidecar.sh /opt/pilot/copilot-sidecar.sh
-COPY scripts/ai-toolkit.sh /opt/pilot/ai-toolkit.sh
-COPY scripts/service-autostart-apply.py /opt/pilot/service-autostart-apply.py
-COPY scripts/service-updates-reconcile.py /opt/pilot/service-updates-reconcile.py
+COPY scripts/*.sh scripts/*.py /opt/pilot/
 COPY scripts/pilot /usr/local/bin/pilot
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 

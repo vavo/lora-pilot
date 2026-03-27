@@ -267,7 +267,7 @@ esac
 echo "=== LoRA Pilot bootstrap complete ==="
 echo "Workspace: $WORKSPACE_ROOT"
 echo "Jupyter:     http://<host>:${JUPYTER_PORT:-8888}  (token in ${SECRETS_FILE})"
-echo "code-server: http://<host>:${CODE_SERVER_PORT:-8443} (password from ${SECRETS_FILE}; runtime config at /workspace/home/root/.config/code-server/config.yaml)"
+echo "code-server: http://<host>:${CODE_SERVER_PORT:-8443} (password from ${SECRETS_FILE})"
 echo "ComfyUI:     http://<host>:${COMFY_PORT:-5555}"
 echo "Kohya:       http://<host>:${KOHYA_PORT:-6666}"
 echo "DiffPipe TB: http://<host>:${DIFFPIPE_PORT:-4444}"
