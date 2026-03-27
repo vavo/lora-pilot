@@ -17,11 +17,7 @@ if (-not $AppVersion) {
 }
 if (-not $ManifestUrl) {
     if ($env:GITHUB_REPOSITORY) {
-        $releaseTag = $AppVersion
-        if ($env:WINDOWS_RUNTIME_RELEASE_TAG) {
-            $releaseTag = $env:WINDOWS_RUNTIME_RELEASE_TAG
-        }
-        $ManifestUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json"
+        $ManifestUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$AppVersion/windows-runtime-manifest.json"
     } elseif ($env:WINDOWS_RUNTIME_MANIFEST_URL) {
         $ManifestUrl = $env:WINDOWS_RUNTIME_MANIFEST_URL
     }

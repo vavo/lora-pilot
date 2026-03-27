@@ -43,16 +43,16 @@ Local Windows state lives under `%LOCALAPPDATA%\LoRAPilot` and contains:
 - Export `lora-pilot-wsl-overlay-<version>.tar.zst`.
 - Generate `windows-runtime-manifest.json` and SHA256 sidecars.
 - Upload artifacts and publish them on tagged releases.
-- For branch and PR pushes, publish a preview prerelease keyed to the commit SHA so the manifest and runtime payloads remain aligned with the installer built from that same commit.
-- Fail the workflow if the published manifest or either referenced runtime asset URL does not become reachable.
+- For branch and PR pushes, keep the runtime bundle as a workflow artifact and let downstream smoke tests consume that artifact directly.
 
 ### Windows installer workflow
 
-- Wait for the runtime preview or release assets to be reachable.
+- For branch and PR pushes, start only after the runtime workflow succeeds, download that workflow artifact, rewrite the manifest to localhost URLs, and validate the bundle behind a local HTTP server on the runner.
+- For tagged releases, wait for the public runtime release assets to become reachable.
 - Run `go test ./...` and build `LoRAPilotLauncher.exe`.
 - Compile `LoRAPilotSetup.iss` with Inno Setup.
 - Upload `LoRAPilotSetup.exe`.
-- Publish tagged builds as normal releases and branch builds as preview prereleases using the same release tag the runtime workflow published to.
+- Publish only tagged builds as release assets.
 
 ### Remote E2E workflow
 
