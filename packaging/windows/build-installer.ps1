@@ -30,6 +30,7 @@ New-Item -ItemType Directory -Force -Path $inputDir | Out-Null
 
 Push-Location (Join-Path $root "apps\WindowsLauncher")
 try {
+    go mod download
     go test ./...
     go build -o $launcherOut .\cmd\windowslauncher
 } finally {

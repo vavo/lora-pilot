@@ -18,14 +18,14 @@ import (
 var ErrRebootRequired = errors.New("wsl setup requires a Windows reboot; rerun install --resume afterwards")
 
 type Status struct {
-	InstallPresent         bool   `json:"install_present"`
-	DistroPresent          bool   `json:"distro_present"`
-	ControlPilotReachable  bool   `json:"controlpilot_reachable"`
-	AppVersion             string `json:"app_version"`
-	RuntimeVersion         string `json:"runtime_version"`
-	InstallPath            string `json:"install_path"`
-	LastStatus             string `json:"last_status"`
-	PendingResumeStep      string `json:"pending_resume_step"`
+	InstallPresent        bool   `json:"install_present"`
+	DistroPresent         bool   `json:"distro_present"`
+	ControlPilotReachable bool   `json:"controlpilot_reachable"`
+	AppVersion            string `json:"app_version"`
+	RuntimeVersion        string `json:"runtime_version"`
+	InstallPath           string `json:"install_path"`
+	LastStatus            string `json:"last_status"`
+	PendingResumeStep     string `json:"pending_resume_step"`
 }
 
 type Options struct {
@@ -236,14 +236,14 @@ func (l *Launcher) Status(ctx context.Context) (Status, error) {
 	}
 
 	status := Status{
-		InstallPresent:    state.DistroName != "",
-		DistroPresent:     state.DistroName != "",
+		InstallPresent:        state.DistroName != "",
+		DistroPresent:         state.DistroName != "",
 		ControlPilotReachable: l.isHealthy(ctx, fmt.Sprintf("http://127.0.0.1:%d/healthz", manifest.Ports.ControlPilot)),
-		AppVersion:        state.AppVersion,
-		RuntimeVersion:    state.RuntimeVersion,
-		InstallPath:       state.InstallPath,
-		LastStatus:        state.LastStatus,
-		PendingResumeStep: state.PendingResumeStep,
+		AppVersion:            state.AppVersion,
+		RuntimeVersion:        state.RuntimeVersion,
+		InstallPath:           state.InstallPath,
+		LastStatus:            state.LastStatus,
+		PendingResumeStep:     state.PendingResumeStep,
 	}
 	if runtime.GOOS == "windows" && state.DistroName != "" {
 		present, err := l.distroExists(ctx, state.DistroName)

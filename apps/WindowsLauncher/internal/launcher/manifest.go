@@ -12,14 +12,14 @@ type ArtifactRef struct {
 }
 
 type Ports struct {
-	ControlPilot  int `json:"controlpilot"`
-	Jupyter       int `json:"jupyter"`
-	CodeServer    int `json:"code_server"`
-	ComfyUI       int `json:"comfyui"`
-	Kohya         int `json:"kohya"`
-	TensorBoard   int `json:"tensorboard"`
-	InvokeAI      int `json:"invokeai"`
-	AIToolkit     int `json:"ai_toolkit"`
+	ControlPilot   int `json:"controlpilot"`
+	Jupyter        int `json:"jupyter"`
+	CodeServer     int `json:"code_server"`
+	ComfyUI        int `json:"comfyui"`
+	Kohya          int `json:"kohya"`
+	TensorBoard    int `json:"tensorboard"`
+	InvokeAI       int `json:"invokeai"`
+	AIToolkit      int `json:"ai_toolkit"`
 	CopilotSidecar int `json:"copilot_sidecar"`
 }
 
@@ -36,14 +36,14 @@ type Manifest struct {
 func DefaultManifest() Manifest {
 	return Manifest{
 		Ports: Ports{
-			ControlPilot:  7878,
-			Jupyter:       8888,
-			CodeServer:    8443,
-			ComfyUI:       5555,
-			Kohya:         6666,
-			TensorBoard:   4444,
-			InvokeAI:      9090,
-			AIToolkit:     8675,
+			ControlPilot:   7878,
+			Jupyter:        8888,
+			CodeServer:     8443,
+			ComfyUI:        5555,
+			Kohya:          6666,
+			TensorBoard:    4444,
+			InvokeAI:       9090,
+			AIToolkit:      8675,
 			CopilotSidecar: 7879,
 		},
 	}
