@@ -60,6 +60,7 @@ trap cleanup EXIT
 
 echo "Building ${FULL_IMAGE} for ${PLATFORM}"
 docker buildx build \
+  --progress plain \
   --platform "${PLATFORM}" \
   --tag "${FULL_IMAGE}" \
   --build-arg APP_VERSION="${APP_VERSION}" \
