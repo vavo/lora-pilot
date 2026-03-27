@@ -1,6 +1,6 @@
 # Installation Guide
 
-This guide covers the supported installation paths for LoRA Pilot. Windows uses a WSL-backed installer. macOS and Linux continue to use Docker.
+This guide covers the installation paths for LoRA Pilot. Windows currently uses a preview WSL-backed installer. macOS and Linux continue to use Docker.
 
 ##  Quick Install (Recommended)
 
@@ -22,7 +22,7 @@ open http://localhost:7878
 
 Before installing, ensure you have:
 
-1. **Windows:** `LoRAPilotSetup.exe` and WSL2 support
+1. **Windows:** preview `LoRAPilotSetup.exe` and WSL2 support
 2. **macOS/Linux:** Docker Desktop or Docker Engine
 3. **NVIDIA GPU drivers** (if using GPU acceleration)
 4. **Git** (for cloning the repository)
@@ -32,7 +32,7 @@ Before installing, ensure you have:
 
 ### Windows Installation
 
-1. Download `LoRAPilotSetup.exe` from the GitHub release page.
+1. Download a preview `LoRAPilotSetup.exe` build from CI artifacts or a tagged GitHub release.
 2. Run the installer as Administrator.
 3. Let the bootstrapper enable or reuse WSL2, import the managed `LoRAPilot` distro, and create Start Menu shortcuts.
 4. If Windows asks for a reboot during WSL setup, reboot and rerun the installer or the launcher with `install --resume`.
@@ -310,4 +310,3 @@ After successful installation:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

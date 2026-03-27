@@ -3,7 +3,6 @@ name: Build WSL Runtime Artifacts
 on:
   push:
     branches:
-      - main
       - feat/windows-wsl-installer
     tags:
       - "v*"

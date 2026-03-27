@@ -1,6 +1,8 @@
-# Windows Installation Guide for LoRA Pilot
+# Windows Installation Guide for LoRA Pilot (Preview)
 
-LoRA Pilot on Windows is delivered as a native `Setup.exe` that manages a WSL2 distro for the Linux runtime. Docker Desktop is not part of the primary install path anymore. It had its turn.
+LoRA Pilot on Windows currently has a preview `Setup.exe` path that manages a WSL2 distro for the Linux runtime. Docker Desktop is not part of the primary install path anymore. It had its turn.
+
+This is not production-grade yet. The installer builds in CI, but it still needs real Windows validation before pretending to be boring and reliable.
 
 ## Requirements
 
@@ -12,7 +14,7 @@ LoRA Pilot on Windows is delivered as a native `Setup.exe` that manages a WSL2 d
 
 ## Install Flow
 
-1. Download `LoRAPilotSetup.exe` from the GitHub release page.
+1. Download a preview `LoRAPilotSetup.exe` build from CI artifacts or a tagged GitHub release.
 2. Run the installer as Administrator.
 3. Let the bootstrapper:
    - check Windows version, disk space, and WSL availability
