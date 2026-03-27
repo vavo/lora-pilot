@@ -15,6 +15,9 @@ files=(
   /opt/pilot/portal.sh
   /opt/pilot/copilot-sidecar.sh
   /opt/pilot/ai-toolkit.sh
+  /opt/pilot/wsl-start.sh
+  /opt/pilot/wsl-stop.sh
+  /opt/pilot/wsl-apply-update.sh
   /opt/pilot/service-autostart-apply.py
   /opt/pilot/service-updates-reconcile.py
   /opt/pilot/get-models.sh
@@ -36,6 +39,7 @@ ln -sf /opt/pilot/get-models.sh /usr/local/bin/pilot-models
 ln -sf /opt/pilot/get-modelsgui.sh /usr/local/bin/modelsgui
 
 mkdir -p \
+  /opt/pilot/runtime \
   /workspace \
   /workspace/logs \
   /workspace/outputs \

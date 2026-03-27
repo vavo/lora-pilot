@@ -5,30 +5,42 @@ IMAGE ?= lora-pilot
 TAG ?= dev-amd64
 FULL_IMAGE := $(IMAGE):$(TAG)
 CONTAINER ?= lp-test
-	PLATFORM ?= linux/amd64
-	INSTALL_GPU_STACK ?= 1
-	INSTALL_INVOKE ?= 1
-	INSTALL_AI_TOOLKIT ?= 0
-	COPILOT_CLI_VERSION ?= 1.0.10
-	CODE_SERVER_VERSION ?= 4.112.0
-	JUPYTERLAB_VERSION ?= 4.5.6
-	IPYWIDGETS_VERSION ?= 8.1.8
-	COMFYUI_REF ?= v0.18.0
-	COMFYUI_MANAGER_REF ?= 3.39.2
-	KOHYA_REF ?= 4161d1d80ad554f7801c584632665d6825994062
-	DIFFPIPE_REF ?= a17e5c1da254afeae66cab809e3ca547501dd067
-	AI_TOOLKIT_REF ?= 35b1cde3cb7b0151a51bf8547bab0931fd57d72d
-	WORKSPACE_DIR ?= $(CURDIR)/workspace
+PLATFORM ?= linux/amd64
+INSTALL_GPU_STACK ?= 1
+INSTALL_COMFY ?= 1
+INSTALL_KOHYA ?= 1
+INSTALL_INVOKE ?= 1
+INSTALL_DIFFPIPE ?= 1
+INSTALL_AI_TOOLKIT ?= 0
+INSTALL_AI_TOOLKIT_UI ?= 1
+INSTALL_COPILOT_CLI ?= 1
+COPILOT_CLI_VERSION ?= 1.0.10
+CODE_SERVER_VERSION ?= 4.112.0
+JUPYTERLAB_VERSION ?= 4.5.6
+IPYWIDGETS_VERSION ?= 8.1.8
+COMFYUI_REF ?= v0.18.0
+COMFYUI_MANAGER_REF ?= 3.39.2
+KOHYA_REF ?= 4161d1d80ad554f7801c584632665d6825994062
+DIFFPIPE_REF ?= a17e5c1da254afeae66cab809e3ca547501dd067
+AI_TOOLKIT_REF ?= 35b1cde3cb7b0151a51bf8547bab0931fd57d72d
+WORKSPACE_DIR ?= $(CURDIR)/workspace
+APP_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+RUNTIME_VERSION ?= $(APP_VERSION)
+VCS_REF ?= $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
+BUILD_DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+RUNTIME_OUTPUT_DIR ?= $(CURDIR)/dist/windows-runtime
+RUNTIME_BASE_URL ?=
 
 # Random secrets (deterministic enough, but not sacred)
 JUPYTER_TOKEN ?= $(shell openssl rand -hex 16)
 CODE_SERVER_PASSWORD ?= $(shell openssl rand -hex 16)
 
-.PHONY: help build run rm stop restart ps logs shell urls secrets fix-perms
+.PHONY: help build runtime-artifacts run rm stop restart ps logs shell urls secrets fix-perms
 
 help:
 	@echo "Targets:"
 	@echo "  make build            Build image via buildx (platform=$(PLATFORM))"
+	@echo "  make runtime-artifacts Export WSL rootfs/overlay artifacts + manifest"
 	@echo "  make run              Run container (bind-mount workspace, set secrets)"
 	@echo "  make restart          rm + run"
 	@echo "  make rm               Remove container (if exists)"
@@ -39,22 +51,43 @@ help:
 	@echo "  make secrets          Print secrets that will be used for make run"
 	@echo "  make fix-perms        Fix host workspace ownership (best effort)"
 
-	build:
-		docker buildx build --platform $(PLATFORM) \
-			-t $(FULL_IMAGE) \
-			--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \
-			--build-arg INSTALL_INVOKE=$(INSTALL_INVOKE) \
-			--build-arg INSTALL_AI_TOOLKIT=$(INSTALL_AI_TOOLKIT) \
-			--build-arg COPILOT_CLI_VERSION="$(COPILOT_CLI_VERSION)" \
-			--build-arg CODE_SERVER_VERSION="$(CODE_SERVER_VERSION)" \
-			--build-arg JUPYTERLAB_VERSION="$(JUPYTERLAB_VERSION)" \
-			--build-arg IPYWIDGETS_VERSION="$(IPYWIDGETS_VERSION)" \
-			--build-arg COMFYUI_REF="$(COMFYUI_REF)" \
-			--build-arg COMFYUI_MANAGER_REF="$(COMFYUI_MANAGER_REF)" \
-			--build-arg KOHYA_REF="$(KOHYA_REF)" \
-			--build-arg DIFFPIPE_REF="$(DIFFPIPE_REF)" \
-			--build-arg AI_TOOLKIT_REF="$(AI_TOOLKIT_REF)" \
-			--load .
+build:
+	docker buildx build --platform $(PLATFORM) \
+		-t $(FULL_IMAGE) \
+		--build-arg APP_VERSION="$(APP_VERSION)" \
+		--build-arg RUNTIME_VERSION="$(RUNTIME_VERSION)" \
+		--build-arg VCS_REF="$(VCS_REF)" \
+		--build-arg BUILD_DATE="$(BUILD_DATE)" \
+		--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \
+		--build-arg INSTALL_COMFY=$(INSTALL_COMFY) \
+		--build-arg INSTALL_KOHYA=$(INSTALL_KOHYA) \
+		--build-arg INSTALL_INVOKE=$(INSTALL_INVOKE) \
+		--build-arg INSTALL_DIFFPIPE=$(INSTALL_DIFFPIPE) \
+		--build-arg INSTALL_AI_TOOLKIT=$(INSTALL_AI_TOOLKIT) \
+		--build-arg INSTALL_AI_TOOLKIT_UI=$(INSTALL_AI_TOOLKIT_UI) \
+		--build-arg INSTALL_COPILOT_CLI=$(INSTALL_COPILOT_CLI) \
+		--build-arg COPILOT_CLI_VERSION="$(COPILOT_CLI_VERSION)" \
+		--build-arg CODE_SERVER_VERSION="$(CODE_SERVER_VERSION)" \
+		--build-arg JUPYTERLAB_VERSION="$(JUPYTERLAB_VERSION)" \
+		--build-arg IPYWIDGETS_VERSION="$(IPYWIDGETS_VERSION)" \
+		--build-arg COMFYUI_REF="$(COMFYUI_REF)" \
+		--build-arg COMFYUI_MANAGER_REF="$(COMFYUI_MANAGER_REF)" \
+		--build-arg KOHYA_REF="$(KOHYA_REF)" \
+		--build-arg DIFFPIPE_REF="$(DIFFPIPE_REF)" \
+		--build-arg AI_TOOLKIT_REF="$(AI_TOOLKIT_REF)" \
+		--load .
+
+runtime-artifacts:
+	APP_VERSION="$(APP_VERSION)" \
+	RUNTIME_VERSION="$(RUNTIME_VERSION)" \
+	VCS_REF="$(VCS_REF)" \
+	BUILD_DATE="$(BUILD_DATE)" \
+	IMAGE="$(IMAGE)" \
+	TAG="$(TAG)" \
+	PLATFORM="$(PLATFORM)" \
+	OUTPUT_DIR="$(RUNTIME_OUTPUT_DIR)" \
+	RUNTIME_BASE_URL="$(RUNTIME_BASE_URL)" \
+	bash packaging/windows/build-runtime-artifacts.sh
 
 run:
 	@mkdir -p "$(WORKSPACE_DIR)"

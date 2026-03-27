@@ -17,9 +17,11 @@ apt-get install -y --no-install-recommends \
   software-properties-common \
   build-essential \
   iproute2 \
+  procps \
   libgl1 \
   libglib2.0-0 \
   whiptail \
+  zstd \
   "${CUDA_NVCC_PKG}" \
   mc \
   nano
