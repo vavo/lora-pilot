@@ -33,10 +33,14 @@ sd3-medium-fp8-allinone|hf_file|stabilityai/stable-diffusion-3-medium:sd3_medium
 
 # SD3.5 (popular, Comfy-Org packaged)
 sd3.5-medium-fp8-allinone|hf_file|Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors|checkpoints||11.60GB
+sd3.5-large|hf_file|stabilityai/stable-diffusion-3.5-large:sd3.5_large.safetensors|checkpoints||16.20GB
+sd3.5-large-turbo|hf_file|stabilityai/stable-diffusion-3.5-large-turbo:sd3.5_large_turbo.safetensors|checkpoints||16.20GB
 
 # --- FLUX.1 Models ---
 flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|diffusion_models||23.80GB
 flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||0.34GB
+flux1-kontext-dev|hf_file|black-forest-labs/FLUX.1-Kontext-dev:flux1-kontext-dev.safetensors|diffusion_models||23.80GB
+flux1-fill-dev|hf_file|black-forest-labs/FLUX.1-Fill-dev:flux1-fill-dev.safetensors|diffusion_models||23.80GB
 
 # --- Flux 2 (ComfyUI-ready, quantized) ---
 # NOTE: these are the Comfy-Org split_files that match ComfyUI_examples for Flux 2
@@ -48,6 +52,14 @@ flux2-turbo-lora|hf_file|Comfy-Org/flux2-dev:split_files/loras/Flux2TurboComfyv2
 # --- WAN Models ---
 wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
 wan2.2-anime-14b|hf_repo|Wan-AI/Wan2.2-Anime-14B|wan/wan2.2-anime-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json|72.40GB
+wan2.2-ti2v-5b|hf_repo|Wan-AI/Wan2.2-TI2V-5B|wan/wan2.2-ti2v-5b|*.json,*.pth,*.safetensors,google/umt5-xxl/*,README.md|
+
+# --- Hunyuan Image Models ---
+hunyuanimage-2.1-comfy-bf16|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/diffusion_models/hunyuanimage2.1_bf16.safetensors|diffusion_models||
+hunyuanimage-2.1-comfy-distilled-fp8|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/diffusion_models/hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors|diffusion_models||
+hunyuanimage-2.1-comfy-qwen-encoder-fp8|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors|text_encoders||
+hunyuanimage-2.1-comfy-vae|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/vae/hunyuan_image_2.1_vae_fp16.safetensors|vae||
+hunyuanimage-3.0|hf_repo|tencent/HunyuanImage-3.0|diffusers/hunyuanimage-3.0|*.py,*.json,*.safetensors,tokenizer*.json,LICENSE,README.md|
 
 # --- VAE Models ---
 sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae||0.34GB
@@ -77,3 +89,14 @@ latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:unet/diffusion_pytorch_model
 z-image-turbo|hf_file|Comfy-Org/z_image_turbo:split_files/diffusion_models/z_image_turbo_bf16.safetensors|diffusion_models||12.30GB
 z-image-qwen-encoder|hf_file|Comfy-Org/z_image_turbo:split_files/text_encoders/qwen_3_4b.safetensors|text_encoders||8.04GB
 z-image-ae|hf_file|Comfy-Org/z_image_turbo:split_files/vae/ae.safetensors|vae||0.34GB
+
+# --- LTX Video Models ---
+ltxv-2b-0.9.6-dev|hf_file|Lightricks/LTX-Video:ltxv-2b-0.9.6-dev-04-25.safetensors|checkpoints||
+ltxv-2b-0.9.6-distilled|hf_file|Lightricks/LTX-Video:ltxv-2b-0.9.6-distilled-04-25.safetensors|checkpoints||
+ltxv-13b-0.9.7-distilled|hf_file|Lightricks/LTX-Video:ltxv-13b-0.9.7-distilled.safetensors|checkpoints||
+ltxv-13b-0.9.8-distilled|hf_file|Lightricks/LTX-Video:ltxv-13b-0.9.8-distilled.safetensors|checkpoints||
+ltxv-spatial-upscaler-0.9.8|hf_file|Lightricks/LTX-Video:ltxv-spatial-upscaler-0.9.8.safetensors|upscale_models||
+ltxv-temporal-upscaler-0.9.8|hf_file|Lightricks/LTX-Video:ltxv-temporal-upscaler-0.9.8.safetensors|upscale_models||
+
+# --- Qwen Image Models ---
+qwen-image-edit-2511|hf_repo|Qwen/Qwen-Image-Edit-2511|diffusers/qwen-image-edit-2511|model_index.json,processor/*,scheduler/*.json,text_encoder/*.json,text_encoder/*.safetensors,tokenizer/*,transformer/*.json,transformer/*.safetensors,vae/*.json,vae/*.safetensors,README.md|
