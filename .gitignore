@@ -109,3 +109,4 @@ local_settings.py
 
 # Plans
 WINDOWS_WSL_INSTALLER_PLAN.md
+docs/development/dockerfile-refactor-plan.md
