@@ -16,6 +16,7 @@ BUILD_DATE="${BUILD_DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}"
 PUBLISHED_AT="${PUBLISHED_AT:-${BUILD_DATE}}"
 MIN_WINDOWS_BUILD="${MIN_WINDOWS_BUILD:-19045}"
 RUNTIME_BASE_URL="${RUNTIME_BASE_URL:-}"
+RUNTIME_RELEASE_TAG="${RUNTIME_RELEASE_TAG:-}"
 
 rootfs_name="lora-pilot-wsl-rootfs-${RUNTIME_VERSION}.tar.zst"
 overlay_name="lora-pilot-wsl-overlay-${RUNTIME_VERSION}.tar.zst"
@@ -28,7 +29,7 @@ mkdir -p "${OUTPUT_DIR}"
 
 if [[ -z "${RUNTIME_BASE_URL}" ]]; then
   if [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
-    release_ref="${GITHUB_REF_NAME:-${APP_VERSION}}"
+    release_ref="${RUNTIME_RELEASE_TAG:-${GITHUB_REF_NAME:-${APP_VERSION}}}"
     RUNTIME_BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_ref}"
   else
     RUNTIME_BASE_URL="https://example.invalid/lora-pilot/${APP_VERSION}"

@@ -28,16 +28,64 @@ jobs:
         shell: powershell
         run: choco install innosetup --no-progress -y
 
-      - name: Set release metadata
+      - name: Set publication metadata
         shell: powershell
         run: |
           if ($env:GITHUB_REF -like "refs/tags/*") {
             $appVersion = $env:GITHUB_REF_NAME
+            $releaseTag = $appVersion
+            $releaseName = "LoRA Pilot $appVersion"
+            $isPrerelease = "false"
           } else {
             $appVersion = "sha-$($env:GITHUB_SHA.Substring(0, 12))"
+            $refSlug = $env:GITHUB_REF_NAME.ToLowerInvariant() -replace '[^a-z0-9._-]+', '-'
+            $refSlug = $refSlug.Trim('-')
+            if ([string]::IsNullOrWhiteSpace($refSlug)) {
+              $refSlug = "branch"
+            }
+            $releaseTag = "preview-$refSlug-$($env:GITHUB_SHA.Substring(0, 12))"
+            $releaseName = "Windows Preview $($env:GITHUB_REF_NAME) $($env:GITHUB_SHA.Substring(0, 12))"
+            $isPrerelease = "true"
           }
           "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
-          "MANIFEST_URL=https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$appVersion/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_TAG=$releaseTag" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_NAME=$releaseName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "IS_PRERELEASE=$isPrerelease" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "WINDOWS_RUNTIME_RELEASE_TAG=$releaseTag" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "MANIFEST_URL=https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Wait for runtime manifest and assets
+        shell: powershell
+        run: |
+          $maxAttempts = 24
+          $delaySeconds = 15
+          $ready = $false
+
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "Validation attempt $attempt/$maxAttempts"
+            try {
+              $manifest = Invoke-RestMethod -Uri $env:MANIFEST_URL -MaximumRedirection 5
+              & curl.exe --silent --show-error --fail --location --head $manifest.fresh_install.url *> $null
+              if ($LASTEXITCODE -ne 0) {
+                throw "fresh_install asset not reachable"
+              }
+              & curl.exe --silent --show-error --fail --location --head $manifest.upgrade_overlay.url *> $null
+              if ($LASTEXITCODE -ne 0) {
+                throw "upgrade_overlay asset not reachable"
+              }
+              $ready = $true
+              break
+            } catch {
+              if ($attempt -eq $maxAttempts) {
+                break
+              }
+              Start-Sleep -Seconds $delaySeconds
+            }
+          }
+
+          if (-not $ready) {
+            throw "Runtime manifest or one of its assets never became reachable at $($env:MANIFEST_URL)"
+          }
 
       - name: Build launcher and installer
         shell: powershell
@@ -50,7 +98,11 @@ jobs:
           path: dist/windows-installer/*
 
       - name: Publish installer release asset
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          target_commitish: ${{ github.sha }}
+          overwrite_files: true
           files: dist/windows-installer/LoRAPilotSetup.exe

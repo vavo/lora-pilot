@@ -29,5 +29,7 @@ The `runtime-artifacts` target writes:
 ## Release expectations
 
 - Linux CI is responsible for publishing runtime artifacts.
+- Branch and PR pushes publish preview prereleases keyed to the commit SHA so the installer points at real downloadable assets instead of motivational fiction.
 - Windows CI is responsible for building `LoRAPilotLauncher.exe` and `LoRAPilotSetup.exe`.
+- The installer workflow waits for the manifest and referenced runtime assets to become reachable before it ships anything.
 - End-to-end installer validation runs only on a self-hosted Windows 11 runner with WSL persistence. GitHub-hosted Windows runners are fine for compilation, not for pretending reboot-sensitive installer QA is solved.

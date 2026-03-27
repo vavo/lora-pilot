@@ -19,17 +19,32 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Set release metadata
+      - name: Set publication metadata
         shell: bash
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             app_version="${GITHUB_REF_NAME}"
+            release_tag="${app_version}"
+            release_name="LoRA Pilot ${app_version}"
+            is_prerelease="false"
           else
             app_version="sha-${GITHUB_SHA::12}"
+            ref_slug="$(printf '%s' "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+            if [[ -z "${ref_slug}" ]]; then
+              ref_slug="branch"
+            fi
+            release_tag="preview-${ref_slug}-${GITHUB_SHA::12}"
+            release_name="Windows Preview ${GITHUB_REF_NAME} ${GITHUB_SHA::12}"
+            is_prerelease="true"
           fi
           echo "APP_VERSION=${app_version}" >> "${GITHUB_ENV}"
           echo "RUNTIME_VERSION=${app_version}" >> "${GITHUB_ENV}"
-          echo "RUNTIME_BASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${app_version}" >> "${GITHUB_ENV}"
+          echo "RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
+          echo "RELEASE_NAME=${release_name}" >> "${GITHUB_ENV}"
+          echo "IS_PRERELEASE=${is_prerelease}" >> "${GITHUB_ENV}"
+          echo "RUNTIME_RELEASE_TAG=${release_tag}" >> "${GITHUB_ENV}"
+          echo "RUNTIME_BASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}" >> "${GITHUB_ENV}"
+          echo "MANIFEST_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${release_tag}/windows-runtime-manifest.json" >> "${GITHUB_ENV}"
 
       - name: Build runtime artifacts
         shell: bash
@@ -42,8 +57,41 @@ jobs:
           path: dist/windows-runtime/*
 
       - name: Publish runtime release assets
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
+          target_commitish: ${{ github.sha }}
+          overwrite_files: true
           files: |
             dist/windows-runtime/*
+
+      - name: Validate published runtime URLs
+        shell: bash
+        run: |
+          attempt=0
+          max_attempts=24
+          until (( attempt >= max_attempts )); do
+            attempt=$((attempt + 1))
+            echo "Validation attempt ${attempt}/${max_attempts}"
+            if curl -fsSL "${MANIFEST_URL}" -o /tmp/windows-runtime-manifest.json; then
+              mapfile -t asset_urls < <(
+                python3 -c 'import json; manifest = json.load(open("/tmp/windows-runtime-manifest.json", "r", encoding="utf-8")); print(manifest["fresh_install"]["url"]); print(manifest["upgrade_overlay"]["url"])'
+              )
+              assets_ready="true"
+              for asset_url in "${asset_urls[@]}"; do
+                if ! curl -fsSIL "${asset_url}" >/dev/null; then
+                  assets_ready="false"
+                  break
+                fi
+              done
+              if [[ "${assets_ready}" == "true" ]]; then
+                echo "Published runtime assets are reachable."
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "Runtime manifest or one of its assets never became reachable at ${MANIFEST_URL}" >&2
+          exit 1
