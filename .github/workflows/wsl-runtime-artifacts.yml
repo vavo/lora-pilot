@@ -29,6 +29,11 @@ jobs:
           echo "APP_VERSION=${app_version}" >> "${GITHUB_ENV}"
           echo "RUNTIME_VERSION=${app_version}" >> "${GITHUB_ENV}"
           echo "RUNTIME_BASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${app_version}" >> "${GITHUB_ENV}"
+          prerelease="false"
+          if [[ "${app_version}" == *preview* || "${app_version}" == *alpha* || "${app_version}" == *beta* || "${app_version}" == *rc* ]]; then
+            prerelease="true"
+          fi
+          echo "RELEASE_IS_PRERELEASE=${prerelease}" >> "${GITHUB_ENV}"
 
       - name: Build runtime artifacts
         shell: bash
@@ -44,5 +49,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          prerelease: ${{ env.RELEASE_IS_PRERELEASE == 'true' }}
           files: |
             dist/windows-runtime/*
