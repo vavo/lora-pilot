@@ -70,6 +70,7 @@ jobs:
           $appVersion = "sha-$shortSha"
           $releaseBuild = "false"
           $manifestSource = "runtime-artifact"
+          $embeddedManifestUrl = ""
           $runtimeRunId = ""
           $releaseTag = ""
           $releaseName = ""
@@ -80,8 +81,10 @@ jobs:
             $releaseName = "LoRA Pilot $appVersion"
             $releaseBuild = "true"
             $manifestSource = "release"
+            $embeddedManifestUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json"
           } elseif ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace("${{ inputs.manifest_url }}")) {
             $manifestSource = "manual-url"
+            $embeddedManifestUrl = "${{ inputs.manifest_url }}"
           }
 
           if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
@@ -96,6 +99,7 @@ jobs:
           "RELEASE_NAME=$releaseName" | Out-File -FilePath $env:GITHUB_ENV -Append
           "RELEASE_BUILD=$releaseBuild" | Out-File -FilePath $env:GITHUB_ENV -Append
           "MANIFEST_SOURCE=$manifestSource" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "EMBEDDED_MANIFEST_URL=$embeddedManifestUrl" | Out-File -FilePath $env:GITHUB_ENV -Append
           "RUNTIME_RUN_ID=$runtimeRunId" | Out-File -FilePath $env:GITHUB_ENV -Append
           if ($manifestSource -eq "release") {
             "MANIFEST_URL=https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -220,7 +224,7 @@ jobs:
 
       - name: Build launcher and installer
         shell: powershell
-        run: .\packaging\windows\build-installer.ps1 -AppVersion $env:APP_VERSION -ManifestUrl $env:MANIFEST_URL
+        run: .\packaging\windows\build-installer.ps1 -AppVersion $env:APP_VERSION -ManifestUrl $env:EMBEDDED_MANIFEST_URL
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4

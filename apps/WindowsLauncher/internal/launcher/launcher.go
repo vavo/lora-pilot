@@ -364,6 +364,16 @@ func (l *Launcher) loadManifest(ctx context.Context) (Manifest, error) {
 	if source == "" {
 		return l.loadCachedManifest()
 	}
+	if localPath, ok := resolveLocalPath(source); ok {
+		manifest, err := l.loadManifestFromFile(localPath)
+		if err != nil {
+			return Manifest{}, err
+		}
+		if err := WriteManifest(l.paths.CachedManifestPath, manifest); err != nil {
+			return Manifest{}, err
+		}
+		return manifest, nil
+	}
 	if err := DownloadFile(ctx, l.httpClient, source, l.paths.CachedManifestPath); err != nil {
 		return Manifest{}, err
 	}
@@ -371,12 +381,21 @@ func (l *Launcher) loadManifest(ctx context.Context) (Manifest, error) {
 }
 
 func (l *Launcher) loadCachedManifest() (Manifest, error) {
-	file, err := os.Open(l.paths.CachedManifestPath)
+	return l.loadManifestFromFile(l.paths.CachedManifestPath)
+}
+
+func (l *Launcher) loadManifestFromFile(path string) (Manifest, error) {
+	file, err := os.Open(path)
 	if err != nil {
-		return Manifest{}, fmt.Errorf("open cached manifest: %w", err)
+		return Manifest{}, fmt.Errorf("open manifest: %w", err)
 	}
 	defer file.Close()
-	return LoadManifest(file)
+	manifest, err := LoadManifest(file)
+	if err != nil {
+		return Manifest{}, err
+	}
+	manifest.ResolveRelativePaths(filepath.Dir(path))
+	return manifest, nil
 }
 
 func (l *Launcher) ensureWSL(ctx context.Context, state *State) error {

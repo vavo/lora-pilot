@@ -5,12 +5,17 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/vavo/lora-pilot/apps/windowslauncher/internal/launcher"
 )
 
 func main() {
-	if err := run(context.Background(), os.Args[1:]); err != nil {
+	err := run(context.Background(), os.Args[1:])
+	logCommand(os.Args[1:], err)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -78,4 +83,37 @@ func run(ctx context.Context, args []string) error {
 func usage() error {
 	fmt.Fprintln(os.Stderr, "usage: windowslauncher {install|start|stop|status|open|uninstall}")
 	return fmt.Errorf("unknown or missing command")
+}
+
+func logCommand(args []string, err error) {
+	paths := launcher.DefaultPaths()
+	if paths.LogsDir == "" {
+		return
+	}
+	if mkErr := os.MkdirAll(paths.LogsDir, 0o755); mkErr != nil {
+		return
+	}
+	logPath := filepath.Join(paths.LogsDir, "launcher.log")
+	file, openErr := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if openErr != nil {
+		return
+	}
+	defer file.Close()
+
+	status := "ok"
+	message := ""
+	if err != nil {
+		status = "error"
+		message = err.Error()
+	}
+	line := fmt.Sprintf(
+		"%s status=%s args=%q",
+		time.Now().UTC().Format(time.RFC3339),
+		status,
+		strings.Join(args, " "),
+	)
+	if message != "" {
+		line += fmt.Sprintf(" error=%q", message)
+	}
+	_, _ = fmt.Fprintln(file, line)
 }

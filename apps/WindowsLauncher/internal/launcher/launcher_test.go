@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"bytes"
 	"net"
 	"os"
 	"path/filepath"
@@ -25,6 +26,45 @@ func TestLoadManifest(t *testing.T) {
 	}
 	if manifest.RuntimeVersion != "1.2.3" {
 		t.Fatalf("unexpected runtime version: %s", manifest.RuntimeVersion)
+	}
+}
+
+func TestLoadManifestStripsUTF8BOM(t *testing.T) {
+	t.Parallel()
+
+	input := append([]byte{0xef, 0xbb, 0xbf}, []byte(`{
+	  "app_version": "1.2.3",
+	  "runtime_version": "1.2.3",
+	  "published_at": "2026-03-27T00:00:00Z",
+	  "min_windows_build": 19045,
+	  "fresh_install": {"url": "rootfs.tar.zst", "sha256": "abc"},
+	  "upgrade_overlay": {"url": "overlay.tar.zst", "sha256": "def"},
+	  "ports": {"controlpilot": 7878}
+	}`)...)
+
+	manifest, err := LoadManifest(bytes.NewReader(input))
+	if err != nil {
+		t.Fatalf("LoadManifest returned error: %v", err)
+	}
+	if manifest.AppVersion != "1.2.3" {
+		t.Fatalf("unexpected app version: %s", manifest.AppVersion)
+	}
+}
+
+func TestResolveRelativePaths(t *testing.T) {
+	t.Parallel()
+
+	baseDir := filepath.Join("C:", "Temp", "lora-pilot-runtime")
+	manifest := Manifest{
+		FreshInstall:   ArtifactRef{URL: "rootfs.tar.zst"},
+		UpgradeOverlay: ArtifactRef{URL: "overlay.tar.zst"},
+	}
+	manifest.ResolveRelativePaths(baseDir)
+	if manifest.FreshInstall.URL != filepath.Join(baseDir, "rootfs.tar.zst") {
+		t.Fatalf("unexpected fresh install path: %s", manifest.FreshInstall.URL)
+	}
+	if manifest.UpgradeOverlay.URL != filepath.Join(baseDir, "overlay.tar.zst") {
+		t.Fatalf("unexpected overlay path: %s", manifest.UpgradeOverlay.URL)
 	}
 }
 
@@ -111,6 +151,15 @@ func TestBuildWSLImportCommand(t *testing.T) {
 	}
 	if len(cmd.Args) < 6 || cmd.Args[0] != "--import" {
 		t.Fatalf("unexpected import args: %#v", cmd.Args)
+	}
+}
+
+func TestNormalizeCommandOutputStripsUTF16Nulls(t *testing.T) {
+	t.Parallel()
+
+	raw := []byte{'L', 0, 'o', 0, 'R', 0, 'A', 0, 'P', 0, 'i', 0, 'l', 0, 'o', 0, 't', 0, '\r', 0, '\n', 0}
+	if got := normalizeCommandOutput(raw); got != "LoRAPilot" {
+		t.Fatalf("unexpected normalized output: %q", got)
 	}
 }
 

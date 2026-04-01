@@ -1,9 +1,13 @@
 package launcher
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 type ArtifactRef struct {
@@ -50,8 +54,14 @@ func DefaultManifest() Manifest {
 }
 
 func LoadManifest(r io.Reader) (Manifest, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return Manifest{}, fmt.Errorf("read manifest: %w", err)
+	}
+	raw = bytes.TrimPrefix(raw, []byte{0xef, 0xbb, 0xbf})
+
 	var manifest Manifest
-	decoder := json.NewDecoder(r)
+	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&manifest); err != nil {
 		return Manifest{}, fmt.Errorf("decode manifest: %w", err)
@@ -60,6 +70,39 @@ func LoadManifest(r io.Reader) (Manifest, error) {
 		return Manifest{}, err
 	}
 	return manifest, nil
+}
+
+func (m *Manifest) ResolveRelativePaths(baseDir string) {
+	m.FreshInstall.URL = resolveManifestPath(baseDir, m.FreshInstall.URL)
+	m.UpgradeOverlay.URL = resolveManifestPath(baseDir, m.UpgradeOverlay.URL)
+}
+
+func WriteManifest(path string, manifest Manifest) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create manifest dir: %w", err)
+	}
+	raw, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode manifest: %w", err)
+	}
+	raw = append(raw, '\n')
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		return fmt.Errorf("write manifest: %w", err)
+	}
+	return nil
+}
+
+func resolveManifestPath(baseDir, value string) string {
+	if value == "" {
+		return ""
+	}
+	if _, ok := resolveLocalPath(value); ok {
+		return value
+	}
+	if strings.Contains(value, "://") {
+		return value
+	}
+	return filepath.Join(baseDir, filepath.FromSlash(value))
 }
 
 func (m Manifest) Validate() error {

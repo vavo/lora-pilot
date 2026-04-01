@@ -15,7 +15,7 @@ if (-not $AppVersion) {
         $AppVersion = "dev"
     }
 }
-if (-not $ManifestUrl) {
+if (-not $PSBoundParameters.ContainsKey("ManifestUrl") -and -not $ManifestUrl) {
     if ($env:GITHUB_REPOSITORY) {
         $ManifestUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$AppVersion/windows-runtime-manifest.json"
     } elseif ($env:WINDOWS_RUNTIME_MANIFEST_URL) {
@@ -27,6 +27,14 @@ $distDir = Join-Path $root "dist\windows-installer"
 $inputDir = Join-Path $distDir "input"
 $launcherOut = Join-Path $inputDir "LoRAPilotLauncher.exe"
 New-Item -ItemType Directory -Force -Path $inputDir | Out-Null
+
+Copy-Item (Join-Path $PSScriptRoot "Install-LoRAPilotPreview.ps1") (Join-Path $distDir "Install-LoRAPilotPreview.ps1") -Force
+Copy-Item (Join-Path $PSScriptRoot "PREVIEW-INSTALL.md") (Join-Path $distDir "PREVIEW-INSTALL.md") -Force
+
+$autoInstall = 0
+if (-not [string]::IsNullOrWhiteSpace($ManifestUrl)) {
+    $autoInstall = 1
+}
 
 Push-Location (Join-Path $root "apps\WindowsLauncher")
 try {
@@ -45,5 +53,6 @@ if (-not (Test-Path $iscc)) {
 & $iscc `
     "/DAppVersion=$AppVersion" `
     "/DManifestUrl=$ManifestUrl" `
+    "/DAutoInstall=$autoInstall" `
     "/DLauncherSource=$launcherOut" `
     (Join-Path $PSScriptRoot "LoRAPilotSetup.iss")

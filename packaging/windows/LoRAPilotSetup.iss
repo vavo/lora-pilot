@@ -7,6 +7,9 @@
 #ifndef ManifestUrl
   #define ManifestUrl ""
 #endif
+#ifndef AutoInstall
+  #define AutoInstall 0
+#endif
 
 #define MyAppName "LoRA Pilot"
 #define MyAppPublisher "vavo"
@@ -47,8 +50,10 @@ Name: "{group}\Uninstall LoRA Pilot"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\LoRA Pilot"; Filename: "{app}\LoRAPilotLauncher.exe"; Parameters: "start"; Tasks: desktopicon; WorkingDir: "{app}"
 
 [Run]
-Filename: "{app}\LoRAPilotLauncher.exe"; Parameters: "install --manifest-url ""{#ManifestUrl}"""; StatusMsg: "Preparing the managed WSL runtime..."; Flags: waituntilterminated runhidden
+#if AutoInstall == 1
+Filename: "{app}\LoRAPilotLauncher.exe"; Parameters: "install --manifest-url ""{#ManifestUrl}"""; StatusMsg: "Preparing the managed WSL runtime..."; Flags: waituntilterminated
 Filename: "{app}\LoRAPilotLauncher.exe"; Parameters: "start"; Description: "Launch LoRA Pilot"; Flags: nowait postinstall skipifsilent
+#endif
 
 [UninstallRun]
 Filename: "{app}\LoRAPilotLauncher.exe"; Parameters: "uninstall"; RunOnceId: "LoRAPilotLauncherUninstall"; Flags: runhidden waituntilterminated skipifdoesntexist
