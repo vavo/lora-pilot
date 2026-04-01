@@ -1,9 +1,6 @@
 name: Build Windows Installer
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_run:
     workflows:
       - Build WSL Runtime Artifacts
@@ -27,7 +24,6 @@ permissions:
 jobs:
   build-installer:
     if: |
-      github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'workflow_run' &&
        github.event.workflow_run.conclusion == 'success' &&
@@ -59,9 +55,11 @@ jobs:
         shell: powershell
         run: |
           $sourceSha = $env:GITHUB_SHA
+          $sourceRef = $env:GITHUB_REF_NAME
           if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
             $event = Get-Content $env:GITHUB_EVENT_PATH | ConvertFrom-Json
             $sourceSha = $event.workflow_run.head_sha
+            $sourceRef = [string]$event.workflow_run.head_branch
           }
           if (-not $sourceSha) {
             $sourceSha = $env:GITHUB_SHA
@@ -76,8 +74,8 @@ jobs:
           $releaseTag = ""
           $releaseName = ""
 
-          if ($env:GITHUB_EVENT_NAME -eq "push" -and $env:GITHUB_REF -like "refs/tags/*") {
-            $appVersion = $env:GITHUB_REF_NAME
+          if (-not [string]::IsNullOrWhiteSpace($sourceRef) -and $sourceRef -like "v*") {
+            $appVersion = $sourceRef
             $releaseTag = $appVersion
             $releaseName = "LoRA Pilot $appVersion"
             $releaseBuild = "true"
