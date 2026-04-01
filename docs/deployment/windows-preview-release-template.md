@@ -49,7 +49,7 @@ This is a Windows preview build of LoRA Pilot delivered through a WSL-backed ins
 ### Known Limitations
 
 - Preview quality, not GA.
-- Unsigned binaries may trigger Windows SmartScreen or Defender warnings.
+- SmartScreen or Defender warnings are still possible, especially if signing is not configured yet or the publisher reputation is brand new.
 - GPU validation on a real NVIDIA-backed Windows machine is still pending.
 - Additional installer and lifecycle edge cases are still being tested.
 

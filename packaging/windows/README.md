@@ -31,6 +31,7 @@ The `runtime-artifacts` target writes:
 - Linux CI is responsible for publishing runtime artifacts.
 - Branch and PR pushes keep runtime bundles as workflow artifacts for smoke tests.
 - Windows CI is responsible for building `LoRAPilotLauncher.exe` and `LoRAPilotSetup.exe`.
+- When Azure Artifact Signing is configured, Windows CI signs both executables before upload and release publication.
 - Branch installer smoke builds consume the runtime artifact from the matching runtime workflow and validate it behind a local HTTP server on the runner.
 - Tagged releases still wait for public manifest and runtime URLs before publishing the installer.
 - End-to-end installer validation runs only on a self-hosted Windows 11 runner with WSL persistence. GitHub-hosted Windows runners are fine for compilation, not for pretending reboot-sensitive installer QA is solved.

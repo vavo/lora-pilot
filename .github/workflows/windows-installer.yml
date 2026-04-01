@@ -20,6 +20,7 @@ on:
 permissions:
   actions: read
   contents: write
+  id-token: write
 
 jobs:
   build-installer:
@@ -30,6 +31,14 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_branch != '')
     runs-on: windows-latest
+    env:
+      WINDOWS_SIGNING_ACCOUNT_NAME: ${{ vars.WINDOWS_SIGNING_ACCOUNT_NAME }}
+      WINDOWS_SIGNING_AZURE_CLIENT_ID: ${{ secrets.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+      WINDOWS_SIGNING_AZURE_CLIENT_SECRET: ${{ secrets.WINDOWS_SIGNING_AZURE_CLIENT_SECRET }}
+      WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID: ${{ secrets.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID }}
+      WINDOWS_SIGNING_AZURE_TENANT_ID: ${{ secrets.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+      WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME }}
+      WINDOWS_SIGNING_ENDPOINT: ${{ vars.WINDOWS_SIGNING_ENDPOINT }}
     steps:
       - name: Check out source for runtime-triggered build
         if: github.event_name == 'workflow_run'
@@ -110,6 +119,51 @@ jobs:
             "MANIFEST_URL=${{ inputs.manifest_url }}" | Out-File -FilePath $env:GITHUB_ENV -Append
           } else {
             "MANIFEST_URL=http://127.0.0.1:18080/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
+      - name: Detect Windows code signing configuration
+        shell: powershell
+        run: |
+          $requiredConfig = @{
+            WINDOWS_SIGNING_ACCOUNT_NAME = $env:WINDOWS_SIGNING_ACCOUNT_NAME
+            WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME = $env:WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME
+            WINDOWS_SIGNING_ENDPOINT = $env:WINDOWS_SIGNING_ENDPOINT
+          }
+          $missingConfig = @(
+            $requiredConfig.GetEnumerator() |
+              Where-Object { [string]::IsNullOrWhiteSpace($_.Value) } |
+              ForEach-Object { $_.Key }
+          )
+
+          $hasClientId = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_AZURE_CLIENT_ID)
+          $hasTenantId = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_AZURE_TENANT_ID)
+          $hasClientSecret = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_AZURE_CLIENT_SECRET)
+
+          $signingMode = "disabled"
+          if ($missingConfig.Count -eq 0 -and $hasClientId -and $hasTenantId) {
+            if ($hasClientSecret) {
+              $signingMode = "client-secret"
+            } else {
+              $signingMode = "oidc"
+            }
+          }
+
+          "WINDOWS_SIGNING_MODE=$signingMode" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+          if ($signingMode -eq "disabled") {
+            $reasons = @()
+            if ($missingConfig.Count -gt 0) {
+              $reasons += "missing vars: $($missingConfig -join ', ')"
+            }
+            if (-not $hasClientId) {
+              $reasons += "missing secret: WINDOWS_SIGNING_AZURE_CLIENT_ID"
+            }
+            if (-not $hasTenantId) {
+              $reasons += "missing secret: WINDOWS_SIGNING_AZURE_TENANT_ID"
+            }
+            Write-Warning "Windows code signing is disabled; artifacts will remain unsigned. $($reasons -join '; ')"
+          } else {
+            Write-Host "Windows code signing mode: $signingMode"
           }
 
       - name: Download runtime workflow artifact
@@ -228,6 +282,87 @@ jobs:
       - name: Build launcher and installer
         shell: powershell
         run: .\packaging\windows\build-installer.ps1 -AppVersion $env:APP_VERSION -ManifestUrl $env:EMBEDDED_MANIFEST_URL
+
+      - name: Azure login for Artifact Signing
+        if: env.WINDOWS_SIGNING_MODE == 'oidc' && env.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID != ''
+        uses: azure/login@v3.0.0
+        with:
+          client-id: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+          subscription-id: ${{ env.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ env.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+
+      - name: Azure login for Artifact Signing without subscription context
+        if: env.WINDOWS_SIGNING_MODE == 'oidc' && env.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID == ''
+        uses: azure/login@v3.0.0
+        with:
+          allow-no-subscriptions: true
+          client-id: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+
+      - name: Sign Windows artifacts with Artifact Signing (OIDC)
+        if: env.WINDOWS_SIGNING_MODE == 'oidc'
+        uses: azure/trusted-signing-action@v1.2.0
+        with:
+          certificate-profile-name: ${{ env.WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          description: LoRA Pilot Windows launcher and installer
+          description-url: https://github.com/${{ github.repository }}
+          endpoint: ${{ env.WINDOWS_SIGNING_ENDPOINT }}
+          exclude-environment-credential: true
+          exclude-interactive-browser-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-visual-studio-credential: true
+          exclude-workload-identity-credential: true
+          files: |
+            ${{ github.workspace }}\dist\windows-installer\input\LoRAPilotLauncher.exe
+            ${{ github.workspace }}\dist\windows-installer\LoRAPilotSetup.exe
+          file-digest: SHA256
+          signing-account-name: ${{ env.WINDOWS_SIGNING_ACCOUNT_NAME }}
+          timestamp-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com/
+
+      - name: Sign Windows artifacts with Artifact Signing (client secret fallback)
+        if: env.WINDOWS_SIGNING_MODE == 'client-secret'
+        uses: azure/trusted-signing-action@v1.2.0
+        with:
+          azure-client-id: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ env.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+          certificate-profile-name: ${{ env.WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          description: LoRA Pilot Windows launcher and installer
+          description-url: https://github.com/${{ github.repository }}
+          endpoint: ${{ env.WINDOWS_SIGNING_ENDPOINT }}
+          exclude-azure-cli-credential: true
+          exclude-interactive-browser-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-visual-studio-credential: true
+          exclude-workload-identity-credential: true
+          files: |
+            ${{ github.workspace }}\dist\windows-installer\input\LoRAPilotLauncher.exe
+            ${{ github.workspace }}\dist\windows-installer\LoRAPilotSetup.exe
+          file-digest: SHA256
+          signing-account-name: ${{ env.WINDOWS_SIGNING_ACCOUNT_NAME }}
+          timestamp-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com/
+
+      - name: Verify Authenticode signatures
+        if: env.WINDOWS_SIGNING_MODE != 'disabled'
+        shell: powershell
+        run: |
+          $targets = @(
+            "dist\windows-installer\input\LoRAPilotLauncher.exe",
+            "dist\windows-installer\LoRAPilotSetup.exe"
+          )
+          foreach ($target in $targets) {
+            $signature = Get-AuthenticodeSignature $target
+            if ($signature.Status -ne "Valid") {
+              throw "Invalid signature for $target: $($signature.Status) $($signature.StatusMessage)"
+            }
+            Write-Host "Verified signature for $target from $($signature.SignerCertificate.Subject)"
+          }
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v6

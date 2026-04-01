@@ -50,10 +50,12 @@ Local Windows state lives under `%LOCALAPPDATA%\LoRAPilot` and contains:
 - For branch and PR pushes, start only after the runtime workflow succeeds, download that workflow artifact, rewrite the manifest to localhost URLs, and validate the bundle behind a local HTTP server on the runner.
 - For tagged releases, wait for the public runtime release assets to become reachable.
 - Run `go test ./...` and build `LoRAPilotLauncher.exe`.
+- If Azure Artifact Signing is configured, sign `LoRAPilotLauncher.exe` and `LoRAPilotSetup.exe`, then verify both signatures before upload.
 - Compile `LoRAPilotSetup.iss` with Inno Setup.
 - Upload `LoRAPilotSetup.exe`.
 - Publish only tagged builds as release assets.
 - Use [windows-preview-release-template.md](windows-preview-release-template.md) when cutting a Windows preview tag so the release notes and asset expectations stay consistent.
+- Use [windows-code-signing.md](windows-code-signing.md) to wire a real publisher identity into the installer instead of shipping `Unknown publisher` theater.
 
 ### Remote E2E workflow
 
