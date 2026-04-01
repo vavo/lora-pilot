@@ -53,6 +53,7 @@ Local Windows state lives under `%LOCALAPPDATA%\LoRAPilot` and contains:
 - Compile `LoRAPilotSetup.iss` with Inno Setup.
 - Upload `LoRAPilotSetup.exe`.
 - Publish only tagged builds as release assets.
+- Use [windows-preview-release-template.md](windows-preview-release-template.md) when cutting a Windows preview tag so the release notes and asset expectations stay consistent.
 
 ### Remote E2E workflow
 
