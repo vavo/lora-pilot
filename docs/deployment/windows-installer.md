@@ -42,7 +42,8 @@ Local Windows state lives under `%LOCALAPPDATA%\LoRAPilot` and contains:
 - Export `lora-pilot-wsl-rootfs-<version>.tar.zst`.
 - Export `lora-pilot-wsl-overlay-<version>.tar.zst`.
 - Generate `windows-runtime-manifest.json` and SHA256 sidecars.
-- Upload artifacts and publish them on tagged releases.
+- Upload artifacts for CI smoke tests.
+- On tagged releases, publish the heavy runtime bundles to Cloudflare R2 and attach the manifest plus checksum files to the GitHub release.
 - For branch and PR pushes, keep the runtime bundle as a workflow artifact and let downstream smoke tests consume that artifact directly.
 
 ### Windows installer workflow

@@ -14,6 +14,13 @@ permissions:
 jobs:
   build-runtime:
     runs-on: ubuntu-latest
+    env:
+      WINDOWS_RUNTIME_PUBLIC_BASE_URL: ${{ vars.WINDOWS_RUNTIME_PUBLIC_BASE_URL }}
+      WINDOWS_RUNTIME_R2_BUCKET: ${{ vars.WINDOWS_RUNTIME_R2_BUCKET }}
+      WINDOWS_RUNTIME_R2_ENDPOINT: ${{ vars.WINDOWS_RUNTIME_R2_ENDPOINT }}
+      WINDOWS_RUNTIME_R2_PREFIX: ${{ vars.WINDOWS_RUNTIME_R2_PREFIX }}
+      WINDOWS_RUNTIME_R2_ACCESS_KEY_ID: ${{ secrets.WINDOWS_RUNTIME_R2_ACCESS_KEY_ID }}
+      WINDOWS_RUNTIME_R2_SECRET_ACCESS_KEY: ${{ secrets.WINDOWS_RUNTIME_R2_SECRET_ACCESS_KEY }}
     steps:
       - name: Check out source
         uses: actions/checkout@v5
@@ -21,19 +28,58 @@ jobs:
       - name: Set release metadata
         shell: bash
         run: |
+          tag_build="false"
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             app_version="${GITHUB_REF_NAME}"
+            tag_build="true"
           else
             app_version="sha-${GITHUB_SHA::12}"
           fi
           echo "APP_VERSION=${app_version}" >> "${GITHUB_ENV}"
           echo "RUNTIME_VERSION=${app_version}" >> "${GITHUB_ENV}"
-          echo "RUNTIME_BASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${app_version}" >> "${GITHUB_ENV}"
+          echo "TAG_BUILD=${tag_build}" >> "${GITHUB_ENV}"
+          if [[ "${tag_build}" == "true" ]]; then
+            if [[ -z "${WINDOWS_RUNTIME_R2_PREFIX}" ]]; then
+              runtime_prefix="windows-runtime"
+            else
+              runtime_prefix="${WINDOWS_RUNTIME_R2_PREFIX%/}"
+            fi
+            echo "RUNTIME_R2_PREFIX=${runtime_prefix}" >> "${GITHUB_ENV}"
+            runtime_base_url="${WINDOWS_RUNTIME_PUBLIC_BASE_URL%/}/${runtime_prefix}/${app_version}"
+            echo "RUNTIME_BASE_URL=${runtime_base_url}" >> "${GITHUB_ENV}"
+          else
+            echo "RUNTIME_BASE_URL=https://github.com/${GITHUB_REPOSITORY}/releases/download/${app_version}" >> "${GITHUB_ENV}"
+          fi
           prerelease="false"
           if [[ "${app_version}" == *preview* || "${app_version}" == *alpha* || "${app_version}" == *beta* || "${app_version}" == *rc* ]]; then
             prerelease="true"
           fi
           echo "RELEASE_IS_PRERELEASE=${prerelease}" >> "${GITHUB_ENV}"
+
+      - name: Validate R2 release configuration
+        if: env.TAG_BUILD == 'true'
+        shell: bash
+        run: |
+          missing=()
+          for var_name in \
+            WINDOWS_RUNTIME_PUBLIC_BASE_URL \
+            WINDOWS_RUNTIME_R2_BUCKET \
+            WINDOWS_RUNTIME_R2_ENDPOINT \
+            WINDOWS_RUNTIME_R2_ACCESS_KEY_ID \
+            WINDOWS_RUNTIME_R2_SECRET_ACCESS_KEY
+          do
+            if [[ -z "${!var_name:-}" ]]; then
+              missing+=("${var_name}")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required R2 config for tagged release: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+          if [[ "${WINDOWS_RUNTIME_PUBLIC_BASE_URL}" == *".r2.cloudflarestorage.com"* ]]; then
+            echo "WINDOWS_RUNTIME_PUBLIC_BASE_URL must be a public r2.dev URL or custom domain, not the S3 API endpoint." >&2
+            exit 1
+          fi
 
       - name: Build runtime artifacts
         shell: bash
@@ -45,10 +91,63 @@ jobs:
           name: windows-runtime-artifacts
           path: dist/windows-runtime/*
 
+      - name: Install AWS CLI
+        if: env.TAG_BUILD == 'true'
+        shell: bash
+        run: |
+          if command -v aws >/dev/null 2>&1; then
+            aws --version
+            exit 0
+          fi
+          python3 -m pip install --user awscli
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Publish runtime bundles to Cloudflare R2
+        if: env.TAG_BUILD == 'true'
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{ env.WINDOWS_RUNTIME_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ env.WINDOWS_RUNTIME_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          r2_path="s3://${WINDOWS_RUNTIME_R2_BUCKET}/${RUNTIME_R2_PREFIX}/${APP_VERSION}/"
+          aws --endpoint-url "${WINDOWS_RUNTIME_R2_ENDPOINT}" s3 cp dist/windows-runtime/ "${r2_path}" \
+            --recursive \
+            --exclude "*" \
+            --include "*.tar.zst" \
+            --include "*.sha256"
+
+      - name: Validate public runtime bundle URLs
+        if: env.TAG_BUILD == 'true'
+        shell: bash
+        run: |
+          manifest_path="dist/windows-runtime/windows-runtime-manifest.json"
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+
+          manifest_path = os.path.join("dist", "windows-runtime", "windows-runtime-manifest.json")
+          with open(manifest_path, "r", encoding="utf-8") as handle:
+              manifest = json.load(handle)
+
+          for url in (manifest["fresh_install"]["url"], manifest["upgrade_overlay"]["url"]):
+              request = urllib.request.Request(url, method="HEAD")
+              try:
+                  with urllib.request.urlopen(request) as response:
+                      if response.status >= 400:
+                          raise RuntimeError(f"{url} returned HTTP {response.status}")
+              except Exception as exc:
+                  print(f"Public runtime URL validation failed for {url}: {exc}", file=sys.stderr)
+                  raise
+          PY
+
       - name: Publish runtime release assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ env.RELEASE_IS_PRERELEASE == 'true' }}
           files: |
-            dist/windows-runtime/*
+            dist/windows-runtime/windows-runtime-manifest.json
+            dist/windows-runtime/*.sha256

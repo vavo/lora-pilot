@@ -22,9 +22,9 @@ git -C /Users/vavo/DEV/lora-pilot-windows push origin v0.1.0-preview.1
 
 - `LoRAPilotSetup.exe`
 - `windows-runtime-manifest.json`
-- `lora-pilot-wsl-rootfs-<version>.tar.zst`
-- `lora-pilot-wsl-overlay-<version>.tar.zst`
 - `*.sha256`
+
+The actual runtime bundles are expected to live behind the public URLs embedded in `windows-runtime-manifest.json`, typically on Cloudflare R2 via `r2.dev` or a custom domain. GitHub Releases is not a 20 GB object store no matter how politely you ask.
 
 ## Copy/Paste Release Notes
 
@@ -37,13 +37,14 @@ This is a Windows preview build of LoRA Pilot delivered through a WSL-backed ins
 
 - `LoRAPilotSetup.exe`
 - Windows runtime manifest
-- WSL rootfs bundle for fresh installs
-- WSL overlay bundle for runtime updates
+- Cloudflare-hosted WSL rootfs bundle for fresh installs
+- Cloudflare-hosted WSL overlay bundle for runtime updates
 
 ### Install Notes
 
 - Run `LoRAPilotSetup.exe` as Administrator.
 - If Windows asks for a reboot during WSL setup, reboot and rerun the install flow.
+- The installer downloads runtime bundles from the public URLs referenced by `windows-runtime-manifest.json`, not from GitHub release attachments.
 - If you downloaded both `windows-installer` and `windows-runtime-artifacts` preview artifacts instead of using a tagged release, run `Install-LoRAPilotPreview.ps1` from an elevated PowerShell after installing.
 
 ### Known Limitations
