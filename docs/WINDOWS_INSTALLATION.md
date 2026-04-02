@@ -14,15 +14,15 @@ This is not production-grade yet. The installer builds in CI, but it still needs
 
 ## Install Flow
 
-1. Download a preview `LoRAPilotSetup.exe` build from CI artifacts or a tagged GitHub release.
+1. Download a preview `LoRAPilotSetup.exe` build from a tagged GitHub release.
 2. Run the installer as Administrator.
 3. Let the bootstrapper:
    - check Windows version, disk space, and WSL availability
    - enable or reuse WSL2
-   - download the matching runtime manifest and runtime bundle
+   - download the matching runtime manifest and runtime bundles automatically
    - import the managed `LoRAPilot` distro under `%LOCALAPPDATA%\LoRAPilot\wsl\LoRAPilot`
    - create Start Menu shortcuts
-4. If Windows requires a reboot during WSL setup, reboot and rerun the installer or launcher with `install --resume`.
+4. If Windows requires a reboot during WSL setup, reboot and sign in again. The installer schedules setup to resume automatically after the next sign-in.
 5. Launch `LoRA Pilot` from the Start Menu. ControlPilot opens on `http://localhost:7878` after the runtime becomes healthy.
 
 ## What Gets Installed
@@ -48,7 +48,7 @@ This is not production-grade yet. The installer builds in CI, but it still needs
 ### WSL setup asked for a reboot
 
 - Reboot Windows.
-- Rerun `LoRAPilotSetup.exe` or `LoRAPilotLauncher.exe install --resume`.
+- Sign in again and let the scheduled resume finish the setup automatically.
 
 ### ControlPilot never opens
 

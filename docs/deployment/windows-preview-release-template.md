@@ -43,7 +43,8 @@ This is a Windows preview build of LoRA Pilot delivered through a WSL-backed ins
 ### Install Notes
 
 - Run `LoRAPilotSetup.exe` as Administrator.
-- If Windows asks for a reboot during WSL setup, reboot and rerun the install flow.
+- Tagged releases are intended to work as a single-download web installer: users run `LoRAPilotSetup.exe` and the runtime bundles are fetched automatically.
+- If Windows asks for a reboot during WSL setup, reboot and sign back in. Setup should resume automatically.
 - The installer downloads runtime bundles from the public URLs referenced by `windows-runtime-manifest.json`, not from GitHub release attachments.
 - If you downloaded both `windows-installer` and `windows-runtime-artifacts` preview artifacts instead of using a tagged release, run `Install-LoRAPilotPreview.ps1` from an elevated PowerShell after installing.
 

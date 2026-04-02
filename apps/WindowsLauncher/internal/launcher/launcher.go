@@ -16,6 +16,10 @@ import (
 )
 
 var ErrRebootRequired = errors.New("wsl setup requires a Windows reboot; rerun install --resume afterwards")
+var ErrSetupResumeScheduled = errors.New("setup will resume automatically after reboot")
+
+const SetupResumeScheduledExitCode = 42
+const resumeRunOnceValueName = "LoRAPilotSetupResume"
 
 type Status struct {
 	InstallPresent        bool   `json:"install_present"`
@@ -153,6 +157,54 @@ func (l *Launcher) Install(ctx context.Context, resume bool) error {
 	return nil
 }
 
+func (l *Launcher) Setup(ctx context.Context, resume, launch bool) error {
+	if err := l.requireWindows(); err != nil {
+		return err
+	}
+	if err := l.paths.Ensure(); err != nil {
+		return fmt.Errorf("prepare local directories: %w", err)
+	}
+
+	state, err := LoadState(l.paths.StatePath)
+	if err != nil {
+		return err
+	}
+
+	manifestSource := strings.TrimSpace(l.manifestURL)
+	if manifestSource == "" {
+		manifestSource = strings.TrimSpace(state.ManifestURL)
+	}
+	if manifestSource == "" {
+		return fmt.Errorf("setup requires an embedded or explicit manifest URL")
+	}
+
+	if state.DistroName == "" {
+		state.DistroName = l.distroName
+	}
+	state.ManifestURL = manifestSource
+	if err := SaveState(l.paths.StatePath, state); err != nil {
+		return err
+	}
+
+	setupLauncher := *l
+	setupLauncher.manifestURL = manifestSource
+	if err := setupLauncher.Install(ctx, resume); err != nil {
+		if errors.Is(err, ErrRebootRequired) {
+			if scheduleErr := setupLauncher.scheduleResumeAfterReboot(ctx, manifestSource, launch); scheduleErr != nil {
+				return scheduleErr
+			}
+			return ErrSetupResumeScheduled
+		}
+		return err
+	}
+
+	_ = setupLauncher.clearResumeAfterReboot(ctx)
+	if !launch {
+		return nil
+	}
+	return setupLauncher.Start(ctx)
+}
+
 func (l *Launcher) Start(ctx context.Context) error {
 	if err := l.requireWindows(); err != nil {
 		return err
@@ -287,6 +339,7 @@ func (l *Launcher) Uninstall(ctx context.Context, purge bool) error {
 		_ = os.Remove(path)
 	}
 	state.LastStatus = "uninstalled"
+	state.ManifestURL = ""
 	state.PendingResumeStep = ""
 	return SaveState(l.paths.StatePath, state)
 }
@@ -475,6 +528,26 @@ func (l *Launcher) openBrowser(ctx context.Context, targetURL string) error {
 func (l *Launcher) requireWindows() error {
 	if runtime.GOOS != "windows" {
 		return fmt.Errorf("this command can only run on Windows")
+	}
+	return nil
+}
+
+func (l *Launcher) scheduleResumeAfterReboot(ctx context.Context, manifestSource string, launch bool) error {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("resolve launcher path: %w", err)
+	}
+	commandLine := BuildLauncherSetupCommand(executablePath, manifestSource, true, launch)
+	if _, err := l.exec.Run(ctx, BuildRunOnceAddCommand(resumeRunOnceValueName, commandLine)); err != nil {
+		return fmt.Errorf("register setup resume after reboot: %w", err)
+	}
+	return nil
+}
+
+func (l *Launcher) clearResumeAfterReboot(ctx context.Context) error {
+	_, err := l.exec.Run(ctx, BuildRunOnceDeleteCommand(resumeRunOnceValueName))
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "unable to find") {
+		return err
 	}
 	return nil
 }

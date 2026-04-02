@@ -131,7 +131,7 @@ LoRA Pilot uses the following ports by default:
 
 ### Windows Runtime Issues
 - **Problem**: Installer cannot finish WSL setup
-- **Solution**: Reboot after `wsl --install`, rerun the installer, then check `%LOCALAPPDATA%\LoRAPilot\logs`
+- **Solution**: Reboot after `wsl --install`, sign in again, and let setup resume automatically. Then check `%LOCALAPPDATA%\LoRAPilot\logs` if it still goes sideways.
 
 ## 📱 Virtualization Support
 
@@ -168,4 +168,3 @@ LoRA Pilot uses the following ports by default:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

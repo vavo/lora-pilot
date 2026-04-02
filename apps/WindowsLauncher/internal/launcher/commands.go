@@ -56,6 +56,50 @@ func BuildWindowsBuildCommand() CommandSpec {
 	}
 }
 
+func BuildRunOnceAddCommand(valueName, commandLine string) CommandSpec {
+	return CommandSpec{
+		Name: "reg.exe",
+		Args: []string{
+			"ADD",
+			`HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce`,
+			"/v", valueName,
+			"/t", "REG_SZ",
+			"/d", commandLine,
+			"/f",
+		},
+	}
+}
+
+func BuildRunOnceDeleteCommand(valueName string) CommandSpec {
+	return CommandSpec{
+		Name: "reg.exe",
+		Args: []string{
+			"DELETE",
+			`HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce`,
+			"/v", valueName,
+			"/f",
+		},
+	}
+}
+
+func BuildLauncherSetupCommand(executablePath, manifestURL string, resume, launch bool) string {
+	args := []string{quoteWindowsCommandArg(executablePath), "setup"}
+	if resume {
+		args = append(args, "--resume")
+	}
+	if launch {
+		args = append(args, "--launch")
+	}
+	if strings.TrimSpace(manifestURL) != "" {
+		args = append(args, "--manifest-url", quoteWindowsCommandArg(manifestURL))
+	}
+	return strings.Join(args, " ")
+}
+
+func quoteWindowsCommandArg(value string) string {
+	return `"` + strings.ReplaceAll(value, `"`, `\"`) + `"`
+}
+
 func ToWSLPath(windowsPath string) (string, error) {
 	cleaned := filepath.Clean(windowsPath)
 	if len(cleaned) < 2 || cleaned[1] != ':' {

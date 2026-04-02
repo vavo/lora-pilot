@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -16,6 +17,9 @@ func main() {
 	err := run(context.Background(), os.Args[1:])
 	logCommand(os.Args[1:], err)
 	if err != nil {
+		if errors.Is(err, launcher.ErrSetupResumeScheduled) {
+			os.Exit(launcher.SetupResumeScheduledExitCode)
+		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -27,6 +31,19 @@ func run(ctx context.Context, args []string) error {
 	}
 
 	switch args[0] {
+	case "setup":
+		fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+		launch := fs.Bool("launch", false, "start LoRA Pilot after setup completes")
+		resume := fs.Bool("resume", false, "resume setup after reboot")
+		manifestURL := fs.String("manifest-url", "", "manifest URL or file path")
+		distroName := fs.String("distro-name", "LoRAPilot", "managed WSL distro name")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		return launcher.New(launcher.Options{
+			DistroName:  *distroName,
+			ManifestURL: *manifestURL,
+		}).Setup(ctx, *resume, *launch)
 	case "install":
 		fs := flag.NewFlagSet("install", flag.ContinueOnError)
 		resume := fs.Bool("resume", false, "resume an installation that previously required reboot")
@@ -81,7 +98,7 @@ func run(ctx context.Context, args []string) error {
 }
 
 func usage() error {
-	fmt.Fprintln(os.Stderr, "usage: windowslauncher {install|start|stop|status|open|uninstall}")
+	fmt.Fprintln(os.Stderr, "usage: windowslauncher {setup|install|start|stop|status|open|uninstall}")
 	return fmt.Errorf("unknown or missing command")
 }
 

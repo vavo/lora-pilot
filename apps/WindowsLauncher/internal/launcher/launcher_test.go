@@ -77,6 +77,7 @@ func TestStateRoundTrip(t *testing.T) {
 		AppVersion:        "2.0.0",
 		RuntimeVersion:    "2.0.0",
 		DistroName:        "LoRAPilot",
+		ManifestURL:       "https://downloads.example.com/windows-runtime-manifest.json",
 		InstallPath:       `C:\Users\me\AppData\Local\LoRAPilot\wsl\LoRAPilot`,
 		PendingResumeStep: "resume-install",
 	}
@@ -89,6 +90,9 @@ func TestStateRoundTrip(t *testing.T) {
 	}
 	if out.PendingResumeStep != in.PendingResumeStep {
 		t.Fatalf("unexpected pending step: %s", out.PendingResumeStep)
+	}
+	if out.ManifestURL != in.ManifestURL {
+		t.Fatalf("unexpected manifest url: %s", out.ManifestURL)
 	}
 }
 
@@ -151,6 +155,30 @@ func TestBuildWSLImportCommand(t *testing.T) {
 	}
 	if len(cmd.Args) < 6 || cmd.Args[0] != "--import" {
 		t.Fatalf("unexpected import args: %#v", cmd.Args)
+	}
+}
+
+func TestBuildRunOnceAddCommand(t *testing.T) {
+	t.Parallel()
+
+	cmd := BuildRunOnceAddCommand("LoRAPilotSetupResume", `"C:\Tools\LoRAPilotLauncher.exe" setup --resume --launch`)
+	if cmd.Name != "reg.exe" {
+		t.Fatalf("unexpected command name: %s", cmd.Name)
+	}
+	if len(cmd.Args) < 9 || cmd.Args[0] != "ADD" {
+		t.Fatalf("unexpected runonce args: %#v", cmd.Args)
+	}
+}
+
+func TestBuildLauncherSetupCommand(t *testing.T) {
+	t.Parallel()
+
+	commandLine := BuildLauncherSetupCommand(`C:\Program Files\LoRAPilot\LoRAPilotLauncher.exe`, `https://downloads.example.com/windows-runtime-manifest.json`, true, true)
+	if !strings.Contains(commandLine, `setup --resume --launch`) {
+		t.Fatalf("unexpected setup command line: %s", commandLine)
+	}
+	if !strings.Contains(commandLine, `"https://downloads.example.com/windows-runtime-manifest.json"`) {
+		t.Fatalf("manifest URL was not quoted: %s", commandLine)
 	}
 }
 

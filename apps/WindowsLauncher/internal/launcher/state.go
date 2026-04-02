@@ -12,6 +12,7 @@ type State struct {
 	AppVersion        string `json:"app_version"`
 	RuntimeVersion    string `json:"runtime_version"`
 	DistroName        string `json:"distro_name"`
+	ManifestURL       string `json:"manifest_url"`
 	InstallPath       string `json:"install_path"`
 	InstalledAt       string `json:"installed_at"`
 	LastStartOKAt     string `json:"last_start_ok_at"`

@@ -32,10 +32,10 @@ Before installing, ensure you have:
 
 ### Windows Installation
 
-1. Download a preview `LoRAPilotSetup.exe` build from CI artifacts or a tagged GitHub release.
+1. Download a preview `LoRAPilotSetup.exe` build from a tagged GitHub release.
 2. Run the installer as Administrator.
-3. Let the bootstrapper enable or reuse WSL2, import the managed `LoRAPilot` distro, and create Start Menu shortcuts.
-4. If Windows asks for a reboot during WSL setup, reboot and rerun the installer or the launcher with `install --resume`.
+3. Let the bootstrapper enable or reuse WSL2, download the runtime bundles automatically, import the managed `LoRAPilot` distro, and create Start Menu shortcuts.
+4. If Windows asks for a reboot during WSL setup, reboot and sign in again. Setup resumes automatically.
 5. Launch `LoRA Pilot` from the Start Menu and wait for ControlPilot on `http://localhost:7878`.
 6. Use the dedicated Windows guide for the full flow: [docs/WINDOWS_INSTALLATION.md](../WINDOWS_INSTALLATION.md).
 
