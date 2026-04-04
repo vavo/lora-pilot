@@ -269,13 +269,9 @@ jobs:
             }
 
             try {
-              $response = Invoke-WebRequest `
-                -Uri $Url `
-                -MaximumRedirection 5 `
-                -Headers @{ Range = "bytes=0-0" } `
-                -OutFile $probePath
-              if ($response.StatusCode -notin @(200, 206)) {
-                throw "HTTP $($response.StatusCode)"
+              & curl.exe --silent --show-error --fail --location --range 0-0 --output $probePath $Url
+              if ($LASTEXITCODE -ne 0) {
+                throw "curl.exe failed with exit code $LASTEXITCODE for $Url"
               }
             } finally {
               if (Test-Path $probePath) {
