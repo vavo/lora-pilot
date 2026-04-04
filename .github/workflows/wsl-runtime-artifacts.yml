@@ -117,34 +117,73 @@ jobs:
             --include "*.tar.zst" \
             --include "*.sha256"
 
-      - name: Validate public runtime bundle URLs
-        if: env.TAG_BUILD == 'true'
+  publish-runtime-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - build-runtime
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set release metadata
         shell: bash
         run: |
-          manifest_path="dist/windows-runtime/windows-runtime-manifest.json"
+          prerelease="false"
+          if [[ "${GITHUB_REF_NAME}" == *preview* || "${GITHUB_REF_NAME}" == *alpha* || "${GITHUB_REF_NAME}" == *beta* || "${GITHUB_REF_NAME}" == *rc* ]]; then
+            prerelease="true"
+          fi
+          echo "RELEASE_IS_PRERELEASE=${prerelease}" >> "${GITHUB_ENV}"
+
+      - name: Download runtime artifacts
+        uses: actions/download-artifact@v5
+        with:
+          name: windows-runtime-artifacts
+          path: dist/windows-runtime
+
+      - name: Validate public runtime bundle URLs
+        shell: bash
+        run: |
           python3 - <<'PY'
           import json
           import os
+          import subprocess
           import sys
-          import urllib.request
+          import time
 
           manifest_path = os.path.join("dist", "windows-runtime", "windows-runtime-manifest.json")
           with open(manifest_path, "r", encoding="utf-8") as handle:
               manifest = json.load(handle)
 
           for url in (manifest["fresh_install"]["url"], manifest["upgrade_overlay"]["url"]):
-              request = urllib.request.Request(url, method="HEAD")
-              try:
-                  with urllib.request.urlopen(request) as response:
-                      if response.status >= 400:
-                          raise RuntimeError(f"{url} returned HTTP {response.status}")
-              except Exception as exc:
-                  print(f"Public runtime URL validation failed for {url}: {exc}", file=sys.stderr)
-                  raise
+              for attempt in range(1, 13):
+                  probe = subprocess.run(
+                      [
+                          "curl",
+                          "--silent",
+                          "--show-error",
+                          "--fail",
+                          "--location",
+                          "--range",
+                          "0-0",
+                          "--output",
+                          "/dev/null",
+                          "--write-out",
+                          "%{http_code}",
+                          url,
+                      ],
+                      capture_output=True,
+                      text=True,
+                  )
+                  status = probe.stdout.strip()
+                  if probe.returncode == 0 and status in {"200", "206"}:
+                      print(f"Validated {url} with HTTP {status}")
+                      break
+                  detail = probe.stderr.strip() or status or f"curl exited with {probe.returncode}"
+                  if attempt == 12:
+                      print(f"Public runtime URL validation failed for {url}: {detail}", file=sys.stderr)
+                      raise SystemExit(1)
+                  time.sleep(10)
           PY
 
       - name: Publish runtime release assets
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ env.RELEASE_IS_PRERELEASE == 'true' }}
