@@ -257,35 +257,22 @@ jobs:
           $ready = $false
           $lastFailure = ""
 
-          function Test-InstallerAsset {
-            param(
-              [Parameter(Mandatory = $true)]
-              [string]$Url
-            )
-
-            $probePath = Join-Path $env:RUNNER_TEMP "asset-probe.bin"
-            if (Test-Path $probePath) {
-              Remove-Item -Force $probePath
-            }
-
-            try {
-              & curl.exe --silent --show-error --fail --location --range 0-0 --output $probePath $Url
-              if ($LASTEXITCODE -ne 0) {
-                throw "curl.exe failed with exit code $LASTEXITCODE for $Url"
-              }
-            } finally {
-              if (Test-Path $probePath) {
-                Remove-Item -Force $probePath
-              }
-            }
-          }
-
           for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
             Write-Host "Validation attempt $attempt/$maxAttempts"
             try {
               $manifest = Invoke-RestMethod -Uri $env:MANIFEST_URL -MaximumRedirection 5
-              Test-InstallerAsset -Url $manifest.fresh_install.url
-              Test-InstallerAsset -Url $manifest.upgrade_overlay.url
+              if ([string]::IsNullOrWhiteSpace($manifest.app_version)) {
+                throw "Manifest is missing app_version"
+              }
+              if ([string]::IsNullOrWhiteSpace($manifest.runtime_version)) {
+                throw "Manifest is missing runtime_version"
+              }
+              if (-not $manifest.fresh_install -or [string]::IsNullOrWhiteSpace($manifest.fresh_install.url) -or [string]::IsNullOrWhiteSpace($manifest.fresh_install.sha256)) {
+                throw "Manifest is missing fresh_install.url or fresh_install.sha256"
+              }
+              if (-not $manifest.upgrade_overlay -or [string]::IsNullOrWhiteSpace($manifest.upgrade_overlay.url) -or [string]::IsNullOrWhiteSpace($manifest.upgrade_overlay.sha256)) {
+                throw "Manifest is missing upgrade_overlay.url or upgrade_overlay.sha256"
+              }
               $ready = $true
               break
             } catch {
