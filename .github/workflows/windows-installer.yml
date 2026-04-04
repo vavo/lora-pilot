@@ -65,6 +65,7 @@ jobs:
         run: |
           $sourceSha = $env:GITHUB_SHA
           $sourceRef = $env:GITHUB_REF_NAME
+          $manualManifestUrl = "${{ inputs.manifest_url }}"
           if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
             $event = Get-Content $env:GITHUB_EVENT_PATH | ConvertFrom-Json
             $sourceSha = $event.workflow_run.head_sha
@@ -93,9 +94,11 @@ jobs:
             }
             $manifestSource = "release"
             $embeddedManifestUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json"
-          } elseif ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace("${{ inputs.manifest_url }}")) {
+          }
+
+          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace($manualManifestUrl)) {
             $manifestSource = "manual-url"
-            $embeddedManifestUrl = "${{ inputs.manifest_url }}"
+            $embeddedManifestUrl = $manualManifestUrl
           }
 
           if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
@@ -116,7 +119,7 @@ jobs:
           if ($manifestSource -eq "release") {
             "MANIFEST_URL=https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
           } elseif ($manifestSource -eq "manual-url") {
-            "MANIFEST_URL=${{ inputs.manifest_url }}" | Out-File -FilePath $env:GITHUB_ENV -Append
+            "MANIFEST_URL=$manualManifestUrl" | Out-File -FilePath $env:GITHUB_ENV -Append
           } else {
             "MANIFEST_URL=http://127.0.0.1:18080/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
@@ -252,22 +255,46 @@ jobs:
           $maxAttempts = 24
           $delaySeconds = 15
           $ready = $false
+          $lastFailure = ""
+
+          function Test-InstallerAsset {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Url
+            )
+
+            $probePath = Join-Path $env:RUNNER_TEMP "asset-probe.bin"
+            if (Test-Path $probePath) {
+              Remove-Item -Force $probePath
+            }
+
+            try {
+              $response = Invoke-WebRequest `
+                -Uri $Url `
+                -MaximumRedirection 5 `
+                -Headers @{ Range = "bytes=0-0" } `
+                -OutFile $probePath
+              if ($response.StatusCode -notin @(200, 206)) {
+                throw "HTTP $($response.StatusCode)"
+              }
+            } finally {
+              if (Test-Path $probePath) {
+                Remove-Item -Force $probePath
+              }
+            }
+          }
 
           for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
             Write-Host "Validation attempt $attempt/$maxAttempts"
             try {
               $manifest = Invoke-RestMethod -Uri $env:MANIFEST_URL -MaximumRedirection 5
-              & curl.exe --silent --show-error --fail --location --head $manifest.fresh_install.url *> $null
-              if ($LASTEXITCODE -ne 0) {
-                throw "fresh_install asset not reachable"
-              }
-              & curl.exe --silent --show-error --fail --location --head $manifest.upgrade_overlay.url *> $null
-              if ($LASTEXITCODE -ne 0) {
-                throw "upgrade_overlay asset not reachable"
-              }
+              Test-InstallerAsset -Url $manifest.fresh_install.url
+              Test-InstallerAsset -Url $manifest.upgrade_overlay.url
               $ready = $true
               break
             } catch {
+              $lastFailure = $_.Exception.Message
+              Write-Warning "Validation attempt $attempt failed: $lastFailure"
               if ($attempt -eq $maxAttempts) {
                 break
               }
@@ -276,6 +303,9 @@ jobs:
           }
 
           if (-not $ready) {
+            if ($lastFailure) {
+              throw "Runtime manifest or one of its assets never became reachable at $($env:MANIFEST_URL). Last failure: $lastFailure"
+            }
             throw "Runtime manifest or one of its assets never became reachable at $($env:MANIFEST_URL)"
           }
 
