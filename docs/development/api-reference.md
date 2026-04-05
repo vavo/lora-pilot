@@ -178,7 +178,7 @@ Default base URL: `http://127.0.0.1:7879`
 |---|---|---|
 | `GET` | `/health` | Simple health check |
 | `GET` | `/status` | Copilot CLI/config/runtime status |
-| `POST` | `/chat` | Executes `copilot -p ...` |
+| `POST` | `/chat` | Executes `copilot` with the prompt piped on stdin |
 
 `/chat` body fields:
 
@@ -221,5 +221,4 @@ _Last updated: 2026-02-11_
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

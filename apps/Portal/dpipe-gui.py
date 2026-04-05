@@ -4,7 +4,6 @@ import subprocess
 import threading
 import gradio as gr
 import os
-import shlex
 from datetime import datetime, timedelta
 import json
 import torch
@@ -19,6 +18,7 @@ import shutil
 import zipfile
 import tempfile
 import time
+from pathlib import Path
 
 def safe_parse_tuple(tuple_str, default):
     """
@@ -44,6 +44,11 @@ MODEL_DIR = "/workspace/models"
 BASE_DATASET_DIR = "/workspace/datasets"
 OUTPUT_DIR = "/workspace/outputs"
 CONFIG_DIR = "/workspace/configs"
+WORKSPACE_ROOT = Path("/workspace").resolve()
+MODEL_ROOT = Path(MODEL_DIR).resolve()
+DATASET_ROOT = Path(BASE_DATASET_DIR).resolve()
+OUTPUT_ROOT = Path(OUTPUT_DIR).resolve()
+CONFIG_ROOT = Path(CONFIG_DIR).resolve()
 
 # Maximum number of media to display in the gallery
 MAX_MEDIA = 50
@@ -104,6 +109,64 @@ def clear_logs():
         log_queue.get()
     return ""
 
+
+def _path_within(root: Path, candidate: Path) -> bool:
+    try:
+        return os.path.commonpath([str(root), str(candidate)]) == str(root)
+    except ValueError:
+        return False
+
+
+def _sanitize_dataset_name(name: str) -> str:
+    cleaned = "".join(c for c in str(name or "") if c.isalnum() or c in (" ", "_", "-")).strip()
+    cleaned = cleaned.replace(" ", "_")
+    return cleaned or "dataset"
+
+
+def _resolve_under_root(root: Path, raw_path: str, *, allow_missing: bool = True) -> Path:
+    raw = str(raw_path or "").strip()
+    if not raw:
+        raise ValueError("Path is required")
+    candidate = Path(raw)
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    resolved = candidate.resolve(strict=not allow_missing)
+    if not _path_within(root, resolved):
+        raise ValueError(f"Path must stay within {root}")
+    return resolved
+
+
+def _dataset_dir(dataset_name: str) -> Path:
+    return _resolve_under_root(DATASET_ROOT, _sanitize_dataset_name(dataset_name))
+
+
+def _config_dir(dataset_name: str) -> Path:
+    return _resolve_under_root(CONFIG_ROOT, _sanitize_dataset_name(dataset_name))
+
+
+def _output_dir(dataset_name: str) -> Path:
+    return _resolve_under_root(OUTPUT_ROOT, _sanitize_dataset_name(dataset_name))
+
+
+def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
+    dest_dir = dest_dir.resolve(strict=False)
+    with zipfile.ZipFile(zip_path) as archive:
+        for info in archive.infolist():
+            parts = Path(info.filename.replace("\\", "/")).parts
+            if not parts:
+                continue
+            if any(part in ("..", "") for part in parts):
+                raise ValueError("Unsafe ZIP entry")
+            target = (dest_dir / Path(*parts)).resolve(strict=False)
+            if not _path_within(dest_dir, target):
+                raise ValueError("ZIP entry escapes destination")
+            if info.is_dir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with archive.open(info) as src, target.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
+
 def create_dataset_config(dataset_path: str,
                         config_dir: str,
                         num_repeats: int, 
@@ -130,11 +193,14 @@ def create_dataset_config(dataset_path: str,
             }
         ]
     }
-    dataset_file = f"dataset_config.toml"
-    dataset_path_full = os.path.join(config_dir, dataset_file)
-    with open(dataset_path_full, "w") as f:
+    dataset_root = _resolve_under_root(DATASET_ROOT, dataset_path)
+    config_root = _resolve_under_root(CONFIG_ROOT, config_dir)
+    config_root.mkdir(parents=True, exist_ok=True)
+    dataset_path_full = config_root / "dataset_config.toml"
+    dataset_config["directory"][0]["path"] = str(dataset_root)
+    with dataset_path_full.open("w") as f:
         toml.dump(dataset_config, f)
-    return dataset_path_full
+    return str(dataset_path_full)
 
 def create_training_config(
     # Main training parameters
@@ -245,41 +311,43 @@ def create_training_config(
         }
     }
     
-    training_file = f"training_config.toml"
-    training_path_full = os.path.join(config_dir, training_file)
-    with open(training_path_full, "w") as f:
+    config_root = _resolve_under_root(CONFIG_ROOT, config_dir)
+    output_root = _resolve_under_root(OUTPUT_ROOT, output_dir)
+    config_root.mkdir(parents=True, exist_ok=True)
+    training_path_full = config_root / "training_config.toml"
+    training_config["output_dir"] = str(output_root)
+    training_config["monitoring"]["log_dir"] = str(output_root)
+    with training_path_full.open("w") as f:
         toml.dump(training_config, f)
-    return (training_path_full, training_config)
+    return (str(training_path_full), training_config)
 
 def get_datasets():
-    datasets = []
-    for dataset in os.listdir(BASE_DATASET_DIR):
-        datasets.append(dataset)
-    return datasets
+    return sorted(entry.name for entry in DATASET_ROOT.iterdir() if entry.is_dir())
 
 def load_training_config(dataset_name):
-    training_config_path = os.path.join(CONFIG_DIR, dataset_name, "training_config.toml")
-    dataset_config_path = os.path.join(CONFIG_DIR, dataset_name, "dataset_config.toml")
+    dataset_key = _sanitize_dataset_name(dataset_name)
+    training_config_path = _config_dir(dataset_key) / "training_config.toml"
+    dataset_config_path = _config_dir(dataset_key) / "dataset_config.toml"
     
     config = {}
     
     # Load training configuration
-    if not os.path.exists(training_config_path):
+    if not training_config_path.exists():
         return None, f"Training configuration file not found for the dataset '{dataset_name}'."
     
     try:
-        with open(training_config_path, "r") as f:
+        with training_config_path.open("r") as f:
             training_config = toml.load(f)
         config.update(training_config)
     except Exception as e:
         return None, f"Error loading training configuration: {str(e)}"
     
     # Load dataset configuration
-    if not os.path.exists(dataset_config_path):
+    if not dataset_config_path.exists():
         return None, f"Dataset configuration file not found for the dataset '{dataset_name}'."
     
     try:
-        with open(dataset_config_path, "r") as f:
+        with dataset_config_path.open("r") as f:
             dataset_config = toml.load(f)
         config["dataset"] = dataset_config
     except Exception as e:
@@ -484,18 +552,22 @@ def train_model(dataset_path, config_dir, output_dir, epochs, batch_size, lr, sa
                 gradient_accumulation_steps, num_repeats, resolutions, enable_ar_bucket, min_ar, max_ar, num_ar_buckets, frame_buckets, ar_buckets, gradient_clipping, warmup_steps, eval_before_first_step, eval_micro_batch_size_per_gpu, eval_gradient_accumulation_steps, checkpoint_every_n_minutes, activation_checkpointing, partition_method, save_dtype, caching_batch_size, steps_per_print, video_clip_mode, resume_from_checkpoint, only_double_blocks, enable_wandb, wandb_run_name, wandb_tracker_name, wandb_api_key
                 ):
     try:
+        dataset_root = _resolve_under_root(DATASET_ROOT, dataset_path)
+        config_root = _resolve_under_root(CONFIG_ROOT, config_dir)
+        output_root = _resolve_under_root(OUTPUT_ROOT, output_dir)
+
         # Validate inputs
-        if not dataset_path or not os.path.exists(dataset_path) or dataset_path == BASE_DATASET_DIR:
+        if not dataset_root.exists() or dataset_root == DATASET_ROOT:
             return "Error: Please provide a valid dataset path", None
         
-        os.makedirs(config_dir, exist_ok=True)
+        config_root.mkdir(parents=True, exist_ok=True)
 
-        if not config_dir or not os.path.exists(config_dir) or config_dir == CONFIG_DIR:
+        if config_root == CONFIG_ROOT:
             return "Error: Please provide a valid config path", None
 
-        os.makedirs(output_dir, exist_ok=True)
+        output_root.mkdir(parents=True, exist_ok=True)
         
-        if not output_dir or not os.path.exists(output_dir) or output_dir == OUTPUT_DIR:
+        if output_root == OUTPUT_ROOT:
             return "Error: Please provide a valid output path", None
         
         resolutions_error, resolutions_list = validate_resolutions(resolutions)
@@ -521,8 +593,8 @@ def train_model(dataset_path, config_dir, output_dir, epochs, batch_size, lr, sa
 
         # Create configurations
         dataset_config_path = create_dataset_config(
-            dataset_path=dataset_path,
-            config_dir=config_dir,
+            dataset_path=str(dataset_root),
+            config_dir=str(config_root),
             num_repeats=num_repeats,
             resolutions=resolutions_list,
             enable_ar_bucket=enable_ar_bucket,
@@ -534,8 +606,8 @@ def train_model(dataset_path, config_dir, output_dir, epochs, batch_size, lr, sa
         )
         
         training_config_path, _ = create_training_config(
-            output_dir=output_dir,
-            config_dir=config_dir,
+            output_dir=str(output_root),
+            config_dir=str(config_root),
             dataset_config_path=dataset_config_path,
             epochs=epochs,
             batch_size=batch_size,
@@ -572,23 +644,38 @@ def train_model(dataset_path, config_dir, output_dir, epochs, batch_size, lr, sa
             wandb_api_key=wandb_api_key
         )
 
-        conda_activate_path = "/opt/conda/etc/profile.d/conda.sh"
+        conda_bin = os.path.join(CONDA_DIR, "bin", "conda")
         conda_env_name = "pyenv"
         num_gpus = os.getenv("NUM_GPUS", "1")
         
-        if not os.path.isfile(conda_activate_path):
-            return "Error: Conda activation script not found", None
-        
-        resume_checkpoint =  "--resume_from_checkpoint" if resume_from_checkpoint else ""
-        
-        # Build command safely without shell=True to prevent command injection
+        if not os.path.isfile(conda_bin):
+            return "Error: Conda executable not found", None
+
+        env = os.environ.copy()
+        env["NCCL_P2P_DISABLE"] = "1"
+        env["NCCL_IB_DISABLE"] = "1"
+        if int(num_gpus) > 1:
+            env["NCCL_SHM_DISABLE"] = "1"
+
+        train_py = Path.cwd() / "train.py"
+        if not train_py.exists():
+            return "Error: train.py not found in current directory", None
+
         cmd = [
-            "bash", "-c", 
-            f"source {shlex.quote(conda_activate_path)} && "
-            f"conda activate {shlex.quote(conda_env_name)} && "
-            f"NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 {'NCCL_SHM_DISABLE=1' if int(num_gpus) > 1 else ''} deepspeed --num_gpus={num_gpus} "
-            f"train.py --deepspeed --config {shlex.quote(training_config_path)} {resume_checkpoint}"
+            conda_bin,
+            "run",
+            "--no-capture-output",
+            "-n",
+            conda_env_name,
+            "deepspeed",
+            f"--num_gpus={num_gpus}",
+            "train.py",
+            "--deepspeed",
+            "--config",
+            training_config_path,
         ]
+        if resume_from_checkpoint:
+            cmd.append("--resume_from_checkpoint")
         
         # --regenerate_cache
             
@@ -597,6 +684,7 @@ def train_model(dataset_path, config_dir, output_dir, epochs, batch_size, lr, sa
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             preexec_fn=os.setsid,
+            env=env,
             universal_newlines=False  # To handle bytes
         )
         
@@ -652,27 +740,26 @@ def upload_dataset(files, current_dataset, action, dataset_name=None):
     if action == "start":
         if not dataset_name:
             return current_dataset, "Please provide a dataset name.", []
-        # Clean and format the dataset name
-        dataset_name = "".join(c for c in dataset_name if c.isalnum() or c in (' ', '_', '-')).rstrip()
-        dataset_name = dataset_name.replace(" ", "_")  # Replace spaces with underscores
-        dataset_dir = os.path.join(BASE_DATASET_DIR, dataset_name)
-        if os.path.exists(dataset_dir):
+        dataset_dir = _dataset_dir(dataset_name)
+        if dataset_dir.exists():
             return current_dataset, f"Dataset '{dataset_name}' already exists. Please choose a different name.", []
-        os.makedirs(dataset_dir, exist_ok=True)
-        return dataset_dir, f"Started new dataset: {dataset_dir}", show_media(dataset_dir)
+        dataset_dir.mkdir(parents=True, exist_ok=True)
+        return str(dataset_dir), f"Started new dataset: {dataset_dir}", show_media(str(dataset_dir))
 
     if not current_dataset:
         return current_dataset, "Please start a new dataset before uploading files.", []
+
+    current_dataset_path = _resolve_under_root(DATASET_ROOT, current_dataset)
     
     if not files:
         return current_dataset, "No files uploaded.", []
     
     # Calculate the total size of the current dataset
     total_size = 0
-    for root, dirs, files_in_dir in os.walk(current_dataset):
+    for root, dirs, files_in_dir in os.walk(current_dataset_path):
         for f in files_in_dir:
-            fp = os.path.join(root, f)
-            total_size += os.path.getsize(fp)
+            fp = Path(root) / f
+            total_size += fp.stat().st_size
 
     # Calculate the size of the new files
     new_files_size = 0
@@ -689,16 +776,18 @@ def upload_dataset(files, current_dataset, action, dataset_name=None):
     for file in files:
         file_path = file.name
         filename = os.path.basename(file_path)
-        dest_path = os.path.join(current_dataset, filename)
+        dest_path = _resolve_under_root(current_dataset_path, filename)
 
         if zipfile.is_zipfile(file_path):
             # If the file is a ZIP, extract its contents
             try:
-                with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                    zip_ref.extractall(current_dataset)
+                _safe_extract_zip(Path(file_path), current_dataset_path)
                 uploaded_files.append(f"{filename} (extracted)")
             except zipfile.BadZipFile:
                 uploaded_files.append(f"{filename} (invalid ZIP)")
+                continue
+            except ValueError:
+                uploaded_files.append(f"{filename} (unsafe ZIP)")
                 continue
         else:
             # Check if the file is a supported format
@@ -709,7 +798,7 @@ def upload_dataset(files, current_dataset, action, dataset_name=None):
                 uploaded_files.append(f"{filename} (unsupported format)")
                 continue
 
-    return current_dataset, f"Uploaded files: {', '.join(uploaded_files)}", show_media(current_dataset)
+    return str(current_dataset_path), f"Uploaded files: {', '.join(uploaded_files)}", show_media(str(current_dataset_path))
 
 
 def update_ui_with_config(config_values):
@@ -904,49 +993,59 @@ def update_ui_with_config(config_values):
     )
 
 def get_latest_folder(directory):
+    directory_path = _resolve_under_root(OUTPUT_ROOT, directory)
+    if not directory_path.exists():
+        return None
     # List all folders in the directory
-    folders = folders = [os.path.join(directory, folder) for folder in os.listdir(directory) if os.path.isdir(os.path.join(directory, folder))]
+    folders = [entry for entry in directory_path.iterdir() if entry.is_dir()]
     
     if not folders:
         return None  # Return None if there are no folders
 
     # Sort folders by creation time (most recent first)
-    latest_folder = max(folders, key=os.path.getctime)
+    latest_folder = max(folders, key=lambda item: item.stat().st_ctime)
     
-    return os.path.basename(latest_folder)  # Return only the folder name
+    return latest_folder.name  # Return only the folder name
 
 def force_save(output_dir, file_name):
     latest_folder_path = get_latest_folder(output_dir)  # Get the latest folder path
     
     if latest_folder_path:
         # Create the full path for the save_model file
-        save_model_path = os.path.join(output_dir, latest_folder_path, file_name)
+        output_root = _resolve_under_root(OUTPUT_ROOT, output_dir)
+        save_model_path = _resolve_under_root(output_root, str(Path(latest_folder_path) / Path(file_name).name))
         
         # Write an empty file
-        with open(save_model_path, "w") as f:
+        with save_model_path.open("w") as f:
             f.write("")  # Empty content; you can write specific content if needed
         
-        return save_model_path  # Return the full path of the saved file
+        return str(save_model_path)  # Return the full path of the saved file
 
     return None  # Return None if no folder is found
                 
 def show_media(dataset_dir):
     """Display uploaded images and .mp4 videos in a single gallery."""
-    if not dataset_dir or not os.path.exists(dataset_dir):
+    if not dataset_dir:
         # Return an empty list if the dataset_dir is invalid
+        return []
+    try:
+        dataset_path = _resolve_under_root(DATASET_ROOT, dataset_dir)
+    except ValueError:
+        return []
+    if not dataset_path.exists():
         return []
 
     # List of image and .mp4 video files
     media_files = [
-        f for f in os.listdir(dataset_dir)
-        if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.mp4'))
+        entry.name for entry in dataset_path.iterdir()
+        if entry.is_file() and entry.name.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.mp4'))
     ]
 
     # Get absolute paths of the files
-    media_paths = [os.path.abspath(os.path.join(dataset_dir, f)) for f in media_files[:MAX_MEDIA]]
+    media_paths = [str((dataset_path / f).resolve()) for f in media_files[:MAX_MEDIA]]
 
     # Check if the files exist
-    existing_media = [f for f in media_paths if os.path.exists(f)]
+    existing_media = [f for f in media_paths if Path(f).exists()]
 
     return existing_media
 
@@ -962,9 +1061,9 @@ def create_zip(dataset_name, download_dataset, download_config, download_outputs
     """
     try:
         # Define paths
-        dataset_dir = os.path.join(BASE_DATASET_DIR, dataset_name)
-        config_dir_path = os.path.join(CONFIG_DIR, dataset_name)
-        output_dir_path = os.path.join(OUTPUT_DIR, dataset_name)
+        dataset_dir = _dataset_dir(dataset_name)
+        config_dir_path = _config_dir(dataset_name)
+        output_dir_path = _output_dir(dataset_name)
 
         # Check if all directories exist
         # if not all([os.path.exists(dataset_dir), os.path.exists(config_dir_path), os.path.exists(output_dir_path)]):
@@ -973,7 +1072,7 @@ def create_zip(dataset_name, download_dataset, download_config, download_outputs
         # Create a temporary directory to store the ZIP with secure permissions
         temp_dir = tempfile.mkdtemp(mode=0o700)
         zip_filename = f"{dataset_name}_archive_{datetime.now().strftime('%Y%m%d_%H%M%S')}.zip"
-        zip_path = os.path.join(temp_dir, zip_filename)
+        zip_path = Path(temp_dir) / zip_filename
         
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Add dataset directory
@@ -981,31 +1080,31 @@ def create_zip(dataset_name, download_dataset, download_config, download_outputs
             if download_dataset:
                 for root, dirs, files in os.walk(dataset_dir):
                     for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, start=os.path.dirname(dataset_dir))
+                        file_path = Path(root) / file
+                        arcname = os.path.relpath(file_path, start=dataset_dir.parent)
                         zipf.write(file_path, arcname)
 
             if download_config:
                 # Add config directory
                 for root, dirs, files in os.walk(config_dir_path):
                     for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, start=os.path.dirname(config_dir_path))
+                        file_path = Path(root) / file
+                        arcname = os.path.relpath(file_path, start=config_dir_path.parent)
                         zipf.write(file_path, arcname)
 
             if download_outputs:
                 # Add output directory
                 for root, dirs, files in os.walk(output_dir_path):
                     for file in files:
-                        file_path = os.path.join(root, file)
-                        arcname = os.path.relpath(file_path, start=os.path.dirname(output_dir_path))
+                        file_path = Path(root) / file
+                        arcname = os.path.relpath(file_path, start=output_dir_path.parent)
                         zipf.write(file_path, arcname)
             
                 
             
                 
 
-        return zip_path, None
+        return str(zip_path), None
 
     except Exception as e:
         return None, f"Error creating ZIP archive: {str(e)}"
@@ -1022,10 +1121,13 @@ def handle_download(dataset_path, selected_files):
     """
     
     try:
-        if not dataset_path or dataset_path == BASE_DATASET_DIR or not os.path.exists(dataset_path):
+        if not dataset_path:
+            return None, "Invalid dataset path."
+        dataset_root = _resolve_under_root(DATASET_ROOT, dataset_path)
+        if dataset_root == DATASET_ROOT or not dataset_root.exists():
             return None, "Invalid dataset path."
 
-        dataset_name = os.path.basename(dataset_path)
+        dataset_name = dataset_root.name
         
         download_dataset = "Dataset" in selected_files
         download_config = "Configs" in selected_files
@@ -1261,7 +1363,7 @@ with gr.Blocks(theme=theme, css=custom_log_box_css) as demo:
     # Function to handle selecting an existing dataset and updating the gallery
     def handle_select_existing(selected_dataset):
         if selected_dataset:
-            dataset_path = os.path.join(BASE_DATASET_DIR, selected_dataset)
+            dataset_root = _dataset_dir(selected_dataset)
             config, error = load_training_config(selected_dataset)
             if error:
                 return (
@@ -1277,15 +1379,15 @@ with gr.Blocks(theme=theme, css=custom_log_box_css) as demo:
             config_values = extract_config_values(config)
             
             # Update config and output paths
-            config_path = os.path.join(CONFIG_DIR, selected_dataset)
-            output_path = os.path.join(OUTPUT_DIR, selected_dataset)
+            config_path = _config_dir(selected_dataset)
+            output_path = _output_dir(selected_dataset)
             
             return (
-                dataset_path,  # Update dataset_path
-                config_path,   # Update config_dir
-                output_path,   # Update output_dir
+                str(dataset_root),  # Update dataset_path
+                str(config_path),   # Update config_dir
+                str(output_path),   # Update output_dir
                 "",            # Clear error messages
-                show_media(dataset_path),  # Update gallery with dataset files
+                show_media(str(dataset_root)),  # Update gallery with dataset files
                 # gr.update(visible=True),    # Show download button
                 gr.update(value=""),        # Clear download status
                 config_values  # Update training parameters
@@ -1326,9 +1428,13 @@ with gr.Blocks(theme=theme, css=custom_log_box_css) as demo:
     
     # Update config path and output path
     def update_config_output_path(dataset_path):
-        config_path = os.path.join(CONFIG_DIR, os.path.basename(dataset_path))
-        output_path = os.path.join(OUTPUT_DIR, os.path.basename(dataset_path))
-        return config_path, output_path
+        try:
+            dataset_root = _resolve_under_root(DATASET_ROOT, dataset_path)
+        except ValueError:
+            return CONFIG_DIR, OUTPUT_DIR
+        config_path = _config_dir(dataset_root.name)
+        output_path = _output_dir(dataset_root.name)
+        return str(config_path), str(output_path)
     
      
     # Update gallery when dataset path changes

@@ -1,5 +1,8 @@
 let dpLogTimer = null;
 const DP_STORAGE_KEY = "dpipeSettings";
+const DP_SENSITIVE_FIELDS = new Set([
+  "dp-wandb-key",
+]);
 const DP_FIELDS = [
   "dp-dataset",
   "dp-config",
@@ -166,7 +169,7 @@ function loadDpipeSettings() {
   }
   DP_FIELDS.forEach(id => {
     const el = document.getElementById(id);
-    if (!el || !(id in data)) return;
+    if (!el || DP_SENSITIVE_FIELDS.has(id) || !(id in data)) return;
     const value = data[id];
     if (el.type === "checkbox") {
       el.checked = Boolean(value);
@@ -181,6 +184,7 @@ function saveDpipeSettings() {
   DP_FIELDS.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
+    if (DP_SENSITIVE_FIELDS.has(id)) return;
     if (el.type === "checkbox") {
       data[id] = el.checked;
     } else {

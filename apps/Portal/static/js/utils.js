@@ -39,6 +39,51 @@ window.fetchJson = async function (url, opts = {}) {
   }
 };
 
+window.buildPortUrl = function (port) {
+  const numericPort = Number.parseInt(String(port), 10);
+  if (!Number.isInteger(numericPort) || numericPort < 1 || numericPort > 65535) return null;
+
+  const current = new URL(window.location.origin);
+  const runpodMatch = /^([a-z0-9-]+)\.proxy\.runpod\.net$/i.exec(current.hostname);
+  if (runpodMatch) {
+    const label = runpodMatch[1];
+    const idx = label.lastIndexOf("-");
+    if (idx > 0) {
+      current.hostname = `${label.slice(0, idx)}-${numericPort}.proxy.runpod.net`;
+      current.port = "";
+      current.pathname = "/";
+      current.search = "";
+      current.hash = "";
+      return current.toString();
+    }
+  }
+
+  current.port = String(numericPort);
+  current.pathname = "/";
+  current.search = "";
+  current.hash = "";
+  return current.toString();
+};
+
+window.sanitizeHttpUrl = function (rawUrl, opts = {}) {
+  if (!rawUrl) return null;
+  try {
+    const parsed = new URL(rawUrl, window.location.origin);
+    if (!["http:", "https:"].includes(parsed.protocol)) return null;
+    if (opts.sameOrigin && parsed.origin !== window.location.origin) return null;
+
+    const allowedPrefixes = Array.isArray(opts.allowedPathPrefixes) ? opts.allowedPathPrefixes : [];
+    if (allowedPrefixes.length > 0) {
+      const allowed = allowedPrefixes.some(prefix => parsed.pathname === prefix || parsed.pathname.startsWith(prefix));
+      if (!allowed) return null;
+    }
+
+    return parsed.toString();
+  } catch (e) {
+    return null;
+  }
+};
+
 // Build service URL respecting RunPod proxy subdomain pattern <id>-<port>.proxy.runpod.net
 window.serviceUrl = function (name) {
   const ports = {
@@ -52,17 +97,5 @@ window.serviceUrl = function (name) {
   };
   const port = ports[name];
   if (!port || name === "controlpilot") return null;
-  const host = window.location.hostname;
-  const proto = window.location.protocol;
-  if (host.includes(".proxy.runpod.net")) {
-    const parts = host.split(".");
-    const first = parts[0];
-    const idx = first.lastIndexOf("-");
-    if (idx !== -1) {
-      const base = first.slice(0, idx);
-      const newHost = [base + "-" + port, ...parts.slice(1)].join(".");
-      return `${proto}//${newHost}/`;
-    }
-  }
-  return `${proto}//${host}:${port}/`;
+  return window.buildPortUrl(port);
 };

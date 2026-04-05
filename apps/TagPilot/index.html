@@ -8,10 +8,10 @@
     <meta http-equiv="Expires" content="0">
     <title>TAG PILOT</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" integrity="sha512-hvNR0F/e2J7zPPfLC9auFe3/SE0yG4aJCOd/qxew74NN7eyiSKjr7xJJMu1Jy2wf7FXITpWS1E/RY8yzuXN7VA==" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" integrity="sha512-9KkIqdfN7ipEW6B6k+Aq20PV31bjODg4AA52W+tYtAE0jE0kMx49bjJ3FgvS56wzmyfMUHbQ4Km2b7l9+Y/+Eg==" crossorigin="anonymous"></script>
     <style>
         :root { color-scheme: dark; }
         :root[data-theme="light"] { color-scheme: light; }
@@ -398,6 +398,10 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const cropImage = document.getElementById('crop-image');
         const cropSaveButton = document.getElementById('crop-save');
         const cropCancelButton = document.getElementById('crop-cancel');
+        const sessionSecrets = {
+            llmApiKeys: {},
+            wd14ApiKey: '',
+        };
 
         tagSystemPrompt.value = DEFAULT_TAG_PROMPT;
         captionSystemPrompt.value = DEFAULT_CAPTION_PROMPT;
@@ -406,7 +410,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         settingsIcon.addEventListener('click', openSettings);
         closeSettingsBtn.addEventListener('click', closeSettings);
         saveSettingsBtn.addEventListener('click', saveSettings);
-        modelSelect.addEventListener('change', updateSettingsFields);
+        modelSelect.addEventListener('change', handleModelChange);
 
         imageUpload.addEventListener('change', handleImageUpload);
         zipUpload.addEventListener('change', handleZipUpload);
@@ -462,15 +466,36 @@ Expected outcome is a human-readable continuous text consisting of several sente
             document.querySelectorAll('.wd-apikey-label, #wdApiKeyInput, .wd-general-label, #wdGeneralThresh, .wd-char-label, #wdCharThresh').forEach(el => el.style.display = isWD ? 'block' : 'none');
         }
 
+        function rememberSecretInputs() {
+            const currentModel = modelSelect.value;
+            if (['gemini', 'grok', 'openai'].includes(currentModel)) {
+                sessionSecrets.llmApiKeys[currentModel] = apiKeyInput.value.trim();
+            }
+            if (currentModel === 'wd14') {
+                sessionSecrets.wd14ApiKey = wdApiKeyInput.value.trim();
+            }
+        }
+
+        function applySecretInputs() {
+            const model = modelSelect.value;
+            apiKeyInput.value = sessionSecrets.llmApiKeys[model] || '';
+            wdApiKeyInput.value = sessionSecrets.wd14ApiKey || '';
+        }
+
+        function handleModelChange() {
+            rememberSecretInputs();
+            updateSettingsFields();
+            applySecretInputs();
+        }
+
         function openSettings() {
             settingsModal.style.display = 'flex';
             modelSelect.value = localStorage.getItem('selectedModel') || 'gemini';
-            apiKeyInput.value = localStorage.getItem(modelSelect.value + 'ApiKey') || '';
-            wdApiKeyInput.value = localStorage.getItem('wd14ApiKey') || '';
             ddThreshold.value = localStorage.getItem('ddThreshold') || '0.5';
             wdGeneralThresh.value = localStorage.getItem('wdGeneralThresh') || '0.35';
             wdCharThresh.value = localStorage.getItem('wdCharThresh') || '0.85';
             updateSettingsFields();
+            applySecretInputs();
         }
 
         function closeSettings() {
@@ -479,9 +504,8 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         function saveSettings() {
             const model = modelSelect.value;
+            rememberSecretInputs();
             localStorage.setItem('selectedModel', model);
-            if (['gemini', 'grok', 'openai'].includes(model)) localStorage.setItem(model + 'ApiKey', apiKeyInput.value.trim());
-            if (model === 'wd14') localStorage.setItem('wd14ApiKey', wdApiKeyInput.value.trim());
             localStorage.setItem('ddThreshold', ddThreshold.value);
             localStorage.setItem('wdGeneralThresh', wdGeneralThresh.value);
             localStorage.setItem('wdCharThresh', wdCharThresh.value);
@@ -490,8 +514,8 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function getModel() { return localStorage.getItem('selectedModel') || 'gemini'; }
-        function getApiKey() { return localStorage.getItem(getModel() + 'ApiKey') || ''; }
-        function getWDKey() { return localStorage.getItem('wd14ApiKey') || ''; }
+        function getApiKey() { return sessionSecrets.llmApiKeys[getModel()] || ''; }
+        function getWDKey() { return sessionSecrets.wd14ApiKey || ''; }
         const GEMINI_MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
         const GROK_MODEL_CANDIDATES = ['grok-4-latest'];
 

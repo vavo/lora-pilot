@@ -167,19 +167,22 @@ async function checkComfyUIStatus() {
 }
 
 function getComfyUIUrl(port) {
-  const host = window.location.hostname;
-  const proto = window.location.protocol;
-  if (host.includes(".proxy.runpod.net")) {
-    const parts = host.split(".");
-    const first = parts[0];
-    const idx = first.lastIndexOf("-");
-    if (idx !== -1) {
-      const base = first.slice(0, idx);
-      const newHost = [base + "-" + port, ...parts.slice(1)].join(".");
-      return `${proto}//${newHost}/`;
-    }
-  }
-  return `${proto}//${host}:${port}/`;
+  return window.buildPortUrl(port) || "about:blank";
+}
+
+function sanitizePreviewImageUrl(rawUrl) {
+  return window.sanitizeHttpUrl(rawUrl, {
+    sameOrigin: true,
+    allowedPathPrefixes: ["/proxy/comfy/", "/output/", "/thumbs/", "/invoke/"],
+  });
+}
+
+function renderPlaceholder(container, message) {
+  if (!container) return;
+  const placeholder = document.createElement("div");
+  placeholder.className = "preview-placeholder";
+  placeholder.textContent = message;
+  container.replaceChildren(placeholder);
 }
 
 async function loadLastGeneratedImage() {
@@ -222,21 +225,25 @@ function displayLastImage(imageInfo) {
       img.src = getComfyUIImageUrl(filename, subfolder, comfyPort);
     }
   } else if (imageInfo.url) {
-    img.src = imageInfo.url;
+    const safeUrl = sanitizePreviewImageUrl(imageInfo.url);
+    if (!safeUrl) {
+      showPlaceholder("Preview unavailable");
+      return;
+    }
+    img.src = safeUrl;
   }
 
   dimensionsEl.textContent = imageInfo.dimensions || "-";
   timeEl.textContent = imageInfo.generated_at ? new Date(imageInfo.generated_at).toLocaleTimeString() : "-";
 
-  container.innerHTML = "";
-  container.appendChild(img);
+  container.replaceChildren(img);
   infoEl.classList.remove("is-hidden");
 }
 
 function showPlaceholder(message) {
   const container = document.getElementById("preview-container");
   const infoEl = document.getElementById("preview-info");
-  if (container) container.innerHTML = `<div class="preview-placeholder">${message}</div>`;
+  renderPlaceholder(container, message);
   if (infoEl) infoEl.classList.add("is-hidden");
 }
 
@@ -316,7 +323,12 @@ function displayImage(imageData) {
       dimensionsEl.textContent = `${imageData.size[0]}x${imageData.size[1]}`;
     }
   } else if (imageData.url) {
-    img.src = imageData.url;
+    const safeUrl = sanitizePreviewImageUrl(imageData.url);
+    if (!safeUrl) {
+      showPlaceholder("Preview unavailable");
+      return;
+    }
+    img.src = safeUrl;
   }
 
   const now = new Date();
@@ -324,8 +336,7 @@ function displayImage(imageData) {
   imageCount += 1;
   updateImageCount();
 
-  container.innerHTML = "";
-  container.appendChild(img);
+  container.replaceChildren(img);
   infoEl.classList.remove("is-hidden");
 
   lastGeneratedImage = {
@@ -357,7 +368,7 @@ function togglePreview() {
 
 function clearPreview() {
   const container = document.getElementById("preview-container");
-  if (container) container.innerHTML = '<div class="preview-placeholder">Preview paused</div>';
+  renderPlaceholder(container, "Preview paused");
   const infoEl = document.getElementById("preview-info");
   if (infoEl) infoEl.classList.add("is-hidden");
 }

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import importlib.util
 import json
+import logging
 import mimetypes
 import os
 import re
@@ -111,6 +112,7 @@ _MODEL_PULL_PROGRESS_RE = re.compile(r"(?P<pct>\\d{1,3})%")
 _service_update_lock = threading.Lock()
 _service_update_jobs: dict[str, "ServiceUpdateJob"] = {}
 _SERVICE_UPDATE_TTL_SECONDS = 30 * 60
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -494,11 +496,11 @@ def _write_secrets_env_vars(updates: dict[str, Optional[str]]) -> None:
     for key, value in updates.items():
         resolved = None if value is None else str(value)
         if resolved:
-            lines.append(f'export {key}="{resolved}"')
             os.environ[key] = resolved
         else:
             os.environ.pop(key, None)
-    secrets_file.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    if lines != existing:
+        secrets_file.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
 
 
 def _read_secret_env_var(key: str) -> str:
@@ -551,14 +553,15 @@ def _write_mediapilot_password(password: str) -> None:
         except Exception:
             lines = []
     prefix = "MEDIAPILOT_ACCESS_PASSWORD="
+    existing = list(lines)
     lines = [ln for ln in lines if not ln.lstrip().startswith(prefix)]
     resolved = (password or "").strip()
     if resolved:
-        lines.append(f"MEDIAPILOT_ACCESS_PASSWORD={resolved}")
         os.environ["MEDIAPILOT_ACCESS_PASSWORD"] = resolved
     else:
         os.environ["MEDIAPILOT_ACCESS_PASSWORD"] = ""
-    env_file.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    if lines != existing:
+        env_file.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
     workspace_data_used_bytes: Optional[int] = None
     docs: Optional[str] = None  # unused in telemetry, kept for future
 
@@ -1079,15 +1082,21 @@ def _clean_name(name: str) -> str:
     return cleaned or "dataset"
 
 
+def _resolve_under_root(root: Path, candidate: Path) -> Path:
+    root_resolved = root.resolve()
+    resolved = candidate.resolve(strict=False)
+    if os.path.commonpath([str(root_resolved), str(resolved)]) != str(root_resolved):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    return resolved
+
+
 def _dataset_dir(name: str) -> Path:
     base = WORKSPACE_ROOT / "datasets"
     base.mkdir(parents=True, exist_ok=True)
-    n = name.strip()
-    if not n:
-        n = "dataset"
-    if n.startswith("1_"):
-        return base / n
-    return base / f"1_{_clean_name(n)}"
+    leaf = PurePosixPath((name or "").replace("\\", "/")).name
+    normalized = leaf[2:] if leaf.startswith("1_") else leaf
+    safe_name = f"1_{_clean_name(normalized)}"
+    return _resolve_under_root(base, base / safe_name)
 
 
 def _zipinfo_is_symlink(info: zipfile.ZipInfo) -> bool:
@@ -1182,8 +1191,8 @@ def upload_dataset(file: UploadFile = File(...)):
             shutil.rmtree(extract_dir, ignore_errors=True)
         extract_dir.mkdir(parents=True, exist_ok=True)
         _safe_extract_zip(dest, extract_dir)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to upload dataset")
     _invalidate_dataset_list_cache()
     return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
 
@@ -1195,8 +1204,8 @@ def delete_dataset(name: str):
         raise HTTPException(status_code=404, detail="Dataset not found")
     try:
         shutil.rmtree(target)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to delete dataset")
     # Best-effort cleanup of any corresponding ZIP
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     stem = _clean_name(name)
@@ -1244,8 +1253,8 @@ def rename_dataset(name: str, payload: dict):
                     pass  # Best effort
         _invalidate_dataset_list_cache()
         return {"status": "renamed", "old_path": str(source), "new_path": str(target)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to rename dataset")
 
 
 @app.get("/api/tagpilot/load")
@@ -1285,8 +1294,8 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
         _safe_extract_zip(dest, target)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to save dataset archive")
     _invalidate_dataset_list_cache()
     return {"status": "saved", "path": str(target), "zip": str(dest)}
 
@@ -1324,8 +1333,8 @@ def tagpilot_save_item(
                 for p in sorted(target.rglob("*")):
                     if p.is_file():
                         zf.write(p, p.relative_to(target).as_posix())
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to save tagged item")
     _invalidate_dataset_list_cache()
 
     payload = {
@@ -1342,6 +1351,9 @@ def tagpilot_save_item(
 @app.post("/api/models/{name}/pull")
 def pull_model(name: str):
     models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
+    entries = models_service.parse_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
+    if not any(entry.name == name for entry in entries):
+        raise HTTPException(status_code=404, detail="Unknown model")
     cmd = ["/opt/pilot/get-models.sh", "pull", name]
     print(f"[models] pull start name={name} cmd={' '.join(cmd)}", file=sys.stderr)
     # Use existing CLI for consistency
@@ -1361,7 +1373,7 @@ def pull_model(name: str):
         output = e.stdout or str(e)
         tail = output[-4000:] if len(output) > 4000 else output
         print(f"[models] pull failed name={name} output_tail={tail!r}", file=sys.stderr)
-        raise HTTPException(status_code=500, detail=output)
+        raise HTTPException(status_code=500, detail="Model pull failed")
 
 
 @app.post("/api/models/{name}/pull/start")
@@ -1579,8 +1591,9 @@ def set_controlpilot_jupyter_settings(payload: ControlPilotJupyterSettingsReques
         raise HTTPException(status_code=500, detail="supervisorctl not found")
     try:
         subprocess.check_output([SUPERVISORCTL, "restart", "jupyter"], text=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=e.output or str(e))
+    except subprocess.CalledProcessError:
+        logger.exception("Failed to restart jupyter via supervisorctl")
+        raise HTTPException(status_code=500, detail="Failed to restart Jupyter")
     return {
         "status": "ok",
         "jupyter_token_set": bool(_read_secret_env_var("JUPYTER_TOKEN")),
@@ -1606,8 +1619,9 @@ def restart_copilot_sidecar():
         raise HTTPException(status_code=500, detail="supervisorctl not found")
     try:
         subprocess.check_output([SUPERVISORCTL, "restart", "copilot"], text=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=e.output or str(e))
+    except subprocess.CalledProcessError:
+        logger.exception("Failed to restart copilot via supervisorctl")
+        raise HTTPException(status_code=500, detail="Failed to restart Copilot sidecar")
     return {"status": "ok"}
 
 
@@ -1880,8 +1894,9 @@ def _service_version_entry(name: str) -> ServiceVersionEntry:
         detail = None
         try:
             latest = _pip_latest_version(python_bin, package)
-        except Exception as e:
-            detail = f"Latest check failed: {str(e)}"
+        except Exception:
+            logger.exception("Failed to check latest pip version for %s", name)
+            detail = "Latest version check failed"
         update_available = bool(installed and latest and installed != latest)
         return ServiceVersionEntry(
             name=name,
@@ -2166,8 +2181,9 @@ def _set_service_autostart(name: str, enabled: bool) -> Optional[bool]:
     SERVICE_AUTOSTART_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     try:
         SERVICE_AUTOSTART_CONFIG_PATH.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write autostart config: {str(e)}")
+    except Exception:
+        logger.exception("Failed to write service autostart config")
+        raise HTTPException(status_code=500, detail="Failed to write autostart config")
 
     conf_path = _supervisor_config_path()
     if not conf_path:
@@ -2176,8 +2192,9 @@ def _set_service_autostart(name: str, enabled: bool) -> Optional[bool]:
     parser.optionxform = str
     try:
         parser.read(conf_path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read supervisor config: {str(e)}")
+    except Exception:
+        logger.exception("Failed to read supervisor config")
+        raise HTTPException(status_code=500, detail="Failed to read supervisor config")
 
     section = f"program:{name}"
     if not parser.has_section(section):
@@ -2187,8 +2204,9 @@ def _set_service_autostart(name: str, enabled: bool) -> Optional[bool]:
     try:
         with conf_path.open("w", encoding="utf-8") as f:
             parser.write(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write supervisor config: {str(e)}")
+    except Exception:
+        logger.exception("Failed to write supervisor config")
+        raise HTTPException(status_code=500, detail="Failed to write supervisor config")
 
     # Best effort: ask supervisor to re-read changed config.
     try:
@@ -2226,8 +2244,9 @@ def control_service(name: str, action: str):
     try:
         subprocess.check_output([SUPERVISORCTL, action, name], text=True, stderr=subprocess.STDOUT)
         return {"status": "ok"}
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=e.output or str(e))
+    except subprocess.CalledProcessError:
+        logger.exception("Failed to %s service %s via supervisorctl", action, name)
+        raise HTTPException(status_code=500, detail=f"Failed to {action} service")
 
 
 @app.post("/api/services/{name}/update/start")
@@ -2812,11 +2831,17 @@ def _ensure_trainpilot_toml() -> Path:
 
 
 def _resolve_trainpilot_toml_path(raw_path: str = "") -> Path:
-    candidate = Path((raw_path or "").strip()) if (raw_path or "").strip() else _ensure_trainpilot_toml()
-    if not candidate.is_absolute():
-        candidate = WORKSPACE_ROOT / candidate
+    raw = (raw_path or "").strip()
+    if not raw:
+        return _ensure_trainpilot_toml()
+    candidate = Path(raw)
     if candidate == TRAINPILOT_BUNDLED_TOML:
         candidate = _ensure_trainpilot_toml()
+    elif not candidate.is_absolute():
+        candidate = WORKSPACE_ROOT / candidate
+    candidate = _resolve_under_root(WORKSPACE_ROOT, candidate)
+    if candidate.suffix.lower() != ".toml":
+        raise HTTPException(status_code=400, detail="TrainPilot config must be a TOML file")
     return candidate
 
 
@@ -2833,9 +2858,9 @@ def trainpilot_start(req: TrainPilotRequest):
     ds_raw = req.dataset_name.strip()
     if not ds_raw:
         raise HTTPException(status_code=400, detail="dataset_name is required")
-    ds_name = os.path.basename(ds_raw)
-    out_name = req.output_name.strip() or ds_name
-    _tp_output_dir = WORKSPACE_ROOT / "outputs" / out_name
+    ds_name = _clean_name(PurePosixPath(ds_raw.replace("\\", "/")).name)
+    out_name = _clean_name(req.output_name.strip() or ds_name)
+    _tp_output_dir = _resolve_under_root(WORKSPACE_ROOT / "outputs", WORKSPACE_ROOT / "outputs" / out_name)
     profile = req.profile.strip() or "regular"
     if profile not in ("quick_test", "regular", "high_quality"):
         raise HTTPException(status_code=400, detail="Invalid profile")
@@ -2872,9 +2897,9 @@ def trainpilot_start(req: TrainPilotRequest):
             preexec_fn=os.setsid,
         )
         _tp_logs.append(f"TrainPilot process started with PID: {proc.pid}")
-    except Exception as e:
-        _tp_logs.append(f"Failed to start TrainPilot: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        _tp_logs.append("Failed to start TrainPilot")
+        raise HTTPException(status_code=500, detail="Failed to start TrainPilot")
     _tp_proc = proc
     _tp_logs.clear()  # Clear startup logs, start fresh for process output
     _tp_logs.append(f"=== TrainPilot process started (PID: {proc.pid}) ===")
@@ -3046,10 +3071,10 @@ def trainpilot_logs(limit: int = 500):
                             lines.extend([line.rstrip() for line in kohya_lines[-100:]])
                             break
                 except Exception as e:
-                    lines.append(f"--- Error reading Kohya logs from {output_dir.name}: {str(e)} ---")
+                    lines.append(f"--- Error reading Kohya logs from {output_dir.name} ---")
                     continue
-    except Exception as e:
-        lines.append(f"--- Error accessing training outputs: {str(e)} ---")
+    except Exception:
+        lines.append("--- Error accessing training outputs ---")
     
     # Always return a valid response, even if empty
     return {"lines": lines[-limit:], "running": running}
@@ -3153,7 +3178,7 @@ def mediapilot_status():
         "thumbs_dir": os.environ.get("MEDIAPILOT_THUMBS_DIR", ""),
         "db_file": os.environ.get("MEDIAPILOT_DB_FILE", ""),
         "comfy_api_url": os.environ.get("MEDIAPILOT_COMFY_API_URL", ""),
-        "error": MEDIAPILOT_LOAD_ERROR,
+        "error": "MediaPilot failed to load" if MEDIAPILOT_LOAD_ERROR else None,
     }
 
 

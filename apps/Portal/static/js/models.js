@@ -154,49 +154,128 @@ function renderModelCard(m) {
   card.className = "model-card";
   card.dataset.modelName = m.name || "";
   const size = m.size_bytes ? formatBytes(m.size_bytes) : "—";
-  const nameCell = m.info_url ? `<a href="${m.info_url}" target="_blank">${m.name}</a>` : m.name;
-  const safePath = (m.primary_path || m.target_path || "").replace(/'/g, "\\'");
-  const copyIcon = `
-    <svg class="model-path-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="9" y="9" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
-      <rect x="4" y="4" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
-    </svg>
-  `;
-  const installBtn = !m.installed
-    ? `<button class="btn primary" data-action="install" onclick="pullModel('${m.name}', this)">Install</button>`
-    : "";
-  const deleteBtn = m.installed
-    ? `<button class="btn danger" onclick="deleteModel('${m.name}', this)">Delete</button>`
-    : "";
   const src = m.source || "—";
   const target = m.primary_path || m.target_path || "";
-  const pathRow = target
-    ? (m.installed
-      ? `<button class="model-path" type="button" onclick="copyModelPath('${safePath}')"><code>${target}</code>${copyIcon}</button>`
-      : `<div class="model-path"><code>${target}</code></div>`)
-    : "";
-  card.innerHTML = `
-    <div class="model-title">
-      <div class="model-name">${nameCell}</div>
-      <span class="pill">${m.category || "OTHER"}</span>
-    </div>
-    <div class="model-meta">
-      <div>Type: <strong>${m.type || "—"}</strong></div>
-      <div>Size: <strong>${size}</strong></div>
-      <div>Kind: <strong>${m.kind || "—"}</strong></div>
-    </div>
-    <div class="model-source" title="${src}">${src}</div>
-    ${pathRow}
-    <div class="model-actions">
-      ${installBtn}
-      ${deleteBtn}
-    </div>
-    <div class="model-progress">
-      <div class="model-progress-track"><div class="model-progress-bar"></div></div>
-      <div class="model-progress-text"></div>
-    </div>
-  `;
+
+  const title = document.createElement("div");
+  title.className = "model-title";
+
+  const modelName = document.createElement("div");
+  modelName.className = "model-name";
+  const safeInfoUrl = window.sanitizeHttpUrl(m.info_url);
+  if (safeInfoUrl) {
+    const link = document.createElement("a");
+    link.href = safeInfoUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = m.name || "Unnamed";
+    modelName.appendChild(link);
+  } else {
+    modelName.textContent = m.name || "Unnamed";
+  }
+
+  const pill = document.createElement("span");
+  pill.className = "pill";
+  pill.textContent = m.category || "OTHER";
+
+  title.append(modelName, pill);
+
+  const meta = document.createElement("div");
+  meta.className = "model-meta";
+  [
+    ["Type", m.type || "—"],
+    ["Size", size],
+    ["Kind", m.kind || "—"],
+  ].forEach(([label, value]) => {
+    const row = document.createElement("div");
+    row.textContent = `${label}: `;
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    row.appendChild(strong);
+    meta.appendChild(row);
+  });
+
+  const source = document.createElement("div");
+  source.className = "model-source";
+  source.title = src;
+  source.textContent = src;
+
+  card.append(title, meta, source);
+
+  if (target) {
+    const code = document.createElement("code");
+    code.textContent = target;
+    if (m.installed) {
+      const pathBtn = document.createElement("button");
+      pathBtn.className = "model-path";
+      pathBtn.type = "button";
+      pathBtn.addEventListener("click", () => window.copyModelPath(target));
+      pathBtn.appendChild(code);
+      pathBtn.appendChild(createCopyIcon());
+      card.appendChild(pathBtn);
+    } else {
+      const pathRow = document.createElement("div");
+      pathRow.className = "model-path";
+      pathRow.appendChild(code);
+      card.appendChild(pathRow);
+    }
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "model-actions";
+  if (!m.installed) {
+    const installBtn = document.createElement("button");
+    installBtn.className = "btn primary";
+    installBtn.dataset.action = "install";
+    installBtn.textContent = "Install";
+    installBtn.addEventListener("click", () => window.pullModel(m.name, installBtn));
+    actions.appendChild(installBtn);
+  }
+  if (m.installed) {
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn danger";
+    deleteBtn.textContent = "Delete";
+    deleteBtn.addEventListener("click", () => window.deleteModel(m.name, deleteBtn));
+    actions.appendChild(deleteBtn);
+  }
+  card.appendChild(actions);
+
+  const progress = document.createElement("div");
+  progress.className = "model-progress";
+  const track = document.createElement("div");
+  track.className = "model-progress-track";
+  const bar = document.createElement("div");
+  bar.className = "model-progress-bar";
+  track.appendChild(bar);
+  const text = document.createElement("div");
+  text.className = "model-progress-text";
+  progress.append(track, text);
+  card.appendChild(progress);
   return card;
+}
+
+function createCopyIcon() {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "model-path-icon");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("fill", "none");
+  svg.setAttribute("aria-hidden", "true");
+  [
+    { x: "9", y: "9" },
+    { x: "4", y: "4" },
+  ].forEach(({ x, y }) => {
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", x);
+    rect.setAttribute("y", y);
+    rect.setAttribute("width", "11");
+    rect.setAttribute("height", "11");
+    rect.setAttribute("rx", "2");
+    rect.setAttribute("stroke", "currentColor");
+    rect.setAttribute("stroke-width", "1.6");
+    svg.appendChild(rect);
+  });
+  return svg;
 }
 
 window.pullModel = async function (name, btn) {

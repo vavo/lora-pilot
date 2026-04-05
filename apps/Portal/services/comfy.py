@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from pathlib import Path
 
@@ -6,6 +7,8 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, Response
 import httpx
 import websockets
+
+logger = logging.getLogger(__name__)
 
 
 def create_router(workspace_root: Path) -> APIRouter:
@@ -44,11 +47,12 @@ def create_router(workspace_root: Path) -> APIRouter:
                     forward_to_comfy(),
                     return_exceptions=True,
                 )
-        except Exception as e:
+        except Exception:
+            logger.exception("Comfy preview websocket bridge failed")
             try:
                 await websocket.send_json({
                     "type": "error",
-                    "message": f"Cannot connect to ComfyUI: {str(e)}",
+                    "message": "Cannot connect to ComfyUI",
                 })
             except Exception:
                 pass
@@ -68,10 +72,11 @@ def create_router(workspace_root: Path) -> APIRouter:
             if response.status_code == 200:
                 return {"status": "running", "port": comfy_port}
             return {"status": "error", "message": "ComfyUI returned error status"}
-        except requests.exceptions.RequestException as e:
-            return {"status": "stopped", "message": str(e)}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        except requests.exceptions.RequestException:
+            return {"status": "stopped", "message": "ComfyUI is not reachable"}
+        except Exception:
+            logger.exception("Failed to query ComfyUI status")
+            return {"status": "error", "message": "Unable to query ComfyUI"}
 
     @router.get("/api/comfy/latest-image")
     def comfy_latest_image():
@@ -124,8 +129,9 @@ def create_router(workspace_root: Path) -> APIRouter:
                     "image_count": image_count,
                 }
             return {"image": None, "message": "No images found", "image_count": 0}
-        except Exception as e:
-            return {"image": None, "error": str(e)}
+        except Exception:
+            logger.exception("Failed to inspect latest ComfyUI image")
+            return {"image": None, "error": "Unable to inspect ComfyUI output"}
 
     @router.get("/proxy/comfy/{path:path}")
     async def proxy_comfy(request: Request, path: str):
@@ -150,9 +156,10 @@ def create_router(workspace_root: Path) -> APIRouter:
                     headers=dict(response.headers),
                     media_type=response.headers.get("content-type", "application/octet-stream"),
                 )
-        except Exception as e:
+        except Exception:
+            logger.exception("Comfy proxy request failed for path %s", path)
             return JSONResponse(
-                {"error": f"Proxy error: {str(e)}"},
+                {"error": "Proxy request failed"},
                 status_code=500,
             )
 

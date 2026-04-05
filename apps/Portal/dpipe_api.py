@@ -23,6 +23,11 @@ DIFFPIPE_REPO_DIR = Path(os.environ.get("DIFFPIPE_REPO_DIR", "/opt/pilot/repos/d
 # Deepspeed entrypoint (isolated in the diffusion-pipe venv)
 DEEPSPEED_BIN = os.environ.get("DEEPSPEED_BIN", "/opt/venvs/diffpipe/bin/deepspeed")
 NUM_GPUS = os.environ.get("NUM_GPUS", "1")
+_LOCAL_PATH_ROOTS = (
+    WORKSPACE.resolve(),
+    Path("/opt").resolve(),
+    Path(os.environ.get("HOME", "/root")).expanduser().resolve(),
+)
 
 router = APIRouter(prefix="/dpipe", tags=["diffusion-pipe"])
 
@@ -66,6 +71,49 @@ def _resolve_diffpipe_dir() -> Path:
     if DIFFPIPE_REPO_DIR.exists() and repo_train.exists():
         return DIFFPIPE_REPO_DIR
     return DIFFPIPE_APP_DIR
+
+
+def _path_is_within_root(candidate: Path, root: Path) -> bool:
+    try:
+        return os.path.commonpath([str(root), str(candidate)]) == str(root)
+    except ValueError:
+        return False
+
+
+def _resolve_under_root(raw_value: str, *, root: Path, field: str) -> Path:
+    raw = (raw_value or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail=f"{field} is required")
+    candidate = Path(os.path.expandvars(os.path.expanduser(raw)))
+    if not candidate.is_absolute():
+        candidate = root / candidate
+    resolved = candidate.resolve(strict=False)
+    root_resolved = root.resolve()
+    if not _path_is_within_root(resolved, root_resolved):
+        raise HTTPException(status_code=400, detail=f"{field} must stay within {root_resolved}")
+    return resolved
+
+
+def _resolve_local_path(raw_value: str, *, field: str) -> Path:
+    raw = (raw_value or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail=f"{field} is required")
+    candidate = Path(os.path.expandvars(os.path.expanduser(raw)))
+    if not candidate.is_absolute():
+        candidate = WORKSPACE / candidate
+    resolved = candidate.resolve(strict=False)
+    if not any(_path_is_within_root(resolved, root) for root in _LOCAL_PATH_ROOTS):
+        raise HTTPException(status_code=400, detail=f"{field} must stay within approved directories")
+    return resolved
+
+
+def _resolve_deepspeed_bin() -> Path:
+    binary = _resolve_local_path(DEEPSPEED_BIN, field="DEEPSPEED_BIN")
+    if not binary.exists() or not binary.is_file():
+        raise HTTPException(status_code=500, detail="deepspeed binary is unavailable")
+    if not os.access(binary, os.X_OK):
+        raise HTTPException(status_code=500, detail="deepspeed binary is not executable")
+    return binary
 
 
 def create_dataset_config(
@@ -267,7 +315,7 @@ def validate_training_paths(req: TrainValidateRequest):
         "clip_path": req.clip_path,
     }
     for key, value in checks.items():
-        path = _normalize_path(value)
+        path = _resolve_local_path(value, field=key)
         if not path.exists():
             missing.append({"field": key, "path": value})
     return {"ok": len(missing) == 0, "missing": missing}
@@ -328,11 +376,12 @@ def start_training(req: TrainRequest):
     _ensure_dirs()
     _ensure_single_run()
 
-    ds_path = Path(req.dataset_path)
-    cfg_dir = Path(req.config_dir)
-    out_dir = Path(req.output_dir)
+    ds_path = _resolve_under_root(req.dataset_path, root=BASE_DATASET_DIR, field="dataset_path")
+    cfg_dir = _resolve_under_root(req.config_dir, root=CONFIG_DIR, field="config_dir")
+    out_dir = _resolve_under_root(req.output_dir, root=OUTPUT_DIR, field="output_dir")
     if not ds_path.exists():
         raise HTTPException(status_code=400, detail="dataset_path does not exist")
+    deepspeed_bin = _resolve_deepspeed_bin()
     run_dir = _resolve_diffpipe_dir()
     if not run_dir.exists():
         raise HTTPException(status_code=500, detail=f"Diffusion-pipe dir missing: {run_dir}")
@@ -397,7 +446,7 @@ def start_training(req: TrainRequest):
     )
 
     cmd = [
-        DEEPSPEED_BIN,
+        str(deepspeed_bin),
         f"--num_gpus={NUM_GPUS}",
         "train.py",
         "--deepspeed",
@@ -416,9 +465,9 @@ def start_training(req: TrainRequest):
             preexec_fn=os.setsid,
         )
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail=f"deepspeed not found at {DEEPSPEED_BIN}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="deepspeed binary is unavailable")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Unable to start diffusion-pipe training")
 
     pid = proc.pid
     with _proc_lock:

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 DEFAULT_HOME = Path(os.environ.get("COPILOT_HOME", "/workspace/home/root"))
 DEFAULT_XDG_CONFIG_HOME = Path(os.environ.get("COPILOT_XDG_CONFIG_HOME", "/workspace/home/root/.config"))
 DEFAULT_CWD = Path(os.environ.get("COPILOT_CWD", "/workspace"))
+WORKSPACE_ROOT = Path("/workspace").resolve()
 DEFAULT_PORT = int(os.environ.get("COPILOT_SIDECAR_PORT", "7879"))
 DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("COPILOT_TIMEOUT_SECONDS", "1800"))
 
@@ -52,6 +53,14 @@ def _ensure_trusted_folder(folder: Path) -> None:
         trusted.append(folder_str)
     cfg["trusted_folders"] = trusted
     cfg_path.write_text(json.dumps(cfg, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _resolve_workspace_cwd(raw_cwd: Optional[str]) -> Path:
+    candidate = Path(raw_cwd).expanduser() if raw_cwd else DEFAULT_CWD
+    resolved = candidate.resolve(strict=False)
+    if os.path.commonpath([str(WORKSPACE_ROOT), str(resolved)]) != str(WORKSPACE_ROOT):
+        raise HTTPException(status_code=400, detail="cwd must be under /workspace")
+    return resolved
 
 
 class ChatRequest(BaseModel):
@@ -115,8 +124,8 @@ def status():
         try:
             p = subprocess.run([copilot, "--version"], capture_output=True, text=True, check=False)
             out["copilot_version"] = (p.stdout or p.stderr or "").strip()
-        except Exception as e:
-            out["copilot_version_error"] = str(e)
+        except Exception:
+            out["copilot_version_error"] = "Unable to determine version"
     return out
 
 
@@ -129,14 +138,11 @@ def chat(req: ChatRequest):
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt is required")
 
-    cwd = Path(req.cwd) if req.cwd else DEFAULT_CWD
-    cwd = cwd.resolve()
-    if not str(cwd).startswith("/workspace"):
-        raise HTTPException(status_code=400, detail="cwd must be under /workspace")
+    cwd = _resolve_workspace_cwd(req.cwd)
 
     _ensure_trusted_folder(cwd)
 
-    cmd = [copilot, "-p", prompt]
+    cmd = [copilot]
     if req.allow_all_tools:
         cmd.append("--allow-all-tools")
     if req.allow_all_paths:
@@ -155,6 +161,7 @@ def chat(req: ChatRequest):
             cmd,
             cwd=str(cwd),
             env=env,
+            input=prompt,
             capture_output=True,
             text=True,
             check=False,

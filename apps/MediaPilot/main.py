@@ -7,6 +7,7 @@ import tempfile
 import zipfile
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
 from sqlite3 import connect
 from typing import Any, Dict, List, Optional, Set
 from urllib.parse import quote
@@ -85,6 +86,9 @@ UPSCALE_OUTPUT_PREFIX = os.environ.get("MEDIAPILOT_UPSCALE_OUTPUT_PREFIX", "medi
 COMFY_REQUEST_TIMEOUT = env_int("MEDIAPILOT_COMFY_REQUEST_TIMEOUT", 60)
 THUMB_EXT = ".webp"
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
+OUTPUT_ROOT = Path(OUTPUT_DIR)
+THUMBS_ROOT = Path(THUMBS_DIR)
+INVOKEAI_ROOT = Path(INVOKEAI_DIR)
 
 # Ensure base directories exist to avoid empty/failed listings
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -173,9 +177,17 @@ app.mount("/invoke", StaticFilesNoCache(directory=INVOKEAI_DIR), name="invoke")
 # THUMBNAIL MAKER
 # ---------------------------------------------------
 
-def make_thumb(full_path, thumb_path):
-    if not os.path.exists(thumb_path):
-        os.makedirs(os.path.dirname(thumb_path), exist_ok=True)
+def _safe_join(root: Path, *parts: str) -> Path:
+    candidate = (root.joinpath(*parts)).resolve(strict=False)
+    root_resolved = root.resolve()
+    if os.path.commonpath([str(root_resolved), str(candidate)]) != str(root_resolved):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+    return candidate
+
+
+def make_thumb(full_path: Path, thumb_path: Path):
+    if not thumb_path.exists():
+        thumb_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             img = Image.open(full_path)
             img.thumbnail((600, 600))
@@ -687,12 +699,22 @@ def normalize_new_folder(name: str) -> str:
     return norm
 
 
-def base_dir_for_folder(folder: str) -> str:
+def base_dir_for_folder(folder: str) -> Path:
     if folder == "_root":
-        return OUTPUT_DIR
+        return OUTPUT_ROOT
     if folder == "InvokeAI":
-        return INVOKEAI_DIR
-    return os.path.join(OUTPUT_DIR, folder)
+        return INVOKEAI_ROOT
+    return _safe_join(OUTPUT_ROOT, folder)
+
+
+def file_path_for_folder(folder: str, filename: str) -> Path:
+    return _safe_join(base_dir_for_folder(folder), filename)
+
+
+def thumb_path_for_folder(folder: str, filename: str) -> Path:
+    if folder == "_root":
+        return _safe_join(THUMBS_ROOT, filename + THUMB_EXT)
+    return _safe_join(THUMBS_ROOT, folder, filename + THUMB_EXT)
 
 
 def normalize_selected_filename(value: str) -> str:
@@ -800,10 +822,10 @@ def ensure_workflow_input_image(
     return workflow_copy
 
 
-def upload_image_to_comfy(session: requests.Session, full_path: str, filename: str) -> str:
+def upload_image_to_comfy(session: requests.Session, full_path: Path, filename: str) -> str:
     upload_url = f"{COMFY_API_URL}/upload/image"
     try:
-        with open(full_path, "rb") as handle:
+        with full_path.open("rb") as handle:
             response = session.post(
                 upload_url,
                 data={"type": "input", "overwrite": "false"},
@@ -811,9 +833,9 @@ def upload_image_to_comfy(session: requests.Session, full_path: str, filename: s
                 timeout=COMFY_REQUEST_TIMEOUT,
             )
     except OSError as exc:
-        raise HTTPException(status_code=500, detail=f"Unable to read file for upload: {exc}") from exc
+        raise HTTPException(status_code=500, detail="Unable to read file for upload") from exc
     except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Comfy upload failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail="Comfy upload failed") from exc
 
     if response.status_code >= 400:
         raise HTTPException(
@@ -841,7 +863,7 @@ def submit_workflow_to_comfy(session: requests.Session, workflow: Dict[str, Any]
             timeout=COMFY_REQUEST_TIMEOUT,
         )
     except requests.RequestException as exc:
-        raise HTTPException(status_code=502, detail=f"Comfy prompt submit failed: {exc}") from exc
+        raise HTTPException(status_code=502, detail="Comfy prompt submit failed") from exc
 
     if response.status_code >= 400:
         raise HTTPException(
@@ -867,7 +889,7 @@ def get_folders():
 @app.post("/folders")
 def create_folder(payload: CreateFolder):
     folder = normalize_new_folder(payload.name)
-    os.makedirs(os.path.join(OUTPUT_DIR, folder), exist_ok=True)
+    base_dir_for_folder(folder).mkdir(parents=True, exist_ok=True)
     return {"created": True, "folder": folder}
 
 
@@ -885,21 +907,17 @@ def get_images(
     search: str = Query(""),
 ):
     folder = normalize_folder(folder)
-    if folder == "_root":
-        base_dir = OUTPUT_DIR
-    elif folder == "InvokeAI":
-        base_dir = INVOKEAI_DIR
-    else:
-        base_dir = os.path.join(OUTPUT_DIR, folder)
-    if not os.path.exists(base_dir):
+    base_dir = base_dir_for_folder(folder)
+    if not base_dir.exists():
         return Paginated(page=1, pages=1, images=[])
 
     file_entries = []
-    for f in os.listdir(base_dir):
-        if not f.lower().endswith(IMAGE_EXTS):
+    for entry in base_dir.iterdir():
+        if not entry.is_file():
             continue
-        full_p = os.path.join(base_dir, f)
-        file_entries.append((f, os.path.getmtime(full_p)))
+        if not entry.name.lower().endswith(IMAGE_EXTS):
+            continue
+        file_entries.append((entry.name, entry.stat().st_mtime))
 
     # Sort entries according to requested sort
     sort_upper = (sort or "").upper()
@@ -920,8 +938,8 @@ def get_images(
     if has_search:
         filtered_entries = []
         for f, mtime in file_entries:
-            full_path = os.path.join(base_dir, f)
-            metadata = extract_metadata(full_path)
+            full_path = file_path_for_folder(folder, f)
+            metadata = extract_metadata(str(full_path))
             metadata_cache[f] = metadata
             if metadata_matches_search(metadata, search_criteria):
                 filtered_entries.append((f, mtime))
@@ -941,22 +959,22 @@ def get_images(
 
     items = []
     for f, mtime in page_files:
-        full_path = os.path.join(base_dir, f)
+        full_path = file_path_for_folder(folder, f)
         metadata = metadata_cache.get(f)
         if metadata is None:
-            metadata = extract_metadata(full_path)
+            metadata = extract_metadata(str(full_path))
         safe_filename = encode_url_segment(f)
 
         if folder == "_root":
-            thumb_path = os.path.join(THUMBS_DIR, f + THUMB_EXT)
+            thumb_path = thumb_path_for_folder(folder, f)
             thumb_url = f"./thumbs/{safe_filename}{THUMB_EXT}"
             full_url = f"./output/{safe_filename}"
         elif folder == "InvokeAI":
-            thumb_path = os.path.join(THUMBS_DIR, "InvokeAI", f + THUMB_EXT)
+            thumb_path = thumb_path_for_folder(folder, f)
             thumb_url = f"./thumbs/InvokeAI/{safe_filename}{THUMB_EXT}"
             full_url = f"./invoke/{safe_filename}"
         else:
-            thumb_path = os.path.join(THUMBS_DIR, folder, f + THUMB_EXT)
+            thumb_path = thumb_path_for_folder(folder, f)
             folder_url = encode_folder_for_url(folder)
             thumb_url = f"./thumbs/{folder_url}/{safe_filename}{THUMB_EXT}"
             full_url = f"./output/{folder_url}/{safe_filename}"
@@ -1008,24 +1026,14 @@ def unlike_file(filename: str):
 def delete_file(filename: str, folder: str = "_root"):
     filename = normalize_selected_filename(filename)
     folder = normalize_folder(folder)
-    if folder == "_root":
-        base_dir = OUTPUT_DIR
-    elif folder == "InvokeAI":
-        base_dir = INVOKEAI_DIR
-    else:
-        base_dir = os.path.join(OUTPUT_DIR, folder)
-    path = os.path.join(base_dir, filename)
+    path = file_path_for_folder(folder, filename)
 
-    if os.path.exists(path):
-        os.remove(path)
+    if path.exists():
+        path.unlink()
 
-    thumb = (
-        os.path.join(THUMBS_DIR, filename + THUMB_EXT)
-        if folder == "_root"
-        else os.path.join(THUMBS_DIR, folder, filename + THUMB_EXT)
-    )
-    if os.path.exists(thumb):
-        os.remove(thumb)
+    thumb = thumb_path_for_folder(folder, filename)
+    if thumb.exists():
+        thumb.unlink()
 
     conn = get_db()
     cur = conn.cursor()
@@ -1045,31 +1053,18 @@ def tag_file(filename: str, old_folder: str, new_folder: str):
     filename = normalize_selected_filename(filename)
     old_folder = normalize_folder(old_folder)
     new_folder = normalize_folder(new_folder)
-    if old_folder == "_root":
-        old_dir = OUTPUT_DIR
-    elif old_folder == "InvokeAI":
-        old_dir = INVOKEAI_DIR
-    else:
-        old_dir = os.path.join(OUTPUT_DIR, old_folder)
+    new_dir = base_dir_for_folder(new_folder)
+    new_dir.mkdir(parents=True, exist_ok=True)
 
-    new_dir = OUTPUT_DIR if new_folder == "_root" else os.path.join(OUTPUT_DIR, new_folder)
+    src = file_path_for_folder(old_folder, filename)
+    dst = file_path_for_folder(new_folder, filename)
 
-    os.makedirs(new_dir, exist_ok=True)
+    if src.exists():
+        src.rename(dst)
 
-    src = os.path.join(old_dir, filename)
-    dst = os.path.join(new_dir, filename)
-
-    if os.path.exists(src):
-        os.rename(src, dst)
-
-    if old_folder == "_root":
-        old_thumb = os.path.join(THUMBS_DIR, filename + THUMB_EXT)
-    elif old_folder == "InvokeAI":
-        old_thumb = os.path.join(THUMBS_DIR, "InvokeAI", filename + THUMB_EXT)
-    else:
-        old_thumb = os.path.join(THUMBS_DIR, old_folder, filename + THUMB_EXT)
-    if os.path.exists(old_thumb):
-        os.remove(old_thumb)
+    old_thumb = thumb_path_for_folder(old_folder, filename)
+    if old_thumb.exists():
+        old_thumb.unlink()
 
     conn = get_db()
     conn.execute(
@@ -1115,8 +1110,8 @@ def upscale_bulk(payload: BulkUpscalePayload):
     failed = []
     with requests.Session() as session:
         for filename in unique_filenames:
-            full_path = os.path.join(base_dir, filename)
-            if not os.path.isfile(full_path):
+            full_path = file_path_for_folder(folder, filename)
+            if not full_path.is_file():
                 failed.append({"filename": filename, "error": "File not found"})
                 continue
             try:
@@ -1136,8 +1131,8 @@ def upscale_bulk(payload: BulkUpscalePayload):
                 )
             except HTTPException as exc:
                 failed.append({"filename": filename, "error": str(exc.detail)})
-            except Exception as exc:
-                failed.append({"filename": filename, "error": str(exc)})
+            except Exception:
+                failed.append({"filename": filename, "error": "Upscale request failed"})
 
     if not submitted and failed:
         raise HTTPException(status_code=502, detail={"submitted": [], "failed": failed})
@@ -1189,8 +1184,8 @@ def download_bulk(payload: BulkDownloadPayload):
     try:
         with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
             for filename in unique_filenames:
-                full_path = os.path.join(base_dir, filename)
-                if not os.path.isfile(full_path):
+                full_path = file_path_for_folder(folder, filename)
+                if not full_path.is_file():
                     continue
                 archive.write(full_path, arcname=filename)
                 added += 1

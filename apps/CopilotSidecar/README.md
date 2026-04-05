@@ -3,7 +3,7 @@
 This is a small HTTP sidecar that wraps the `copilot` CLI in programmatic mode and is intended to be run by supervisord inside the LoRA Pilot container.
 
 It is intentionally simple:
-- It shells out to `copilot -p <prompt>` for each request.
+- It pipes the request prompt to `copilot` over stdin for each request.
 - It enables tooling via `--allow-all-tools` (and optionally paths/urls).
 - It persists Copilot CLI config under `/workspace` so it survives container restarts.
 
