@@ -64,7 +64,6 @@ begin
   Result := ManagedInstallNeedsRestart;
 end;
 
-#if AutoInstall == 1
 procedure RunManagedInstall();
 var
   ResultCode: Integer;
@@ -114,12 +113,9 @@ begin
   );
   Abort;
 end;
-#endif
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-#if AutoInstall == 1
-  if CurStep = ssPostInstall then
+  if (CurStep = ssPostInstall) and ('{#AutoInstall}' = '1') then
     RunManagedInstall();
-#endif
 end;
