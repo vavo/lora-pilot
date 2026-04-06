@@ -2,7 +2,10 @@ package launcher
 
 import (
 	"bytes"
+	"context"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -111,6 +114,34 @@ func TestVerifySHA256File(t *testing.T) {
 	}
 	if err := VerifySHA256File(path, hash); err != nil {
 		t.Fatalf("VerifySHA256File returned error: %v", err)
+	}
+}
+
+func TestDownloadFileSetsBrowserLikeHeaders(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("User-Agent"); !strings.Contains(got, "Mozilla/5.0") || !strings.Contains(got, "LoRAPilotInstaller/1.0") {
+			t.Fatalf("unexpected user agent: %q", got)
+		}
+		if got := r.Header.Get("Accept"); got != "*/*" {
+			t.Fatalf("unexpected accept header: %q", got)
+		}
+		_, _ = w.Write([]byte("runtime-bundle"))
+	}))
+	defer server.Close()
+
+	path := filepath.Join(t.TempDir(), "artifact.bin")
+	if err := DownloadFile(context.Background(), server.Client(), server.URL+"/artifact.bin", path); err != nil {
+		t.Fatalf("DownloadFile returned error: %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile returned error: %v", err)
+	}
+	if string(raw) != "runtime-bundle" {
+		t.Fatalf("unexpected downloaded content: %q", string(raw))
 	}
 }
 

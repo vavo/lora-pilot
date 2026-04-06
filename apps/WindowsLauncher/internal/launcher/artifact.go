@@ -15,6 +15,8 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
+const defaultDownloadUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 LoRAPilotInstaller/1.0"
+
 func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destination string) error {
 	if sourceURL == "" {
 		return fmt.Errorf("download url is empty")
@@ -34,6 +36,9 @@ func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destinati
 	if err != nil {
 		return fmt.Errorf("build download request: %w", err)
 	}
+	req.Header.Set("User-Agent", defaultDownloadUserAgent)
+	req.Header.Set("Accept", "*/*")
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("download %s: %w", sourceURL, err)
