@@ -384,11 +384,27 @@ func (l *Launcher) importFreshRuntime(ctx context.Context, distroName, installPa
 			return err
 		}
 	}
-	if err := os.MkdirAll(installPath, 0o755); err != nil {
-		return fmt.Errorf("create distro install dir: %w", err)
+	if err := prepareFreshImportPath(installPath); err != nil {
+		return err
 	}
 	_, err := l.exec.Run(ctx, BuildWSLImportCommand(distroName, installPath, importPath))
-	return err
+	if err != nil {
+		_, _ = l.exec.Run(ctx, BuildWSLUnregisterCommand(distroName))
+		_ = os.RemoveAll(installPath)
+		return err
+	}
+	return nil
+}
+
+func prepareFreshImportPath(installPath string) error {
+	parentDir := filepath.Dir(installPath)
+	if err := os.MkdirAll(parentDir, 0o755); err != nil {
+		return fmt.Errorf("create distro parent dir: %w", err)
+	}
+	if err := os.RemoveAll(installPath); err != nil {
+		return fmt.Errorf("clear distro install dir: %w", err)
+	}
+	return nil
 }
 
 func (l *Launcher) applyOverlay(ctx context.Context, distroName string, manifest Manifest) error {

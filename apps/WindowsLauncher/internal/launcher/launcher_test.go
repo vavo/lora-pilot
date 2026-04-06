@@ -168,6 +168,31 @@ func TestBuildCurlDownloadArgs(t *testing.T) {
 	}
 }
 
+func TestPrepareFreshImportPathRemovesStaleContents(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	installPath := filepath.Join(root, "wsl", "LoRAPilot")
+	if err := os.MkdirAll(installPath, 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	staleFile := filepath.Join(installPath, "ext4.vhdx")
+	if err := os.WriteFile(staleFile, []byte("stale"), 0o644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	if err := prepareFreshImportPath(installPath); err != nil {
+		t.Fatalf("prepareFreshImportPath returned error: %v", err)
+	}
+
+	if _, err := os.Stat(staleFile); !os.IsNotExist(err) {
+		t.Fatalf("stale file still exists, err=%v", err)
+	}
+	if _, err := os.Stat(filepath.Dir(installPath)); err != nil {
+		t.Fatalf("parent dir missing after cleanup: %v", err)
+	}
+}
+
 func TestToWSLPath(t *testing.T) {
 	t.Parallel()
 
