@@ -9,13 +9,19 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/klauspost/compress/zstd"
 )
 
 const defaultDownloadUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 LoRAPilotInstaller/1.0"
+
+var currentGOOS = runtime.GOOS
+var execLookPath = exec.LookPath
+var execCommandContext = exec.CommandContext
 
 func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destination string) error {
 	if sourceURL == "" {
@@ -30,6 +36,12 @@ func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destinati
 
 	if localPath, ok := resolveLocalPath(sourceURL); ok {
 		return copyFile(localPath, destination)
+	}
+
+	if shouldUseCurlDownloader(sourceURL) {
+		if err := downloadWithCurl(ctx, sourceURL, destination); err == nil {
+			return nil
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
@@ -57,6 +69,55 @@ func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destinati
 
 	if _, err := io.Copy(out, resp.Body); err != nil {
 		return fmt.Errorf("write destination: %w", err)
+	}
+	return nil
+}
+
+func shouldUseCurlDownloader(sourceURL string) bool {
+	if currentGOOS != "windows" {
+		return false
+	}
+	parsed, err := url.Parse(sourceURL)
+	if err != nil {
+		return false
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return false
+	}
+	_, err = execLookPath("curl.exe")
+	return err == nil
+}
+
+func buildCurlDownloadArgs(sourceURL, destination string) []string {
+	return []string{
+		"--silent",
+		"--show-error",
+		"--fail",
+		"--location",
+		"--retry",
+		"5",
+		"--retry-delay",
+		"2",
+		"--retry-all-errors",
+		"--user-agent",
+		defaultDownloadUserAgent,
+		"--header",
+		"Accept: */*",
+		"--output",
+		destination,
+		sourceURL,
+	}
+}
+
+func downloadWithCurl(ctx context.Context, sourceURL, destination string) error {
+	cmd := execCommandContext(ctx, "curl.exe", buildCurlDownloadArgs(sourceURL, destination)...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		message := strings.TrimSpace(string(output))
+		if message == "" {
+			message = err.Error()
+		}
+		return fmt.Errorf("curl download %s: %s", sourceURL, message)
 	}
 	return nil
 }

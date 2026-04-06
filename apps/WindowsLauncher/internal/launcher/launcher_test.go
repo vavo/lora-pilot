@@ -145,6 +145,29 @@ func TestDownloadFileSetsBrowserLikeHeaders(t *testing.T) {
 	}
 }
 
+func TestBuildCurlDownloadArgs(t *testing.T) {
+	t.Parallel()
+
+	args := buildCurlDownloadArgs("https://cdn.example.com/rootfs.tar.zst", `C:\Temp\rootfs.tar.zst`)
+	joined := strings.Join(args, "\n")
+	for _, needle := range []string{
+		"--fail",
+		"--location",
+		"--retry",
+		"--retry-all-errors",
+		"--user-agent",
+		defaultDownloadUserAgent,
+		"--header",
+		"Accept: */*",
+		`C:\Temp\rootfs.tar.zst`,
+		"https://cdn.example.com/rootfs.tar.zst",
+	} {
+		if !strings.Contains(joined, needle) {
+			t.Fatalf("missing curl argument %q in %q", needle, joined)
+		}
+	}
+}
+
 func TestToWSLPath(t *testing.T) {
 	t.Parallel()
 
