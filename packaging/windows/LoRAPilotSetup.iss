@@ -61,8 +61,7 @@ const
 
 var
   ManagedInstallNeedsRestart: Boolean;
-  WelcomeWebsiteLink: TNewStaticText;
-  FinishedWebsiteLink: TNewStaticText;
+  WebsiteLink: TNewStaticText;
 
 function NeedRestart(): Boolean;
 begin
@@ -76,24 +75,23 @@ begin
   ShellExec('open', '{#MyAppURL}', '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
 
-procedure CreateWebsiteLink(var LinkControl: TNewStaticText; ParentControl: TWinControl; BottomPadding: Integer);
+procedure CreateWebsiteLink();
 begin
-  LinkControl := TNewStaticText.Create(WizardForm);
-  LinkControl.Parent := ParentControl;
-  LinkControl.Caption := 'Visit lorapilot.com';
-  LinkControl.Cursor := crHand;
-  LinkControl.Font.Color := clBlue;
-  LinkControl.Font.Style := [fsUnderline];
-  LinkControl.AutoSize := True;
-  LinkControl.Left := ScaleX(0);
-  LinkControl.Top := ParentControl.Height - LinkControl.Height - BottomPadding;
-  LinkControl.OnClick := @OpenWebsite;
+  WebsiteLink := TNewStaticText.Create(WizardForm);
+  WebsiteLink.Parent := WizardForm;
+  WebsiteLink.Caption := 'Visit lorapilot.com';
+  WebsiteLink.Cursor := crHand;
+  WebsiteLink.Font.Color := clBlue;
+  WebsiteLink.Font.Style := [fsUnderline];
+  WebsiteLink.AutoSize := True;
+  WebsiteLink.Left := WizardForm.CancelButton.Left - WebsiteLink.Width - ScaleX(18);
+  WebsiteLink.Top := WizardForm.CancelButton.Top + ScaleY(6);
+  WebsiteLink.OnClick := @OpenWebsite;
 end;
 
 procedure InitializeWizard();
 begin
-  CreateWebsiteLink(WelcomeWebsiteLink, WizardForm.WelcomePage.Surface, ScaleY(8));
-  CreateWebsiteLink(FinishedWebsiteLink, WizardForm.FinishedPage.Surface, ScaleY(12));
+  CreateWebsiteLink();
 end;
 
 procedure RunManagedInstall();
