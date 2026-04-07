@@ -27,10 +27,17 @@
 <div class="card">
   <div class="dp-grid">
     <div class="panel dp-card stack-sm">
-      <h4>Paths</h4>
-      <div class="field"><label>Dataset Path</label><input id="dp-dataset" class="input" type="text" value="/workspace/datasets" /></div>
-      <div class="field"><label>Config Path</label><input id="dp-config" class="input" type="text" value="/workspace/configs" /></div>
-      <div class="field"><label>Output Path</label><input id="dp-output" class="input" type="text" value="/workspace/outputs" /></div>
+      <h4>Managed Run</h4>
+      <div class="field">
+        <label>Dataset</label>
+        <select id="dp-dataset" class="select">
+          <option value="">Loading datasets...</option>
+        </select>
+      </div>
+      <div class="field"><label>Run name</label><input id="dp-run" class="input" type="text" placeholder="optional run label" /></div>
+      <div class="text-12 muted">
+        Configs are managed under <code>/workspace/configs/dpipe</code> and outputs under <code>/workspace/outputs/dpipe</code>.
+      </div>
     </div>
 
     <div class="panel dp-card stack-sm">

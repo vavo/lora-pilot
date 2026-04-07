@@ -5,8 +5,7 @@ const DP_SENSITIVE_FIELDS = new Set([
 ]);
 const DP_FIELDS = [
   "dp-dataset",
-  "dp-config",
-  "dp-output",
+  "dp-run",
   "dp-transformer",
   "dp-vae",
   "dp-llm",
@@ -47,6 +46,7 @@ window.initDpipe = function () {
   if (status) status.textContent = "";
   loadDpipeSettings();
   bindDpipeSettings();
+  loadDpipeDatasets();
   const wandb = document.getElementById("dp-enable-wandb");
   const fields = ["dp-wandb-name","dp-wandb-proj","dp-wandb-key"].map(id => document.getElementById(id));
   if (wandb && !wandb.dataset.bound) {
@@ -89,9 +89,8 @@ window.startDpipe = async function () {
       return;
     }
     const payload = {
-      dataset_path: val("dp-dataset"),
-      config_dir: val("dp-config"),
-      output_dir: val("dp-output"),
+      dataset_name: val("dp-dataset"),
+      run_name: val("dp-run"),
       transformer_path: modelPaths.transformer_path,
       vae_path: modelPaths.vae_path,
       llm_path: modelPaths.llm_path,
@@ -154,19 +153,21 @@ function bindDpipeSettings() {
     const el = document.getElementById(id);
     if (!el || el.dataset.bound) return;
     el.dataset.bound = "1";
-    const handler = () => saveDpipeSettings();
+    const handler = () => {
+      if (id === "dp-run" && el.type !== "checkbox") {
+        const normalized = normalizeDpipeRunName(el.value || "");
+        if (normalized !== el.value) el.value = normalized;
+        el.dataset.autoFilled = "0";
+      }
+      saveDpipeSettings();
+    };
     el.addEventListener("change", handler);
     el.addEventListener("input", handler);
   });
 }
 
 function loadDpipeSettings() {
-  let data = {};
-  try {
-    data = JSON.parse(localStorage.getItem(DP_STORAGE_KEY) || "{}");
-  } catch (e) {
-    data = {};
-  }
+  const data = loadDpipeSettingsData();
   DP_FIELDS.forEach(id => {
     const el = document.getElementById(id);
     if (!el || DP_SENSITIVE_FIELDS.has(id) || !(id in data)) return;
@@ -177,6 +178,14 @@ function loadDpipeSettings() {
       el.value = String(value);
     }
   });
+}
+
+function loadDpipeSettingsData() {
+  try {
+    return JSON.parse(localStorage.getItem(DP_STORAGE_KEY) || "{}");
+  } catch (e) {
+    return {};
+  }
 }
 
 function saveDpipeSettings() {
@@ -195,6 +204,45 @@ function saveDpipeSettings() {
     localStorage.setItem(DP_STORAGE_KEY, JSON.stringify(data));
   } catch (e) {
     // Ignore storage errors (private mode/quota)
+  }
+}
+
+async function loadDpipeDatasets() {
+  const sel = document.getElementById("dp-dataset");
+  const status = document.getElementById("dp-status");
+  if (!sel) return;
+  const saved = loadDpipeSettingsData();
+  const savedValue = typeof saved["dp-dataset"] === "string" ? saved["dp-dataset"] : "";
+  if (!sel.dataset.boundDataset) {
+    sel.dataset.boundDataset = "1";
+    sel.addEventListener("change", () => {
+      syncDpipeRunName();
+      saveDpipeSettings();
+    });
+  }
+  sel.innerHTML = `<option value="">Loading datasets...</option>`;
+  try {
+    const data = await fetchJson("/api/datasets");
+    sel.innerHTML = "";
+    if (!Array.isArray(data) || !data.length) {
+      sel.innerHTML = `<option value="">No datasets found</option>`;
+      return;
+    }
+    data.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = String(d.name || "");
+      opt.textContent = `${d.display || d.name} (${d.images || 0} images)`;
+      sel.appendChild(opt);
+    });
+    if (savedValue && Array.from(sel.options).some(opt => opt.value === savedValue)) {
+      sel.value = savedValue;
+    } else if (!sel.value && sel.options.length) {
+      sel.selectedIndex = 0;
+    }
+    syncDpipeRunName();
+  } catch (e) {
+    sel.innerHTML = `<option value="">No datasets found</option>`;
+    if (status) status.textContent = `Error loading datasets: ${e.message || e}`;
   }
 }
 
@@ -230,6 +278,24 @@ function normalizeDpipeLines(data) {
     return Object.values(logs).reduce((acc, val) => acc.concat(val), []);
   }
   return [];
+}
+
+function syncDpipeRunName(force = false) {
+  const run = document.getElementById("dp-run");
+  const dataset = document.getElementById("dp-dataset");
+  if (!run || !dataset) return;
+  const isAutoFilled = run.dataset.autoFilled === "1";
+  if (run.value.trim() && !force && !isAutoFilled) return;
+  const label = dataset.options[dataset.selectedIndex]?.textContent || dataset.value || "dpipe_run";
+  const base = label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  run.value = normalizeDpipeRunName(base);
+  run.dataset.autoFilled = "1";
+}
+
+function normalizeDpipeRunName(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "_");
 }
 
 function val(id) { return document.getElementById(id)?.value.trim() || ""; }

@@ -1,15 +1,17 @@
 import json
 import os
+import re
 import signal
 import subprocess
 import threading
+import uuid
 from collections import deque
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import List, Optional, Union
 
 import toml
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field
 
 # Paths aligned with the runtime layout
 WORKSPACE = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
@@ -19,6 +21,9 @@ OUTPUT_DIR = WORKSPACE / "outputs"
 CONFIG_DIR = WORKSPACE / "configs"
 DIFFPIPE_APP_DIR = Path(os.environ.get("DIFFPIPE_APP_DIR", WORKSPACE / "apps" / "diffusion-pipe"))
 DIFFPIPE_REPO_DIR = Path(os.environ.get("DIFFPIPE_REPO_DIR", "/opt/pilot/repos/diffusion-pipe"))
+DPIPE_CONFIG_ROOT = CONFIG_DIR / "dpipe"
+DPIPE_OUTPUT_ROOT = OUTPUT_DIR / "dpipe"
+DPIPE_RUN_REGISTRY = DPIPE_CONFIG_ROOT / "runs.json"
 
 # Deepspeed entrypoint (isolated in the diffusion-pipe venv)
 DEEPSPEED_BIN = os.environ.get("DEEPSPEED_BIN", "/opt/venvs/diffpipe/bin/deepspeed")
@@ -39,7 +44,7 @@ _LOG_MAX = 2000
 
 
 def _ensure_dirs():
-    for p in [MODEL_DIR, BASE_DATASET_DIR, OUTPUT_DIR, CONFIG_DIR]:
+    for p in [MODEL_DIR, BASE_DATASET_DIR, OUTPUT_DIR, CONFIG_DIR, DPIPE_CONFIG_ROOT, DPIPE_OUTPUT_ROOT]:
         p.mkdir(parents=True, exist_ok=True)
 
 
@@ -107,6 +112,77 @@ def _resolve_local_path(raw_value: str, *, field: str) -> Path:
     if not any(_path_is_within_root(Path(resolved), root) for root in _LOCAL_PATH_ROOTS):
         raise HTTPException(status_code=400, detail=f"{field} must stay within approved directories")
     return Path(resolved)
+
+
+def _clean_name(value: str, *, default: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", value or "").strip("_-")
+    return cleaned or default
+
+
+def _normalize_dataset_name(raw_value: str) -> str:
+    raw = (raw_value or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="dataset_name is required")
+    leaf = PurePosixPath(raw.replace("\\", "/")).name
+    normalized = leaf[2:] if leaf.startswith("1_") else leaf
+    return f"1_{_clean_name(normalized, default='dataset')}"
+
+
+def _resolve_dataset_dir(dataset_name: str) -> Path:
+    wanted = _normalize_dataset_name(dataset_name)
+    try:
+        with os.scandir(BASE_DATASET_DIR) as it:
+            for entry in it:
+                try:
+                    if entry.is_dir(follow_symlinks=False) and entry.name == wanted:
+                        return Path(entry.path).resolve()
+                except Exception:
+                    continue
+    except FileNotFoundError:
+        pass
+    raise HTTPException(status_code=404, detail="dataset not found")
+
+
+def _load_run_registry() -> dict[str, dict[str, str]]:
+    if not DPIPE_RUN_REGISTRY.exists():
+        return {}
+    try:
+        raw = json.loads(DPIPE_RUN_REGISTRY.read_text(encoding="utf-8"))
+        if isinstance(raw, dict):
+            return {
+                str(key): value
+                for key, value in raw.items()
+                if isinstance(key, str) and isinstance(value, dict)
+            }
+    except Exception:
+        pass
+    return {}
+
+
+def _save_run_registry(registry: dict[str, dict[str, str]]) -> None:
+    DPIPE_RUN_REGISTRY.parent.mkdir(parents=True, exist_ok=True)
+    DPIPE_RUN_REGISTRY.write_text(
+        json.dumps(registry, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _managed_run_dirs(run_name: str, dataset_name: str) -> tuple[str, Path, Path]:
+    safe_run_name = _clean_name(run_name or dataset_name, default="dpipe_run")
+    registry = _load_run_registry()
+    record = registry.get(safe_run_name)
+    run_id = ""
+    if record:
+        run_id = _clean_name(str(record.get("run_id", "")), default="")
+    if not run_id:
+        run_id = f"run-{uuid.uuid4().hex[:12]}"
+        registry[safe_run_name] = {
+            "dataset_name": dataset_name,
+            "run_id": run_id,
+            "run_name": safe_run_name,
+        }
+        _save_run_registry(registry)
+    return safe_run_name, DPIPE_CONFIG_ROOT / run_id, DPIPE_OUTPUT_ROOT / run_id
 
 
 def _resolve_deepspeed_bin() -> Path:
@@ -246,9 +322,8 @@ def create_training_config(
 
 
 class TrainRequest(BaseModel):
-    dataset_path: str
-    config_dir: str
-    output_dir: str
+    dataset_name: str
+    run_name: str = ""
     epochs: int = 1000
     batch_size: int = 1
     lr: float = Field(2e-5, alias="learning_rate")
@@ -299,12 +374,22 @@ class TrainValidateRequest(BaseModel):
     llm_path: str
     clip_path: str
 
+def _parse_json_list(value: Union[str, list], *, field: str) -> list:
+    if isinstance(value, list):
+        return value
+    try:
+        parsed = json.loads(value)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON for {field}: {exc}")
+    if not isinstance(parsed, list):
+        raise HTTPException(status_code=400, detail=f"{field} must be a JSON list")
+    return parsed
 
-def _normalize_path(value: str) -> Path:
-    raw = (value or "").strip()
-    if not raw:
-        return Path("")
-    return Path(os.path.expandvars(os.path.expanduser(raw)))
+
+def _parse_optional_json_list(value: Optional[str], *, field: str) -> Optional[list]:
+    if value is None or str(value).strip() == "":
+        return None
+    return _parse_json_list(value, field=field)
 
 
 @router.post("/train/validate")
@@ -322,50 +407,6 @@ def validate_training_paths(req: TrainValidateRequest):
             missing.append({"field": key, "path": value})
     return {"ok": len(missing) == 0, "missing": missing}
 
-    @validator("betas")
-    def _parse_betas(cls, v):
-        if isinstance(v, list):
-            return v
-        try:
-            parsed = json.loads(v)
-            if not isinstance(parsed, list):
-                raise ValueError
-            return parsed
-        except Exception:
-            raise ValueError("betas must be a JSON list, e.g. [0.9, 0.99]")
-
-    @validator("resolutions_input")
-    def _parse_resolutions(cls, v):
-        try:
-            parsed = json.loads(v)
-            if not isinstance(parsed, list):
-                raise ValueError
-            return v
-        except Exception:
-            raise ValueError("resolutions_input must be JSON, e.g. [512] or [[512,512]]")
-
-    @validator("frame_buckets")
-    def _parse_frames(cls, v):
-        try:
-            parsed = json.loads(v)
-            if not isinstance(parsed, list):
-                raise ValueError
-            return v
-        except Exception:
-            raise ValueError("frame_buckets must be JSON list, e.g. [1,33]")
-
-    @validator("ar_buckets")
-    def _parse_ar(cls, v):
-        if not v:
-            return ""
-        try:
-            parsed = json.loads(v)
-            if not isinstance(parsed, list):
-                raise ValueError
-            return v
-        except Exception:
-            raise ValueError("ar_buckets must be JSON list or empty string")
-
 
 def _ensure_single_run():
     with _proc_lock:
@@ -378,11 +419,8 @@ def start_training(req: TrainRequest):
     _ensure_dirs()
     _ensure_single_run()
 
-    ds_path = _resolve_under_root(req.dataset_path, root=BASE_DATASET_DIR, field="dataset_path")
-    cfg_dir = _resolve_under_root(req.config_dir, root=CONFIG_DIR, field="config_dir")
-    out_dir = _resolve_under_root(req.output_dir, root=OUTPUT_DIR, field="output_dir")
-    if not ds_path.exists():
-        raise HTTPException(status_code=400, detail="dataset_path does not exist")
+    ds_path = _resolve_dataset_dir(req.dataset_name)
+    run_name, cfg_dir, out_dir = _managed_run_dirs(req.run_name, ds_path.name)
     deepspeed_bin = _resolve_deepspeed_bin()
     run_dir = _resolve_diffpipe_dir()
     if not run_dir.exists():
@@ -390,11 +428,12 @@ def start_training(req: TrainRequest):
     if not (run_dir / "train.py").exists():
         raise HTTPException(status_code=500, detail=f"train.py not found in: {run_dir}")
     try:
-        resolutions = json.loads(req.resolutions_input)
-        frames = json.loads(req.frame_buckets)
-        arb = json.loads(req.ar_buckets) if req.ar_buckets else None
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid JSON in resolutions/frame/ar buckets: {e}")
+        resolutions = _parse_json_list(req.resolutions_input, field="resolutions_input")
+        frames = _parse_json_list(req.frame_buckets, field="frame_buckets")
+        arb = _parse_optional_json_list(req.ar_buckets, field="ar_buckets")
+        betas = _parse_json_list(req.betas, field="betas")
+    except HTTPException:
+        raise
 
     dataset_cfg = create_dataset_config(
         ds_path,
@@ -438,7 +477,7 @@ def start_training(req: TrainRequest):
         only_double_blocks=req.only_double_blocks,
         optimizer_type=req.optimizer_type,
         lr=req.lr,
-        betas=req._parse_betas(req.betas),
+        betas=betas,
         weight_decay=req.weight_decay,
         eps=req.eps,
         enable_wandb=req.enable_wandb,
@@ -476,7 +515,14 @@ def start_training(req: TrainRequest):
         _procs[pid] = proc
         _deque_for(pid).clear()
     threading.Thread(target=_read_stream, args=(proc, pid), daemon=True).start()
-    return {"status": "started", "pid": pid, "config": str(training_cfg)}
+    return {
+        "status": "started",
+        "pid": pid,
+        "config": str(training_cfg),
+        "dataset_name": ds_path.name,
+        "output_dir": str(out_dir),
+        "run_name": run_name,
+    }
 
 
 @router.post("/train/stop")
