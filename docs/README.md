@@ -73,7 +73,7 @@ Quick reference materials and troubleshooting.
 
 ##  Quick Start
 
-1. **Install Docker Desktop** - [Installation Guide](getting-started/installation.md)
+1. **Windows:** use the preview `LoRAPilotSetup.exe`; **macOS/Linux:** use Docker - [Installation Guide](getting-started/installation.md)
 2. **Clone and Run** - [First Run](getting-started/first-run.md)
 3. **Access ControlPilot** - [User Guide](user-guide/control-pilot.md)
 4. **Start Training** - [Training Workflows](user-guide/training-workflows.md)
@@ -106,5 +106,3 @@ Found an error or want to improve the documentation? Please see the [Contributin
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
-

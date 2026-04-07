@@ -955,6 +955,20 @@ DOCS_ROOT_ENV = os.environ.get("DOCS_ROOT", "").strip()
 DOCS_SITEMAP_PRIMARY = DOCS_ROOT_PRIMARY / "README.md"
 DOCS_SITEMAP_FALLBACK = DOCS_ROOT_FALLBACK / "README.md"
 DOCS_SITEMAP_DEV = DOCS_ROOT_DEV / "README.md"
+RUNTIME_VERSION_PRIMARY = Path("/opt/pilot/runtime/version.json")
+RUNTIME_VERSION_FALLBACK = WORKSPACE_ROOT / "runtime" / "version.json"
+
+
+def _load_runtime_metadata() -> dict:
+    for candidate in (RUNTIME_VERSION_PRIMARY, RUNTIME_VERSION_FALLBACK):
+        try:
+            if candidate.exists():
+                data = json.loads(candidate.read_text())
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            continue
+    return {}
 
 
 def _docs_root_candidates() -> list[Path]:
@@ -1694,6 +1708,16 @@ def _service_updates_config_to_toml(cfg: dict) -> str:
             lines.append(f"target_ref = {_toml_quote(target_ref)}")
     lines.append("")
     return "\n".join(lines)
+
+
+@app.get("/healthz")
+def healthz():
+    metadata = _load_runtime_metadata()
+    return {
+        "ok": True,
+        "app_version": metadata.get("app_version", ""),
+        "runtime_version": metadata.get("runtime_version", ""),
+    }
 
 
 def _read_service_updates_config() -> dict:

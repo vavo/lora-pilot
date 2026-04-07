@@ -1,10 +1,10 @@
 # Installation Guide
 
-This comprehensive guide will walk you through installing LoRA Pilot on Windows, macOS, and Linux. LoRA Pilot uses Docker to provide a consistent, isolated environment for all AI tools.
+This guide covers the installation paths for LoRA Pilot. Windows currently uses a preview WSL-backed installer. macOS and Linux continue to use Docker.
 
 ##  Quick Install (Recommended)
 
-For most users, the Docker Compose method is the simplest and most reliable:
+For macOS and Linux, Docker Compose remains the simplest path:
 
 ```bash
 # Clone the repository
@@ -22,58 +22,22 @@ open http://localhost:7878
 
 Before installing, ensure you have:
 
-1. **Docker Desktop** (Windows/macOS) or **Docker Engine** (Linux)
-2. **NVIDIA GPU drivers** (if using GPU acceleration)
-3. **Git** (for cloning the repository)
-4. **100GB+ free disk space**
+1. **Windows:** preview `LoRAPilotSetup.exe` and WSL2 support
+2. **macOS/Linux:** Docker Desktop or Docker Engine
+3. **NVIDIA GPU drivers** (if using GPU acceleration)
+4. **Git** (for cloning the repository)
+5. **100GB+ free disk space**
 
 ## 🖥️ Platform-Specific Installation
 
 ### Windows Installation
 
-#### Option A: Docker Desktop GUI (Easiest)
-
-1. **Install Docker Desktop**
-   - Download from [docker.com](https://www.docker.com/products/docker-desktop)
-   - Run installer with administrator privileges
-   - Restart computer when prompted
-
-2. **Configure WSL2**
-   - Open PowerShell as Administrator
-   - Run: `wsl --install`
-   - Restart computer
-
-3. **Clone and Start**
-   ```powershell
-   git clone https://github.com/vavo/lora-pilot.git
-   cd lora-pilot
-   docker-compose up -d
-   ```
-
-4. **Access Services**
-   - Open browser: http://localhost:7878
-   - Wait for services to start (2-5 minutes)
-
-#### Option B: Command Line (Advanced)
-
-1. **Install Prerequisites**
-   ```powershell
-   # Install Chocolatey (if not installed)
-   Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-   
-   # Install Git
-   choco install git
-   
-   # Install Docker Desktop
-   choco install docker-desktop
-   ```
-
-2. **Start LoRA Pilot**
-   ```powershell
-   git clone https://github.com/vavo/lora-pilot.git
-   cd lora-pilot
-   docker-compose up -d
-   ```
+1. Download a preview `LoRAPilotSetup.exe` build from a tagged GitHub release.
+2. Run the installer as Administrator.
+3. Let the bootstrapper enable or reuse WSL2, download the runtime bundles automatically, import the managed `LoRAPilot` distro, and create Start Menu shortcuts.
+4. If Windows asks for a reboot during WSL setup, reboot and sign in again. Setup resumes automatically.
+5. Launch `LoRA Pilot` from the Start Menu and wait for ControlPilot on `http://localhost:7878`.
+6. Use the dedicated Windows guide for the full flow: [docs/WINDOWS_INSTALLATION.md](../WINDOWS_INSTALLATION.md).
 
 ### macOS Installation
 
@@ -346,5 +310,3 @@ After successful installation:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
-

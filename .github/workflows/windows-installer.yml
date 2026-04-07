@@ -1,0 +1,400 @@
+name: Build Windows Installer
+
+on:
+  workflow_run:
+    workflows:
+      - Build WSL Runtime Artifacts
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      manifest_url:
+        description: Optional manifest URL override for manual builds
+        required: false
+        type: string
+      runtime_run_id:
+        description: Optional runtime workflow run ID for manual branch smoke builds
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+
+jobs:
+  build-installer:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch != '')
+    runs-on: windows-latest
+    env:
+      WINDOWS_SIGNING_ACCOUNT_NAME: ${{ vars.WINDOWS_SIGNING_ACCOUNT_NAME }}
+      WINDOWS_SIGNING_AZURE_CLIENT_ID: ${{ secrets.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+      WINDOWS_SIGNING_AZURE_CLIENT_SECRET: ${{ secrets.WINDOWS_SIGNING_AZURE_CLIENT_SECRET }}
+      WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID: ${{ secrets.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID }}
+      WINDOWS_SIGNING_AZURE_TENANT_ID: ${{ secrets.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+      WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME: ${{ vars.WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME }}
+      WINDOWS_SIGNING_ENDPOINT: ${{ vars.WINDOWS_SIGNING_ENDPOINT }}
+    steps:
+      - name: Check out source for runtime-triggered build
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Check out source
+        if: github.event_name != 'workflow_run'
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+          cache-dependency-path: apps/WindowsLauncher/go.sum
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Set build metadata
+        shell: powershell
+        run: |
+          $sourceSha = $env:GITHUB_SHA
+          $sourceRef = $env:GITHUB_REF_NAME
+          $manualManifestUrl = "${{ inputs.manifest_url }}"
+          if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
+            $event = Get-Content $env:GITHUB_EVENT_PATH | ConvertFrom-Json
+            $sourceSha = $event.workflow_run.head_sha
+            $sourceRef = [string]$event.workflow_run.head_branch
+          }
+          if (-not $sourceSha) {
+            $sourceSha = $env:GITHUB_SHA
+          }
+          $shortSha = $sourceSha.Substring(0, 12)
+          $appVersion = "sha-$shortSha"
+          $releaseBuild = "false"
+          $releaseIsPrerelease = "false"
+          $manifestSource = "runtime-artifact"
+          $embeddedManifestUrl = ""
+          $runtimeRunId = ""
+          $releaseTag = ""
+          $releaseName = ""
+
+          if (-not [string]::IsNullOrWhiteSpace($sourceRef) -and $sourceRef -like "v*") {
+            $appVersion = $sourceRef
+            $releaseTag = $appVersion
+            $releaseName = "LoRA Pilot $appVersion"
+            $releaseBuild = "true"
+            if ($appVersion -match '(preview|alpha|beta|rc)') {
+              $releaseIsPrerelease = "true"
+            }
+            $manifestSource = "release"
+            $embeddedManifestUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json"
+          }
+
+          if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace($manualManifestUrl)) {
+            $manifestSource = "manual-url"
+            $embeddedManifestUrl = $manualManifestUrl
+          }
+
+          if ($env:GITHUB_EVENT_NAME -eq "workflow_run") {
+            $event = Get-Content $env:GITHUB_EVENT_PATH | ConvertFrom-Json
+            $runtimeRunId = [string]$event.workflow_run.id
+          } elseif ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch" -and -not [string]::IsNullOrWhiteSpace("${{ inputs.runtime_run_id }}")) {
+            $runtimeRunId = "${{ inputs.runtime_run_id }}"
+          }
+
+          "APP_VERSION=$appVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_TAG=$releaseTag" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_NAME=$releaseName" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_BUILD=$releaseBuild" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RELEASE_IS_PRERELEASE=$releaseIsPrerelease" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "MANIFEST_SOURCE=$manifestSource" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "EMBEDDED_MANIFEST_URL=$embeddedManifestUrl" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "RUNTIME_RUN_ID=$runtimeRunId" | Out-File -FilePath $env:GITHUB_ENV -Append
+          if ($manifestSource -eq "release") {
+            "MANIFEST_URL=https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$releaseTag/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } elseif ($manifestSource -eq "manual-url") {
+            "MANIFEST_URL=$manualManifestUrl" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            "MANIFEST_URL=http://127.0.0.1:18080/windows-runtime-manifest.json" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
+      - name: Detect Windows code signing configuration
+        shell: powershell
+        run: |
+          $requiredConfig = @{
+            WINDOWS_SIGNING_ACCOUNT_NAME = $env:WINDOWS_SIGNING_ACCOUNT_NAME
+            WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME = $env:WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME
+            WINDOWS_SIGNING_ENDPOINT = $env:WINDOWS_SIGNING_ENDPOINT
+          }
+          $missingConfig = @(
+            $requiredConfig.GetEnumerator() |
+              Where-Object { [string]::IsNullOrWhiteSpace($_.Value) } |
+              ForEach-Object { $_.Key }
+          )
+
+          $hasClientId = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_AZURE_CLIENT_ID)
+          $hasTenantId = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_AZURE_TENANT_ID)
+          $hasClientSecret = -not [string]::IsNullOrWhiteSpace($env:WINDOWS_SIGNING_AZURE_CLIENT_SECRET)
+
+          $signingMode = "disabled"
+          if ($missingConfig.Count -eq 0 -and $hasClientId -and $hasTenantId) {
+            if ($hasClientSecret) {
+              $signingMode = "client-secret"
+            } else {
+              $signingMode = "oidc"
+            }
+          }
+
+          "WINDOWS_SIGNING_MODE=$signingMode" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+          if ($signingMode -eq "disabled") {
+            $reasons = @()
+            if ($missingConfig.Count -gt 0) {
+              $reasons += "missing vars: $($missingConfig -join ', ')"
+            }
+            if (-not $hasClientId) {
+              $reasons += "missing secret: WINDOWS_SIGNING_AZURE_CLIENT_ID"
+            }
+            if (-not $hasTenantId) {
+              $reasons += "missing secret: WINDOWS_SIGNING_AZURE_TENANT_ID"
+            }
+            Write-Warning "Windows code signing is disabled; artifacts will remain unsigned. $($reasons -join '; ')"
+          } else {
+            Write-Host "Windows code signing mode: $signingMode"
+          }
+
+      - name: Download runtime workflow artifact
+        if: env.MANIFEST_SOURCE == 'runtime-artifact'
+        shell: powershell
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:RUNTIME_RUN_ID)) {
+            throw "RUNTIME_RUN_ID is required for runtime-artifact builds"
+          }
+          $headers = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept = "application/vnd.github+json"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $artifactListUrl = "https://api.github.com/repos/$($env:GITHUB_REPOSITORY)/actions/runs/$($env:RUNTIME_RUN_ID)/artifacts?per_page=100"
+          $artifacts = Invoke-RestMethod -Headers $headers -Uri $artifactListUrl
+          $artifact = $artifacts.artifacts | Where-Object { $_.name -eq "windows-runtime-artifacts" } | Select-Object -First 1
+          if (-not $artifact) {
+            throw "windows-runtime-artifacts was not found for runtime run $($env:RUNTIME_RUN_ID)"
+          }
+
+          $downloadZip = Join-Path $env:RUNNER_TEMP "windows-runtime-artifacts.zip"
+          & curl.exe --silent --show-error --fail --location `
+            -H "Authorization: Bearer $env:GITHUB_TOKEN" `
+            -H "Accept: application/vnd.github+json" `
+            $artifact.archive_download_url `
+            --output $downloadZip
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to download runtime artifact archive"
+          }
+
+          $extractDir = Join-Path $env:RUNNER_TEMP "windows-runtime-artifacts"
+          if (Test-Path $extractDir) {
+            Remove-Item -Recurse -Force $extractDir
+          }
+          Expand-Archive -Path $downloadZip -DestinationPath $extractDir
+          "RUNTIME_ARTIFACT_DIR=$extractDir" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Prepare local runtime preview
+        if: env.MANIFEST_SOURCE == 'runtime-artifact'
+        shell: powershell
+        run: |
+          $previewDir = Join-Path $env:RUNNER_TEMP "runtime-preview"
+          if (Test-Path $previewDir) {
+            Remove-Item -Recurse -Force $previewDir
+          }
+          New-Item -ItemType Directory -Force -Path $previewDir | Out-Null
+          Copy-Item -Path (Join-Path $env:RUNTIME_ARTIFACT_DIR "*") -Destination $previewDir -Recurse -Force
+
+          $rootfs = Get-ChildItem -Path $previewDir -Filter "lora-pilot-wsl-rootfs-*.tar.zst" | Select-Object -First 1
+          $overlay = Get-ChildItem -Path $previewDir -Filter "lora-pilot-wsl-overlay-*.tar.zst" | Select-Object -First 1
+          if (-not $rootfs -or -not $overlay) {
+            throw "Runtime preview is missing rootfs or overlay artifacts"
+          }
+
+          $manifestPath = Join-Path $previewDir "windows-runtime-manifest.json"
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          $manifest.fresh_install.url = "http://127.0.0.1:18080/$($rootfs.Name)"
+          $manifest.upgrade_overlay.url = "http://127.0.0.1:18080/$($overlay.Name)"
+          $manifest | ConvertTo-Json -Depth 6 | Set-Content -Path $manifestPath -Encoding utf8
+
+          $python = (Get-Command python -ErrorAction SilentlyContinue).Source
+          if (-not $python) {
+            throw "python is required on windows-latest to host the runtime preview"
+          }
+          $server = Start-Process -FilePath $python -ArgumentList "-m", "http.server", "18080", "--bind", "127.0.0.1", "--directory", $previewDir -PassThru
+          "PREVIEW_SERVER_PID=$($server.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Validate local runtime preview
+        if: env.MANIFEST_SOURCE == 'runtime-artifact'
+        shell: powershell
+        run: |
+          Start-Sleep -Seconds 2
+          $manifest = Invoke-RestMethod -Uri $env:MANIFEST_URL -MaximumRedirection 5
+          foreach ($assetUrl in @($manifest.fresh_install.url, $manifest.upgrade_overlay.url)) {
+            & curl.exe --silent --show-error --fail --location --head $assetUrl *> $null
+            if ($LASTEXITCODE -ne 0) {
+              throw "Preview asset not reachable: $assetUrl"
+            }
+          }
+
+      - name: Wait for release manifest and assets
+        if: env.MANIFEST_SOURCE == 'release' || env.MANIFEST_SOURCE == 'manual-url'
+        shell: powershell
+        run: |
+          $maxAttempts = 24
+          $delaySeconds = 15
+          $ready = $false
+          $lastFailure = ""
+
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "Validation attempt $attempt/$maxAttempts"
+            try {
+              $manifest = Invoke-RestMethod -Uri $env:MANIFEST_URL -MaximumRedirection 5
+              if ([string]::IsNullOrWhiteSpace($manifest.app_version)) {
+                throw "Manifest is missing app_version"
+              }
+              if ([string]::IsNullOrWhiteSpace($manifest.runtime_version)) {
+                throw "Manifest is missing runtime_version"
+              }
+              if (-not $manifest.fresh_install -or [string]::IsNullOrWhiteSpace($manifest.fresh_install.url) -or [string]::IsNullOrWhiteSpace($manifest.fresh_install.sha256)) {
+                throw "Manifest is missing fresh_install.url or fresh_install.sha256"
+              }
+              if (-not $manifest.upgrade_overlay -or [string]::IsNullOrWhiteSpace($manifest.upgrade_overlay.url) -or [string]::IsNullOrWhiteSpace($manifest.upgrade_overlay.sha256)) {
+                throw "Manifest is missing upgrade_overlay.url or upgrade_overlay.sha256"
+              }
+              $ready = $true
+              break
+            } catch {
+              $lastFailure = $_.Exception.Message
+              Write-Warning "Validation attempt $attempt failed: $lastFailure"
+              if ($attempt -eq $maxAttempts) {
+                break
+              }
+              Start-Sleep -Seconds $delaySeconds
+            }
+          }
+
+          if (-not $ready) {
+            if ($lastFailure) {
+              throw "Runtime manifest or one of its assets never became reachable at $($env:MANIFEST_URL). Last failure: $lastFailure"
+            }
+            throw "Runtime manifest or one of its assets never became reachable at $($env:MANIFEST_URL)"
+          }
+
+      - name: Build launcher and installer
+        shell: powershell
+        run: .\packaging\windows\build-installer.ps1 -AppVersion $env:APP_VERSION -ManifestUrl $env:EMBEDDED_MANIFEST_URL
+
+      - name: Azure login for Artifact Signing
+        if: env.WINDOWS_SIGNING_MODE == 'oidc' && env.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID != ''
+        uses: azure/login@v3.0.0
+        with:
+          client-id: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+          subscription-id: ${{ env.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID }}
+          tenant-id: ${{ env.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+
+      - name: Azure login for Artifact Signing without subscription context
+        if: env.WINDOWS_SIGNING_MODE == 'oidc' && env.WINDOWS_SIGNING_AZURE_SUBSCRIPTION_ID == ''
+        uses: azure/login@v3.0.0
+        with:
+          allow-no-subscriptions: true
+          client-id: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+
+      - name: Sign Windows artifacts with Artifact Signing (OIDC)
+        if: env.WINDOWS_SIGNING_MODE == 'oidc'
+        uses: azure/trusted-signing-action@v1.2.0
+        with:
+          certificate-profile-name: ${{ env.WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          description: LoRA Pilot Windows launcher and installer
+          description-url: https://github.com/${{ github.repository }}
+          endpoint: ${{ env.WINDOWS_SIGNING_ENDPOINT }}
+          exclude-environment-credential: true
+          exclude-interactive-browser-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-visual-studio-credential: true
+          exclude-workload-identity-credential: true
+          files: |
+            ${{ github.workspace }}\dist\windows-installer\input\LoRAPilotLauncher.exe
+            ${{ github.workspace }}\dist\windows-installer\LoRAPilotSetup.exe
+          file-digest: SHA256
+          signing-account-name: ${{ env.WINDOWS_SIGNING_ACCOUNT_NAME }}
+          timestamp-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com/
+
+      - name: Sign Windows artifacts with Artifact Signing (client secret fallback)
+        if: env.WINDOWS_SIGNING_MODE == 'client-secret'
+        uses: azure/trusted-signing-action@v1.2.0
+        with:
+          azure-client-id: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ env.WINDOWS_SIGNING_AZURE_CLIENT_SECRET }}
+          azure-tenant-id: ${{ env.WINDOWS_SIGNING_AZURE_TENANT_ID }}
+          certificate-profile-name: ${{ env.WINDOWS_SIGNING_CERTIFICATE_PROFILE_NAME }}
+          description: LoRA Pilot Windows launcher and installer
+          description-url: https://github.com/${{ github.repository }}
+          endpoint: ${{ env.WINDOWS_SIGNING_ENDPOINT }}
+          exclude-azure-cli-credential: true
+          exclude-interactive-browser-credential: true
+          exclude-managed-identity-credential: true
+          exclude-shared-token-cache-credential: true
+          exclude-visual-studio-code-credential: true
+          exclude-visual-studio-credential: true
+          exclude-workload-identity-credential: true
+          files: |
+            ${{ github.workspace }}\dist\windows-installer\input\LoRAPilotLauncher.exe
+            ${{ github.workspace }}\dist\windows-installer\LoRAPilotSetup.exe
+          file-digest: SHA256
+          signing-account-name: ${{ env.WINDOWS_SIGNING_ACCOUNT_NAME }}
+          timestamp-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com/
+
+      - name: Verify Authenticode signatures
+        if: env.WINDOWS_SIGNING_MODE != 'disabled'
+        shell: powershell
+        run: |
+          $targets = @(
+            "dist\windows-installer\input\LoRAPilotLauncher.exe",
+            "dist\windows-installer\LoRAPilotSetup.exe"
+          )
+          foreach ($target in $targets) {
+            $signature = Get-AuthenticodeSignature $target
+            if ($signature.Status -ne "Valid") {
+              throw "Invalid signature for $target: $($signature.Status) $($signature.StatusMessage)"
+            }
+            Write-Host "Verified signature for $target from $($signature.SignerCertificate.Subject)"
+          }
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-installer
+          path: dist/windows-installer/*
+
+      - name: Publish installer release asset
+        if: env.RELEASE_BUILD == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          prerelease: ${{ env.RELEASE_IS_PRERELEASE == 'true' }}
+          overwrite_files: true
+          files: dist/windows-installer/LoRAPilotSetup.exe
+
+      - name: Stop local runtime preview server
+        if: always() && env.PREVIEW_SERVER_PID != ''
+        shell: powershell
+        run: |
+          Stop-Process -Id $env:PREVIEW_SERVER_PID -Force -ErrorAction SilentlyContinue

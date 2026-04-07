@@ -1,0 +1,58 @@
+name: Windows Installer E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      manifest_url:
+        description: Runtime manifest URL to test against
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on:
+      - self-hosted
+      - windows
+      - x64
+      - lora-pilot-e2e
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer from source
+        shell: powershell
+        run: .\packaging\windows\build-installer.ps1 -AppVersion "e2e-$($env:GITHUB_SHA.Substring(0, 12))" -ManifestUrl "${{ inputs.manifest_url }}"
+
+      - name: Run silent installer
+        shell: powershell
+        run: Start-Process -FilePath .\dist\windows-installer\LoRAPilotSetup.exe -ArgumentList "/VERYSILENT", "/SUPPRESSMSGBOXES" -Wait -NoNewWindow
+
+      - name: Verify launcher status
+        shell: powershell
+        run: |
+          & "$env:LOCALAPPDATA\Programs\LoRAPilot\LoRAPilotLauncher.exe" status --json
+
+      - name: Start runtime and verify health
+        shell: powershell
+        run: |
+          & "$env:LOCALAPPDATA\Programs\LoRAPilot\LoRAPilotLauncher.exe" start
+          Invoke-RestMethod -Uri http://127.0.0.1:7878/healthz | ConvertTo-Json
+
+      - name: Stop runtime and purge test install
+        if: always()
+        shell: powershell
+        run: |
+          & "$env:LOCALAPPDATA\Programs\LoRAPilot\LoRAPilotLauncher.exe" stop
+          & "$env:LOCALAPPDATA\Programs\LoRAPilot\LoRAPilotLauncher.exe" uninstall --purge

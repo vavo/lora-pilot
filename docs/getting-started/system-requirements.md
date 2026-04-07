@@ -45,12 +45,12 @@ This guide outlines the hardware and software requirements for running LoRA Pilo
 
 ## 🖥️ Software Requirements
 
-### Docker Platform
+### Runtime Platform
 #### Windows
-- **Windows 10/11** (64-bit, Pro/Enterprise recommended)
-- **Docker Desktop for Windows** 4.20+
-- **WSL2** enabled (Windows Subsystem for Linux)
-- **Hyper-V** enabled
+- **Windows 11** or **Windows 10 22H2+** (64-bit)
+- **WSL2** enabled or installable by the LoRA Pilot bootstrapper
+- **100GB+ free disk space** for runtime, models, and datasets
+- **NVIDIA Windows driver** with WSL GPU support if you want GPU acceleration
 
 #### macOS
 - **macOS 11+** (Big Sur or newer)
@@ -129,9 +129,9 @@ LoRA Pilot uses the following ports by default:
 - **Problem**: Slow training due to disk I/O
 - **Solution**: Use SSD for workspace, increase RAM for caching
 
-### Docker Issues
-- **Problem**: Container fails to start
-- **Solution**: Check Docker Desktop status, verify WSL2 setup (Windows)
+### Windows Runtime Issues
+- **Problem**: Installer cannot finish WSL setup
+- **Solution**: Reboot after `wsl --install`, sign in again, and let setup resume automatically. Then check `%LOCALAPPDATA%\LoRAPilot\logs` if it still goes sideways.
 
 ## 📱 Virtualization Support
 
@@ -168,5 +168,3 @@ LoRA Pilot uses the following ports by default:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
-

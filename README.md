@@ -60,7 +60,7 @@ docker compose -f docker-compose.yml up -d
 More setup docs:
 - Linux/macOS/local compose: `DOCKER_COMPOSE.md`
 - Full compose guide: `docker-compose/README.md`
-- Windows guide: `docs/WINDOWS_INSTALLATION.md`
+- Windows WSL installer preview: `docs/WINDOWS_INSTALLATION.md`
 
 ---
 
