@@ -83,15 +83,30 @@ func BuildRunOnceDeleteCommand(valueName string) CommandSpec {
 }
 
 func BuildLauncherSetupCommand(executablePath, manifestURL string, resume, launch bool) string {
-	args := []string{quoteWindowsCommandArg(executablePath), "setup"}
+	helperPath := filepath.Join(filepath.Dir(executablePath), "Run-LoRAPilotManagedSetup.ps1")
+	args := []string{
+		quoteWindowsCommandArg("powershell.exe"),
+		"-NoLogo",
+		"-NoProfile",
+		"-NonInteractive",
+		"-ExecutionPolicy",
+		"Bypass",
+		"-WindowStyle",
+		"Hidden",
+		"-STA",
+		"-File",
+		quoteWindowsCommandArg(helperPath),
+		"-LauncherPath",
+		quoteWindowsCommandArg(executablePath),
+	}
 	if resume {
-		args = append(args, "--resume")
+		args = append(args, "-Resume")
 	}
 	if launch {
-		args = append(args, "--launch")
+		args = append(args, "-Launch")
 	}
 	if strings.TrimSpace(manifestURL) != "" {
-		args = append(args, "--manifest-url", quoteWindowsCommandArg(manifestURL))
+		args = append(args, "-ManifestUrl", quoteWindowsCommandArg(manifestURL))
 	}
 	return strings.Join(args, " ")
 }

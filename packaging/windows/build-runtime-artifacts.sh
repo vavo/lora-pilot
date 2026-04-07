@@ -50,6 +50,10 @@ write_sha_file() {
   printf '%s  %s\n' "${hash_value}" "$(basename "${file_path}")" > "${file_path}.sha256"
 }
 
+file_size_bytes() {
+  wc -c < "$1" | tr -d '[:space:]'
+}
+
 container_id=""
 cleanup() {
   if [[ -n "${container_id}" ]]; then
@@ -98,7 +102,9 @@ write_sha_file "${overlay_path}"
 
 ROOTFS_SHA256="$(sha256_tool "${rootfs_path}")"
 OVERLAY_SHA256="$(sha256_tool "${overlay_path}")"
-export APP_VERSION RUNTIME_VERSION PUBLISHED_AT MIN_WINDOWS_BUILD RUNTIME_BASE_URL ROOTFS_SHA256 OVERLAY_SHA256
+ROOTFS_SIZE_BYTES="$(file_size_bytes "${rootfs_path}")"
+OVERLAY_SIZE_BYTES="$(file_size_bytes "${overlay_path}")"
+export APP_VERSION RUNTIME_VERSION PUBLISHED_AT MIN_WINDOWS_BUILD RUNTIME_BASE_URL ROOTFS_SHA256 OVERLAY_SHA256 ROOTFS_SIZE_BYTES OVERLAY_SIZE_BYTES
 export ROOTFS_NAME="${rootfs_name}" OVERLAY_NAME="${overlay_name}"
 
 python3 - <<'PY' > "${manifest_path}"
@@ -113,10 +119,12 @@ payload = {
     "fresh_install": {
         "url": f"{os.environ['RUNTIME_BASE_URL'].rstrip('/')}/{os.environ['ROOTFS_NAME']}",
         "sha256": os.environ["ROOTFS_SHA256"],
+        "size_bytes": int(os.environ["ROOTFS_SIZE_BYTES"]),
     },
     "upgrade_overlay": {
         "url": f"{os.environ['RUNTIME_BASE_URL'].rstrip('/')}/{os.environ['OVERLAY_NAME']}",
         "sha256": os.environ["OVERLAY_SHA256"],
+        "size_bytes": int(os.environ["OVERLAY_SIZE_BYTES"]),
     },
     "ports": {
         "controlpilot": 7878,

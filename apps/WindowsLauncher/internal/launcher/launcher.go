@@ -52,6 +52,7 @@ type Launcher struct {
 	now           func() time.Time
 	healthTimeout time.Duration
 	pollInterval  time.Duration
+	progress      *ProgressWriter
 }
 
 func New(opts Options) *Launcher {
@@ -92,6 +93,7 @@ func New(opts Options) *Launcher {
 		now:           now,
 		healthTimeout: healthTimeout,
 		pollInterval:  pollInterval,
+		progress:      NewProgressWriter(paths.InstallProgressPath, now),
 	}
 }
 
@@ -114,13 +116,16 @@ func (l *Launcher) Install(ctx context.Context, resume bool) error {
 		return fmt.Errorf("installation is waiting on %q; rerun install --resume after completing that step", state.PendingResumeStep)
 	}
 
+	l.updateProgress("manifest", "Loading runtime manifest...", 5, true, "Resolving installer metadata.", 0, 0)
 	manifest, err := l.loadManifest(ctx)
 	if err != nil {
 		return err
 	}
+	l.updateProgress("compatibility", "Checking Windows compatibility...", 8, true, "", 0, 0)
 	if err := l.validateWindowsBuild(ctx, manifest.MinWindowsBuild); err != nil {
 		return err
 	}
+	l.updateProgress("wsl", "Checking Windows Subsystem for Linux...", 12, true, "", 0, 0)
 	if err := l.ensureWSL(ctx, &state); err != nil {
 		_ = SaveState(l.paths.StatePath, state)
 		return err
@@ -135,6 +140,7 @@ func (l *Launcher) Install(ctx context.Context, resume bool) error {
 		if state.InstallPath == "" {
 			state.InstallPath = l.paths.DistroPath(state.DistroName)
 		}
+		l.updateProgress("update", "Updating the installed runtime...", 20, true, "Applying the latest overlay inside WSL.", 0, 0)
 		if err := l.applyOverlay(ctx, state.DistroName, manifest); err != nil {
 			return err
 		}
@@ -154,16 +160,23 @@ func (l *Launcher) Install(ctx context.Context, resume bool) error {
 	if err := SaveState(l.paths.StatePath, state); err != nil {
 		return err
 	}
+	l.updateProgress("installed", "Runtime installed.", 90, false, "LoRA Pilot is ready to start.", 0, 0)
 	return nil
 }
 
-func (l *Launcher) Setup(ctx context.Context, resume, launch bool) error {
+func (l *Launcher) Setup(ctx context.Context, resume, launch bool) (err error) {
 	if err := l.requireWindows(); err != nil {
 		return err
 	}
 	if err := l.paths.Ensure(); err != nil {
 		return fmt.Errorf("prepare local directories: %w", err)
 	}
+	l.updateProgress("preparing", "Preparing LoRA Pilot setup...", 2, true, "First install can take several minutes.", 0, 0)
+	defer func() {
+		if err != nil && !errors.Is(err, ErrSetupResumeScheduled) {
+			l.failProgress(err)
+		}
+	}()
 
 	state, err := LoadState(l.paths.StatePath)
 	if err != nil {
@@ -200,8 +213,10 @@ func (l *Launcher) Setup(ctx context.Context, resume, launch bool) error {
 
 	_ = setupLauncher.clearResumeAfterReboot(ctx)
 	if !launch {
+		setupLauncher.completeProgress("LoRA Pilot is installed and ready to launch.")
 		return nil
 	}
+	setupLauncher.updateProgress("starting", "Starting ControlPilot...", 92, true, "Launching services inside WSL.", 0, 0)
 	return setupLauncher.Start(ctx)
 }
 
@@ -244,9 +259,11 @@ func (l *Launcher) Start(ctx context.Context) error {
 		return fmt.Errorf("required localhost ports already in use: %v", conflicts)
 	}
 
+	l.updateProgress("starting", "Starting ControlPilot...", 95, true, "Booting the runtime services.", 0, 0)
 	if _, err := l.exec.Run(ctx, BuildWSLExecCommand(state.DistroName, "root", "/opt/pilot/wsl-start.sh")); err != nil {
 		return err
 	}
+	l.updateProgress("healthcheck", "Waiting for ControlPilot to respond...", 98, true, "Almost there.", 0, 0)
 	if err := l.waitForHealth(ctx, healthURL, l.healthTimeout); err != nil {
 		return err
 	}
@@ -256,7 +273,11 @@ func (l *Launcher) Start(ctx context.Context) error {
 	if err := SaveState(l.paths.StatePath, state); err != nil {
 		return err
 	}
-	return l.openBrowser(ctx, controlPilotURL)
+	if err := l.openBrowser(ctx, controlPilotURL); err != nil {
+		return err
+	}
+	l.completeProgress("LoRA Pilot is ready. ControlPilot is open.")
+	return nil
 }
 
 func (l *Launcher) Stop(ctx context.Context) error {
@@ -370,9 +391,11 @@ func WriteStatus(w io.Writer, status Status, asJSON bool) error {
 
 func (l *Launcher) importFreshRuntime(ctx context.Context, distroName, installPath string, manifest Manifest) error {
 	artifactPath := filepath.Join(l.paths.DownloadsDir, filepath.Base(manifest.FreshInstall.URL))
-	if err := DownloadFile(ctx, l.httpClient, manifest.FreshInstall.URL, artifactPath); err != nil {
+	_, err := l.ensureCachedArtifact(ctx, manifest.FreshInstall, artifactPath, "download_rootfs", "Downloading Linux runtime...", "Reusing downloaded Linux runtime bundle.", 12, 58)
+	if err != nil {
 		return err
 	}
+	l.updateProgress("verify_rootfs", "Verifying runtime bundle...", 60, true, formatTransferDetail(manifest.FreshInstall.SizeBytes, manifest.FreshInstall.SizeBytes), manifest.FreshInstall.SizeBytes, manifest.FreshInstall.SizeBytes)
 	if err := VerifySHA256File(artifactPath, manifest.FreshInstall.SHA256); err != nil {
 		return err
 	}
@@ -380,14 +403,18 @@ func (l *Launcher) importFreshRuntime(ctx context.Context, distroName, installPa
 	importPath := artifactPath
 	if strings.HasSuffix(strings.ToLower(artifactPath), ".zst") {
 		importPath = strings.TrimSuffix(artifactPath, ".zst")
-		if err := DecompressZstdFile(artifactPath, importPath); err != nil {
+		l.updateProgress("decompress_rootfs", "Preparing Linux runtime archive...", 64, false, "", 0, manifest.FreshInstall.SizeBytes)
+		if err := DecompressZstdFileWithProgress(artifactPath, importPath, func(progress TransferProgress) {
+			l.updateProgress("decompress_rootfs", "Preparing Linux runtime archive...", scaleProgressRange(64, 82, progress, manifest.FreshInstall.SizeBytes), false, formatTransferDetail(progress.BytesDone, progress.BytesTotal), progress.BytesDone, progress.BytesTotal)
+		}); err != nil {
 			return err
 		}
 	}
 	if err := prepareFreshImportPath(installPath); err != nil {
 		return err
 	}
-	_, err := l.exec.Run(ctx, BuildWSLImportCommand(distroName, installPath, importPath))
+	l.updateProgress("import_wsl", "Importing LoRA Pilot into WSL...", 85, true, "Windows is unpacking the runtime.", 0, 0)
+	_, err = l.exec.Run(ctx, BuildWSLImportCommand(distroName, installPath, importPath))
 	if err != nil {
 		_, _ = l.exec.Run(ctx, BuildWSLUnregisterCommand(distroName))
 		_ = os.RemoveAll(installPath)
@@ -409,9 +436,11 @@ func prepareFreshImportPath(installPath string) error {
 
 func (l *Launcher) applyOverlay(ctx context.Context, distroName string, manifest Manifest) error {
 	artifactPath := filepath.Join(l.paths.DownloadsDir, filepath.Base(manifest.UpgradeOverlay.URL))
-	if err := DownloadFile(ctx, l.httpClient, manifest.UpgradeOverlay.URL, artifactPath); err != nil {
+	_, err := l.ensureCachedArtifact(ctx, manifest.UpgradeOverlay, artifactPath, "download_overlay", "Downloading runtime update...", "Reusing downloaded runtime update.", 20, 58)
+	if err != nil {
 		return err
 	}
+	l.updateProgress("verify_overlay", "Verifying runtime update...", 62, true, formatTransferDetail(manifest.UpgradeOverlay.SizeBytes, manifest.UpgradeOverlay.SizeBytes), manifest.UpgradeOverlay.SizeBytes, manifest.UpgradeOverlay.SizeBytes)
 	if err := VerifySHA256File(artifactPath, manifest.UpgradeOverlay.SHA256); err != nil {
 		return err
 	}
@@ -420,6 +449,7 @@ func (l *Launcher) applyOverlay(ctx context.Context, distroName string, manifest
 		return err
 	}
 	_, _ = l.exec.Run(ctx, BuildWSLExecCommand(distroName, "root", "/opt/pilot/wsl-stop.sh || true"))
+	l.updateProgress("apply_overlay", "Applying runtime update in WSL...", 72, true, "Updating immutable runtime files.", 0, 0)
 	command := fmt.Sprintf("/opt/pilot/wsl-apply-update.sh %q %q", wslPath, manifest.RuntimeVersion)
 	_, err = l.exec.Run(ctx, BuildWSLExecCommand(distroName, "root", command))
 	return err
@@ -470,11 +500,13 @@ func (l *Launcher) loadManifestFromFile(path string) (Manifest, error) {
 func (l *Launcher) ensureWSL(ctx context.Context, state *State) error {
 	if _, err := l.exec.Run(ctx, BuildWSLStatusCommand()); err == nil {
 		state.PendingResumeStep = ""
+		l.updateProgress("wsl_ready", "WSL is ready.", 15, false, "", 0, 0)
 		return nil
 	}
 	if _, err := l.exec.Run(ctx, BuildWSLInstallCommand()); err != nil {
 		return fmt.Errorf("WSL is not available and automatic setup failed: %w", err)
 	}
+	l.updateProgress("reboot_required", "Windows restart required to finish WSL setup.", 20, false, "Setup will resume automatically after sign-in.", 0, 0)
 	state.PendingResumeStep = "resume-install"
 	state.LastStatus = "reboot-required"
 	return ErrRebootRequired
@@ -566,4 +598,128 @@ func (l *Launcher) clearResumeAfterReboot(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (l *Launcher) ensureCachedArtifact(ctx context.Context, ref ArtifactRef, destination, phase, downloadMessage, reuseMessage string, startPercent, endPercent int) (bool, error) {
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
+		return false, fmt.Errorf("create downloads dir: %w", err)
+	}
+
+	if info, err := os.Stat(destination); err == nil {
+		if ref.SizeBytes > 0 && info.Size() != ref.SizeBytes {
+			_ = os.Remove(destination)
+		} else {
+			l.updateProgress(phase, "Verifying downloaded runtime bundle...", startPercent, true, formatTransferDetail(info.Size(), maxInt64(ref.SizeBytes, info.Size())), info.Size(), maxInt64(ref.SizeBytes, info.Size()))
+			if err := VerifySHA256File(destination, ref.SHA256); err == nil {
+				total := maxInt64(ref.SizeBytes, info.Size())
+				l.updateProgress(phase, reuseMessage, endPercent, false, formatTransferDetail(total, total), total, total)
+				return true, nil
+			}
+			_ = os.Remove(destination)
+		}
+	} else if !os.IsNotExist(err) {
+		return false, fmt.Errorf("inspect cached artifact: %w", err)
+	}
+
+	l.updateProgress(phase, downloadMessage, startPercent, false, formatTransferDetail(0, ref.SizeBytes), 0, ref.SizeBytes)
+	if err := DownloadFileWithOptions(ctx, l.httpClient, ref.URL, destination, DownloadOptions{
+		ExpectedSize: ref.SizeBytes,
+		OnProgress: func(progress TransferProgress) {
+			total := progress.BytesTotal
+			if total <= 0 {
+				total = ref.SizeBytes
+			}
+			l.updateProgress(
+				phase,
+				downloadMessage,
+				scaleProgressRange(startPercent, endPercent, progress, ref.SizeBytes),
+				false,
+				formatTransferDetail(progress.BytesDone, total),
+				progress.BytesDone,
+				total,
+			)
+		},
+	}); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+func (l *Launcher) updateProgress(phase, message string, percent int, indeterminate bool, detail string, bytesDone, bytesTotal int64) {
+	if l.progress == nil {
+		return
+	}
+	_ = l.progress.Update(phase, message, percent, indeterminate, detail, bytesDone, bytesTotal)
+}
+
+func (l *Launcher) completeProgress(message string) {
+	if l.progress == nil {
+		return
+	}
+	_ = l.progress.Complete(message)
+}
+
+func (l *Launcher) failProgress(err error) {
+	if l.progress == nil {
+		return
+	}
+	_ = l.progress.Fail(err)
+}
+
+func scaleProgressRange(start, end int, progress TransferProgress, fallbackTotal int64) int {
+	if end <= start {
+		return clampProgressPercent(end)
+	}
+	if progress.Percent > 0 {
+		return clampProgressPercent(start + int(float64(end-start)*(progress.Percent/100)))
+	}
+	total := progress.BytesTotal
+	if total <= 0 {
+		total = fallbackTotal
+	}
+	if total <= 0 {
+		return clampProgressPercent(start)
+	}
+	ratio := float64(progress.BytesDone) / float64(total)
+	if ratio < 0 {
+		ratio = 0
+	}
+	if ratio > 1 {
+		ratio = 1
+	}
+	return clampProgressPercent(start + int(float64(end-start)*ratio))
+}
+
+func formatTransferDetail(bytesDone, bytesTotal int64) string {
+	switch {
+	case bytesTotal > 0:
+		return fmt.Sprintf("%s / %s", formatByteSize(bytesDone), formatByteSize(bytesTotal))
+	case bytesDone > 0:
+		return fmt.Sprintf("%s transferred", formatByteSize(bytesDone))
+	default:
+		return ""
+	}
+}
+
+func formatByteSize(value int64) string {
+	if value <= 0 {
+		return "0 B"
+	}
+	const unit = 1024
+	if value < unit {
+		return fmt.Sprintf("%d B", value)
+	}
+	div, exp := int64(unit), 0
+	for n := value / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(value)/float64(div), "KMGTPE"[exp])
+}
+
+func maxInt64(left, right int64) int64 {
+	if left > right {
+		return left
+	}
+	return right
 }

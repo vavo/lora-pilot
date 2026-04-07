@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadManifest(t *testing.T) {
@@ -20,8 +21,8 @@ func TestLoadManifest(t *testing.T) {
 	  "runtime_version": "1.2.3",
 	  "published_at": "2026-03-27T00:00:00Z",
 	  "min_windows_build": 19045,
-	  "fresh_install": {"url": "https://example.invalid/rootfs.tar.zst", "sha256": "abc"},
-	  "upgrade_overlay": {"url": "https://example.invalid/overlay.tar.zst", "sha256": "def"},
+	  "fresh_install": {"url": "https://example.invalid/rootfs.tar.zst", "sha256": "abc", "size_bytes": 123},
+	  "upgrade_overlay": {"url": "https://example.invalid/overlay.tar.zst", "sha256": "def", "size_bytes": 456},
 	  "ports": {"controlpilot": 7878}
 	}`))
 	if err != nil {
@@ -29,6 +30,9 @@ func TestLoadManifest(t *testing.T) {
 	}
 	if manifest.RuntimeVersion != "1.2.3" {
 		t.Fatalf("unexpected runtime version: %s", manifest.RuntimeVersion)
+	}
+	if manifest.FreshInstall.SizeBytes != 123 {
+		t.Fatalf("unexpected fresh install size: %d", manifest.FreshInstall.SizeBytes)
 	}
 }
 
@@ -253,11 +257,72 @@ func TestBuildLauncherSetupCommand(t *testing.T) {
 	t.Parallel()
 
 	commandLine := BuildLauncherSetupCommand(`C:\Program Files\LoRAPilot\LoRAPilotLauncher.exe`, `https://downloads.example.com/windows-runtime-manifest.json`, true, true)
-	if !strings.Contains(commandLine, `setup --resume --launch`) {
+	for _, needle := range []string{
+		`powershell.exe`,
+		`Run-LoRAPilotManagedSetup.ps1`,
+		`-Resume`,
+		`-Launch`,
+		`-LauncherPath`,
+	} {
+		if !strings.Contains(commandLine, needle) {
+			t.Fatalf("missing %q in setup command line: %s", needle, commandLine)
+		}
+	}
+	if strings.Contains(commandLine, `setup --resume --launch`) {
+		t.Fatalf("unexpected direct launcher command line: %s", commandLine)
+	}
+	if !strings.Contains(commandLine, `-ManifestUrl`) {
 		t.Fatalf("unexpected setup command line: %s", commandLine)
 	}
 	if !strings.Contains(commandLine, `"https://downloads.example.com/windows-runtime-manifest.json"`) {
 		t.Fatalf("manifest URL was not quoted: %s", commandLine)
+	}
+}
+
+func TestEnsureCachedArtifactSkipsDownloadWhenExistingFileMatches(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	paths := testPaths(dir)
+	l := New(Options{
+		Paths:      paths,
+		HTTPClient: http.DefaultClient,
+		Now:        time.Now,
+	})
+
+	artifactPath := filepath.Join(paths.DownloadsDir, "rootfs.tar.zst")
+	content := []byte("runtime-bundle")
+	if err := os.MkdirAll(paths.DownloadsDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	if err := os.WriteFile(artifactPath, content, 0o644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+	hash, err := SHA256File(artifactPath)
+	if err != nil {
+		t.Fatalf("SHA256File returned error: %v", err)
+	}
+
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		http.Error(w, "should not be called", http.StatusTeapot)
+	}))
+	defer server.Close()
+
+	reused, err := l.ensureCachedArtifact(context.Background(), ArtifactRef{
+		URL:       server.URL + "/rootfs.tar.zst",
+		SHA256:    hash,
+		SizeBytes: int64(len(content)),
+	}, artifactPath, "download_rootfs", "Downloading Linux runtime...", "Reusing downloaded Linux runtime bundle.", 12, 58)
+	if err != nil {
+		t.Fatalf("ensureCachedArtifact returned error: %v", err)
+	}
+	if !reused {
+		t.Fatalf("expected cached artifact to be reused")
+	}
+	if requests != 0 {
+		t.Fatalf("unexpected download attempts: %d", requests)
 	}
 }
 
@@ -272,4 +337,16 @@ func TestNormalizeCommandOutputStripsUTF16Nulls(t *testing.T) {
 
 var netListen = func(network, address string) (net.Listener, error) {
 	return net.Listen(network, address)
+}
+
+func testPaths(root string) Paths {
+	return Paths{
+		BaseDir:             root,
+		LogsDir:             filepath.Join(root, "logs"),
+		DownloadsDir:        filepath.Join(root, "downloads"),
+		WSLDir:              filepath.Join(root, "wsl"),
+		StatePath:           filepath.Join(root, "state.json"),
+		CachedManifestPath:  filepath.Join(root, "downloads", "windows-runtime-manifest.json"),
+		InstallProgressPath: filepath.Join(root, "install-progress.json"),
+	}
 }

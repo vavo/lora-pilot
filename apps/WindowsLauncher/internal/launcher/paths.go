@@ -6,12 +6,13 @@ import (
 )
 
 type Paths struct {
-	BaseDir            string
-	LogsDir            string
-	DownloadsDir       string
-	WSLDir             string
-	StatePath          string
-	CachedManifestPath string
+	BaseDir             string
+	LogsDir             string
+	DownloadsDir        string
+	WSLDir              string
+	StatePath           string
+	CachedManifestPath  string
+	InstallProgressPath string
 }
 
 func DefaultPaths() Paths {
@@ -21,12 +22,13 @@ func DefaultPaths() Paths {
 	}
 	baseDir := filepath.Join(baseRoot, "LoRAPilot")
 	return Paths{
-		BaseDir:            baseDir,
-		LogsDir:            filepath.Join(baseDir, "logs"),
-		DownloadsDir:       filepath.Join(baseDir, "downloads"),
-		WSLDir:             filepath.Join(baseDir, "wsl"),
-		StatePath:          filepath.Join(baseDir, "state.json"),
-		CachedManifestPath: filepath.Join(baseDir, "downloads", "windows-runtime-manifest.json"),
+		BaseDir:             baseDir,
+		LogsDir:             filepath.Join(baseDir, "logs"),
+		DownloadsDir:        filepath.Join(baseDir, "downloads"),
+		WSLDir:              filepath.Join(baseDir, "wsl"),
+		StatePath:           filepath.Join(baseDir, "state.json"),
+		CachedManifestPath:  filepath.Join(baseDir, "downloads", "windows-runtime-manifest.json"),
+		InstallProgressPath: filepath.Join(baseDir, "install-progress.json"),
 	}
 }
 

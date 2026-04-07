@@ -11,8 +11,9 @@ import (
 )
 
 type ArtifactRef struct {
-	URL    string `json:"url"`
-	SHA256 string `json:"sha256"`
+	URL       string `json:"url"`
+	SHA256    string `json:"sha256"`
+	SizeBytes int64  `json:"size_bytes,omitempty"`
 }
 
 type Ports struct {

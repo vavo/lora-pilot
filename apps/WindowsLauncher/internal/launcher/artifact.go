@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"bufio"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/klauspost/compress/zstd"
@@ -23,7 +25,22 @@ var currentGOOS = runtime.GOOS
 var execLookPath = exec.LookPath
 var execCommandContext = exec.CommandContext
 
+type TransferProgress struct {
+	BytesDone  int64
+	BytesTotal int64
+	Percent    float64
+}
+
+type DownloadOptions struct {
+	ExpectedSize int64
+	OnProgress   func(TransferProgress)
+}
+
 func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destination string) error {
+	return DownloadFileWithOptions(ctx, client, sourceURL, destination, DownloadOptions{})
+}
+
+func DownloadFileWithOptions(ctx context.Context, client *http.Client, sourceURL, destination string, opts DownloadOptions) error {
 	if sourceURL == "" {
 		return fmt.Errorf("download url is empty")
 	}
@@ -35,11 +52,11 @@ func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destinati
 	}
 
 	if localPath, ok := resolveLocalPath(sourceURL); ok {
-		return copyFile(localPath, destination)
+		return copyFile(localPath, destination, opts)
 	}
 
 	if shouldUseCurlDownloader(sourceURL) {
-		if err := downloadWithCurl(ctx, sourceURL, destination); err == nil {
+		if err := downloadWithCurl(ctx, sourceURL, destination, opts); err == nil {
 			return nil
 		}
 	}
@@ -67,9 +84,15 @@ func DownloadFile(ctx context.Context, client *http.Client, sourceURL, destinati
 	}
 	defer out.Close()
 
-	if _, err := io.Copy(out, resp.Body); err != nil {
+	total := resp.ContentLength
+	if total <= 0 {
+		total = opts.ExpectedSize
+	}
+	progress := newProgressWriter(total, opts.OnProgress)
+	if _, err := io.Copy(out, io.TeeReader(resp.Body, progress)); err != nil {
 		return fmt.Errorf("write destination: %w", err)
 	}
+	progress.complete()
 	return nil
 }
 
@@ -90,7 +113,7 @@ func shouldUseCurlDownloader(sourceURL string) bool {
 
 func buildCurlDownloadArgs(sourceURL, destination string) []string {
 	return []string{
-		"--silent",
+		"--progress-bar",
 		"--show-error",
 		"--fail",
 		"--location",
@@ -109,16 +132,45 @@ func buildCurlDownloadArgs(sourceURL, destination string) []string {
 	}
 }
 
-func downloadWithCurl(ctx context.Context, sourceURL, destination string) error {
+func downloadWithCurl(ctx context.Context, sourceURL, destination string, opts DownloadOptions) error {
 	cmd := execCommandContext(ctx, "curl.exe", buildCurlDownloadArgs(sourceURL, destination)...)
-	output, err := cmd.CombinedOutput()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		message := strings.TrimSpace(string(output))
+		return fmt.Errorf("curl stdout pipe %s: %w", sourceURL, err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("curl stderr pipe %s: %w", sourceURL, err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start curl download %s: %w", sourceURL, err)
+	}
+
+	go func() {
+		_, _ = io.Copy(io.Discard, stdout)
+	}()
+
+	var stderrBuffer strings.Builder
+	progressDone := make(chan struct{})
+	go func() {
+		defer close(progressDone)
+		parseCurlProgress(stderr, opts, &stderrBuffer)
+	}()
+
+	err = cmd.Wait()
+	<-progressDone
+	if err != nil {
+		message := strings.TrimSpace(stderrBuffer.String())
 		if message == "" {
 			message = err.Error()
 		}
 		return fmt.Errorf("curl download %s: %s", sourceURL, message)
 	}
+	reportProgress(opts.OnProgress, TransferProgress{
+		BytesDone:  opts.ExpectedSize,
+		BytesTotal: opts.ExpectedSize,
+		Percent:    100,
+	})
 	return nil
 }
 
@@ -148,13 +200,28 @@ func SHA256File(path string) (string, error) {
 }
 
 func DecompressZstdFile(sourcePath, destinationPath string) error {
+	return DecompressZstdFileWithProgress(sourcePath, destinationPath, nil)
+}
+
+func DecompressZstdFileWithProgress(sourcePath, destinationPath string, onProgress func(TransferProgress)) error {
 	source, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("open zstd source: %w", err)
 	}
 	defer source.Close()
 
-	reader, err := zstd.NewReader(source)
+	info, err := source.Stat()
+	if err != nil {
+		return fmt.Errorf("stat zstd source: %w", err)
+	}
+
+	progressSource := &countingReader{
+		reader:     source,
+		total:      info.Size(),
+		onProgress: onProgress,
+	}
+
+	reader, err := zstd.NewReader(progressSource)
 	if err != nil {
 		return fmt.Errorf("create zstd reader: %w", err)
 	}
@@ -172,6 +239,7 @@ func DecompressZstdFile(sourcePath, destinationPath string) error {
 	if _, err := io.Copy(destination, reader); err != nil {
 		return fmt.Errorf("decompress zstd: %w", err)
 	}
+	progressSource.complete()
 	return nil
 }
 
@@ -195,12 +263,17 @@ func resolveLocalPath(raw string) (string, bool) {
 	return "", false
 }
 
-func copyFile(sourcePath, destinationPath string) error {
+func copyFile(sourcePath, destinationPath string, opts DownloadOptions) error {
 	source, err := os.Open(sourcePath)
 	if err != nil {
 		return fmt.Errorf("open source file: %w", err)
 	}
 	defer source.Close()
+
+	info, err := source.Stat()
+	if err != nil {
+		return fmt.Errorf("stat source file: %w", err)
+	}
 
 	destination, err := os.Create(destinationPath)
 	if err != nil {
@@ -208,8 +281,151 @@ func copyFile(sourcePath, destinationPath string) error {
 	}
 	defer destination.Close()
 
-	if _, err := io.Copy(destination, source); err != nil {
+	total := info.Size()
+	if total <= 0 {
+		total = opts.ExpectedSize
+	}
+	progress := newProgressWriter(total, opts.OnProgress)
+	if _, err := io.Copy(destination, io.TeeReader(source, progress)); err != nil {
 		return fmt.Errorf("copy local file: %w", err)
 	}
+	progress.complete()
 	return nil
+}
+
+type progressWriter struct {
+	total       int64
+	written     int64
+	lastPercent int
+	onProgress  func(TransferProgress)
+}
+
+func newProgressWriter(total int64, onProgress func(TransferProgress)) *progressWriter {
+	return &progressWriter{total: total, lastPercent: -1, onProgress: onProgress}
+}
+
+func (w *progressWriter) Write(p []byte) (int, error) {
+	n := len(p)
+	w.written += int64(n)
+	reportTransferProgress(w.onProgress, w.written, w.total, &w.lastPercent)
+	return n, nil
+}
+
+func (w *progressWriter) complete() {
+	reportProgress(w.onProgress, TransferProgress{
+		BytesDone:  w.total,
+		BytesTotal: w.total,
+		Percent:    100,
+	})
+}
+
+type countingReader struct {
+	reader      io.Reader
+	total       int64
+	read        int64
+	lastPercent int
+	onProgress  func(TransferProgress)
+}
+
+func (r *countingReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	if n > 0 {
+		r.read += int64(n)
+		reportTransferProgress(r.onProgress, r.read, r.total, &r.lastPercent)
+	}
+	return n, err
+}
+
+func (r *countingReader) complete() {
+	reportProgress(r.onProgress, TransferProgress{
+		BytesDone:  r.total,
+		BytesTotal: r.total,
+		Percent:    100,
+	})
+}
+
+func reportTransferProgress(onProgress func(TransferProgress), bytesDone, bytesTotal int64, lastPercent *int) {
+	if onProgress == nil || bytesTotal <= 0 {
+		return
+	}
+	percent := int(float64(bytesDone) * 100 / float64(bytesTotal))
+	if percent == *lastPercent {
+		return
+	}
+	*lastPercent = percent
+	reportProgress(onProgress, TransferProgress{
+		BytesDone:  bytesDone,
+		BytesTotal: bytesTotal,
+		Percent:    float64(percent),
+	})
+}
+
+func reportProgress(onProgress func(TransferProgress), progress TransferProgress) {
+	if onProgress == nil {
+		return
+	}
+	onProgress(progress)
+}
+
+func parseCurlProgress(stderr io.Reader, opts DownloadOptions, sink *strings.Builder) {
+	scanner := bufio.NewScanner(stderr)
+	scanner.Buffer(make([]byte, 0, 1024), 128*1024)
+	scanner.Split(splitOnCRLF)
+	lastPercent := -1.0
+	for scanner.Scan() {
+		line := scanner.Text()
+		if sink != nil {
+			if sink.Len() > 0 {
+				sink.WriteByte('\n')
+			}
+			sink.WriteString(line)
+		}
+		percent, ok := extractCurlPercent(line)
+		if !ok || percent == lastPercent {
+			continue
+		}
+		lastPercent = percent
+		bytesTotal := opts.ExpectedSize
+		bytesDone := int64(0)
+		if bytesTotal > 0 {
+			bytesDone = int64(float64(bytesTotal) * (float64(percent) / 100))
+		}
+		reportProgress(opts.OnProgress, TransferProgress{
+			BytesDone:  bytesDone,
+			BytesTotal: bytesTotal,
+			Percent:    percent,
+		})
+	}
+}
+
+func splitOnCRLF(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	for i, b := range data {
+		if b == '\n' || b == '\r' {
+			if i == 0 {
+				return 1, nil, nil
+			}
+			return i + 1, data[:i], nil
+		}
+	}
+	if atEOF && len(data) > 0 {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
+func extractCurlPercent(line string) (float64, bool) {
+	line = strings.TrimSpace(line)
+	parts := strings.Fields(line)
+	for i := len(parts) - 1; i >= 0; i-- {
+		token := strings.TrimSuffix(parts[i], "%")
+		if token == parts[i] {
+			continue
+		}
+		value, err := strconv.ParseFloat(token, 64)
+		if err != nil {
+			continue
+		}
+		return value, true
+	}
+	return 0, false
 }

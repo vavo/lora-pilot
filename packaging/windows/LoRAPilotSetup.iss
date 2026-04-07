@@ -13,7 +13,7 @@
 
 #define MyAppName "LoRA Pilot"
 #define MyAppPublisher "vavo"
-#define MyAppURL "https://github.com/vavo/lora-pilot"
+#define MyAppURL "https://lorapilot.com"
 
 [Setup]
 AppId={{3A0C458A-955B-471F-95A1-8C9AF5A9F08B}
@@ -32,6 +32,8 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
+WizardImageFile=assets\lorapilot-wizard-image.png
+WizardSmallImageFile=assets\lorapilot-wizard-small.png
 DisableProgramGroupPage=yes
 ChangesEnvironment=yes
 UninstallDisplayIcon={app}\LoRAPilotLauncher.exe
@@ -41,6 +43,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "{#LauncherSource}"; DestDir: "{app}"; DestName: "LoRAPilotLauncher.exe"; Flags: ignoreversion
+Source: "Run-LoRAPilotManagedSetup.ps1"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\LoRA Pilot"; Filename: "{app}\LoRAPilotLauncher.exe"; Parameters: "start"; WorkingDir: "{app}"
@@ -58,10 +61,39 @@ const
 
 var
   ManagedInstallNeedsRestart: Boolean;
+  WelcomeWebsiteLink: TNewStaticText;
+  FinishedWebsiteLink: TNewStaticText;
 
 function NeedRestart(): Boolean;
 begin
   Result := ManagedInstallNeedsRestart;
+end;
+
+procedure OpenWebsite(Sender: TObject);
+var
+  ResultCode: Integer;
+begin
+  ShellExec('open', '{#MyAppURL}', '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
+end;
+
+procedure CreateWebsiteLink(var LinkControl: TNewStaticText; ParentControl: TWinControl; BottomPadding: Integer);
+begin
+  LinkControl := TNewStaticText.Create(WizardForm);
+  LinkControl.Parent := ParentControl;
+  LinkControl.Caption := 'Visit lorapilot.com';
+  LinkControl.Cursor := crHand;
+  LinkControl.Font.Color := clBlue;
+  LinkControl.Font.Style := [fsUnderline];
+  LinkControl.AutoSize := True;
+  LinkControl.Left := ScaleX(0);
+  LinkControl.Top := ParentControl.Height - LinkControl.Height - BottomPadding;
+  LinkControl.OnClick := @OpenWebsite;
+end;
+
+procedure InitializeWizard();
+begin
+  CreateWebsiteLink(WelcomeWebsiteLink, WizardForm.WelcomePage.Surface, ScaleY(8));
+  CreateWebsiteLink(FinishedWebsiteLink, WizardForm.FinishedPage.Surface, ScaleY(12));
 end;
 
 procedure RunManagedInstall();
@@ -69,13 +101,27 @@ var
   ResultCode: Integer;
   ExecOk: Boolean;
   LauncherPath: string;
+  ProgressScriptPath: string;
+  PowerShellPath: string;
   Parameters: string;
 begin
   LauncherPath := ExpandConstant('{app}\LoRAPilotLauncher.exe');
-  Parameters := 'setup --launch --manifest-url "{#ManifestUrl}"';
-  WizardForm.StatusLabel.Caption := 'Downloading and preparing the LoRA Pilot runtime...';
+  ProgressScriptPath := ExpandConstant('{app}\Run-LoRAPilotManagedSetup.ps1');
+  PowerShellPath := ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe');
+  Parameters := '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -STA ' +
+    '-WindowStyle Hidden ' +
+    '-File "' + ProgressScriptPath + '" ' +
+    '-LauncherPath "' + LauncherPath + '" ' +
+    '-ManifestUrl "{#ManifestUrl}" ' +
+    '-Launch';
+  WizardForm.StatusLabel.Caption := 'Preparing the LoRA Pilot runtime...';
 
-  ExecOk := Exec(LauncherPath, Parameters, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  WizardForm.Hide;
+  try
+    ExecOk := Exec(PowerShellPath, Parameters, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  finally
+    WizardForm.Show;
+  end;
   if not ExecOk then begin
     SuppressibleMsgBox(
       'LoRA Pilot could not start its managed runtime setup.' + #13#10 + #13#10 +
