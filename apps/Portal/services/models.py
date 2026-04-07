@@ -209,6 +209,27 @@ def parse_manifest(
     return entries
 
 
+def manifest_line_for_name(
+    name: str,
+    manifest_path: Path,
+    default_manifest_path: Path,
+    models_dir: Path,
+    config_dir: Path,
+) -> str:
+    ensure_manifest(manifest_path, default_manifest_path, models_dir, config_dir)
+    if not manifest_path.exists():
+        raise KeyError("Unknown model")
+    with manifest_path.open() as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("|")
+            if parts and parts[0] == name:
+                return line
+    raise KeyError("Unknown model")
+
+
 def delete_model(name: str, manifest_path: Path, models_dir: Path) -> int:
     line = None
     with manifest_path.open() as f:
