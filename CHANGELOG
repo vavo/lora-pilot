@@ -1,3 +1,14 @@
+v2.5-preview (April 2026)
+
+- Added preview Windows installer (`LoRAPilotSetup.exe`) using WSL2 instead of Docker Desktop; download from GitHub releases and run as Administrator for a managed `LoRAPilot` WSL distro with automatic runtime setup.
+- New Go-based Windows launcher (`LoRAPilotLauncher.exe`) with commands: `install`, `start`, `stop`, `status`, `open`, `uninstall`.
+- Runtime delivered as versioned WSL rootfs and overlay bundles; fresh installs import the full rootfs, upgrades apply overlay deltas.
+- Optional Azure Artifact Signing integration for Windows code signing (shows real publisher instead of unsigned-app warnings).
+- Added GitHub Actions workflows for Windows runtime artifact builds, installer compilation, and E2E testing on self-hosted Windows runners.
+- Production runtime bundles hosted on Cloudflare R2 with manifest and checksums attached to GitHub releases.
+- Added `/healthz` endpoint to ControlPilot for launcher health checks and startup coordination.
+- Updated Windows installation docs (`docs/WINDOWS_INSTALLATION.md`, `docs/deployment/windows-installer.md`) for WSL-based approach; added code signing and release template guides.
+
 v2.4 (March 27th 2026)
 
 - Added a real `Settings` section in ControlPilot with optional password protection, persisted sessions, and centralized management for HF, Copilot, MediaPilot, and Jupyter secrets plus shutdown and UI defaults.
