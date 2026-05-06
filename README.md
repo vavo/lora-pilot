@@ -236,7 +236,7 @@ See full details in [`CHANGELOG`](CHANGELOG).
 
 ### Training + inference stack updates
 - Added AI Toolkit as a first-class trainer with persistent DB/config under `/workspace`.
-- Upgraded InvokeAI to `6.11.1`.
+- Upgraded the Blackwell build baseline to CUDA 12.8 + PyTorch 2.8, refreshed Comfy/Kohya/Invoke/AI Toolkit/Diffusion Pipe pins, and moved TagPilot LLM provider keys server-side.
 
 ---
 

@@ -18,10 +18,10 @@ if [ -f /workspace/config/secrets.env ]; then
 fi
 
 export TOOLKIT_ROOT=/opt/pilot/repos/ai-toolkit
-export PATH="/opt/venvs/invoke/bin:$PATH"
-export PYTHON=/opt/venvs/invoke/bin/python
-export PIP=/opt/venvs/invoke/bin/pip
-export VIRTUAL_ENV=/opt/venvs/invoke
+export PATH="/opt/venvs/ai-toolkit/bin:$PATH"
+export PYTHON=/opt/venvs/ai-toolkit/bin/python
+export PIP=/opt/venvs/ai-toolkit/bin/pip
+export VIRTUAL_ENV=/opt/venvs/ai-toolkit
 export AI_TOOLKIT_DB_PATH="${AI_TOOLKIT_DB_PATH:-/workspace/config/ai-toolkit/aitk_db.db}"
 
 mkdir -p "$(dirname "$AI_TOOLKIT_DB_PATH")"

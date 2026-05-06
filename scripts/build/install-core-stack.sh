@@ -8,6 +8,7 @@ set -euo pipefail
 : "${TORCHAUDIO_VERSION:?TORCHAUDIO_VERSION is required}"
 : "${TORCH_INDEX_URL:?TORCH_INDEX_URL is required}"
 : "${XFORMERS_VERSION:?XFORMERS_VERSION is required}"
+: "${BITSANDBYTES_VERSION:?BITSANDBYTES_VERSION is required}"
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
@@ -21,8 +22,8 @@ if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
 
   pip_install_in_venv /opt/venvs/core \
     -c /opt/pilot/config/core-constraints.txt \
-    "xformers>=${XFORMERS_VERSION}" \
-    bitsandbytes==0.46.0 \
+    "xformers==${XFORMERS_VERSION}" \
+    "bitsandbytes==${BITSANDBYTES_VERSION}" \
     toml \
     accelerate \
     "diffusers==${CORE_DIFFUSERS_VERSION}" \

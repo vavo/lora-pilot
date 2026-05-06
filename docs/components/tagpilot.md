@@ -56,7 +56,8 @@ Configurable in TagPilot settings:
 - `WD1.4` (via Replicate)
 
 Notes:
-- API keys and provider settings are stored in browser `localStorage`.
+- Gemini, Grok, and OpenAI keys are stored server-side in `/workspace/config/secrets.env`.
+- TagPilot sends Gemini/Grok/OpenAI generation through ControlPilot instead of calling provider APIs from the browser.
 - WD1.4 requires a Replicate API key.
 - Batch operations support modes: `ignore`, `append`, `overwrite`.
 
@@ -87,13 +88,17 @@ Additional global navigation/edit shortcuts beyond the above are **Not found in 
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/tagpilot/load` | `GET` | Load dataset files into TagPilot |
+| `/api/tagpilot/providers` | `GET` | Return Gemini/Grok/OpenAI configuration status without exposing keys |
+| `/api/tagpilot/providers/{provider}/key` | `POST` | Save a Gemini/Grok/OpenAI key to server-side secrets |
+| `/api/tagpilot/generate` | `POST` | Generate tags/captions from an uploaded image through the selected LLM provider |
 | `/api/tagpilot/save` | `POST` | Save ZIP and extract to dataset dir |
 | `/api/tagpilot/save-item` | `POST` | Incremental save (used by UI) |
 | `/api/datasets` | `GET` | Dataset list used by ControlPilot/TrainPilot |
 
 ## 🔐 Security Notes
 
-- Provider API keys are browser-side values (`localStorage`), not server secrets.
+- Gemini, Grok, and OpenAI keys are server-side values in `/workspace/config/secrets.env`.
+- WD1.4 still uses a browser-session Replicate key.
 - Do not run TagPilot in shared browsers with persistent sessions if that is a problem for your workflow.
 
 ##  Troubleshooting
@@ -126,12 +131,10 @@ docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-05-06_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
-

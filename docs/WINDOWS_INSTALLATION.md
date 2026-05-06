@@ -2,14 +2,14 @@
 
 This guide will help Windows users install and run LoRA Pilot using Docker Desktop. LoRA Pilot is a comprehensive AI platform that includes ComfyUI, Kohya SS, JupyterLab, VS Code, and more in a single Docker container.
 
-## ystem Requirements
+## System Requirements
 
 ### Hardware Requirements
 - **RAM**: 16GB minimum (32GB+ recommended for training)
 - **Storage**: 100GB+ free disk space for models and datasets
 - **GPU**: NVIDIA GPU with 8GB+ VRAM (optional but recommended for training)
-  - Supported: RTX 20xx, 30xx, 40xx series
-  - CUDA 12.4 compatible drivers required
+  - Supported: RTX 20xx, 30xx, 40xx, 50xx series
+  - CUDA 12.8 compatible drivers required
 
 ### Software Requirements
 - **Windows 10/11** (64-bit)
@@ -51,7 +51,7 @@ This guide will help Windows users install and run LoRA Pilot using Docker Deskt
 
 3. **Test NVIDIA Docker Support**
    ```powershell
-   docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
+   docker run --rm --gpus all nvidia/cuda:12.8.1-runtime-ubuntu22.04 nvidia-smi
    ```
 
 ### Step 3: Download LoRA Pilot
@@ -346,5 +346,4 @@ If you encounter issues:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

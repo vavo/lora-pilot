@@ -9,6 +9,10 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.4.2` | CUDA 12.8/PyTorch 2.8 Blackwell baseline, refreshed Comfy/Kohya/Invoke/AI Toolkit/Diffusion Pipe pins, server-side TagPilot provider APIs |
+| `v2.4.1` | CodeQL hardening, Dpipe Gradio retirement, core CUDA 12.8 stack preparation |
+| `v2.4` | ControlPilot settings/security, embedded app layout cleanup, TrainPilot/Diffusion Pipe improvements, extracted Docker build scripts |
+| `v2.3` | Pinned Comfy/Kohya/Diffusion Pipe/build dependency refresh and InvokeAI `6.11.1` baseline |
 | `v2.2` | MediaPilot embed under `/mediapilot`, service update endpoints/jobs, TagPilot incremental save endpoint, InvokeAI `INVOKEAI_VERSION` pin update |
 | `v2.0` | AI Toolkit integration, ControlPilot redesign/refactor, Copilot sidecar integration |
 | `Version 1.99` | ComfyUI-Downloader, TrainPilot progress/log fixes, Docs markdown rendering + changelog in Docs |
@@ -36,12 +40,11 @@ When adding a new release:
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-05-06_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

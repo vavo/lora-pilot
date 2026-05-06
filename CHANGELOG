@@ -1,3 +1,11 @@
+v2.4.2 (May 6th 2026)
+
+- Upgraded the Blackwell-focused build baseline to CUDA `12.8.1` with core `torch==2.8.0`, `torchvision==0.23.0`, `torchaudio==2.8.0`, `xformers==0.0.32.post2`, and `bitsandbytes==0.49.2`.
+- Refreshed bundled service refs/pins: ComfyUI `v0.20.2`, ComfyUI-Manager `4.2.1`, Kohya `v25.2.1`, InvokeAI `6.12.0`, AI Toolkit `6bb8acb`, and Diffusion Pipe `535bc58`.
+- Split AI Toolkit into its own `/opt/venvs/ai-toolkit` environment so its newer Transformers/Diffusers stack no longer fights InvokeAI. Tiny mercy, big payoff.
+- Moved TagPilot Gemini/Grok/OpenAI generation through ControlPilot backend endpoints and persisted provider keys in `/workspace/config/secrets.env` instead of browser-side storage.
+- Added TagPilot provider APIs: `GET /api/tagpilot/providers`, `POST /api/tagpilot/providers/{provider}/key`, and `POST /api/tagpilot/generate`.
+
 v2.4.1 (April 6th 2026)
 
 - Cleared the GitHub CodeQL/code-scanning findings by hardening ControlPilot, MediaPilot, Portal JS, and the Copilot sidecar around path handling, process launch inputs, secret storage, exception exposure, and client-side URL/DOM handling.

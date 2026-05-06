@@ -14,6 +14,7 @@ fi
 : "${TORCHAUDIO_VERSION:?TORCHAUDIO_VERSION is required}"
 : "${TORCH_INDEX_URL:?TORCH_INDEX_URL is required}"
 : "${XFORMERS_VERSION:?XFORMERS_VERSION is required}"
+: "${BITSANDBYTES_VERSION:?BITSANDBYTES_VERSION is required}"
 : "${DIFFPIPE_DIFFUSERS_VERSION:?DIFFPIPE_DIFFUSERS_VERSION is required}"
 : "${DIFFPIPE_TRANSFORMERS_VERSION:?DIFFPIPE_TRANSFORMERS_VERSION is required}"
 : "${INVOKE_ACCELERATE_VERSION:?INVOKE_ACCELERATE_VERSION is required}"
@@ -32,8 +33,8 @@ pip_install_in_venv /opt/venvs/diffpipe \
   --index-url ${TORCH_INDEX_URL}
 pip_install_in_venv /opt/venvs/diffpipe \
   -c /opt/pilot/config/diffpipe-constraints.txt \
-  "xformers>=${XFORMERS_VERSION}" \
-  bitsandbytes==0.46.0 \
+  "xformers==${XFORMERS_VERSION}" \
+  "bitsandbytes==${BITSANDBYTES_VERSION}" \
   "diffusers==${DIFFPIPE_DIFFUSERS_VERSION}" \
   "transformers==${DIFFPIPE_TRANSFORMERS_VERSION}" \
   "accelerate==${INVOKE_ACCELERATE_VERSION}" \

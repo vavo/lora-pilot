@@ -8,13 +8,14 @@ mkdir -p "${config_dir}"
 : "${TORCHVISION_VERSION:?TORCHVISION_VERSION is required}"
 : "${TORCHAUDIO_VERSION:?TORCHAUDIO_VERSION is required}"
 : "${XFORMERS_VERSION:?XFORMERS_VERSION is required}"
+: "${BITSANDBYTES_VERSION:?BITSANDBYTES_VERSION is required}"
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${INVOKE_TORCH_VERSION:?INVOKE_TORCH_VERSION is required}"
 : "${INVOKE_TORCHVISION_VERSION:?INVOKE_TORCHVISION_VERSION is required}"
 : "${INVOKE_TORCHAUDIO_VERSION:?INVOKE_TORCHAUDIO_VERSION is required}"
-: "${AI_TOOLKIT_DIFFUSERS_VERSION:?AI_TOOLKIT_DIFFUSERS_VERSION is required}"
+: "${INVOKE_DIFFUSERS_VERSION:?INVOKE_DIFFUSERS_VERSION is required}"
 : "${INVOKE_TRANSFORMERS_VERSION:?INVOKE_TRANSFORMERS_VERSION is required}"
 : "${INVOKE_ACCELERATE_VERSION:?INVOKE_ACCELERATE_VERSION is required}"
 : "${INVOKE_HF_HUB_VERSION:?INVOKE_HF_HUB_VERSION is required}"
@@ -25,9 +26,9 @@ cat > "${config_dir}/core-constraints.txt" <<EOF
 torch==${TORCH_VERSION}
 torchvision==${TORCHVISION_VERSION}
 torchaudio==${TORCHAUDIO_VERSION}
-xformers>=${XFORMERS_VERSION}
+xformers==${XFORMERS_VERSION}
 triton>=3.0.0,<4
-bitsandbytes==0.46.0
+bitsandbytes==${BITSANDBYTES_VERSION}
 numpy<2
 pillow<12
 huggingface-hub<1.0
@@ -42,7 +43,7 @@ torchvision==${INVOKE_TORCHVISION_VERSION}
 torchaudio==${INVOKE_TORCHAUDIO_VERSION}
 numpy<2
 pillow<11
-diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}
+diffusers==${INVOKE_DIFFUSERS_VERSION}
 transformers==${INVOKE_TRANSFORMERS_VERSION}
 accelerate==${INVOKE_ACCELERATE_VERSION}
 huggingface-hub==${INVOKE_HF_HUB_VERSION}
@@ -53,8 +54,8 @@ cat > "${config_dir}/diffpipe-constraints.txt" <<EOF
 torch==${TORCH_VERSION}
 torchvision==${TORCHVISION_VERSION}
 torchaudio==${TORCHAUDIO_VERSION}
-xformers>=${XFORMERS_VERSION}
-bitsandbytes==0.46.0
+xformers==${XFORMERS_VERSION}
+bitsandbytes==${BITSANDBYTES_VERSION}
 numpy<2
 pillow<12
 huggingface-hub<1.0

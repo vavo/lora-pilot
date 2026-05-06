@@ -99,12 +99,11 @@ Everything is orchestrated by supervisord and persists to `/workspace`, ensuring
 ##  Contributing to Documentation
 
 Found an error or want to improve the documentation? Please see the [Contributing Guide](development/contributing.md) for guidelines on how to submit documentation updates.  
-*Documentation version: 2.0*
+*Documentation version: 2.1*
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

@@ -8,14 +8,12 @@ if [[ "${INSTALL_AI_TOOLKIT:-1}" != "1" ]]; then
   exit 0
 fi
 
-if [[ "${INSTALL_INVOKE:-1}" != "1" ]]; then
-  echo "Skipping AI Toolkit install because InvokeAI venv is disabled"
-  exit 0
-fi
-
 : "${AI_TOOLKIT_REF:?AI_TOOLKIT_REF is required}"
 : "${AI_TOOLKIT_DIFFUSERS_VERSION:?AI_TOOLKIT_DIFFUSERS_VERSION is required}"
-: "${PEFT_VERSION:?PEFT_VERSION is required}"
+: "${TORCH_VERSION:?TORCH_VERSION is required}"
+: "${TORCHVISION_VERSION:?TORCHVISION_VERSION is required}"
+: "${TORCHAUDIO_VERSION:?TORCHAUDIO_VERSION is required}"
+: "${TORCH_INDEX_URL:?TORCH_INDEX_URL is required}"
 : "${BUILDPLATFORM:=}"
 : "${TARGETPLATFORM:=}"
 
@@ -31,35 +29,28 @@ ln -s /workspace/datasets /opt/pilot/repos/ai-toolkit/datasets
 ln -s /workspace/outputs/ai-toolkit /opt/pilot/repos/ai-toolkit/output
 ln -s /workspace/models /opt/pilot/repos/ai-toolkit/models
 
-grep -v -E '^(torch|torchvision|torchaudio|numpy|pillow|Pillow|diffusers|gradio|gradio-client)([<>= ]|$)|diffusers' \
-  /opt/pilot/repos/ai-toolkit/requirements.txt > /tmp/ai-toolkit-req.txt
-pip_install_unconstrained_in_venv /opt/venvs/invoke \
-  -c /opt/pilot/config/invoke-constraints.txt \
-  -r /tmp/ai-toolkit-req.txt
-rm -f /tmp/ai-toolkit-req.txt
+create_venv /opt/venvs/ai-toolkit "setuptools<81.0" wheel
+pip_install_unconstrained_in_venv /opt/venvs/ai-toolkit \
+  --index-url "${TORCH_INDEX_URL}" \
+  "torch==${TORCH_VERSION}" \
+  "torchvision==${TORCHVISION_VERSION}" \
+  "torchaudio==${TORCHAUDIO_VERSION}"
 
-pip_install_unconstrained_in_venv /opt/venvs/invoke \
-  -c /opt/pilot/config/invoke-constraints.txt \
-  "diffusers==${AI_TOOLKIT_DIFFUSERS_VERSION}" \
-  "numpy<2" \
-  "pillow<11" \
-  oyaml \
-  "opencv-python-headless<4.13" \
-  "albucore==0.0.16" \
-  "albumentations==1.4.15" \
-  lpips \
-  "optimum[quanto]" \
-  "torchao==0.10.0" \
-  "lycoris-lora==1.8.3" \
-  "peft==${PEFT_VERSION}" \
-  timm \
-  open-clip-torch \
-  k-diffusion \
-  "controlnet_aux==0.0.10"
+if [[ "${AI_TOOLKIT_DIFFUSERS_VERSION}" != "git" ]]; then
+  echo "AI Toolkit latest expects upstream git-pinned Diffusers; got AI_TOOLKIT_DIFFUSERS_VERSION=${AI_TOOLKIT_DIFFUSERS_VERSION}" >&2
+  exit 1
+fi
 
-/opt/venvs/invoke/bin/python -c 'import peft; import timm; import open_clip; import lycoris; import lycoris.kohya; import torchao; import optimum.quanto'
+pip_install_unconstrained_in_venv /opt/venvs/ai-toolkit \
+  -r /opt/pilot/repos/ai-toolkit/requirements.txt
+
+/opt/venvs/ai-toolkit/bin/python -c 'import peft; import timm; import open_clip; import lycoris; import lycoris.kohya; import torchao; import optimum.quanto'
 
 if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]; then
+  export PATH="/opt/venvs/ai-toolkit/bin:${PATH}"
+  export PYTHON=/opt/venvs/ai-toolkit/bin/python
+  export PIP=/opt/venvs/ai-toolkit/bin/pip
+  export VIRTUAL_ENV=/opt/venvs/ai-toolkit
   cd /opt/pilot/repos/ai-toolkit/ui
   npm install
   DATABASE_URL=file:/tmp/aitk_db.db npx prisma generate

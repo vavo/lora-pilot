@@ -39,8 +39,8 @@ This guide outlines the hardware and software requirements for running LoRA Pilo
 - **RTX 6000 Ada (48GB)**: Professional workstation choice
 
 ### CUDA Requirements
-- **CUDA Version**: 12.4+ (included in Docker image)
-- **Driver Version**: 525.60.13+ (Linux), 527.41+ (Windows)
+- **CUDA Version**: 12.8 (included in Docker image)
+- **Driver Version**: CUDA 12.8-compatible current NVIDIA driver
 - **Compute Capability**: 7.0+ (Turing architecture or newer)
 
 ## 🖥️ Software Requirements
@@ -168,5 +168,4 @@ LoRA Pilot uses the following ports by default:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

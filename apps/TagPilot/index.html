@@ -76,7 +76,7 @@
                 <option value="deepdanbooru">DeepDanbooru</option>
                 <option value="wd14">WD1.4 Tagger</option>
             </select>
-            <label class="block mb-2 api-key-label">API Key for chosen model:</label>
+            <label class="block mb-2 api-key-label">API key for chosen model:</label>
             <input type="password" id="apiKeyInput" class="w-full bg-gray-700 p-2 rounded mb-4">
             <label class="block mb-2 dd-threshold-label" style="display:none;">DeepDanbooru Threshold (0-1):</label>
             <input type="number" id="ddThreshold" min="0" max="1" step="0.05" value="0.5" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
@@ -399,9 +399,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const cropSaveButton = document.getElementById('crop-save');
         const cropCancelButton = document.getElementById('crop-cancel');
         const sessionSecrets = {
-            llmApiKeys: {},
             wd14ApiKey: '',
         };
+        let providerStatusCache = null;
 
         tagSystemPrompt.value = DEFAULT_TAG_PROMPT;
         captionSystemPrompt.value = DEFAULT_CAPTION_PROMPT;
@@ -409,7 +409,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         // Event listeners
         settingsIcon.addEventListener('click', openSettings);
         closeSettingsBtn.addEventListener('click', closeSettings);
-        saveSettingsBtn.addEventListener('click', saveSettings);
+        saveSettingsBtn.addEventListener('click', () => saveSettings().catch((e) => showNotification(`Error saving settings: ${e.message || e}`)));
         modelSelect.addEventListener('change', handleModelChange);
 
         imageUpload.addEventListener('change', handleImageUpload);
@@ -468,9 +468,6 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         function rememberSecretInputs() {
             const currentModel = modelSelect.value;
-            if (['gemini', 'grok', 'openai'].includes(currentModel)) {
-                sessionSecrets.llmApiKeys[currentModel] = apiKeyInput.value.trim();
-            }
             if (currentModel === 'wd14') {
                 sessionSecrets.wd14ApiKey = wdApiKeyInput.value.trim();
             }
@@ -478,7 +475,11 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         function applySecretInputs() {
             const model = modelSelect.value;
-            apiKeyInput.value = sessionSecrets.llmApiKeys[model] || '';
+            if (['gemini', 'grok', 'openai'].includes(model)) {
+                const status = providerStatusCache?.providers?.find(p => p.id === model);
+                apiKeyInput.value = '';
+                apiKeyInput.placeholder = status?.configured ? 'Configured on server' : 'Paste key to save on server';
+            }
             wdApiKeyInput.value = sessionSecrets.wd14ApiKey || '';
         }
 
@@ -488,12 +489,13 @@ Expected outcome is a human-readable continuous text consisting of several sente
             applySecretInputs();
         }
 
-        function openSettings() {
+        async function openSettings() {
             settingsModal.style.display = 'flex';
             modelSelect.value = localStorage.getItem('selectedModel') || 'gemini';
             ddThreshold.value = localStorage.getItem('ddThreshold') || '0.5';
             wdGeneralThresh.value = localStorage.getItem('wdGeneralThresh') || '0.35';
             wdCharThresh.value = localStorage.getItem('wdCharThresh') || '0.85';
+            await loadProviderStatus();
             updateSettingsFields();
             applySecretInputs();
         }
@@ -502,9 +504,12 @@ Expected outcome is a human-readable continuous text consisting of several sente
             settingsModal.style.display = 'none';
         }
 
-        function saveSettings() {
+        async function saveSettings() {
             const model = modelSelect.value;
             rememberSecretInputs();
+            if (['gemini', 'grok', 'openai'].includes(model)) {
+                await saveProviderKey(model);
+            }
             localStorage.setItem('selectedModel', model);
             localStorage.setItem('ddThreshold', ddThreshold.value);
             localStorage.setItem('wdGeneralThresh', wdGeneralThresh.value);
@@ -514,10 +519,32 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function getModel() { return localStorage.getItem('selectedModel') || 'gemini'; }
-        function getApiKey() { return sessionSecrets.llmApiKeys[getModel()] || ''; }
         function getWDKey() { return sessionSecrets.wd14ApiKey || ''; }
-        const GEMINI_MODEL_CANDIDATES = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
-        const GROK_MODEL_CANDIDATES = ['grok-4-latest'];
+
+        async function loadProviderStatus() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/tagpilot/providers`);
+                if (!resp.ok) throw new Error(await parseResponseError(resp));
+                providerStatusCache = await resp.json();
+            } catch (e) {
+                providerStatusCache = { providers: [] };
+                console.warn("Provider status unavailable:", e);
+            }
+            return providerStatusCache;
+        }
+
+        async function saveProviderKey(provider) {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) return;
+            const resp = await fetch(`${API_BASE}/api/tagpilot/providers/${encodeURIComponent(provider)}/key`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey })
+            });
+            if (!resp.ok) throw new Error(await parseResponseError(resp));
+            apiKeyInput.value = '';
+            await loadProviderStatus();
+        }
 
         async function fileToBase64(file) {
             return new Promise((resolve) => {
@@ -548,106 +575,30 @@ Expected outcome is a human-readable continuous text consisting of several sente
             return `HTTP ${resp.status}`;
         }
 
-        async function generateWithGemini(imageFile, apiKey, base64) {
-            const body = {
-                contents: [{ parts: [
-                    { text: "Provide detailed comma-separated tags for LoRA training." },
-                    { inline_data: { mime_type: imageFile.type, data: base64.split(',')[1] } }
-                ] }]
-            };
-            let lastModelError = '';
-
-            for (const modelName of GEMINI_MODEL_CANDIDATES) {
-                const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const cand = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!cand) throw new Error(`Gemini response missing content (${modelName})`);
-                    return cand;
-                }
-
-                const err = await parseResponseError(resp);
-                const low = String(err || '').toLowerCase();
-                const invalidApiKey = resp.status === 400 && (
-                    low.includes('api key not valid') ||
-                    low.includes('invalid api key') ||
-                    low.includes('api_key_invalid')
-                );
-                if (invalidApiKey) {
-                    throw new Error('Gemini API key is invalid. Use a valid Google AI Studio API key.');
-                }
-                const oauthOnly = resp.status === 401 && (
-                    low.includes('api keys are not supported') ||
-                    low.includes('oauth2 access token') ||
-                    low.includes('assert a principal')
-                );
-                if (oauthOnly) {
-                    throw new Error('Gemini credentials rejected. Use a Google AI Studio API key (Vertex/OAuth credentials are not supported here).');
-                }
-                if (resp.status === 401 || resp.status === 403) {
-                    throw new Error(`Gemini auth error (${modelName}): ${err}`);
-                }
-                if (resp.status === 429) {
-                    throw new Error(`Gemini rate limited (${modelName}). Check quota and retry.`);
-                }
-
-                const missingModel = resp.status === 404 && (low.includes('not found') || low.includes('not supported'));
-                if (!missingModel) {
-                    throw new Error(`Gemini error (${modelName}): ${err}`);
-                }
-                lastModelError = `${modelName}: ${err}`;
-            }
-
-            throw new Error(`Gemini error: no compatible model available. ${lastModelError}`.trim());
+        async function generateWithBackendProvider(imageFile, mode) {
+            const provider = getModel();
+            const prompt = mode === 'caption' ? captionSystemPrompt.value : tagSystemPrompt.value;
+            const fd = new FormData();
+            fd.append('image', imageFile, imageFile.name || 'image');
+            fd.append('provider', provider);
+            fd.append('mode', mode);
+            fd.append('prompt', prompt);
+            const resp = await fetch(`${API_BASE}/api/tagpilot/generate`, {
+                method: 'POST',
+                body: fd
+            });
+            if (!resp.ok) throw new Error(await parseResponseError(resp));
+            const data = await resp.json();
+            if (!data?.text) throw new Error(`${provider} response missing text`);
+            return data.text.trim();
         }
 
-        async function generateWithGrok(apiKey, base64) {
-            let lastModelError = '';
-            for (const modelName of GROK_MODEL_CANDIDATES) {
-                const resp = await fetch('https://api.x.ai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                    body: JSON.stringify({
-                        model: modelName,
-                        messages: [{ role: 'user', content: [
-                            { type: 'text', text: 'Provide detailed comma-separated tags for LoRA training.' },
-                            { type: 'image_url', image_url: { url: base64 } }
-                        ] }],
-                        max_tokens: 300,
-                        stream: false,
-                        temperature: 0
-                    })
-                });
-
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const choice = data?.choices?.[0]?.message?.content;
-                    if (!choice) throw new Error(`Grok response missing content (${modelName})`);
-                    return choice;
-                }
-
-                const err = await parseResponseError(resp);
-                const low = String(err || '').toLowerCase();
-                const missingModel = resp.status === 404 && (
-                    low.includes('does not exist') ||
-                    low.includes('not found') ||
-                    low.includes('not have access')
-                );
-                if (!missingModel) {
-                    throw new Error(`Grok error (${modelName}): ${err}`);
-                }
-                lastModelError = `${modelName}: ${err}`;
-            }
-
-            throw new Error(`Grok error: no compatible model available. ${lastModelError}`.trim());
-        }
-
-        async function generateCaption(imageFile) {
+        async function generateCaption(imageFile, mode = 'tags') {
             const model = getModel();
+            if (['gemini', 'grok', 'openai'].includes(model)) {
+                return generateWithBackendProvider(imageFile, mode);
+            }
+
             const base64 = await fileToBase64(imageFile);
 
             if (model === 'deepdanbooru') {
@@ -687,37 +638,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 return tags;
             }
 
-            const apiKey = getApiKey();
-            if (!apiKey) throw new Error('API key missing');
-
-            let responseText = '';
-            if (model === 'gemini') {
-                responseText = await generateWithGemini(imageFile, apiKey, base64);
-            } else {
-                const isGrok = model === 'grok';
-                if (isGrok) {
-                    responseText = await generateWithGrok(apiKey, base64);
-                } else {
-                    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                        body: JSON.stringify({
-                            model: 'gpt-4o',
-                            messages: [{ role: 'user', content: [
-                                { type: 'text', text: 'Provide detailed comma-separated tags for LoRA training.' },
-                                { type: 'image_url', image_url: { url: base64 } }
-                            ] }],
-                            max_tokens: 300
-                        })
-                    });
-                    if (!resp.ok) throw new Error(`Completions error: ${await parseResponseError(resp)}`);
-                    const data = await resp.json();
-                    const choice = data?.choices?.[0]?.message?.content;
-                    if (!choice) throw new Error('Completions response missing content');
-                    responseText = choice;
-                }
-            }
-            return responseText.trim();
+            throw new Error(`Unsupported model: ${model}`);
         }
 
         function showNotification(text, duration = 3000) {
@@ -1101,7 +1022,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
                 if (shouldTag) {
                     try {
-                        const newTags = await generateCaption(item.file);
+                        const newTags = await generateCaption(item.file, 'tags');
                         let tags = newTags.split(',').map(t => t.trim()).filter(Boolean);
                         if (mode === 'append') {
                             tags = [...new Set(item.tags.split(',').map(t => t.trim()).filter(Boolean).concat(tags))];
@@ -1158,7 +1079,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
                 if (shouldCaption) {
                     try {
-                        const caption = await generateCaption(item.file);
+                        const caption = await generateCaption(item.file, 'caption');
                         let final = mode === 'overwrite' ? caption : (item.tags ? item.tags + " " + caption : caption);
                         if (currentTriggerWord && !final.startsWith(currentTriggerWord)) final = currentTriggerWord + ", " + final;
                         item.tags = final;
@@ -1363,7 +1284,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         async function autotagSingle(index) {
             try {
-                const tags = await generateCaption(dataset[index].file);
+                const tags = await generateCaption(dataset[index].file, 'tags');
                 dataset[index].tags = currentTriggerWord ? currentTriggerWord + ', ' + tags : tags;
                 dataset[index].type = 'tags';
                 renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
@@ -1376,7 +1297,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         async function captionSingle(index) {
             try {
-                const caption = await generateCaption(dataset[index].file);
+                const caption = await generateCaption(dataset[index].file, 'caption');
                 dataset[index].tags = caption;
                 dataset[index].type = 'caption';
                 renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
@@ -1458,6 +1379,6 @@ Expected outcome is a human-readable continuous text consisting of several sente
         render();
     </script>
 
-    <a class="tagpilot-version" href="https://github.com/vavo/tagpilot" target="_blank" rel="noopener">TagPilot v1.0</a>
+    <a class="tagpilot-version" href="https://github.com/vavo/tagpilot" target="_blank" rel="noopener">TagPilot v1.1</a>
 </body>
 </html>

@@ -9,7 +9,7 @@ APP_ROOT="${ROOT}/apps/kohya"
 export PATH="/opt/venvs/core/bin:$PATH"
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="/opt/pilot/repos/kohya_ss/sd-scripts:${PYTHONPATH:-}"
-KOHYA_TRANSFORMERS_VERSION="${KOHYA_TRANSFORMERS_VERSION:-4.48.3}"
+KOHYA_TRANSFORMERS_VERSION="${KOHYA_TRANSFORMERS_VERSION:-4.57.6}"
 
 mkdir -p "$ROOT/logs" "$APP_ROOT"
 

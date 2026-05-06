@@ -42,10 +42,12 @@ except ImportError:
 try:
     from .services import models as models_service  # type: ignore
     from .services import shutdown as shutdown_service  # type: ignore
+    from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
 except ImportError:
     from services import models as models_service  # type: ignore
     from services import shutdown as shutdown_service  # type: ignore
+    from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from services.comfy import create_router as create_comfy_router  # type: ignore
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
@@ -330,6 +332,10 @@ class ControlPilotCopilotDefaultsRequest(BaseModel):
 class ControlPilotJupyterSettingsRequest(BaseModel):
     token: Optional[str] = None
     allow_origin_pat: str = ""
+
+
+class TagPilotProviderKeyRequest(BaseModel):
+    api_key: str = ""
 
 
 class DiskUsage(BaseModel):
@@ -1279,6 +1285,54 @@ def tagpilot_load(name: str):
             continue
         files.append({"name": rel, "mime": mime, "b64": b64})
     return {"name": target.name, "files": files}
+
+
+@app.get("/api/tagpilot/providers")
+def tagpilot_providers():
+    return tagpilot_ai_service.provider_status(os.environ)
+
+
+@app.post("/api/tagpilot/providers/{provider}/key")
+def tagpilot_provider_key(provider: str, payload: TagPilotProviderKeyRequest):
+    try:
+        provider_id = tagpilot_ai_service.normalize_provider(provider)
+        secret_name = tagpilot_ai_service.secret_name_for_provider(provider_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    api_key = (payload.api_key or "").strip()
+    _write_secrets_env_vars({secret_name: api_key or None})
+    if api_key:
+        os.environ[secret_name] = api_key
+    else:
+        os.environ.pop(secret_name, None)
+    return {"status": "ok", "provider": provider_id, "configured": bool(api_key)}
+
+
+@app.post("/api/tagpilot/generate")
+async def tagpilot_generate(
+    image: UploadFile = File(...),
+    provider: str = Form(...),
+    mode: str = Form("tags"),
+    prompt: str = Form(""),
+):
+    try:
+        image_bytes = await image.read()
+        mime_type = image.content_type or mimetypes.guess_type(image.filename or "")[0] or "application/octet-stream"
+        return await tagpilot_ai_service.generate(
+            provider=provider,
+            mode=mode,
+            prompt=prompt,
+            image_bytes=image_bytes,
+            mime_type=mime_type,
+            environ=os.environ,
+        )
+    except tagpilot_ai_service.MissingProviderKey as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except tagpilot_ai_service.ProviderRequestError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.post("/api/tagpilot/save")

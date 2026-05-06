@@ -120,7 +120,7 @@ NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver.
    # Check driver version
    nvidia-smi
    
-   # Should show CUDA 12.4+ capability
+   # Should show CUDA 12.8 capability
    ```
 
 3. **Verify NVIDIA Container Toolkit**
@@ -447,5 +447,4 @@ supervisorctl status
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 
