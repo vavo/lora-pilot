@@ -9,6 +9,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.4.3` | TagPilot provider MIME fixes, Gemini/Grok API compatibility updates, persistent provider secrets, JSON provider errors, provider smoke script, dark-mode and preview-crop UX fixes, Dockerfile cache/finalization fixes |
 | `v2.4.2` | CUDA 12.8/PyTorch 2.8 Blackwell baseline, refreshed Comfy/Kohya/Invoke/AI Toolkit/Diffusion Pipe pins, server-side TagPilot provider APIs |
 | `v2.4.1` | CodeQL hardening, Dpipe Gradio retirement, core CUDA 12.8 stack preparation |
 | `v2.4` | ControlPilot settings/security, embedded app layout cleanup, TrainPilot/Diffusion Pipe improvements, extracted Docker build scripts |
@@ -23,7 +24,7 @@ ControlPilot exposes the same content at:
 
 - Entries are newest-first.
 - Version headers currently mix formats (`v2.2` vs `Version 1.99`).
-- Exact calendar release dates are **Not found in repo**.
+- Recent v2.x entries include calendar dates in the root `CHANGELOG`; older entries may not.
 
 ## How to Update
 
@@ -40,11 +41,10 @@ When adding a new release:
 
 ---
 
-_Last updated: 2026-05-06_
+_Last updated: 2026-05-07_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

@@ -183,6 +183,11 @@ Additional MediaPilot env keys are defined in `apps/MediaPilot/.env.example` (fo
 |---|---|---|
 | `TAGPILOT_SYNC_ON_BOOT` | `1` | bootstrap syncs workspace TagPilot copy from bundled source |
 | `TAGPILOT_PORT` | `3333` | only used by standalone `scripts/tagpilot.sh` |
+| `OPENAI_API_KEY` | empty | stored by TagPilot provider settings in `/workspace/config/secrets.env` |
+| `GEMINI_API_KEY` | empty | stored by TagPilot provider settings in `/workspace/config/secrets.env` |
+| `XAI_API_KEY` | empty | stored by TagPilot provider settings in `/workspace/config/secrets.env` |
+| `TAGPILOT_OPENAI_MODEL` | `gpt-5.4-mini` | optional OpenAI model override; fallback candidate remains `gpt-5.5` |
+| `TAGPILOT_GEMINI_API_VERSIONS` | `v1,v1beta` | comma-separated Gemini API version order |
 
 ### Compose-Variant-Only Variables
 

@@ -10,6 +10,7 @@ import mimetypes
 import os
 import re
 import secrets
+import shlex
 import shutil
 import signal
 import stat
@@ -503,9 +504,13 @@ def _write_secrets_env_vars(updates: dict[str, Optional[str]]) -> None:
         resolved = None if value is None else str(value)
         if resolved:
             os.environ[key] = resolved
+            lines.append(f"export {key}={shlex.quote(resolved)}")
         else:
             os.environ.pop(key, None)
-    if lines != existing and secrets_file.exists():
+    if lines:
+        secrets_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        secrets_file.chmod(0o600)
+    elif secrets_file.exists():
         secrets_file.unlink()
 
 
@@ -1318,7 +1323,11 @@ async def tagpilot_generate(
 ):
     try:
         image_bytes = await image.read()
-        mime_type = image.content_type or mimetypes.guess_type(image.filename or "")[0] or "application/octet-stream"
+        mime_type = tagpilot_ai_service.normalize_image_mime_type(
+            image.content_type or "",
+            image_bytes,
+            image.filename or "",
+        )
         return await tagpilot_ai_service.generate(
             provider=provider,
             mode=mode,
@@ -1330,7 +1339,7 @@ async def tagpilot_generate(
     except tagpilot_ai_service.MissingProviderKey as e:
         raise HTTPException(status_code=400, detail=str(e))
     except tagpilot_ai_service.ProviderRequestError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=tagpilot_ai_service.PROVIDER_ERROR_STATUS_CODE, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -3239,11 +3248,12 @@ def mediapilot_status():
 
 # Static assets
 static_dir = Path(__file__).parent / "static"
-tagpilot_dir = Path("/workspace/apps/TagPilot")
+tagpilot_dir = WORKSPACE_ROOT / "apps" / "TagPilot"
 if not tagpilot_dir.exists():
-    fallback_tagpilot = Path("/opt/pilot/apps/TagPilot")
-    if fallback_tagpilot.exists():
-        tagpilot_dir = fallback_tagpilot
+    for fallback_tagpilot in (Path("/opt/pilot/apps/TagPilot"), Path(__file__).resolve().parents[1] / "TagPilot"):
+        if fallback_tagpilot.exists():
+            tagpilot_dir = fallback_tagpilot
+            break
 
 # Mount TagPilot assets under /tagpilot (served by the same app/port)
 app.mount("/tagpilot", NoCacheStaticFiles(directory=tagpilot_dir, html=True), name="tagpilot")

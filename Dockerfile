@@ -67,57 +67,61 @@ ARG INVOKE_HF_HUB_VERSION=0.36.2
 ARG CUDA_NVCC_PKG=cuda-nvcc-12-8
 ARG CROC_VERSION=10.4.2
 
+# ----- LAYER 1: Copy build scripts (stable) -----
 COPY scripts/build /opt/pilot/build
 RUN find /opt/pilot/build -type f -name '*.sh' -exec chmod +x {} +
 
-# ----- system + python -----
-RUN /opt/pilot/build/install-system-tools.sh
-RUN /opt/pilot/build/install-base-python.sh
-RUN /opt/pilot/build/install-code-server.sh
+# ----- LAYER 2: System + Python (stable, rarely changes) -----
+RUN /opt/pilot/build/install-system-tools.sh && \
+    /opt/pilot/build/install-base-python.sh && \
+    /opt/pilot/build/install-code-server.sh && \
+    /opt/pilot/build/install-copilot-cli.sh
 
-# ----- GitHub Copilot CLI (optional) -----
-# Installs the `copilot` binary. Auth/config is persisted under /workspace by the sidecar at runtime.
-RUN /opt/pilot/build/install-copilot-cli.sh
+# ----- LAYER 3: Python venv setup + constraints (stable) -----
+RUN /opt/pilot/build/create-venvs.sh && \
+    /opt/pilot/build/write-constraints.sh /opt/pilot/config
 
-# ----- venv bootstrap -----
-RUN /opt/pilot/build/create-venvs.sh
-
-# ----- core constraints (keep the stack sane) -----
-RUN /opt/pilot/build/write-constraints.sh /opt/pilot/config
-# NOTE: Do not set global PIP_CONSTRAINT. It breaks runtime pip installs in other venvs (e.g. invoke),
-# and can make recovery/debugging on long-running pods painful. Use `-c` per-install instead.
-
-# ----- core runtime -----
+# ----- LAYER 4: Core PyTorch/ML stack (semi-stable, use ARG for cache busting) -----
+# Cache key: explicitly reference PyTorch/core versions
+ARG TORCH_CACHE_BUST="${TORCH_VERSION}-${TORCHVISION_VERSION}-${XFORMERS_VERSION}"
 RUN /opt/pilot/build/install-core-stack.sh
 
-# ----- Service installs -----
-RUN /opt/pilot/build/install-comfy.sh
-RUN /opt/pilot/build/install-kohya.sh
-RUN /opt/pilot/build/install-diffpipe.sh
-RUN /opt/pilot/build/install-invoke.sh
-RUN /opt/pilot/build/install-ai-toolkit.sh
+# ----- LAYER 5-9: Service installs (variable frequency, separated by service) -----
+# These layers rebuild independently when service refs change
+ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}"
+RUN if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
+
+ARG KOHYA_CACHE_BUST="${KOHYA_REF}"
+RUN if [ "${INSTALL_KOHYA:-1}" = "1" ]; then /opt/pilot/build/install-kohya.sh; fi
+
+ARG DIFFPIPE_CACHE_BUST="${DIFFPIPE_REF}-${DIFFPIPE_DIFFUSERS_VERSION}"
+RUN if [ "${INSTALL_DIFFPIPE:-1}" = "1" ]; then /opt/pilot/build/install-diffpipe.sh; fi
+
+ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${INVOKE_TORCH_VERSION}"
+RUN if [ "${INSTALL_INVOKE:-1}" = "1" ]; then /opt/pilot/build/install-invoke.sh; fi
+
+ARG AI_TOOLKIT_CACHE_BUST="${AI_TOOLKIT_REF}"
+RUN if [ "${INSTALL_AI_TOOLKIT:-1}" = "1" ]; then /opt/pilot/build/install-ai-toolkit.sh; fi
 
 
-# ----- project files -----
+# ----- LAYER 10: Config + runtime setup (semi-stable) -----
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY config/models.manifest /opt/pilot/config/models.manifest.default
+COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 COPY scripts/*.sh scripts/*.py /opt/pilot/
 COPY scripts/pilot /usr/local/bin/pilot
-COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 
-# Default shell: activate core venv for root sessions
 RUN echo 'source /opt/venvs/core/bin/activate' > /etc/profile.d/core-venv.sh && \
-    chmod 644 /etc/profile.d/core-venv.sh
+    chmod 644 /etc/profile.d/core-venv.sh && \
+    /opt/pilot/build/finalize-runtime.sh
 
-# Normalize line endings, ensure shebang exists, set exec bits, create symlinks, create dirs.
-# IMPORTANT: do NOT chown -R /workspace (RunPod volumes often disallow it).
-RUN /opt/pilot/build/finalize-runtime.sh
-
-# Copy app/UI sources late to improve build caching on frequent code changes
-COPY apps /opt/pilot/apps
-COPY docs /opt/pilot/docs
+# ----- LAYER 11: Documentation (volatile, copied late) -----
 COPY README.md /opt/pilot/README.md
 COPY CHANGELOG /opt/pilot/CHANGELOG
+
+# ----- LAYER 12: App source code (most volatile, copied last) -----
+COPY apps /opt/pilot/apps
+COPY docs /opt/pilot/docs
 
 EXPOSE 7878 8888 8443 5555 6666 9090 4444 8675
 

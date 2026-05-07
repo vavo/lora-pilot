@@ -277,11 +277,17 @@ if [ -z "${HF_TOKEN:-}" ] && [ -n "${hf_token:-}" ]; then
   export HF_TOKEN="${hf_token}"
 fi
 
-cat > "$SECRETS_FILE" <<EOT
-export JUPYTER_TOKEN="${JUPYTER_TOKEN}"
-export CODE_SERVER_PASSWORD="${CODE_SERVER_PASSWORD}"
-export SUPERVISOR_ADMIN_PASSWORD="${SUPERVISOR_ADMIN_PASSWORD}"
-EOT
+tmp_secrets="${SECRETS_FILE}.tmp.$$"
+{
+  if [ -f "$SECRETS_FILE" ]; then
+    grep -Ev '^(export )?(JUPYTER_TOKEN|CODE_SERVER_PASSWORD|SUPERVISOR_ADMIN_PASSWORD)=' "$SECRETS_FILE" || true
+  fi
+  printf 'export JUPYTER_TOKEN="%s"\n' "$JUPYTER_TOKEN"
+  printf 'export CODE_SERVER_PASSWORD="%s"\n' "$CODE_SERVER_PASSWORD"
+  printf 'export SUPERVISOR_ADMIN_PASSWORD="%s"\n' "$SUPERVISOR_ADMIN_PASSWORD"
+} > "$tmp_secrets"
+mv "$tmp_secrets" "$SECRETS_FILE"
+chmod 600 "$SECRETS_FILE"
 
 if [ -n "${HF_TOKEN:-}" ]; then
   echo "export HF_TOKEN=\"${HF_TOKEN}\"" >> "$SECRETS_FILE"

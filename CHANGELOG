@@ -1,3 +1,13 @@
+v2.4.3 (May 7th 2026)
+
+- Fixed TagPilot cloud-provider image uploads by normalizing/inferring image MIME types before calling OpenAI, Gemini, and Grok. JPEG/PNG/WebP/etc. no longer arrive upstream as useless `application/octet-stream`, truly a concept humanity should have retired already.
+- Updated Gemini generation to try stable `v1` first with a `v1beta` fallback, and updated Grok generation to prefer xAI Responses API with chat-completions fallback.
+- Changed TagPilot provider failures to return JSON `424` responses instead of gateway-style `502` responses, preventing RunPod/Cloudflare from replacing useful provider errors with their HTML lecture.
+- Made TagPilot provider keys persist to `/workspace/config/secrets.env` and preserved those saved keys across bootstrap secret rewrites.
+- Added `/opt/pilot/tagpilot-provider-smoke.py` for live OpenAI/Gemini/Grok compatibility checks against the current provider APIs.
+- Fixed TagPilot dark-mode startup and added a crop quick-action button to the image preview modal.
+- Reworked Dockerfile service install layers for cacheable rebuilds, fixed optional install shell conditionals, and kept runtime finalization after runtime scripts are copied.
+
 v2.4.2 (May 6th 2026)
 
 - Upgraded the Blackwell-focused build baseline to CUDA `12.8.1` with core `torch==2.8.0`, `torchvision==0.23.0`, `torchaudio==2.8.0`, `xformers==0.0.32.post2`, and `bitsandbytes==0.49.2`.

@@ -35,6 +35,9 @@
         .collapsible-content.expanded { max-height: 1000px; overflow-y: auto; }
         .rotate-icon { transition: transform 0.3s ease; }
         .rotate-icon.expanded { transform: rotate(180deg); }
+        .preview-action-button { width: 44px; height: 44px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.82); color: #fff; border: 1px solid rgba(148, 163, 184, 0.45); box-shadow: 0 10px 25px rgba(0,0,0,0.35); transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
+        .preview-action-button:hover { background: rgba(37, 99, 235, 0.9); border-color: rgba(191, 219, 254, 0.85); transform: translateY(-1px); }
+        .preview-action-button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
         .tagpilot-version { position: fixed; bottom: 8px; right: 12px; font-size: 12px; color: #94a3b8; text-decoration: none; opacity: 0.8; z-index: 3000; }
         .tagpilot-version:hover { opacity: 1; text-decoration: underline; }
         :root[data-theme="light"] .tagpilot-version { color: #64748b; }
@@ -287,6 +290,11 @@
 
         <div id="preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
             <img id="preview-image" src="" class="max-w-full max-h-full object-contain rounded-lg">
+            <div class="absolute top-4 right-16 flex gap-2">
+                <button id="preview-crop" class="preview-action-button" title="Crop image" aria-label="Crop image">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2v14a2 2 0 002 2h14M2 6h14a2 2 0 012 2v14M6 6h12v12" /></svg>
+                </button>
+            </div>
             <button id="preview-close" class="absolute top-4 right-4 text-white text-4xl font-bold">&times;</button>
         </div>
 
@@ -360,6 +368,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const previewModal = document.getElementById('preview-modal');
         const previewImage = document.getElementById('preview-image');
         const previewClose = document.getElementById('preview-close');
+        const previewCropButton = document.getElementById('preview-crop');
         const notification = document.getElementById('notification');
         const notificationText = document.getElementById('notification-text');
 
@@ -429,6 +438,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         stopCaptioningBtn.addEventListener('click', stopBatchProcessing);
         toggleCaptionPromptBtn.addEventListener('click', () => captionSystemPrompt.classList.toggle('hidden'));
         previewClose.addEventListener('click', hidePreview);
+        previewCropButton.addEventListener('click', cropFromPreview);
         triggerWordInput.addEventListener('input', handleTriggerWordChange);
         tagViewerHeader.addEventListener('click', () => {
             tagViewerContent.classList.toggle('expanded');
@@ -570,7 +580,14 @@ Expected outcome is a human-readable continuous text consisting of several sente
             }
             try {
                 const text = await resp.text();
-                if (text) return text;
+                if (text) {
+                    const trimmed = text.trim();
+                    if (/^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed)) {
+                        const title = trimmed.match(/<title[^>]*>(.*?)<\/title>/i)?.[1]?.replace(/\s+/g, ' ').trim();
+                        return `${title || `HTTP ${resp.status}`} - ControlPilot/proxy returned an HTML error page instead of JSON.`;
+                    }
+                    return trimmed;
+                }
             } catch (e) {}
             return `HTTP ${resp.status}`;
         }
@@ -578,8 +595,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
         async function generateWithBackendProvider(imageFile, mode) {
             const provider = getModel();
             const prompt = mode === 'caption' ? captionSystemPrompt.value : tagSystemPrompt.value;
+            const uploadFile = await prepareProviderImageFile(imageFile, provider);
             const fd = new FormData();
-            fd.append('image', imageFile, imageFile.name || 'image');
+            fd.append('image', uploadFile, uploadFile.name || imageFile.name || 'image');
             fd.append('provider', provider);
             fd.append('mode', mode);
             fd.append('prompt', prompt);
@@ -591,6 +609,37 @@ Expected outcome is a human-readable continuous text consisting of several sente
             const data = await resp.json();
             if (!data?.text) throw new Error(`${provider} response missing text`);
             return data.text.trim();
+        }
+
+        async function prepareProviderImageFile(imageFile, provider) {
+            if (!['gemini', 'grok', 'openai'].includes(provider)) return imageFile;
+            const mime = normalizeImageMime(imageFile.type || inferMimeFromFilename(imageFile.name));
+            if (mime === 'image/jpeg' || mime === 'image/png') return imageFile;
+            return convertImageFileToPng(imageFile);
+        }
+
+        async function convertImageFileToPng(imageFile) {
+            const objectUrl = URL.createObjectURL(imageFile);
+            try {
+                const img = await new Promise((resolve, reject) => {
+                    const el = new Image();
+                    el.onload = () => resolve(el);
+                    el.onerror = () => reject(new Error('Could not decode image for cloud provider PNG conversion'));
+                    el.src = objectUrl;
+                });
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth || img.width;
+                canvas.height = img.naturalHeight || img.height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx || !canvas.width || !canvas.height) throw new Error('Could not prepare image for cloud provider PNG conversion');
+                ctx.drawImage(img, 0, 0);
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) throw new Error('Could not convert image to PNG for cloud provider');
+                const stem = String(imageFile.name || 'image').replace(/\.[^.]+$/, '');
+                return new File([blob], `${stem || 'image'}.png`, { type: 'image/png' });
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
         }
 
         async function generateCaption(imageFile, mode = 'tags') {
@@ -671,6 +720,23 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
         const API_BASE = computeApiBase();
 
+        function normalizeImageMime(mime) {
+            const value = String(mime || '').split(';', 1)[0].trim().toLowerCase();
+            return value === 'image/jpg' ? 'image/jpeg' : value;
+        }
+
+        function inferMimeFromFilename(filename) {
+            const ext = String(filename || '').split('.').pop().toLowerCase();
+            return {
+                jpg: 'image/jpeg',
+                jpeg: 'image/jpeg',
+                png: 'image/png',
+                webp: 'image/webp',
+                gif: 'image/gif',
+                bmp: 'image/bmp',
+            }[ext] || '';
+        }
+
         function base64ToFile(b64Data, filename, mime) {
             const byteCharacters = atob(b64Data);
             const byteNumbers = new Array(byteCharacters.length);
@@ -678,8 +744,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
             const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: mime || 'application/octet-stream' });
-            return new File([blob], filename, { type: mime || 'application/octet-stream' });
+            const resolvedMime = mime || inferMimeFromFilename(filename) || 'application/octet-stream';
+            const blob = new Blob([byteArray], { type: resolvedMime });
+            return new File([blob], filename, { type: resolvedMime });
         }
 
         function showLoader(text) {
@@ -697,19 +764,14 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function initTheme() {
-            // Sync with ControlPilot's theme if available; fallback to system
+            // Sync with ControlPilot's theme if available; otherwise keep TagPilot dark by default.
             let mode = 'dark';
             try {
                 const parentTheme = window.parent?.document?.documentElement?.getAttribute('data-theme');
                 const stored = localStorage.getItem('theme'); // ControlPilot stores here
-                const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
                 if (parentTheme) mode = parentTheme;
                 else if (stored) mode = stored;
-                else if (prefersLight) mode = 'light';
-            } catch (e) {
-                const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-                if (prefersLight) mode = 'light';
-            }
+            } catch (e) {}
             setTheme(mode);
             window.addEventListener('storage', (e) => {
                 if (e.key === 'theme' && e.newValue) {
@@ -1315,7 +1377,12 @@ Expected outcome is a human-readable continuous text consisting of several sente
 
         function openCrop(index) {
             currentCropIndex = index;
+            if (cropImage.dataset.objectUrl) {
+                URL.revokeObjectURL(cropImage.dataset.objectUrl);
+                delete cropImage.dataset.objectUrl;
+            }
             cropImage.src = URL.createObjectURL(dataset[index].file);
+            cropImage.dataset.objectUrl = cropImage.src;
             cropModal.style.display = 'flex';
             cropper = new Cropper(cropImage, { aspectRatio: NaN, viewMode: 1 });
         }
@@ -1328,6 +1395,11 @@ Expected outcome is a human-readable continuous text consisting of several sente
             cropper.destroy();
             cropper = null;
             cropModal.style.display = 'none';
+            if (cropImage.dataset.objectUrl) {
+                URL.revokeObjectURL(cropImage.dataset.objectUrl);
+                delete cropImage.dataset.objectUrl;
+            }
+            cropImage.src = '';
             render();
             showNotification("Cropped");
         }
@@ -1336,6 +1408,19 @@ Expected outcome is a human-readable continuous text consisting of several sente
             if (cropper) cropper.destroy();
             cropper = null;
             cropModal.style.display = 'none';
+            if (cropImage.dataset.objectUrl) {
+                URL.revokeObjectURL(cropImage.dataset.objectUrl);
+                delete cropImage.dataset.objectUrl;
+            }
+            cropImage.src = '';
+        }
+
+        function cropFromPreview(e) {
+            if (e) e.stopPropagation();
+            if (!Number.isInteger(currentPreviewIndex) || currentPreviewIndex < 0) return;
+            const index = currentPreviewIndex;
+            hidePreview();
+            openCrop(index);
         }
 
         function navigatePreview(step) {

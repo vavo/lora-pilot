@@ -9,7 +9,7 @@ TagPilot supports:
 - Duplicate detection (hash-based)
 - Manual tag editing and caption mode
 - Trigger-word prepending across the dataset
-- Crop and single-image tools (tag/caption/remove)
+- Crop and single-image tools (tag/caption/remove), including preview-modal crop access
 - Batch tagging/captioning with multiple AI providers
 - Export ZIP or save directly to workspace dataset folders
 
@@ -58,6 +58,8 @@ Configurable in TagPilot settings:
 Notes:
 - Gemini, Grok, and OpenAI keys are stored server-side in `/workspace/config/secrets.env`.
 - TagPilot sends Gemini/Grok/OpenAI generation through ControlPilot instead of calling provider APIs from the browser.
+- Browser uploads for Gemini/Grok/OpenAI are normalized to JPEG/PNG where needed, and the backend infers image MIME type from the request, filename, and image bytes before provider calls.
+- Provider errors return JSON from ControlPilot instead of gateway-style HTML error pages.
 - WD1.4 requires a Replicate API key.
 - Batch operations support modes: `ignore`, `append`, `overwrite`.
 
@@ -98,8 +100,19 @@ Additional global navigation/edit shortcuts beyond the above are **Not found in 
 ## 🔐 Security Notes
 
 - Gemini, Grok, and OpenAI keys are server-side values in `/workspace/config/secrets.env`.
+- Bootstrap preserves existing provider key lines when rewriting runtime secrets.
 - WD1.4 still uses a browser-session Replicate key.
 - Do not run TagPilot in shared browsers with persistent sessions if that is a problem for your workflow.
+
+## 🧪 Provider Smoke Test
+
+Inside the image, run:
+
+```bash
+/opt/pilot/tagpilot-provider-smoke.py --require-all
+```
+
+The script loads provider keys from `/workspace/config/secrets.env`, sends a tiny PNG to OpenAI, Gemini, and Grok, and reports whether the currently pinned provider APIs/models are reachable. Locally from the repo checkout, use `scripts/tagpilot-provider-smoke.py`.
 
 ##  Troubleshooting
 
@@ -131,7 +144,7 @@ docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 
 ---
 
-_Last updated: 2026-05-06_
+_Last updated: 2026-05-07_
 
 ---
 

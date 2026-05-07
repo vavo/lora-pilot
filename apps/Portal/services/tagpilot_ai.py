@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import base64
+import mimetypes
 import os
 from dataclasses import dataclass
 from typing import Any, Mapping
 
 
 MAX_OUTPUT_TOKENS = 300
+PROVIDER_ERROR_STATUS_CODE = 424
+GEMINI_API_VERSIONS = ("v1", "v1beta")
+XAI_SUPPORTED_IMAGE_MIME_TYPES = {"image/jpeg", "image/png"}
 
 
 class TagPilotAIError(RuntimeError):
@@ -113,6 +117,10 @@ def build_openai_payload(
 
 
 def extract_openai_text(data: Mapping[str, Any]) -> str:
+    return _extract_responses_text(data, "OpenAI", "response")
+
+
+def _extract_responses_text(data: Mapping[str, Any], provider_name: str, model: str) -> str:
     output_text = data.get("output_text")
     if isinstance(output_text, str) and output_text.strip():
         return output_text.strip()
@@ -124,7 +132,7 @@ def extract_openai_text(data: Mapping[str, Any]) -> str:
                 text = content.get("text")
                 if isinstance(text, str) and text.strip():
                     return text.strip()
-    raise ProviderRequestError("OpenAI response missing text")
+    raise ProviderRequestError(f"{provider_name} response missing text ({model})")
 
 
 async def generate(
@@ -161,18 +169,61 @@ def _candidate_models(spec: ProviderSpec, environ: Mapping[str, str]) -> tuple[s
     return spec.models
 
 
+def _candidate_gemini_api_versions(environ: Mapping[str, str]) -> tuple[str, ...]:
+    raw = (environ.get("TAGPILOT_GEMINI_API_VERSIONS") or "").strip()
+    if not raw:
+        return GEMINI_API_VERSIONS
+    versions = tuple(v.strip().strip("/") for v in raw.split(",") if v.strip())
+    return versions or GEMINI_API_VERSIONS
+
+
 def _default_prompt(mode: str) -> str:
     if mode == "caption":
         return "Provide a detailed natural-language caption for LoRA training."
     return "Provide detailed comma-separated tags for LoRA training."
 
 
+def normalize_image_mime_type(mime_type: str, image_bytes: bytes, filename: str = "") -> str:
+    candidate = (mime_type or "").split(";", 1)[0].strip().lower()
+    if candidate == "image/jpg":
+        return "image/jpeg"
+    if candidate.startswith("image/"):
+        return candidate
+
+    guessed = (mimetypes.guess_type(filename or "")[0] or "").strip().lower()
+    if guessed == "image/jpg":
+        return "image/jpeg"
+    if guessed.startswith("image/"):
+        return guessed
+
+    if image_bytes.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if image_bytes.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if len(image_bytes) >= 12 and image_bytes[:4] == b"RIFF" and image_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    if image_bytes.startswith(b"BM"):
+        return "image/bmp"
+    return "application/octet-stream"
+
+
 def _data_url(image_bytes: bytes, mime_type: str) -> str:
+    mime_type = normalize_image_mime_type(mime_type, image_bytes)
     encoded = base64.b64encode(image_bytes).decode("ascii")
     return f"data:{mime_type or 'application/octet-stream'};base64,{encoded}"
 
 
+def _xai_data_url(image_bytes: bytes, mime_type: str) -> str:
+    mime_type = normalize_image_mime_type(mime_type, image_bytes)
+    if mime_type not in XAI_SUPPORTED_IMAGE_MIME_TYPES:
+        raise ProviderRequestError(f"Grok image input must be JPEG or PNG, got {mime_type}")
+    return _data_url(image_bytes, mime_type)
+
+
 def _gemini_payload(prompt: str, image_bytes: bytes, mime_type: str) -> dict[str, Any]:
+    mime_type = normalize_image_mime_type(mime_type, image_bytes)
     return {
         "contents": [
             {
@@ -195,6 +246,7 @@ def _gemini_payload(prompt: str, image_bytes: bytes, mime_type: str) -> dict[str
 
 
 def _grok_payload(prompt: str, image_bytes: bytes, mime_type: str, model: str) -> dict[str, Any]:
+    image_url = _xai_data_url(image_bytes, mime_type)
     return {
         "model": model,
         "messages": [
@@ -202,13 +254,31 @@ def _grok_payload(prompt: str, image_bytes: bytes, mime_type: str, model: str) -
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": _data_url(image_bytes, mime_type)}},
+                    {"type": "image_url", "image_url": {"url": image_url}},
                 ],
             }
         ],
         "max_tokens": MAX_OUTPUT_TOKENS,
         "stream": False,
         "temperature": 0,
+    }
+
+
+def _grok_responses_payload(prompt: str, image_bytes: bytes, mime_type: str, model: str) -> dict[str, Any]:
+    image_url = _xai_data_url(image_bytes, mime_type)
+    return {
+        "model": model,
+        "input": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_image", "image_url": image_url, "detail": "high"},
+                    {"type": "input_text", "text": prompt},
+                ],
+            }
+        ],
+        "max_output_tokens": MAX_OUTPUT_TOKENS,
+        "store": False,
     }
 
 
@@ -292,29 +362,29 @@ async def _generate_gemini(
     last_error = ""
     async with httpx.AsyncClient(timeout=90.0) as client:
         for model in PROVIDERS["gemini"].models:
-            resp = await client.post(
-                f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent",
-                params={"key": key},
-                headers={"Content-Type": "application/json"},
-                json=payload,
-            )
-            if resp.status_code < 400:
-                return {"text": _extract_gemini_text(resp.json(), model), "provider": "gemini", "model": model}
-            try:
-                err = _parse_response_error(resp.json())
-            except Exception:
-                err = resp.text
-            low = str(err).lower()
-            if resp.status_code == 404 and ("not found" in low or "not supported" in low):
-                last_error = f"{model}: {err}"
-                continue
-            if resp.status_code == 400 and "api key" in low and "invalid" in low:
-                raise ProviderRequestError("Gemini API key is invalid")
-            if resp.status_code in {401, 403}:
-                raise ProviderRequestError(f"Gemini auth error ({model}): {err}")
-            if resp.status_code == 429:
-                raise ProviderRequestError(f"Gemini rate limited ({model})")
-            raise ProviderRequestError(f"Gemini error ({model}): {err}")
+            for api_version in _candidate_gemini_api_versions(environ):
+                resp = await client.post(
+                    f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent",
+                    headers={"Content-Type": "application/json", "x-goog-api-key": key},
+                    json=payload,
+                )
+                if resp.status_code < 400:
+                    return {"text": _extract_gemini_text(resp.json(), model), "provider": "gemini", "model": model}
+                try:
+                    err = _parse_response_error(resp.json())
+                except Exception:
+                    err = resp.text
+                low = str(err).lower()
+                if resp.status_code == 404 and ("not found" in low or "not supported" in low):
+                    last_error = f"{model}@{api_version}: {err}"
+                    continue
+                if resp.status_code == 400 and "api key" in low and "invalid" in low:
+                    raise ProviderRequestError("Gemini API key is invalid")
+                if resp.status_code in {401, 403}:
+                    raise ProviderRequestError(f"Gemini auth error ({model}@{api_version}): {err}")
+                if resp.status_code == 429:
+                    raise ProviderRequestError(f"Gemini rate limited ({model}@{api_version})")
+                raise ProviderRequestError(f"Gemini error ({model}@{api_version}): {err}")
     raise ProviderRequestError(f"Gemini error: no compatible model available. {last_error}".strip())
 
 
@@ -330,6 +400,23 @@ async def _generate_grok(
     last_error = ""
     async with httpx.AsyncClient(timeout=90.0) as client:
         for model in PROVIDERS["grok"].models:
+            resp = await client.post(
+                "https://api.x.ai/v1/responses",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=_grok_responses_payload(prompt, image_bytes, mime_type, model),
+            )
+            if resp.status_code < 400:
+                return {"text": _extract_responses_text(resp.json(), "Grok", model), "provider": "grok", "model": model}
+            try:
+                err = _parse_response_error(resp.json())
+            except Exception:
+                err = resp.text
+            if resp.status_code in {401, 403}:
+                raise ProviderRequestError(f"Grok auth error ({model}): {err}")
+            if resp.status_code == 429:
+                raise ProviderRequestError(f"Grok rate limited ({model})")
+            last_error = f"{model} responses: {err}"
+
             resp = await client.post(
                 "https://api.x.ai/v1/chat/completions",
                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},

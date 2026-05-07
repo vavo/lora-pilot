@@ -47,6 +47,62 @@ class TagPilotAITests(unittest.TestCase):
 
         self.assertEqual(str(ctx.exception), "GEMINI_API_KEY is not configured")
 
+    def test_provider_errors_do_not_use_gateway_status(self):
+        self.assertEqual(tagpilot_ai.PROVIDER_ERROR_STATUS_CODE, 424)
+
+    def test_gemini_api_versions_try_stable_then_beta(self):
+        self.assertEqual(tagpilot_ai._candidate_gemini_api_versions({}), ("v1", "v1beta"))
+        self.assertEqual(
+            tagpilot_ai._candidate_gemini_api_versions({"TAGPILOT_GEMINI_API_VERSIONS": "v1beta"}),
+            ("v1beta",),
+        )
+
+    def test_grok_responses_payload_uses_image_input(self):
+        payload = tagpilot_ai._grok_responses_payload(
+            prompt="Return tags only.",
+            image_bytes=b"fake-image",
+            mime_type="image/png",
+            model="grok-4.3",
+        )
+
+        self.assertEqual(payload["model"], "grok-4.3")
+        self.assertEqual(payload["store"], False)
+        content = payload["input"][0]["content"]
+        self.assertEqual(content[0]["type"], "input_image")
+        self.assertEqual(content[0]["image_url"], "data:image/png;base64,ZmFrZS1pbWFnZQ==")
+        self.assertEqual(content[1], {"type": "input_text", "text": "Return tags only."})
+
+    def test_grok_payload_rejects_unsupported_image_types_before_xai(self):
+        with self.assertRaises(tagpilot_ai.ProviderRequestError) as ctx:
+            tagpilot_ai._grok_responses_payload(
+                prompt="Return tags only.",
+                image_bytes=b"RIFFxxxxWEBPrest",
+                mime_type="application/octet-stream",
+                model="grok-4.3",
+            )
+
+        self.assertEqual(str(ctx.exception), "Grok image input must be JPEG or PNG, got image/webp")
+
+    def test_normalize_image_mime_rejects_octet_stream_when_filename_or_bytes_identify_image(self):
+        self.assertEqual(
+            tagpilot_ai.normalize_image_mime_type("application/octet-stream", b"fake-image", "sample.jpg"),
+            "image/jpeg",
+        )
+        self.assertEqual(
+            tagpilot_ai.normalize_image_mime_type("application/octet-stream", b"\x89PNG\r\n\x1a\nrest", ""),
+            "image/png",
+        )
+
+    def test_openai_payload_normalizes_octet_stream_data_url(self):
+        payload = tagpilot_ai.build_openai_payload(
+            prompt="Return tags only.",
+            image_bytes=b"\xff\xd8\xffrest",
+            mime_type="application/octet-stream",
+            model="gpt-5.4-mini",
+        )
+
+        self.assertTrue(payload["input"][0]["content"][1]["image_url"].startswith("data:image/jpeg;base64,"))
+
     def test_openai_payload_uses_responses_image_input(self):
         payload = tagpilot_ai.build_openai_payload(
             prompt="Return tags only.",

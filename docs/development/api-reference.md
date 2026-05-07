@@ -59,6 +59,9 @@ Known service names:
 | `GET` | `/api/tagpilot/load` | Query: `name` |
 | `POST` | `/api/tagpilot/save` | Query `name` + multipart `file` |
 | `POST` | `/api/tagpilot/save-item` | Incremental item save/finalize endpoint |
+| `GET` | `/api/tagpilot/providers` | Provider status for Gemini/Grok/OpenAI; does not expose secret values |
+| `POST` | `/api/tagpilot/providers/{provider}/key` | Saves or clears the provider key in `/workspace/config/secrets.env` |
+| `POST` | `/api/tagpilot/generate` | Multipart image generation through Gemini/Grok/OpenAI |
 
 `/api/tagpilot/save-item` multipart fields:
 
@@ -66,6 +69,21 @@ Known service names:
 - `tags` (optional)
 - `reset` (optional bool)
 - `done` (optional bool)
+
+`/api/tagpilot/generate` multipart fields:
+
+- `image`
+- `provider`: `gemini`, `grok`, or `openai`
+- `mode`: `tags` or `caption`
+- `prompt` (optional)
+
+Successful responses return:
+
+```json
+{"text":"tag, caption, or provider output","provider":"openai","model":"gpt-5.4-mini"}
+```
+
+Missing provider keys and invalid inputs return `400`. Upstream provider failures return JSON `424` responses so reverse proxies do not convert provider errors into generic gateway pages.
 
 ## Copilot API (through ControlPilot)
 
@@ -221,4 +239,3 @@ _Last updated: 2026-02-11_
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
