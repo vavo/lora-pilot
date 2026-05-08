@@ -28,6 +28,13 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 - **JupyterLab** and **code-server** for notebook/dev workflows.
 - **Copilot sidecar (optional)** - workspace-aware assistant integration.
 
+**Quick Start:**  
+```bash
+docker pull notrius/lora-pilot:stable 
+docker run --gpus all -p 7878:7878 -p 5555:5555 -p 6666:6666 -v /path/to/your/data:/workspace notrius/lora-pilot:stable
+```
+*(This would pull the image and run Comfy UI, Kohya SS and ControlPilot services, exposing the ControlPilot dashboard on port 7878)*  
+
 ## Supported training families
 Short version: it supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev/schnell/kontext), Chroma, Lumina-Image 2.0, LTX/LTX2, HunyuanVideo, Wan2.1/Wan2.2, Cosmos, HiDream, Qwen-Image, Z-Image** and more for training, plus almost everything for inference.
 
