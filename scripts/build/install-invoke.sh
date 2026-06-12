@@ -8,10 +8,6 @@ if [[ "${INSTALL_INVOKE:-1}" != "1" ]]; then
   exit 0
 fi
 
-: "${INVOKE_TORCH_INDEX_URL:?INVOKE_TORCH_INDEX_URL is required}"
-: "${INVOKE_TORCH_VERSION:?INVOKE_TORCH_VERSION is required}"
-: "${INVOKE_TORCHVISION_VERSION:?INVOKE_TORCHVISION_VERSION is required}"
-: "${INVOKE_TORCHAUDIO_VERSION:?INVOKE_TORCHAUDIO_VERSION is required}"
 : "${INVOKEAI_VERSION:?INVOKEAI_VERSION is required}"
 : "${INVOKE_HF_HUB_VERSION:?INVOKE_HF_HUB_VERSION is required}"
 : "${INVOKE_TRANSFORMERS_VERSION:?INVOKE_TRANSFORMERS_VERSION is required}"
@@ -19,12 +15,7 @@ fi
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 
 create_venv /opt/venvs/invoke setuptools wheel
-
-pip_install_unconstrained_in_venv /opt/venvs/invoke \
-  --index-url "${INVOKE_TORCH_INDEX_URL}" \
-  torch==${INVOKE_TORCH_VERSION} \
-  torchvision==${INVOKE_TORCHVISION_VERSION} \
-  torchaudio==${INVOKE_TORCHAUDIO_VERSION}
+add_shared_core_site_packages /opt/venvs/invoke /opt/venvs/core
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
   -c /opt/pilot/config/invoke-constraints.txt \

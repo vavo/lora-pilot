@@ -56,6 +56,21 @@ flux2-mistral-encoder-fp8|hf_file|Comfy-Org/flux2-dev:split_files/text_encoders/
 flux2-vae|hf_file|Comfy-Org/flux2-dev:split_files/vae/flux2-vae.safetensors|vae||0.34GB
 flux2-turbo-lora|hf_file|Comfy-Org/flux2-dev:split_files/loras/Flux2TurboComfyv2.safetensors|loras||2.76GB
 
+# --- Ideogram 4 (ComfyUI-ready, quantized) ---
+ideogram4-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors|diffusion_models||5.11GB
+ideogram4-unconditional-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_unconditional_nvfp4_mixed.safetensors|diffusion_models||5.11GB
+ideogram4-qwen3vl-8b-nvfp4|hf_file|Comfy-Org/Ideogram-4:text_encoders/qwen3vl_8b_nvfp4.safetensors|text_encoders||5.87GB
+
+# --- Lens (ComfyUI-ready, quantized) ---
+lens-turbo-mxfp8|hf_file|Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors|diffusion_models||5.18GB
+lens-gpt-oss-20b-nvfp4|hf_file|Comfy-Org/Lens:text_encoders/gpt_oss_20b_nvfp4.safetensors|text_encoders||12.33GB
+
+# --- PixelDiT (ComfyUI-ready, quantized) ---
+pixeldit-1300m-1024px-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors|diffusion_models||1.33GB
+pixeldit-gemma-2-2b-fp8|hf_file|Comfy-Org/PixelDiT:text_encoders/gemma_2_2b_it_elm_fp8_scaled.safetensors|text_encoders||2.44GB
+pid-flux2-1024-to-4096-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pid_flux2_1024_to_4096_4step_mxfp8.safetensors|diffusion_models||1.41GB
+pid-flux2-512-to-2048-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pid_flux2_512_to_2048_4step_mxfp8.safetensors|diffusion_models||1.41GB
+
 # --- WAN Models ---
 wan2.1-t2v-1.3b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors|wan/wan2.1|*.safetensors|2.84GB
 wan2.1-t2v-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_14B_fp16.safetensors|wan/wan2.1|*.safetensors|28.58GB

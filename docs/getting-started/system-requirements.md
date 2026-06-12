@@ -29,7 +29,8 @@ This guide outlines the hardware and software requirements for running LoRA Pilo
 |------------|------------|---------------------|
 | RTX 20xx | 6-11GB | Good for SD1.5/SDXL |
 | RTX 30xx | 8-24GB | Excellent for all models |
-| RTX 40xx | 8-24GB | Best performance, DLSS 3 |
+| RTX 40xx | 8-24GB | Best consumer Ada performance |
+| RTX 50xx / Blackwell | varies | Default CUDA 13.0 profile target |
 | RTX Ada (40xx) | 12-48GB | Professional training |
 
 ### GPU-Specific Notes
@@ -37,10 +38,12 @@ This guide outlines the hardware and software requirements for running LoRA Pilo
 - **RTX 3080 (10GB)**: Excellent balance of price/performance
 - **RTX 4090 (24GB)**: Best consumer GPU for training
 - **RTX 6000 Ada (48GB)**: Professional workstation choice
+- **Blackwell GPUs**: Use the default CUDA 13.0 build profile; CUDA 12.8 remains available as a legacy profile
 
 ### CUDA Requirements
-- **CUDA Version**: 12.8 (included in Docker image)
-- **Driver Version**: CUDA 12.8-compatible current NVIDIA driver
+- **Default CUDA Version**: 13.0 (included in the default Docker image)
+- **Legacy CUDA Version**: 12.8 via `CUDA_PROFILE=cu128`
+- **Driver Version**: current NVIDIA driver compatible with your selected CUDA profile
 - **Compute Capability**: 7.0+ (Turing architecture or newer)
 
 ## 🖥️ Software Requirements
@@ -168,4 +171,3 @@ LoRA Pilot uses the following ports by default:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

@@ -121,7 +121,7 @@ This profile:
 
 ## 9) Build-Time Customization + Runtime Use
 
-Build args are in `Dockerfile`/`build.env.example` (for example `INSTALL_INVOKE`, `INSTALL_DIFFPIPE`, `COMFYUI_REF`, `COMFYUI_MANAGER_REF`, `AI_TOOLKIT_REF`, `INVOKEAI_VERSION`).
+Build args are in `Dockerfile`/`build.env.example` (for example `CUDA_PROFILE`, `INSTALL_INVOKE`, `INSTALL_DIFFPIPE`, `COMFYUI_REF`, `COMFYUI_MANAGER_REF`, `AI_TOOLKIT_REF`, `INVOKEAI_VERSION`).
 
 Typical flow:
 1. Build your image with custom args.
@@ -212,4 +212,3 @@ _Last updated: 2026-02-11_
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

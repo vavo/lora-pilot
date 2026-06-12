@@ -5,27 +5,35 @@ set -euo pipefail
 
 : "${TORCH_VERSION:?TORCH_VERSION is required}"
 : "${TORCHVISION_VERSION:?TORCHVISION_VERSION is required}"
-: "${TORCHAUDIO_VERSION:?TORCHAUDIO_VERSION is required}"
 : "${TORCH_INDEX_URL:?TORCH_INDEX_URL is required}"
 : "${XFORMERS_VERSION:?XFORMERS_VERSION is required}"
 : "${BITSANDBYTES_VERSION:?BITSANDBYTES_VERSION is required}"
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
+: "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
+: "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
 
 if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
   pip_install_in_venv /opt/venvs/core \
     "torch==${TORCH_VERSION}" \
     "torchvision==${TORCHVISION_VERSION}" \
-    "torchaudio==${TORCHAUDIO_VERSION}" \
     --index-url "${TORCH_INDEX_URL}"
+
+  if [[ -n "${TORCHAUDIO_VERSION:-}" ]]; then
+    pip_install_in_venv /opt/venvs/core \
+      "torchaudio==${TORCHAUDIO_VERSION}" \
+      --index-url "${TORCH_INDEX_URL}"
+  else
+    echo "Skipping torchaudio install (TORCHAUDIO_VERSION is empty for this CUDA profile)"
+  fi
 
   pip_install_in_venv /opt/venvs/core \
     -c /opt/pilot/config/core-constraints.txt \
     "xformers==${XFORMERS_VERSION}" \
     "bitsandbytes==${BITSANDBYTES_VERSION}" \
     toml \
-    accelerate \
+    "accelerate==${ACCELERATE_VERSION}" \
     "diffusers==${CORE_DIFFUSERS_VERSION}" \
     "transformers==${TRANSFORMERS_VERSION}" \
     "peft==${PEFT_VERSION}" \
@@ -41,7 +49,7 @@ fi
 
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \
-  "huggingface_hub[hf_transfer,hf_xet]"
+  "huggingface_hub[hf_transfer,hf_xet]==${HF_HUB_VERSION}"
 
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \

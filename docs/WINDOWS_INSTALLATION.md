@@ -9,7 +9,7 @@ This guide will help Windows users install and run LoRA Pilot using Docker Deskt
 - **Storage**: 100GB+ free disk space for models and datasets
 - **GPU**: NVIDIA GPU with 8GB+ VRAM (optional but recommended for training)
   - Supported: RTX 20xx, 30xx, 40xx, 50xx series
-  - CUDA 12.8 compatible drivers required
+  - Current NVIDIA drivers compatible with CUDA 13.0 are recommended; CUDA 12.8 remains available as the legacy build profile
 
 ### Software Requirements
 - **Windows 10/11** (64-bit)
@@ -51,7 +51,7 @@ This guide will help Windows users install and run LoRA Pilot using Docker Deskt
 
 3. **Test NVIDIA Docker Support**
    ```powershell
-   docker run --rm --gpus all nvidia/cuda:12.8.1-runtime-ubuntu22.04 nvidia-smi
+   docker run --rm --gpus all nvidia/cuda:13.0.2-runtime-ubuntu22.04 nvidia-smi
    ```
 
 ### Step 3: Download LoRA Pilot
@@ -346,4 +346,3 @@ If you encounter issues:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

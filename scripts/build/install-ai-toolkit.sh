@@ -10,10 +10,6 @@ fi
 
 : "${AI_TOOLKIT_REF:?AI_TOOLKIT_REF is required}"
 : "${AI_TOOLKIT_DIFFUSERS_VERSION:?AI_TOOLKIT_DIFFUSERS_VERSION is required}"
-: "${TORCH_VERSION:?TORCH_VERSION is required}"
-: "${TORCHVISION_VERSION:?TORCHVISION_VERSION is required}"
-: "${TORCHAUDIO_VERSION:?TORCHAUDIO_VERSION is required}"
-: "${TORCH_INDEX_URL:?TORCH_INDEX_URL is required}"
 : "${BUILDPLATFORM:=}"
 : "${TARGETPLATFORM:=}"
 
@@ -30,11 +26,7 @@ ln -s /workspace/outputs/ai-toolkit /opt/pilot/repos/ai-toolkit/output
 ln -s /workspace/models /opt/pilot/repos/ai-toolkit/models
 
 create_venv /opt/venvs/ai-toolkit "setuptools<81.0" wheel
-pip_install_unconstrained_in_venv /opt/venvs/ai-toolkit \
-  --index-url "${TORCH_INDEX_URL}" \
-  "torch==${TORCH_VERSION}" \
-  "torchvision==${TORCHVISION_VERSION}" \
-  "torchaudio==${TORCHAUDIO_VERSION}"
+add_shared_core_site_packages /opt/venvs/ai-toolkit /opt/venvs/core
 
 if [[ "${AI_TOOLKIT_DIFFUSERS_VERSION}" != "git" ]]; then
   echo "AI Toolkit latest expects upstream git-pinned Diffusers; got AI_TOOLKIT_DIFFUSERS_VERSION=${AI_TOOLKIT_DIFFUSERS_VERSION}" >&2

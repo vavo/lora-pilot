@@ -9,6 +9,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.0` | CUDA 13.0 default plus CUDA 12.8 legacy profile, shared core GPU stack with fewer venvs, refreshed Comfy/Invoke/Jupyter/code-server/AI Toolkit/Diffusion Pipe pins, Ideogram/Lens/PixelDiT manifest additions |
 | `v2.4.3` | TagPilot provider MIME fixes, Gemini/Grok API compatibility updates, persistent provider secrets, JSON provider errors, provider smoke script, dark-mode and preview-crop UX fixes, Dockerfile cache/finalization fixes |
 | `v2.4.2` | CUDA 12.8/PyTorch 2.8 Blackwell baseline, refreshed Comfy/Kohya/Invoke/AI Toolkit/Diffusion Pipe pins, server-side TagPilot provider APIs |
 | `v2.4.1` | CodeQL hardening, Dpipe Gradio retirement, core CUDA 12.8 stack preparation |
@@ -41,7 +42,7 @@ When adding a new release:
 
 ---
 
-_Last updated: 2026-05-07_
+_Last updated: 2026-06-12_
 
 ---
 

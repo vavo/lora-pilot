@@ -45,7 +45,7 @@ PY
   echo "JUPYTER_TOKEN=${JUPYTER_TOKEN}" >> "${SECRETS}"
 fi
 
-exec /opt/venvs/tools/bin/jupyter lab \
+exec /opt/venvs/core/bin/jupyter lab \
   --ip=0.0.0.0 \
   --port="${PORT}" \
   --no-browser \

@@ -20,8 +20,8 @@ CONFIG_DIR = WORKSPACE / "configs"
 DIFFPIPE_APP_DIR = Path(os.environ.get("DIFFPIPE_APP_DIR", WORKSPACE / "apps" / "diffusion-pipe"))
 DIFFPIPE_REPO_DIR = Path(os.environ.get("DIFFPIPE_REPO_DIR", "/opt/pilot/repos/diffusion-pipe"))
 
-# Deepspeed entrypoint (isolated in the diffusion-pipe venv)
-DEEPSPEED_BIN = os.environ.get("DEEPSPEED_BIN", "/opt/venvs/diffpipe/bin/deepspeed")
+# Deepspeed entrypoint from the shared core training stack.
+DEEPSPEED_BIN = os.environ.get("DEEPSPEED_BIN", "/opt/venvs/core/bin/deepspeed")
 NUM_GPUS = os.environ.get("NUM_GPUS", "1")
 _LOCAL_PATH_ROOTS = (
     WORKSPACE.resolve(),

@@ -78,7 +78,7 @@ Practical effect:
 
 `scripts/invoke.sh`:
 
-- Uses dedicated invoke venv
+- Uses a dedicated InvokeAI venv while importing the shared Torch/CUDA stack from `/opt/venvs/core`
 - Forces shared model/output directories to workspace paths
 
 ### Diffusion Pipe
@@ -144,12 +144,11 @@ Use these to monitor:
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-06-12_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

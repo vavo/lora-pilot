@@ -280,18 +280,17 @@ fi
 tmp_secrets="${SECRETS_FILE}.tmp.$$"
 {
   if [ -f "$SECRETS_FILE" ]; then
-    grep -Ev '^(export )?(JUPYTER_TOKEN|CODE_SERVER_PASSWORD|SUPERVISOR_ADMIN_PASSWORD)=' "$SECRETS_FILE" || true
+    grep -Ev '^(export )?(JUPYTER_TOKEN|CODE_SERVER_PASSWORD|SUPERVISOR_ADMIN_PASSWORD|HF_TOKEN)=' "$SECRETS_FILE" || true
   fi
   printf 'export JUPYTER_TOKEN="%s"\n' "$JUPYTER_TOKEN"
   printf 'export CODE_SERVER_PASSWORD="%s"\n' "$CODE_SERVER_PASSWORD"
   printf 'export SUPERVISOR_ADMIN_PASSWORD="%s"\n' "$SUPERVISOR_ADMIN_PASSWORD"
+  if [ -n "${HF_TOKEN:-}" ]; then
+    printf 'export HF_TOKEN="%s"\n' "$HF_TOKEN"
+  fi
 } > "$tmp_secrets"
 mv "$tmp_secrets" "$SECRETS_FILE"
 chmod 600 "$SECRETS_FILE"
-
-if [ -n "${HF_TOKEN:-}" ]; then
-  echo "export HF_TOKEN=\"${HF_TOKEN}\"" >> "$SECRETS_FILE"
-fi
 
 chmod 600 "$SECRETS_FILE" 2>/dev/null || true
 

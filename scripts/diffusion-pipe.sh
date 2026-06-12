@@ -20,10 +20,10 @@ ln -s "${LOGDIR}" "${TB_ROOT}/diffpipe"
 ln -s "${TRAINPILOT_LOGDIR}" "${TB_ROOT}/trainpilot"
 
 cd "${REPO}"
-TB_CMD=(/opt/venvs/diffpipe/bin/python -m tensorboard.main)
+TB_CMD=(/opt/venvs/core/bin/python -m tensorboard.main)
 
 ensure_tensorboard_ready() {
-  /opt/venvs/diffpipe/bin/python - <<'PY'
+  /opt/venvs/core/bin/python - <<'PY'
 import tensorboard.main  # noqa: F401
 import pkg_resources  # noqa: F401
 PY
@@ -38,7 +38,7 @@ fi
 if [[ -n "${CONFIG}" ]]; then
   if [[ "${DIFFPIPE_TENSORBOARD:-1}" == "1" ]]; then
     if ! ensure_tensorboard_ready; then
-      echo "TensorBoard import failed in /opt/venvs/diffpipe. Rebuild the image or reinstall setuptools<81.0." >&2
+      echo "TensorBoard import failed in /opt/venvs/core. Rebuild the image or reinstall setuptools<81.0." >&2
       exit 1
     fi
     # Silence pkg_resources deprecation warning from tensorboard
@@ -47,12 +47,12 @@ if [[ -n "${CONFIG}" ]]; then
     TB_PID=$!
     trap 'kill "${TB_PID}" 2>/dev/null || true' EXIT
   fi
-  exec /opt/venvs/diffpipe/bin/deepspeed --num_gpus="${NUM_GPUS}" train.py --deepspeed --config "${CONFIG}" "${extra_args[@]}"
+  exec /opt/venvs/core/bin/deepspeed --num_gpus="${NUM_GPUS}" train.py --deepspeed --config "${CONFIG}" "${extra_args[@]}"
 fi
 
 echo "DIFFPIPE_CONFIG not set. Starting TensorBoard only on port ${PORT}."
 if ! ensure_tensorboard_ready; then
-  echo "TensorBoard import failed in /opt/venvs/diffpipe. Rebuild the image or reinstall setuptools<81.0." >&2
+  echo "TensorBoard import failed in /opt/venvs/core. Rebuild the image or reinstall setuptools<81.0." >&2
   exit 1
 fi
 exec "${TB_CMD[@]}" --logdir "${TB_ROOT}" --bind_all --port "${PORT}"

@@ -10,6 +10,7 @@ AI Toolkit offers:
 - **Next.js Interface**: Modern web-based UI
 - **Gradio Backend**: Python-based training backend
 - **Workspace Integration**: Full integration with LoRA Pilot
+- **Shared GPU Stack**: Uses `/opt/venvs/ai-toolkit` with Torch/CUDA imported from `/opt/venvs/core`
 
 ##  Quick Start
 
@@ -322,13 +323,13 @@ docker exec -it lora-pilot bash
 
 # Run training with config file
 cd /opt/pilot/repos/ai-toolkit
-python run.py /path/to/config.yaml
+/opt/venvs/ai-toolkit/bin/python run.py /path/to/config.yaml
 
 # List available configs
-python run.py --list-configs
+/opt/venvs/ai-toolkit/bin/python run.py --list-configs
 
 # Validate config
-python run.py --validate /path/to/config.yaml
+/opt/venvs/ai-toolkit/bin/python run.py --validate /path/to/config.yaml
 ```
 
 ### Database Management
@@ -467,5 +468,4 @@ cp /workspace/outputs/ai-toolkit/your_model_name/*.safetensors /workspace/models
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

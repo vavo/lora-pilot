@@ -30,6 +30,7 @@ LoRA Pilot’s InvokeAI integration provides:
 
 Startup behavior in `scripts/invoke.sh`:
 - Activates `/opt/venvs/invoke`
+- Imports the shared GPU stack from `/opt/venvs/core` while keeping InvokeAI packages first on `sys.path`
 - Tries `invokeai-config --root <root> set ModelsDir <shared_models>`
 - Tries `invokeai-config --root <root> set OutputDir <shared_output>`
 - Falls back to symlinks (`<root>/models` and `<root>/outputs`)
@@ -109,12 +110,11 @@ docker exec lora-pilot tail -n 300 /workspace/logs/invoke.err.log
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-06-12_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

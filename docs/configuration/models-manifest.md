@@ -12,7 +12,7 @@ Runtime paths used by scripts and ControlPilot:
 Repository sources:
 
 - `config/models.manifest` (copied into the image as `/opt/pilot/config/models.manifest.default`)
-- `config/models.manifest.default` (additional reference list in repo)
+- `config/models.manifest.default` (kept aligned as the repo reference list)
 
 ## Seeding Behavior
 
@@ -58,7 +58,12 @@ Comments (`# ...`) and empty lines are ignored.
 sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6.94GB
 juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
 wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
+ideogram4-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors|diffusion_models||5.11GB
+lens-turbo-mxfp8|hf_file|Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors|diffusion_models||5.18GB
+pixeldit-1300m-1024px-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors|diffusion_models||1.33GB
 ```
+
+The bundled manifests include Comfy-ready quantized Ideogram 4, Lens, and PixelDiT entries. They reuse the existing `flux2-vae` entry when a Flux 2 VAE is needed instead of duplicating that model under each pack.
 
 ## CLI + API That Use This Manifest
 
@@ -132,12 +137,11 @@ For shared top-level model folders, repo-file selection has an extra guard to av
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-06-12_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

@@ -89,7 +89,10 @@
             <input type="number" id="wdGeneralThresh" min="0" max="1" step="0.05" value="0.35" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
             <label class="block mb-2 wd-char-label" style="display:none;">WD1.4 Character Threshold (0-1):</label>
             <input type="number" id="wdCharThresh" min="0" max="1" step="0.05" value="0.85" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
-            <button id="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded">Save</button>
+            <div class="flex flex-wrap gap-3">
+                <button id="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded">Save</button>
+                <button id="clearProviderKey" class="hidden bg-red-700 hover:bg-red-600 px-4 py-2 rounded">Clear key</button>
+            </div>
         </div>
     </div>
 
@@ -348,6 +351,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const wdGeneralThresh = document.getElementById('wdGeneralThresh');
         const wdCharThresh = document.getElementById('wdCharThresh');
         const saveSettingsBtn = document.getElementById('saveSettings');
+        const clearProviderKeyBtn = document.getElementById('clearProviderKey');
 
         const imageUpload = document.getElementById('image-upload');
         const zipUpload = document.getElementById('zip-upload');
@@ -419,6 +423,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         settingsIcon.addEventListener('click', openSettings);
         closeSettingsBtn.addEventListener('click', closeSettings);
         saveSettingsBtn.addEventListener('click', () => saveSettings().catch((e) => showNotification(`Error saving settings: ${e.message || e}`)));
+        clearProviderKeyBtn.addEventListener('click', () => clearProviderKey().catch((e) => showNotification(`Error clearing key: ${e.message || e}`)));
         modelSelect.addEventListener('change', handleModelChange);
 
         imageUpload.addEventListener('change', handleImageUpload);
@@ -472,6 +477,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
             const isWD = model === 'wd14';
 
             document.querySelectorAll('.api-key-label, #apiKeyInput').forEach(el => el.style.display = isLLM ? 'block' : 'none');
+            clearProviderKeyBtn.classList.toggle('hidden', !isLLM);
             document.querySelectorAll('.dd-threshold-label, #ddThreshold').forEach(el => el.style.display = isDD ? 'block' : 'none');
             document.querySelectorAll('.wd-apikey-label, #wdApiKeyInput, .wd-general-label, #wdGeneralThresh, .wd-char-label, #wdCharThresh').forEach(el => el.style.display = isWD ? 'block' : 'none');
         }
@@ -546,14 +552,33 @@ Expected outcome is a human-readable continuous text consisting of several sente
         async function saveProviderKey(provider) {
             const apiKey = apiKeyInput.value.trim();
             if (!apiKey) return;
+            await updateProviderKey(provider, apiKey);
+            apiKeyInput.value = '';
+            await loadProviderStatus();
+        }
+
+        async function clearProviderKey() {
+            const provider = modelSelect.value;
+            if (!['gemini', 'grok', 'openai'].includes(provider)) return;
+            if (!confirm(`Clear saved ${providerLabel(provider)} API key from the server?`)) return;
+            await updateProviderKey(provider, '');
+            apiKeyInput.value = '';
+            await loadProviderStatus();
+            applySecretInputs();
+            showNotification(`${providerLabel(provider)} key cleared`);
+        }
+
+        function providerLabel(provider) {
+            return { gemini: 'Gemini', grok: 'Grok', openai: 'OpenAI' }[provider] || provider;
+        }
+
+        async function updateProviderKey(provider, apiKey) {
             const resp = await fetch(`${API_BASE}/api/tagpilot/providers/${encodeURIComponent(provider)}/key`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ api_key: apiKey })
             });
             if (!resp.ok) throw new Error(await parseResponseError(resp));
-            apiKeyInput.value = '';
-            await loadProviderStatus();
         }
 
         async function fileToBase64(file) {
