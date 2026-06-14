@@ -177,6 +177,14 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn(": \"${INVOKE_XFORMERS_VERSION:?INVOKE_XFORMERS_VERSION is required}\"", text)
         self.assertIn("\"xformers==${INVOKE_XFORMERS_VERSION}\"", text)
 
+    def test_kohya_launchers_suppress_pkg_resources_warning_without_runtime_pip(self):
+        warning_filter = "ignore:pkg_resources is deprecated as an API:UserWarning"
+        for path in ("scripts/start-kohya.sh", "scripts/kohya.sh"):
+            with self.subTest(path=path):
+                text = (ROOT / path).read_text()
+                self.assertIn(warning_filter, text)
+                self.assertNotIn('pip install "setuptools<81.0"', text)
+
     def test_make_build_runs_dockerfile_check_first(self):
         text = (ROOT / "Makefile").read_text()
         self.assertIn(".PHONY: help build build-check", text)

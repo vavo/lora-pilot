@@ -13,8 +13,8 @@ KOHYA_TRANSFORMERS_VERSION="${KOHYA_TRANSFORMERS_VERSION:-4.57.6}"
 
 mkdir -p "$ROOT/logs" "$APP_ROOT"
 
-# Fix setuptools deprecation warning for Kohya
-/opt/venvs/core/bin/pip install "setuptools<81.0" --quiet
+# Kohya imports pkg_resources through setup_common.py; keep this warning out of service logs.
+export PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}ignore:pkg_resources is deprecated as an API:UserWarning"
 
 # Kohya sometimes tries to install Windows-specific torch requirements; neutralize them.
 WIN_REQ="/opt/pilot/repos/kohya_ss/requirements_pytorch_windows.txt"
