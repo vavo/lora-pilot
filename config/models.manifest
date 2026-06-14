@@ -9,29 +9,27 @@ sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_re
 
 # --- SDXL Fine-tuned Models ---
 juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
-ragnarok-xl|hf_file|Ragnar-Schmidek/ragnarok-xl:ragnarok-xl.safetensors|checkpoints||7.11GB
-epicrealism-xl|hf_file|epicphotogasm/epicrealismXL_v11:epicrealismXL_v11.safetensors|checkpoints||6.94GB
+ragnarok-xl|hf_repo|eniora/Juggernaut_XL_Ragnarok|diffusers/ragnarok-xl|*.json,*.safetensors,README.md|
+epicrealism-xl|hf_repo|John6666/epicrealism-xl-vxvii-crystal-clear-realism-sdxl|diffusers/epicrealism-xl|*.json,*.safetensors,README.md|
 realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints||6.94GB
 realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints||6.94GB
-realvisxl-v5|hf_file|SG161222/RealVisXL_V5.0:RealVisXL_V5.0.safetensors|checkpoints||6.94GB
-pony-xl|hf_file|PixArt-alpha/Pony-Diffusion-XL:ponyDiffusion_v8XLReborn.safetensors|checkpoints||6.94GB
-dreamshaper-xl|hf_file|Lykon/dreamshaper-xl-1-0:dreamshaperXL10_alpha2Xl10.safetensors|checkpoints||5.95GB
-juggernaut-xl-v8|hf_file|Sxela/Juggernaut-XL-v8:Juggernaut-XL-v8.safetensors|checkpoints||7.11GB
-juggernaut-xl-v9|hf_file|Sxela/Juggernaut-XL-v9:Juggernaut-XL-v9.safetensors|checkpoints||7.11GB
-cyberrealistic-xl|hf_file|SG161222/CyberRealistic_V4.0:CyberRealistic_V4.0.safetensors|checkpoints||6.94GB
-analog-madness-xl|hf_file|Ojimi/analog-madness-xl:analog-madness-xl.safetensors|checkpoints||6.94GB
-opendalle-xl|hf_file|dataautogpt3/OpenDalleV1.1:opendalle_v11.safetensors|checkpoints||6.94GB
+realvisxl-v5|hf_file|SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors|checkpoints||6.94GB
+pony-xl|hf_file|LyliaEngine/Pony_Diffusion_V6_XL:ponyDiffusionV6XL_v6StartWithThisOne.safetensors|checkpoints||6.94GB
+dreamshaper-xl|hf_file|Lykon/DreamShaper:DreamShaperXL1.0Alpha2_fixedVae_half_00001_.safetensors|checkpoints||6.94GB
+juggernaut-xl-v8|hf_file|RunDiffusion/Juggernaut-XL-v8:juggernautXL_v8Rundiffusion.safetensors|checkpoints||7.11GB
+juggernaut-xl-v9|hf_file|RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors|checkpoints||7.11GB
+cyberrealistic-xl|hf_file|voxiliummusic/cyberrealistic_V4.0:cyberrealistic_v40.safetensors|checkpoints||6.94GB
+analog-madness-xl|hf_file|dwells/Analog_Madness_XL3:analogMadnessSDXL_xl3.safetensors|checkpoints||6.94GB
+opendalle-xl|hf_file|dataautogpt3/OpenDalleV1.1:OpenDalleV1.1.safetensors|checkpoints||6.94GB
 
 # --- SD 1.5 Base Models ---
-sd15-base|hf_file|runwayml/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints||4.27GB
-sd21-base|hf_file|stabilityai/stable-diffusion-2-1:768-v-ema.safetensors|checkpoints||4.86GB
-sd21-base-512|hf_file|stabilityai/stable-diffusion-2-1-base:512-v-ema.safetensors|checkpoints||4.86GB
+sd15-base|hf_file|stable-diffusion-v1-5/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints||4.27GB
 
 # --- SD 1.5 Fine-tuned Models ---
-realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1:Realistic_Vision_V5.1.safetensors|checkpoints||4.27GB
-realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1:Realistic_Vision_V6.0_B1.safetensors|checkpoints||4.27GB
-epicrealism|hf_file|digiplay/majicmixRealistic_v6:epicrealism_naturalSunlight.safetensors|checkpoints||2.13GB
-rev-animated|hf_file|s3nh/RevAnimated:revAnimated_v122.safetensors|checkpoints||4.24GB
+realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1_noVAE:Realistic_Vision_V5.1_fp16-no-ema.safetensors|checkpoints||4.27GB
+realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1_noVAE:Realistic_Vision_V6.0_NV_B1_fp16.safetensors|checkpoints||4.27GB
+epicrealism|hf_file|philz1337x/epicrealism:epicrealism_naturalSinRC1VAE.safetensors|checkpoints||2.13GB
+rev-animated|hf_file|danbrown/RevAnimated-v1-2-2:rev-animated-v1-2-2.safetensors|checkpoints||4.24GB
 toonyou|hf_file|Linaqruf/anything-v3.0:anything-v3-fp16-pruned.safetensors|checkpoints||2.13GB
 
 # --- SD3.x ---
@@ -77,7 +75,6 @@ wan2.1-t2v-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusio
 wan2.1-i2v-720p-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_i2v_720p_14B_fp16.safetensors|wan/wan2.1|*.safetensors|32.79GB
 wan2.1-vae|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/vae/wan_2.1_vae.safetensors|wan/wan2.1|*.safetensors|0.25GB
 wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
-wan2.2-anime-14b|hf_repo|Wan-AI/Wan2.2-Anime-14B|wan/wan2.2-anime-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json|72.40GB
 wan2.2-ti2v-5b|hf_repo|Wan-AI/Wan2.2-TI2V-5B|wan/wan2.2-ti2v-5b|*.json,*.pth,*.safetensors,google/umt5-xxl/*,README.md|
 
 # --- Hunyuan Image Models ---
@@ -104,11 +101,11 @@ controlnet-scribble|hf_file|lllyasviel/sd-controlnet-scribble:diffusion_pytorch_
 controlnet-seg|hf_file|lllyasviel/sd-controlnet-seg:diffusion_pytorch_model.safetensors|controlnet||1.45GB
 
 # --- Upscale Models ---
-realesrgan-4x|hf_file|xintao/realesrgan:RealESRGAN_x4plus.pth|upscale_models||0.07GB
-realesrgan-4x-anime|hf_file|xintao/realesrgan:RealESRGAN_x4plus_anime_6B.pth|upscale_models||0.02GB
-swinir-4x|hf_file|microsoft/swin2SR-realworld-sr:003_realSR_BSRGAN_DFOWMFC_s64w8_SwinIR-L_x4_GAN.pth|upscale_models||0.14GB
-esrgan-4x|hf_file|TencentARC/GFPGAN:experiments/pretrained_models/GFPGANv1.4.pth|upscale_models||0.33GB
-realesrgan-2x|hf_file|xintao/realesrgan:RealESRGAN_x2plus.pth|upscale_models||0.06GB
+realesrgan-4x|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth|upscale_models||0.07GB
+realesrgan-4x-anime|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth|upscale_models||0.02GB
+swinir-4x|hf_file|caidas/swin2SR-realworld-sr-x4-64-bsrgan-psnr:pytorch_model.bin|upscale_models||0.14GB
+esrgan-4x|url|https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth|upscale_models||0.33GB
+realesrgan-2x|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth|upscale_models||0.06GB
 latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:unet/diffusion_pytorch_model.safetensors|latent_upscale_models||1.49GB
 
 # --- Z-Image Turbo (the “Z-index” thing people keep saying) ---
@@ -122,12 +119,16 @@ hunyuan-video-720|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transforme
 hunyuan-video-vae|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/vae/pytorch_model.pt|vae||0.99GB
 
 # --- LTX Video Models ---
-ltxv-2b-0.9.6-dev|hf_file|Lightricks/LTX-Video:ltxv-2b-0.9.6-dev-04-25.safetensors|checkpoints||
-ltxv-2b-0.9.6-distilled|hf_file|Lightricks/LTX-Video:ltxv-2b-0.9.6-distilled-04-25.safetensors|checkpoints||
-ltxv-13b-0.9.7-distilled|hf_file|Lightricks/LTX-Video:ltxv-13b-0.9.7-distilled.safetensors|checkpoints||
-ltxv-13b-0.9.8-distilled|hf_file|Lightricks/LTX-Video:ltxv-13b-0.9.8-distilled.safetensors|checkpoints||
-ltxv-spatial-upscaler-0.9.8|hf_file|Lightricks/LTX-Video:ltxv-spatial-upscaler-0.9.8.safetensors|upscale_models||
-ltxv-temporal-upscaler-0.9.8|hf_file|Lightricks/LTX-Video:ltxv-temporal-upscaler-0.9.8.safetensors|upscale_models||
+ltx-2.3-22b-dev-fp8|hf_file|Lightricks/LTX-2.3-fp8:ltx-2.3-22b-dev-fp8.safetensors|checkpoints||
+ltx-2.3-22b-distilled-fp8|hf_file|Lightricks/LTX-2.3-fp8:ltx-2.3-22b-distilled-fp8.safetensors|checkpoints||
+ltx-2.3-22b-dev|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-dev.safetensors|checkpoints||
+ltx-2.3-22b-distilled|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled.safetensors|checkpoints||
+ltx-2.3-22b-distilled-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-1.1.safetensors|checkpoints||
+ltx-2.3-22b-distilled-lora-384|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-lora-384.safetensors|loras||
+ltx-2.3-22b-distilled-lora-384-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-lora-384-1.1.safetensors|loras||
+ltx-2.3-spatial-upscaler-x1.5-1.0|hf_file|Lightricks/LTX-2.3:ltx-2.3-spatial-upscaler-x1.5-1.0.safetensors|upscale_models||
+ltx-2.3-spatial-upscaler-x2-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-spatial-upscaler-x2-1.1.safetensors|upscale_models||
+ltx-2.3-temporal-upscaler-x2-1.0|hf_file|Lightricks/LTX-2.3:ltx-2.3-temporal-upscaler-x2-1.0.safetensors|upscale_models||
 
 # --- Qwen Image Models ---
 qwen-image-edit-2511|hf_repo|Qwen/Qwen-Image-Edit-2511|diffusers/qwen-image-edit-2511|model_index.json,processor/*,scheduler/*.json,text_encoder/*.json,text_encoder/*.safetensors,tokenizer/*,transformer/*.json,transformer/*.safetensors,vae/*.json,vae/*.safetensors,README.md|
@@ -137,5 +138,5 @@ llava-llama-3-8b-text-encoder-tokenizer|hf_repo|Kijai/llava-llama-3-8b-text-enco
 clip-vit-large-patch14|hf_file|openai/clip-vit-large-patch14:pytorch_model.bin|text_encoders||1.70GB
 
 # --- Additional Text Encoders ---
-t5-xxl|hf_file|stabilityai/stable-diffusion-3-medium:text_encoder_2.safetensors|text_encoders||2.88GB
+t5-xxl|hf_file|stabilityai/stable-diffusion-3-medium:text_encoders/t5xxl_fp8_e4m3fn.safetensors|text_encoders||2.88GB
 clip-g|hf_file|laion/CLIP-ViT-bigG-14-laion2B-39B-b160k:open_clip_pytorch_model.bin|text_encoders||3.54GB
