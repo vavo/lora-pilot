@@ -36,6 +36,7 @@ class BuildPinTests(unittest.TestCase):
             "INVOKE_TORCH_VERSION": "2.7.1+cu128",
             "INVOKE_TORCHVISION_VERSION": "0.22.1+cu128",
             "INVOKE_TORCH_INDEX_URL": "https://download.pytorch.org/whl/cu128",
+            "INVOKE_XFORMERS_VERSION": "0.0.31.post1",
         }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
@@ -58,6 +59,7 @@ class BuildPinTests(unittest.TestCase):
                 "HF_HUB_VERSION": "1.19.0",
                 "INVOKE_TORCH_VERSION": "2.7.1+cu128",
                 "INVOKE_TORCHVISION_VERSION": "0.22.1+cu128",
+                "INVOKE_XFORMERS_VERSION": "0.0.31.post1",
                 "INVOKE_DIFFUSERS_VERSION": "0.37.0",
                 "INVOKE_TRANSFORMERS_VERSION": "4.57.6",
                 "INVOKE_ACCELERATE_VERSION": "1.14.0",
@@ -76,6 +78,7 @@ class BuildPinTests(unittest.TestCase):
 
         self.assertIn("torch==2.7.1+cu128\n", constraints)
         self.assertIn("torchvision==0.22.1+cu128\n", constraints)
+        self.assertIn("xformers==0.0.31.post1\n", constraints)
         self.assertIn("diffusers==0.37.0\n", constraints)
         self.assertNotIn("torch==2.12.0\n", constraints)
 
@@ -139,6 +142,20 @@ class BuildPinTests(unittest.TestCase):
         late = sorted(script for script, index in used.items() if copied.get(script, index + 1) > index)
         self.assertEqual(missing, [])
         self.assertEqual(late, [])
+
+    def test_comfy_torchaudio_patch_is_applied_during_build(self):
+        install_text = (ROOT / "scripts/build/install-comfy.sh").read_text()
+        docker_text = (ROOT / "Dockerfile").read_text()
+        patch_text = (ROOT / "scripts/build/patches/patch-comfy.sh").read_text()
+        self.assertIn("/opt/pilot/build/patches/patch-comfy.sh /opt/pilot/repos/ComfyUI", install_text)
+        self.assertIn("COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/", docker_text)
+        self.assertIn("def _require_torchaudio()", patch_text)
+        self.assertIn("except ModuleNotFoundError:", patch_text)
+
+    def test_invoke_installs_local_xformers_to_shadow_core(self):
+        text = (ROOT / "scripts/build/install-invoke.sh").read_text()
+        self.assertIn(": \"${INVOKE_XFORMERS_VERSION:?INVOKE_XFORMERS_VERSION is required}\"", text)
+        self.assertIn("\"xformers==${INVOKE_XFORMERS_VERSION}\"", text)
 
     def test_make_build_runs_dockerfile_check_first(self):
         text = (ROOT / "Makefile").read_text()

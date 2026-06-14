@@ -63,6 +63,7 @@ ARG INVOKEAI_VERSION=6.13.0
 ARG INVOKE_TORCH_VERSION=2.7.1+cu128
 ARG INVOKE_TORCHVISION_VERSION=0.22.1+cu128
 ARG INVOKE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
+ARG INVOKE_XFORMERS_VERSION=0.0.31.post1
 ARG INVOKE_DIFFUSERS_VERSION=0.37.0
 ARG INVOKE_TRANSFORMERS_VERSION=4.57.6
 ARG INVOKE_ACCELERATE_VERSION=1.14.0
@@ -103,8 +104,9 @@ RUN /opt/pilot/build/install-core-stack.sh
 # ----- LAYER 5-9: Service installs (variable frequency, separated by service) -----
 # These layers rebuild independently when service refs change
 COPY scripts/build/lib/git_checkout.sh /opt/pilot/build/lib/
+COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/
 COPY scripts/build/install-comfy.sh /opt/pilot/build/
-RUN chmod +x /opt/pilot/build/lib/git_checkout.sh /opt/pilot/build/install-comfy.sh
+RUN chmod +x /opt/pilot/build/lib/git_checkout.sh /opt/pilot/build/patches/patch-comfy.sh /opt/pilot/build/install-comfy.sh
 ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}"
 RUN if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
 
@@ -121,7 +123,7 @@ RUN if [ "${INSTALL_DIFFPIPE:-1}" = "1" ]; then /opt/pilot/build/install-diffpip
 
 COPY scripts/build/install-invoke.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/install-invoke.sh
-ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${INVOKE_TORCH_VERSION}"
+ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${INVOKE_TORCH_VERSION}-${INVOKE_XFORMERS_VERSION}"
 RUN if [ "${INSTALL_INVOKE:-1}" = "1" ]; then /opt/pilot/build/install-invoke.sh; fi
 
 COPY scripts/build/patches/patch-ai-toolkit.sh /opt/pilot/build/patches/

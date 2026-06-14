@@ -16,6 +16,8 @@ fi
   /opt/pilot/repos/ComfyUI \
   "${COMFYUI_REF}"
 
+/opt/pilot/build/patches/patch-comfy.sh /opt/pilot/repos/ComfyUI
+
 grep -v -E '^(torch|torchvision|torchaudio|xformers|triton|bitsandbytes|numpy|pillow|Pillow|diffusers|transformers|peft|huggingface-hub|accelerate)' \
   /opt/pilot/repos/ComfyUI/requirements.txt > /tmp/comfy-req.txt
 

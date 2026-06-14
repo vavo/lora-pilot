@@ -10,6 +10,7 @@ fi
 
 : "${INVOKEAI_VERSION:?INVOKEAI_VERSION is required}"
 : "${INVOKE_TORCH_INDEX_URL:?INVOKE_TORCH_INDEX_URL is required}"
+: "${INVOKE_XFORMERS_VERSION:?INVOKE_XFORMERS_VERSION is required}"
 : "${INVOKE_HF_HUB_VERSION:?INVOKE_HF_HUB_VERSION is required}"
 : "${INVOKE_TRANSFORMERS_VERSION:?INVOKE_TRANSFORMERS_VERSION is required}"
 : "${INVOKE_ACCELERATE_VERSION:?INVOKE_ACCELERATE_VERSION is required}"
@@ -22,6 +23,11 @@ pip_install_unconstrained_in_venv /opt/venvs/invoke \
   --extra-index-url "${INVOKE_TORCH_INDEX_URL}" \
   -c /opt/pilot/config/invoke-constraints.txt \
   "invokeai[cuda]==${INVOKEAI_VERSION}"
+
+pip_install_unconstrained_in_venv /opt/venvs/invoke \
+  --extra-index-url "${INVOKE_TORCH_INDEX_URL}" \
+  -c /opt/pilot/config/invoke-constraints.txt \
+  "xformers==${INVOKE_XFORMERS_VERSION}"
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
   -c /opt/pilot/config/invoke-constraints.txt \
