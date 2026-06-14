@@ -21,9 +21,11 @@ ln -s "${TRAINPILOT_LOGDIR}" "${TB_ROOT}/trainpilot"
 
 cd "${REPO}"
 TB_CMD=(/opt/venvs/core/bin/python -m tensorboard.main)
+TENSORBOARD_WARNING_FILTER="ignore:pkg_resources is deprecated as an API:UserWarning"
+TENSORBOARD_PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}${TENSORBOARD_WARNING_FILTER}"
 
 ensure_tensorboard_ready() {
-  /opt/venvs/core/bin/python - <<'PY'
+  PYTHONWARNINGS="${TENSORBOARD_PYTHONWARNINGS}" /opt/venvs/core/bin/python - <<'PY'
 import tensorboard.main  # noqa: F401
 import pkg_resources  # noqa: F401
 PY
@@ -41,8 +43,7 @@ if [[ -n "${CONFIG}" ]]; then
       echo "TensorBoard import failed in /opt/venvs/core. Rebuild the image or reinstall setuptools<81.0." >&2
       exit 1
     fi
-    # Silence pkg_resources deprecation warning from tensorboard
-    PYTHONWARNINGS="${PYTHONWARNINGS:-ignore:pkg_resources is deprecated as an API:UserWarning}" \
+    PYTHONWARNINGS="${TENSORBOARD_PYTHONWARNINGS}" \
       "${TB_CMD[@]}" --logdir "${TB_ROOT}" --bind_all --port "${PORT}" &
     TB_PID=$!
     trap 'kill "${TB_PID}" 2>/dev/null || true' EXIT
@@ -55,4 +56,4 @@ if ! ensure_tensorboard_ready; then
   echo "TensorBoard import failed in /opt/venvs/core. Rebuild the image or reinstall setuptools<81.0." >&2
   exit 1
 fi
-exec "${TB_CMD[@]}" --logdir "${TB_ROOT}" --bind_all --port "${PORT}"
+PYTHONWARNINGS="${TENSORBOARD_PYTHONWARNINGS}" exec "${TB_CMD[@]}" --logdir "${TB_ROOT}" --bind_all --port "${PORT}"

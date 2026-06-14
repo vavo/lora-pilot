@@ -185,6 +185,14 @@ class BuildPinTests(unittest.TestCase):
                 self.assertIn(warning_filter, text)
                 self.assertNotIn('pip install "setuptools<81.0"', text)
 
+    def test_diffusion_pipe_suppresses_tensorboard_pkg_resources_warning(self):
+        text = (ROOT / "scripts/diffusion-pipe.sh").read_text()
+
+        self.assertIn('TENSORBOARD_WARNING_FILTER="ignore:pkg_resources is deprecated as an API:UserWarning"', text)
+        self.assertIn('TENSORBOARD_PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}${TENSORBOARD_WARNING_FILTER}"', text)
+        self.assertGreaterEqual(text.count('PYTHONWARNINGS="${TENSORBOARD_PYTHONWARNINGS}"'), 3)
+        self.assertNotIn('PYTHONWARNINGS="${PYTHONWARNINGS:-ignore:pkg_resources is deprecated as an API:UserWarning}"', text)
+
     def test_make_build_runs_dockerfile_check_first(self):
         text = (ROOT / "Makefile").read_text()
         self.assertIn(".PHONY: help build build-check", text)
