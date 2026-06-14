@@ -122,6 +122,24 @@ class BuildPinTests(unittest.TestCase):
         self.assertGreater(ai_toolkit_copy, core_run)
         self.assertGreater(invoke_copy, core_run)
 
+    def test_build_scripts_are_copied_before_they_are_used(self):
+        lines = (ROOT / "Dockerfile").read_text().splitlines()
+        copied = {}
+        used = {}
+        for index, line in enumerate(lines):
+            for script in re.findall(r"scripts/build/(?:lib/|patches/)?([^\s/]+\.sh)", line):
+                copied.setdefault(script, index)
+            if line.lstrip().startswith("COPY "):
+                continue
+            for script in re.findall(r"/opt/pilot/build/(?:lib/|patches/)?([^\s/]+\.sh)", line):
+                if not script.startswith("*"):
+                    used.setdefault(script, index)
+
+        missing = sorted(script for script in used if script not in copied)
+        late = sorted(script for script, index in used.items() if copied.get(script, index + 1) > index)
+        self.assertEqual(missing, [])
+        self.assertEqual(late, [])
+
     def test_make_build_runs_dockerfile_check_first(self):
         text = (ROOT / "Makefile").read_text()
         self.assertIn(".PHONY: help build build-check", text)

@@ -137,6 +137,8 @@ COPY config/models.manifest /opt/pilot/config/models.manifest.default
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 COPY scripts/*.sh scripts/*.py /opt/pilot/
 COPY scripts/pilot /usr/local/bin/pilot
+COPY scripts/build/finalize-runtime.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/finalize-runtime.sh
 
 RUN echo 'source /opt/venvs/core/bin/activate' > /etc/profile.d/core-venv.sh && \
     chmod 644 /etc/profile.d/core-venv.sh && \
