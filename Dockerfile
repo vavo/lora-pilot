@@ -60,16 +60,23 @@ ARG PEFT_VERSION=0.19.1
 ARG ACCELERATE_VERSION=1.14.0
 ARG HF_HUB_VERSION=1.19.0
 ARG INVOKEAI_VERSION=6.13.0
-ARG INVOKE_DIFFUSERS_VERSION=0.36.0
+ARG INVOKE_TORCH_VERSION=2.7.1+cu128
+ARG INVOKE_TORCHVISION_VERSION=0.22.1+cu128
+ARG INVOKE_TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128
+ARG INVOKE_DIFFUSERS_VERSION=0.37.0
 ARG INVOKE_TRANSFORMERS_VERSION=4.57.6
 ARG INVOKE_ACCELERATE_VERSION=1.14.0
 ARG INVOKE_HF_HUB_VERSION=0.36.2
 ARG CUDA_NVCC_PKG=cuda-nvcc-13-0
 ARG CROC_VERSION=10.4.2
 
-# ----- LAYER 1: Copy build scripts (stable) -----
-COPY scripts/build /opt/pilot/build
-RUN find /opt/pilot/build -type f -name '*.sh' -exec chmod +x {} +
+# ----- LAYER 1: System build scripts (stable, rarely changed) -----
+COPY scripts/build/install-system-tools.sh \
+     scripts/build/install-base-python.sh \
+     scripts/build/install-code-server.sh \
+     scripts/build/install-copilot-cli.sh \
+     /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/*.sh
 
 # ----- LAYER 2: System + Python (stable, rarely changes) -----
 RUN /opt/pilot/build/install-system-tools.sh && \
@@ -78,28 +85,48 @@ RUN /opt/pilot/build/install-system-tools.sh && \
     /opt/pilot/build/install-copilot-cli.sh
 
 # ----- LAYER 3: Python venv setup + constraints (stable) -----
+COPY scripts/build/lib/python_venv.sh /opt/pilot/build/lib/
+COPY scripts/build/create-venvs.sh \
+     scripts/build/write-constraints.sh \
+     /opt/pilot/build/
+RUN find /opt/pilot/build -type f -name '*.sh' -exec chmod +x {} +
 RUN /opt/pilot/build/create-venvs.sh && \
     /opt/pilot/build/write-constraints.sh /opt/pilot/config
 
 # ----- LAYER 4: Core PyTorch/ML stack (semi-stable, use ARG for cache busting) -----
 # Cache key: explicitly reference PyTorch/core versions
+COPY scripts/build/install-core-stack.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/install-core-stack.sh
 ARG TORCH_CACHE_BUST="${CUDA_PROFILE}-${TORCH_VERSION}-${TORCHVISION_VERSION}-${TORCHAUDIO_VERSION}-${XFORMERS_VERSION}"
 RUN /opt/pilot/build/install-core-stack.sh
 
 # ----- LAYER 5-9: Service installs (variable frequency, separated by service) -----
 # These layers rebuild independently when service refs change
+COPY scripts/build/lib/git_checkout.sh /opt/pilot/build/lib/
+COPY scripts/build/install-comfy.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/lib/git_checkout.sh /opt/pilot/build/install-comfy.sh
 ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}"
 RUN if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
 
+COPY scripts/build/patches/patch-kohya.sh /opt/pilot/build/patches/
+COPY scripts/build/install-kohya.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/patches/patch-kohya.sh /opt/pilot/build/install-kohya.sh
 ARG KOHYA_CACHE_BUST="${KOHYA_REF}"
 RUN if [ "${INSTALL_KOHYA:-1}" = "1" ]; then /opt/pilot/build/install-kohya.sh; fi
 
+COPY scripts/build/install-diffpipe.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/install-diffpipe.sh
 ARG DIFFPIPE_CACHE_BUST="${DIFFPIPE_REF}-${DIFFPIPE_DIFFUSERS_VERSION}"
 RUN if [ "${INSTALL_DIFFPIPE:-1}" = "1" ]; then /opt/pilot/build/install-diffpipe.sh; fi
 
-ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${TORCH_VERSION}"
+COPY scripts/build/install-invoke.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/install-invoke.sh
+ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${INVOKE_TORCH_VERSION}"
 RUN if [ "${INSTALL_INVOKE:-1}" = "1" ]; then /opt/pilot/build/install-invoke.sh; fi
 
+COPY scripts/build/patches/patch-ai-toolkit.sh /opt/pilot/build/patches/
+COPY scripts/build/install-ai-toolkit.sh /opt/pilot/build/
+RUN chmod +x /opt/pilot/build/patches/patch-ai-toolkit.sh /opt/pilot/build/install-ai-toolkit.sh
 ARG AI_TOOLKIT_CACHE_BUST="${AI_TOOLKIT_REF}"
 RUN if [ "${INSTALL_AI_TOOLKIT:-1}" = "1" ]; then /opt/pilot/build/install-ai-toolkit.sh; fi
 

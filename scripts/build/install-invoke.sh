@@ -9,6 +9,7 @@ if [[ "${INSTALL_INVOKE:-1}" != "1" ]]; then
 fi
 
 : "${INVOKEAI_VERSION:?INVOKEAI_VERSION is required}"
+: "${INVOKE_TORCH_INDEX_URL:?INVOKE_TORCH_INDEX_URL is required}"
 : "${INVOKE_HF_HUB_VERSION:?INVOKE_HF_HUB_VERSION is required}"
 : "${INVOKE_TRANSFORMERS_VERSION:?INVOKE_TRANSFORMERS_VERSION is required}"
 : "${INVOKE_ACCELERATE_VERSION:?INVOKE_ACCELERATE_VERSION is required}"
@@ -18,8 +19,9 @@ create_venv /opt/venvs/invoke setuptools wheel
 add_shared_core_site_packages /opt/venvs/invoke /opt/venvs/core
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
+  --extra-index-url "${INVOKE_TORCH_INDEX_URL}" \
   -c /opt/pilot/config/invoke-constraints.txt \
-  "invokeai==${INVOKEAI_VERSION}"
+  "invokeai[cuda]==${INVOKEAI_VERSION}"
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
   -c /opt/pilot/config/invoke-constraints.txt \

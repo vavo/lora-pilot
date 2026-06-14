@@ -8,8 +8,13 @@ CONTAINER ?= lp-test
 PLATFORM ?= linux/amd64
 CUDA_PROFILE ?= cu130
 INSTALL_GPU_STACK ?= 1
+INSTALL_COMFY ?= 1
+INSTALL_KOHYA ?= 1
 INSTALL_INVOKE ?= 1
+INSTALL_DIFFPIPE ?= 1
 INSTALL_AI_TOOLKIT ?= 1
+INSTALL_AI_TOOLKIT_UI ?= 1
+INSTALL_COPILOT_CLI ?= 1
 COPILOT_CLI_VERSION ?= 1.0.10
 CODE_SERVER_VERSION ?= 4.123.0
 JUPYTERLAB_VERSION ?= 4.5.8
@@ -45,20 +50,70 @@ PEFT_VERSION ?= 0.19.1
 ACCELERATE_VERSION ?= 1.14.0
 HF_HUB_VERSION ?= 1.19.0
 INVOKEAI_VERSION ?= 6.13.0
-INVOKE_DIFFUSERS_VERSION ?= 0.36.0
+INVOKE_TORCH_VERSION ?= 2.7.1+cu128
+INVOKE_TORCHVISION_VERSION ?= 0.22.1+cu128
+INVOKE_TORCH_INDEX_URL ?= https://download.pytorch.org/whl/cu128
+INVOKE_DIFFUSERS_VERSION ?= 0.37.0
 INVOKE_TRANSFORMERS_VERSION ?= 4.57.6
 INVOKE_ACCELERATE_VERSION ?= 1.14.0
 INVOKE_HF_HUB_VERSION ?= 0.36.2
+CROC_VERSION ?= 10.4.2
 WORKSPACE_DIR ?= $(CURDIR)/workspace
 
 # Random secrets (deterministic enough, but not sacred)
 JUPYTER_TOKEN ?= $(shell openssl rand -hex 16)
 CODE_SERVER_PASSWORD ?= $(shell openssl rand -hex 16)
 
-.PHONY: help build run rm stop restart ps logs shell urls secrets fix-perms
+DOCKER_BUILD_ARGS = \
+	--build-arg CUDA_BASE_IMAGE="$(CUDA_BASE_IMAGE)" \
+	--build-arg CUDA_PROFILE="$(CUDA_PROFILE)" \
+	--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \
+	--build-arg INSTALL_COMFY=$(INSTALL_COMFY) \
+	--build-arg INSTALL_KOHYA=$(INSTALL_KOHYA) \
+	--build-arg INSTALL_INVOKE=$(INSTALL_INVOKE) \
+	--build-arg INSTALL_DIFFPIPE=$(INSTALL_DIFFPIPE) \
+	--build-arg INSTALL_AI_TOOLKIT=$(INSTALL_AI_TOOLKIT) \
+	--build-arg INSTALL_AI_TOOLKIT_UI=$(INSTALL_AI_TOOLKIT_UI) \
+	--build-arg INSTALL_COPILOT_CLI=$(INSTALL_COPILOT_CLI) \
+	--build-arg COPILOT_CLI_VERSION="$(COPILOT_CLI_VERSION)" \
+	--build-arg CODE_SERVER_VERSION="$(CODE_SERVER_VERSION)" \
+	--build-arg JUPYTERLAB_VERSION="$(JUPYTERLAB_VERSION)" \
+	--build-arg IPYWIDGETS_VERSION="$(IPYWIDGETS_VERSION)" \
+	--build-arg COMFYUI_REF="$(COMFYUI_REF)" \
+	--build-arg COMFYUI_MANAGER_REF="$(COMFYUI_MANAGER_REF)" \
+	--build-arg KOHYA_REF="$(KOHYA_REF)" \
+	--build-arg DIFFPIPE_REF="$(DIFFPIPE_REF)" \
+	--build-arg AI_TOOLKIT_REF="$(AI_TOOLKIT_REF)" \
+	--build-arg AI_TOOLKIT_DIFFUSERS_VERSION="$(AI_TOOLKIT_DIFFUSERS_VERSION)" \
+	--build-arg DIFFPIPE_DIFFUSERS_VERSION="$(DIFFPIPE_DIFFUSERS_VERSION)" \
+	--build-arg DIFFPIPE_TRANSFORMERS_VERSION="$(DIFFPIPE_TRANSFORMERS_VERSION)" \
+	--build-arg TORCH_VERSION="$(TORCH_VERSION)" \
+	--build-arg TORCHVISION_VERSION="$(TORCHVISION_VERSION)" \
+	--build-arg TORCHAUDIO_VERSION="$(TORCHAUDIO_VERSION)" \
+	--build-arg TORCH_INDEX_URL="$(TORCH_INDEX_URL)" \
+	--build-arg XFORMERS_VERSION="$(XFORMERS_VERSION)" \
+	--build-arg BITSANDBYTES_VERSION="$(BITSANDBYTES_VERSION)" \
+	--build-arg CORE_DIFFUSERS_VERSION="$(CORE_DIFFUSERS_VERSION)" \
+	--build-arg TRANSFORMERS_VERSION="$(TRANSFORMERS_VERSION)" \
+	--build-arg PEFT_VERSION="$(PEFT_VERSION)" \
+	--build-arg ACCELERATE_VERSION="$(ACCELERATE_VERSION)" \
+	--build-arg HF_HUB_VERSION="$(HF_HUB_VERSION)" \
+	--build-arg INVOKEAI_VERSION="$(INVOKEAI_VERSION)" \
+	--build-arg INVOKE_TORCH_VERSION="$(INVOKE_TORCH_VERSION)" \
+	--build-arg INVOKE_TORCHVISION_VERSION="$(INVOKE_TORCHVISION_VERSION)" \
+	--build-arg INVOKE_TORCH_INDEX_URL="$(INVOKE_TORCH_INDEX_URL)" \
+	--build-arg INVOKE_DIFFUSERS_VERSION="$(INVOKE_DIFFUSERS_VERSION)" \
+	--build-arg INVOKE_TRANSFORMERS_VERSION="$(INVOKE_TRANSFORMERS_VERSION)" \
+	--build-arg INVOKE_ACCELERATE_VERSION="$(INVOKE_ACCELERATE_VERSION)" \
+	--build-arg INVOKE_HF_HUB_VERSION="$(INVOKE_HF_HUB_VERSION)" \
+	--build-arg CUDA_NVCC_PKG="$(CUDA_NVCC_PKG)" \
+	--build-arg CROC_VERSION="$(CROC_VERSION)"
+
+.PHONY: help build build-check run rm stop restart ps logs shell urls secrets fix-perms
 
 help:
 	@echo "Targets:"
+	@echo "  make build-check      Check Dockerfile/build args without running install layers"
 	@echo "  make build            Build image via buildx (platform=$(PLATFORM))"
 	@echo "  make run              Run container (bind-mount workspace, set secrets)"
 	@echo "  make restart          rm + run"
@@ -70,43 +125,15 @@ help:
 	@echo "  make secrets          Print secrets that will be used for make run"
 	@echo "  make fix-perms        Fix host workspace ownership (best effort)"
 
-build:
+build-check:
+	docker buildx build --check --platform $(PLATFORM) \
+		$(DOCKER_BUILD_ARGS) \
+		.
+
+build: build-check
 	docker buildx build --platform $(PLATFORM) \
 		-t $(FULL_IMAGE) \
-		--build-arg CUDA_BASE_IMAGE="$(CUDA_BASE_IMAGE)" \
-		--build-arg CUDA_PROFILE="$(CUDA_PROFILE)" \
-		--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \
-		--build-arg INSTALL_INVOKE=$(INSTALL_INVOKE) \
-		--build-arg INSTALL_AI_TOOLKIT=$(INSTALL_AI_TOOLKIT) \
-		--build-arg COPILOT_CLI_VERSION="$(COPILOT_CLI_VERSION)" \
-		--build-arg CODE_SERVER_VERSION="$(CODE_SERVER_VERSION)" \
-		--build-arg JUPYTERLAB_VERSION="$(JUPYTERLAB_VERSION)" \
-		--build-arg IPYWIDGETS_VERSION="$(IPYWIDGETS_VERSION)" \
-		--build-arg COMFYUI_REF="$(COMFYUI_REF)" \
-		--build-arg COMFYUI_MANAGER_REF="$(COMFYUI_MANAGER_REF)" \
-		--build-arg KOHYA_REF="$(KOHYA_REF)" \
-		--build-arg DIFFPIPE_REF="$(DIFFPIPE_REF)" \
-		--build-arg AI_TOOLKIT_REF="$(AI_TOOLKIT_REF)" \
-		--build-arg AI_TOOLKIT_DIFFUSERS_VERSION="$(AI_TOOLKIT_DIFFUSERS_VERSION)" \
-		--build-arg DIFFPIPE_DIFFUSERS_VERSION="$(DIFFPIPE_DIFFUSERS_VERSION)" \
-		--build-arg DIFFPIPE_TRANSFORMERS_VERSION="$(DIFFPIPE_TRANSFORMERS_VERSION)" \
-		--build-arg TORCH_VERSION="$(TORCH_VERSION)" \
-		--build-arg TORCHVISION_VERSION="$(TORCHVISION_VERSION)" \
-		--build-arg TORCHAUDIO_VERSION="$(TORCHAUDIO_VERSION)" \
-		--build-arg TORCH_INDEX_URL="$(TORCH_INDEX_URL)" \
-		--build-arg XFORMERS_VERSION="$(XFORMERS_VERSION)" \
-		--build-arg BITSANDBYTES_VERSION="$(BITSANDBYTES_VERSION)" \
-		--build-arg CORE_DIFFUSERS_VERSION="$(CORE_DIFFUSERS_VERSION)" \
-		--build-arg TRANSFORMERS_VERSION="$(TRANSFORMERS_VERSION)" \
-		--build-arg PEFT_VERSION="$(PEFT_VERSION)" \
-		--build-arg ACCELERATE_VERSION="$(ACCELERATE_VERSION)" \
-		--build-arg HF_HUB_VERSION="$(HF_HUB_VERSION)" \
-		--build-arg INVOKEAI_VERSION="$(INVOKEAI_VERSION)" \
-		--build-arg INVOKE_DIFFUSERS_VERSION="$(INVOKE_DIFFUSERS_VERSION)" \
-		--build-arg INVOKE_TRANSFORMERS_VERSION="$(INVOKE_TRANSFORMERS_VERSION)" \
-		--build-arg INVOKE_ACCELERATE_VERSION="$(INVOKE_ACCELERATE_VERSION)" \
-		--build-arg INVOKE_HF_HUB_VERSION="$(INVOKE_HF_HUB_VERSION)" \
-		--build-arg CUDA_NVCC_PKG="$(CUDA_NVCC_PKG)" \
+		$(DOCKER_BUILD_ARGS) \
 		--load .
 
 run:

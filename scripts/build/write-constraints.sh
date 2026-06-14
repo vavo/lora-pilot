@@ -13,6 +13,8 @@ mkdir -p "${config_dir}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
+: "${INVOKE_TORCH_VERSION:?INVOKE_TORCH_VERSION is required}"
+: "${INVOKE_TORCHVISION_VERSION:?INVOKE_TORCHVISION_VERSION is required}"
 : "${INVOKE_DIFFUSERS_VERSION:?INVOKE_DIFFUSERS_VERSION is required}"
 : "${INVOKE_TRANSFORMERS_VERSION:?INVOKE_TRANSFORMERS_VERSION is required}"
 : "${INVOKE_ACCELERATE_VERSION:?INVOKE_ACCELERATE_VERSION is required}"
@@ -42,9 +44,8 @@ accelerate==${ACCELERATE_VERSION}
 EOF
 
 cat > "${config_dir}/invoke-constraints.txt" <<EOF
-torch==${TORCH_VERSION}
-torchvision==${TORCHVISION_VERSION}
-${torchaudio_constraint}
+torch==${INVOKE_TORCH_VERSION}
+torchvision==${INVOKE_TORCHVISION_VERSION}
 numpy<2
 pillow<11
 diffusers==${INVOKE_DIFFUSERS_VERSION}

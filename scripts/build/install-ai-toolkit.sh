@@ -36,7 +36,11 @@ fi
 pip_install_unconstrained_in_venv /opt/venvs/ai-toolkit \
   -r /opt/pilot/repos/ai-toolkit/requirements.txt
 
-/opt/venvs/ai-toolkit/bin/python -c 'import peft; import timm; import open_clip; import lycoris; import lycoris.kohya; import torchao; import optimum.quanto'
+if [[ -z "${BUILDPLATFORM}" || -z "${TARGETPLATFORM}" || "${BUILDPLATFORM}" == "${TARGETPLATFORM}" ]]; then
+  /opt/venvs/ai-toolkit/bin/python -c 'import peft; import timm; import open_clip; import lycoris; import lycoris.kohya; import torchao; import optimum.quanto'
+else
+  echo "Skipping AI Toolkit import smoke during cross-platform build (${BUILDPLATFORM} -> ${TARGETPLATFORM}); run runtime smoke on target hardware."
+fi
 
 if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]; then
   export PATH="/opt/venvs/ai-toolkit/bin:${PATH}"
