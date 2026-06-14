@@ -24,6 +24,26 @@ def read_pin(path, name):
 
 
 class BuildPinTests(unittest.TestCase):
+    def test_node_tooling_uses_pinned_npm_version(self):
+        expected = "11.17.0"
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            with self.subTest(path=path):
+                self.assertEqual(read_pin(path, "NPM_VERSION"), expected)
+
+        make_text = (ROOT / "Makefile").read_text()
+        system_tools = (ROOT / "scripts/build/install-system-tools.sh").read_text()
+
+        self.assertIn('--build-arg NPM_VERSION="$(NPM_VERSION)"', make_text)
+        self.assertIn(': "${NPM_VERSION:?NPM_VERSION is required}"', system_tools)
+        self.assertIn('npm install -g "npm@${NPM_VERSION}"', system_tools)
+
+    def test_ai_toolkit_patch_removes_deprecated_next_dev_indicator(self):
+        patch_text = (ROOT / "scripts/build/patches/patch-ai-toolkit.sh").read_text()
+
+        self.assertIn("next.config.ts", patch_text)
+        self.assertIn("devIndicators", patch_text)
+        self.assertIn("buildActivity", patch_text)
+
     def test_invokeai_613_uses_required_diffusers_pin(self):
         expected = "0.37.0"
         for path in ("Dockerfile", "Makefile", "build.env.example"):

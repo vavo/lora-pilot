@@ -3,6 +3,7 @@ set -euo pipefail
 
 : "${CUDA_NVCC_PKG:?CUDA_NVCC_PKG is required}"
 : "${CROC_VERSION:?CROC_VERSION is required}"
+: "${NPM_VERSION:?NPM_VERSION is required}"
 
 apt-get update
 apt-get install -y --no-install-recommends \
@@ -30,6 +31,7 @@ rm -rf /var/lib/apt/lists/*
 if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]; then
   curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
   apt-get install -y --no-install-recommends nodejs
+  npm install -g "npm@${NPM_VERSION}"
   rm -rf /var/lib/apt/lists/*
   node -v
   npm -v

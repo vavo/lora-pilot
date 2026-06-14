@@ -4,6 +4,7 @@ v2.5.0 (June 12th 2026)
 - Made `torchaudio` optional for the CUDA 13.0 profile because the matching official `cu130` wheel is not currently available.
 - Consolidated runtime Python environments from five venvs to three: `/opt/venvs/core` now owns the shared GPU stack plus JupyterLab, Diffusion Pipe, and TensorBoard; `/opt/venvs/invoke` and `/opt/venvs/ai-toolkit` keep local package isolation while importing the core GPU stack.
 - Refreshed major build pins: ComfyUI `v0.24.1`, InvokeAI `6.13.0`, JupyterLab `4.5.8`, code-server `4.123.0`, Diffusion Pipe `5aa6577`, AI Toolkit `8812755`, xFormers `0.0.35`, Diffusers `0.38.0`, Transformers `5.11.0`, Accelerate `1.14.0`, PEFT `0.19.1`, Hugging Face Hub `1.19.0`, and bitsandbytes `0.49.2`.
+- Pinned npm to `11.17.0` for the AI Toolkit UI build/runtime path and patched AI Toolkit's deprecated Next dev indicator config out of the bundled UI.
 - Refreshed `models.manifest` so the image default and repo reference manifest stay aligned, and added Comfy-ready quantized Ideogram 4, Lens, and PixelDiT entries without duplicating the shared `flux2-vae` entry.
 - Preserved TagPilot provider key clearing in the UI and the bootstrap secret rewrite behavior for `HF_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `XAI_API_KEY`.
 
