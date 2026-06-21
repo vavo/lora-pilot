@@ -9,11 +9,7 @@ window.initTrainpilot = function () {
 function bindTpControls() {
   const status = document.getElementById("tp-status");
   const output = document.getElementById("tp-output");
-  const tomlPath = document.getElementById("tp-toml");
   if (status) status.textContent = "";
-  if (tomlPath && !tomlPath.value) {
-    tomlPath.value = "/workspace/config/trainpilot/newlora.toml";
-  }
   if (output && !output.dataset.bound) {
     output.dataset.bound = "1";
     output.addEventListener("input", () => {
@@ -98,11 +94,9 @@ function clearModelDownloadUI() {
   text.textContent = "";
 }
 
-async function ensureTrainpilotModelsPresent(tomlPath) {
+async function ensureTrainpilotModelsPresent() {
   const check = await fetchJson("/api/trainpilot/model-check", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ toml_path: tomlPath || "" }),
   });
   const missing = (check && check.missing) ? check.missing : [];
   if (!missing.length) return true;
@@ -173,7 +167,7 @@ async function loadTpDatasets() {
     }
     data.forEach(d => {
       const label = `${d.display || d.name} (${d.images || 0} images)`;
-      const val = d.path || d.name;
+      const val = d.name || "";
       const opt = document.createElement("option");
       opt.value = val;
       opt.textContent = label;
@@ -213,14 +207,13 @@ window.startTrainPilot = async function () {
   const outputEl = document.getElementById("tp-output");
   const output = normalizeOutputName(outputEl?.value.trim() || "");
   const profile = document.getElementById("tp-profile")?.value || "regular";
-  const toml = document.getElementById("tp-toml")?.value.trim() || "";
   const status = document.getElementById("tp-status");
   if (outputEl) outputEl.value = output;
   updateEpochExample(output);
   if (status) status.textContent = "Starting...";
   try {
     clearModelDownloadUI();
-    const ok = await ensureTrainpilotModelsPresent(toml);
+    const ok = await ensureTrainpilotModelsPresent();
     if (!ok) {
       if (status) status.textContent = "Canceled.";
       return;
@@ -232,7 +225,6 @@ window.startTrainPilot = async function () {
         dataset_name: dataset,
         output_name: output,
         profile,
-        toml_path: toml,
       }),
     });
     if (status) status.textContent = "Running...";
