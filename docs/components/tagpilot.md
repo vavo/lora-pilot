@@ -52,16 +52,28 @@ Configurable in TagPilot settings:
 - `Gemini`
 - `Grok`
 - `OpenAI`
+- `Claude`
+- `vLLM (OpenAI compatible)`
 - `DeepDanbooru`
 - `WD1.4` (via Replicate)
 
 Notes:
-- Gemini, Grok, and OpenAI keys are stored server-side in `/workspace/config/secrets.env`.
-- TagPilot sends Gemini/Grok/OpenAI generation through ControlPilot instead of calling provider APIs from the browser.
+- `Claude` and `vLLM` are configured directly in the TagPilot Settings modal and kept in the browser session storage for convenience.
+- `Gemini`, `Grok`, and `OpenAI` can still be managed from ControlPilot secrets settings.
 - Browser uploads for Gemini/Grok/OpenAI are normalized to JPEG/PNG where needed, and the backend infers image MIME type from the request, filename, and image bytes before provider calls.
 - Provider errors return JSON from ControlPilot instead of gateway-style HTML error pages.
 - WD1.4 requires a Replicate API key.
 - Batch operations support modes: `ignore`, `append`, `overwrite`.
+
+## OpenAI-Compatible vLLM Support
+
+For OpenAI-compatible backends (`vLLM`, LM Studio, etc.), pick `vLLM OpenAI compatible` from the TagPilot model selectors and set:
+
+- `vLLM endpoint URL`: set the full URL or base URL for `/v1` (TagPilot supports either `https://host/v1` or `https://host/v1/chat/completions`).
+- `vLLM model type`: enter the exact model identifier your endpoint serves (for example `Qwen/Qwen3-8B`).
+- `API key`: provided in the `Authorization: Bearer <token>` header when your server requires it.
+
+The selected endpoint/model are saved in browser localStorage so they persist between TagPilot sessions.
 
 ## 🧰 Typical Workflow
 
@@ -92,14 +104,15 @@ Additional global navigation/edit shortcuts beyond the above are **Not found in 
 | `/api/tagpilot/load` | `GET` | Load dataset files into TagPilot |
 | `/api/tagpilot/providers` | `GET` | Return Gemini/Grok/OpenAI configuration status without exposing keys |
 | `/api/tagpilot/providers/{provider}/key` | `POST` | Save a Gemini/Grok/OpenAI key to server-side secrets |
-| `/api/tagpilot/generate` | `POST` | Generate tags/captions from an uploaded image through the selected LLM provider |
+| `/api/tagpilot/generate` | `POST` | Generate tags/captions from an uploaded image through Gemini/Grok/OpenAI through ControlPilot |
 | `/api/tagpilot/save` | `POST` | Save ZIP and extract to dataset dir |
 | `/api/tagpilot/save-item` | `POST` | Incremental save (used by UI) |
 | `/api/datasets` | `GET` | Dataset list used by ControlPilot/TrainPilot |
 
 ## 🔐 Security Notes
 
-- Gemini, Grok, and OpenAI keys are server-side values in `/workspace/config/secrets.env`.
+- Gemini, Grok, and OpenAI keys are server-side values in `/workspace/config/secrets.env` when using ControlPilot-managed providers.
+- Claude and vLLM keys entered in TagPilot are stored in browser session storage on the running machine.
 - Bootstrap preserves existing provider key lines when rewriting runtime secrets.
 - WD1.4 still uses a browser-session Replicate key.
 - Do not run TagPilot in shared browsers with persistent sessions if that is a problem for your workflow.
@@ -133,6 +146,7 @@ docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 - Verify selected provider key and quota.
 - For WD1.4, confirm Replicate key and thresholds.
 - For Gemini/Grok/OpenAI, verify account model access.
+- For vLLM, verify endpoint URL and that model ID exists on the vLLM server.
 
 ## Related
 
@@ -144,7 +158,7 @@ docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 
 ---
 
-_Last updated: 2026-05-07_
+_Last updated: 2026-07-03_
 
 ---
 

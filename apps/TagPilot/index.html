@@ -3,15 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>TAG PILOT</title>
+    <title>TagPilot ✈️</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" integrity="sha512-hvNR0F/e2J7zPPfLC9auFe3/SE0yG4aJCOd/qxew74NN7eyiSKjr7xJJMu1Jy2wf7FXITpWS1E/RY8yzuXN7VA==" crossorigin="anonymous">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" integrity="sha512-9KkIqdfN7ipEW6B6k+Aq20PV31bjODg4AA52W+tYtAE0jE0kMx49bjJ3FgvS56wzmyfMUHbQ4Km2b7l9+Y/+Eg==" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     <style>
         :root { color-scheme: dark; }
         :root[data-theme="light"] { color-scheme: light; }
@@ -21,77 +18,245 @@
         :root[data-theme="light"] .bg-gray-800 { background:#f3f4f6 !important; color:#0f172a !important; }
         :root[data-theme="light"] .bg-gray-700 { background:#e5e7eb !important; color:#0f172a !important; }
         :root[data-theme="light"] .bg-gray-900 { background:#ffffff !important; color:#0f172a !important; }
+        :root[data-theme="light"] .bg-gray-900\/40 { background:#ffffff !important; color:#0f172a !important; }
         :root[data-theme="light"] .border-gray-600, :root[data-theme="light"] .border-gray-500 { border-color:#cbd5e1 !important; }
         :root[data-theme="light"] .text-gray-200, :root[data-theme="light"] .text-gray-300, :root[data-theme="light"] .text-gray-400, :root[data-theme="light"] .text-gray-500 { color:#0f172a !important; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #2d3748; }
         ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #718096; }
-        .settings-icon { position: fixed; top: 10px; right: 10px; font-size: 32px; cursor: pointer; z-index: 1000; }
+        .settings-icon { position: fixed; top: 10px; left: 10px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; cursor: pointer; z-index: 1000; color: #e5e7eb; background: rgba(31, 41, 55, 0.9); border: 1px solid #374151; border-radius: 8px; padding: 8px 10px; }
+        .settings-icon-symbol { font-size: 22px; line-height: 1; }
         .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 2000; justify-content: center; align-items: center; }
         .modal-content { background: #1f2937; padding: 24px; border-radius: 12px; width: 320px; color: white; }
+        .settings-modal-content { width: min(960px, calc(100vw - 32px)); max-height: 90vh; overflow-y: auto; }
         .close { float: right; cursor: pointer; font-size: 24px; }
         .collapsible-content { transition: max-height 0.3s ease-out; max-height: 0; overflow: hidden; }
         .collapsible-content.expanded { max-height: 1000px; overflow-y: auto; }
         .rotate-icon { transition: transform 0.3s ease; }
         .rotate-icon.expanded { transform: rotate(180deg); }
-        .preview-action-button { width: 44px; height: 44px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.82); color: #fff; border: 1px solid rgba(148, 163, 184, 0.45); box-shadow: 0 10px 25px rgba(0,0,0,0.35); transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease; }
-        .preview-action-button:hover { background: rgba(37, 99, 235, 0.9); border-color: rgba(191, 219, 254, 0.85); transform: translateY(-1px); }
-        .preview-action-button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
-        .tagpilot-version { position: fixed; bottom: 8px; right: 12px; font-size: 12px; color: #94a3b8; text-decoration: none; opacity: 0.8; z-index: 3000; }
-        .tagpilot-version:hover { opacity: 1; text-decoration: underline; }
-        :root[data-theme="light"] .tagpilot-version { color: #64748b; }
     </style>
-</head>
-<body>
-
     <script>
-      // Sync theme with parent ControlPilot (or saved setting) to avoid double logos/white bg in dark mode
-      (function syncTheme() {
-        let theme = "dark";
-        try {
-          if (window.parent && window.parent !== window) {
-            const t = window.parent.document.documentElement.getAttribute("data-theme");
-            if (t) theme = t;
-          }
-        } catch (e) {}
-        if (!theme) {
-          const saved = localStorage.getItem("theme");
-          theme = saved === "light" ? "light" : "dark";
-        }
-        document.documentElement.setAttribute("data-theme", theme);
-      })();
+        (function initTagPilotTheme() {
+            function normalizeTheme(value) {
+                return value === "light" || value === "dark" ? value : "";
+            }
+
+            function readParentTheme() {
+                try {
+                    if (window.parent === window) return "";
+                    return normalizeTheme(window.parent?.document?.documentElement?.getAttribute("data-theme"));
+                } catch (e) {
+                    return "";
+                }
+            }
+
+            function readStoredTheme() {
+                try {
+                    return normalizeTheme(localStorage.getItem("theme"));
+                } catch (e) {
+                    return "";
+                }
+            }
+
+            function applyTheme() {
+                const mode = readParentTheme() || readStoredTheme() || "dark";
+                document.documentElement.setAttribute("data-theme", mode);
+            }
+
+            function observeParentTheme() {
+                if (window.parent === window) return;
+                try {
+                    const parentRoot = window.parent?.document?.documentElement;
+                    if (!parentRoot) return;
+                    const observer = new MutationObserver(applyTheme);
+                    observer.observe(parentRoot, { attributes: true, attributeFilter: ["data-theme"] });
+                    window.addEventListener("beforeunload", () => observer.disconnect());
+                } catch (e) {
+                    // ignore cross-origin / timing issues
+                }
+            }
+
+            applyTheme();
+            observeParentTheme();
+            window.addEventListener("storage", (event) => {
+                if (event.key === "theme") {
+                    applyTheme();
+                }
+            });
+        })();
     </script>
+</head>
+<body class="bg-gray-900 text-gray-200">
 
     <!-- Settings Icon -->
-    <div id="settings-icon" class="settings-icon">⚙️</div>
+    <div id="settings-icon" class="settings-icon">
+        <span class="settings-icon-symbol">⚙️</span>
+        <span>Settings</span>
+    </div>
+
+    <div id="lora-pilot-family-link" class="fixed bottom-3 right-3 z-[900] text-xs text-gray-500">
+        Part of <a href="https://github.com/vavo/lora-pilot" target="_blank" rel="noopener noreferrer" class="text-gray-400 hover:text-indigo-300 underline underline-offset-2">Lora Pilot</a> family
+    </div>
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content settings-modal-content">
             <span class="close" id="closeSettings">×</span>
             <h2 class="text-2xl mb-4">Settings</h2>
-            <label class="block mb-2">Model:</label>
-            <select id="modelSelect" class="w-full bg-gray-700 p-2 rounded mb-4">
-                <option value="gemini">Gemini</option>
-                <option value="grok">Grok</option>
-                <option value="openai">OpenAI</option>
-                <option value="deepdanbooru">DeepDanbooru</option>
-                <option value="wd14">WD1.4 Tagger</option>
-            </select>
-            <label class="block mb-2 api-key-label">API key for chosen model:</label>
-            <input type="password" id="apiKeyInput" class="w-full bg-gray-700 p-2 rounded mb-4">
-            <label class="block mb-2 dd-threshold-label" style="display:none;">DeepDanbooru Threshold (0-1):</label>
-            <input type="number" id="ddThreshold" min="0" max="1" step="0.05" value="0.5" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
-            <label class="block mb-2 wd-apikey-label" style="display:none;">Replicate API Key (WD1.4):</label>
-            <input type="password" id="wdApiKeyInput" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
-            <label class="block mb-2 wd-general-label" style="display:none;">WD1.4 General Threshold (0-1):</label>
-            <input type="number" id="wdGeneralThresh" min="0" max="1" step="0.05" value="0.35" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
-            <label class="block mb-2 wd-char-label" style="display:none;">WD1.4 Character Threshold (0-1):</label>
-            <input type="number" id="wdCharThresh" min="0" max="1" step="0.05" value="0.85" class="w-full bg-gray-700 p-2 rounded mb-4" style="display:none;">
-            <div class="flex flex-wrap gap-3">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                <section class="border border-gray-700 rounded-lg p-4 bg-gray-900/40">
+                    <h3 class="text-lg font-semibold text-white mb-3">Tagging Options</h3>
+                    <label class="block mb-2 text-sm text-gray-400">Default model</label>
+                    <select id="tag-default-model" class="w-full bg-gray-700 p-2 rounded mb-4">
+                        <option value="gemini">Gemini</option>
+                        <option value="grok">Grok</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="claude">Claude</option>
+                        <option value="vllm">vLLM OpenAI compatible</option>
+                        <option value="deepdanbooru">DeepDanbooru</option>
+                        <option value="wd14">WD1.4 Tagger</option>
+                    </select>
+                    <label class="block mb-2 text-sm text-gray-400">Max number of tags per image</label>
+                    <input type="number" id="setting-max-tags" value="30" min="1" max="100" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500 mb-4">
+                    <label class="block mb-2 text-sm text-gray-400">System prompt</label>
+                    <textarea id="tag-system-prompt" class="w-full h-40 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500"></textarea>
+                </section>
+
+                <section class="border border-gray-700 rounded-lg p-4 bg-gray-900/40">
+                    <h3 class="text-lg font-semibold text-white mb-3">Captioning Options</h3>
+                    <label class="block mb-2 text-sm text-gray-400">Default model</label>
+                    <select id="caption-default-model" class="w-full bg-gray-700 p-2 rounded mb-4">
+                        <option value="gemini">Gemini</option>
+                        <option value="grok">Grok</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="claude">Claude</option>
+                        <option value="vllm">vLLM OpenAI compatible</option>
+                    </select>
+                    <label class="block mb-2 text-sm text-gray-400">Max caption length (words)</label>
+                    <input type="number" id="setting-max-caption-len" value="50" min="5" max="200" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 mb-4">
+                    <label class="block mb-2 text-sm text-gray-400">System prompt</label>
+                    <textarea id="caption-system-prompt" class="w-full h-40 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:outline-none focus:border-purple-500"></textarea>
+                </section>
+            </div>
+
+            <section class="border border-gray-700 rounded-lg p-4 bg-gray-900/40 mb-5">
+                <h3 class="text-lg font-semibold text-white mb-3">Crop Options</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">Crop Size</label>
+                        <select id="crop-aspect-ratio" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="freeform">Free form</option>
+                            <option value="1:1">1:1 Square</option>
+                            <option value="16:9">16:9 Landscape</option>
+                            <option value="3:2">3:2 Landscape</option>
+                            <option value="4:3">4:3 Landscape</option>
+                            <option value="21:9">21:9 Widescreen</option>
+                            <option value="9:16">9:16 Portrait</option>
+                            <option value="2:3">2:3 Portrait</option>
+                            <option value="3:4">3:4 Portrait</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">Crop width (px)</label>
+                        <input type="number" id="crop-width" value="1024" min="64" max="8192" step="64" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+            </section>
+
+            <section class="border border-gray-700 rounded-lg p-4 bg-gray-900/40 mb-5">
+                <h3 class="text-lg font-semibold text-white mb-3">Model API Keys</h3>
+                <div class="overflow-x-auto">
+                    <table id="model-api-key-table" class="w-full text-sm">
+                        <thead class="text-gray-400">
+                            <tr>
+                                <th class="text-left font-medium py-2 pr-4">Model</th>
+                                <th class="text-left font-medium py-2 pr-4">API key</th>
+                                <th class="text-left font-medium py-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-700">
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">Gemini</td>
+                                <td class="py-2 pr-4"><input type="password" id="api-key-gemini" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"></td>
+                                <td class="py-2 text-xs text-gray-500" data-key-status="gemini">Not saved</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">Grok</td>
+                                <td class="py-2 pr-4"><input type="password" id="api-key-grok" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"></td>
+                                <td class="py-2 text-xs text-gray-500" data-key-status="grok">Not saved</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">OpenAI</td>
+                                <td class="py-2 pr-4"><input type="password" id="api-key-openai" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"></td>
+                                <td class="py-2 text-xs text-gray-500" data-key-status="openai">Not saved</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">Claude</td>
+                                <td class="py-2 pr-4"><input type="password" id="api-key-claude" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"></td>
+                                <td class="py-2 text-xs text-gray-500" data-key-status="claude">Not saved</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">vLLM OpenAI compatible</td>
+                                <td class="py-2 pr-4"><input type="password" id="api-key-vllm" placeholder="sk-pod-id" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"></td>
+                                <td class="py-2 text-xs text-gray-500" data-key-status="vllm">Not saved</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">DeepDanbooru</td>
+                                <td class="py-2 pr-4"><input type="text" id="api-key-deepdanbooru" disabled value="No key required" class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-gray-500"></td>
+                                <td class="py-2 text-xs text-teal-400">Ready</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 pr-4 text-gray-200">WD1.4 Tagger</td>
+                                <td class="py-2 pr-4"><input type="password" id="api-key-wd14" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"></td>
+                                <td class="py-2 text-xs text-gray-500" data-key-status="wd14">Not saved</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">DeepDanbooru threshold</label>
+                        <input type="number" id="ddThreshold" min="0" max="1" step="0.05" value="0.5" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">WD1.4 general threshold</label>
+                        <input type="number" id="wdGeneralThresh" min="0" max="1" step="0.05" value="0.35" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">WD1.4 character threshold</label>
+                        <input type="number" id="wdCharThresh" min="0" max="1" step="0.05" value="0.85" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-700">
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">vLLM endpoint URL</label>
+                        <input type="url" id="vllm-endpoint" placeholder="https://pod-id-8000.proxy.runpod.net" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm text-gray-400">vLLM model preset</label>
+                        <select id="vllm-model-preset" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="">Custom model ID</option>
+                            <option value="Qwen/Qwen2.5-VL-3B-Instruct">Qwen2.5 VL 3B Instruct</option>
+                            <option value="Qwen/Qwen2.5-VL-7B-Instruct">Qwen2.5 VL 7B Instruct</option>
+                            <option value="Qwen/Qwen3-VL-4B-Instruct">Qwen3 VL 4B Instruct</option>
+                            <option value="Qwen/Qwen3-VL-8B-Instruct">Qwen3 VL 8B Instruct</option>
+                            <option value="Qwen/Qwen3.5-9B-Instruct">Qwen3.5 9B Instruct</option>
+                            <option value="google/gemma-3-4b-it">Gemma 3 4B IT</option>
+                            <option value="google/gemma-3-12b-it">Gemma 3 12B IT</option>
+                            <option value="mistralai/Pixtral-12B-2409">Mistral Pixtral 12B</option>
+                            <option value="mistralai/Mistral-Small-3.1-24B-Instruct-2503">Mistral Small 3.1 24B</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block mb-2 text-sm text-gray-400">vLLM model type</label>
+                        <input type="text" id="vllm-model-type" value="Qwen/Qwen3-8B" placeholder="Qwen/Qwen3-8B" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+            </section>
+
+            <div class="flex justify-end">
                 <button id="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded">Save</button>
-                <button id="clearProviderKey" class="hidden bg-red-700 hover:bg-red-600 px-4 py-2 rounded">Clear key</button>
             </div>
         </div>
     </div>
@@ -103,9 +268,8 @@
 
     <div class="container mx-auto p-4 md:p-8">
         <header class="text-center mb-8">
-            <div class="flex justify-center items-center gap-4">
-                <img src="./logo-tagpilot.svg" onerror="this.onerror=null;this.src='/logo-tagpilot.svg';" width="300" alt="TagPilot" class="mx-auto block">
-            </div>
+            <h1 class="text-4xl font-bold text-white mb-2">TagPilot ✈️</h1>
+            <p class="text-lg text-gray-400">Advanced LoRA Dataset Tagger</p>
         </header>
 
         <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-8">
@@ -142,23 +306,18 @@
                             Clear Tags/Captions
                         </button>
                         <div class="relative flex items-center">
-                            <span class="absolute left-3 text-gray-400 text-sm">Trigger Word:</span>
+                            <span id="trigger-word-label" class="absolute left-3 text-gray-400 text-sm">Trigger Word:</span>
                             <input type="text" id="trigger-word-input" placeholder="e.g. ohwx man" class="bg-gray-700 border border-gray-600 rounded-md py-2 pl-24 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40 sm:w-48">
                         </div>
                         <div class="relative flex items-center">
-                            <span class="absolute left-3 text-gray-400 text-sm">Dataset Name:</span>
+                            <span id="dataset-name-label" class="absolute left-3 text-gray-400 text-sm">Dataset Name:</span>
                             <input type="text" id="dataset-name-input" placeholder="filename" class="bg-gray-700 border border-gray-600 rounded-md py-2 pl-28 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-40 sm:w-48">
                         </div>
                         <button id="tag-all-button" class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Tag All</button>
                         <button id="caption-all-button" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">Caption All</button>
-                        <div class="flex flex-wrap gap-2">
-                            <button id="export-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
-                                Export as ZIP
-                            </button>
-                            <button id="save-workspace-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
-                                Save to /workspace/datasets
-                            </button>
-                        </div>
+                        <button id="export-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                            Export as ZIP
+                        </button>
                     </div>
                 </div>
             </div>
@@ -187,7 +346,7 @@
             </div>
         </div>
 
-        <div id="loader" class="hidden fixed inset-0 flex items-center justify-center z-50" style="background:rgba(0,0,0,0.6);">
+        <div id="loader" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50">
             <div class="flex flex-col items-center">
                 <svg class="animate-spin h-10 w-10 text-white mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -201,16 +360,6 @@
             <div class="bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-700">
                 <div id="tag-settings-config">
                     <h3 class="text-xl font-bold text-white mb-4">Tagging Settings</h3>
-                    <div class="mb-4">
-                        <label class="block text-gray-400 text-sm mb-2">Max number of tags per image</label>
-                        <input type="number" id="setting-max-tags" value="30" min="1" max="100" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div class="mb-6">
-                        <button id="toggle-tag-prompt-btn" class="text-sm text-indigo-400 hover:text-indigo-300 underline mb-2 focus:outline-none">
-                            Edit System Prompt
-                        </button>
-                        <textarea id="tag-system-prompt" class="hidden w-full h-32 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:outline-none focus:border-indigo-500"></textarea>
-                    </div>
                     <div class="mb-6">
                         <label class="block text-gray-400 text-sm mb-2">If tags exist:</label>
                         <div class="space-y-2">
@@ -250,10 +399,6 @@
                 <div id="caption-settings-config">
                     <h3 class="text-xl font-bold text-white mb-4">Caption Settings</h3>
                     <div class="mb-4">
-                        <label class="block text-gray-400 text-sm mb-2">Max caption length (words)</label>
-                        <input type="number" id="setting-max-caption-len" value="50" min="5" max="200" class="w-full bg-gray-900 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500">
-                    </div>
-                    <div class="mb-4">
                         <label class="block text-gray-400 text-sm mb-2">If text exists:</label>
                         <div class="space-y-2">
                             <label class="flex items-center space-x-3 cursor-pointer">
@@ -269,10 +414,6 @@
                                 <span class="text-gray-300">Overwrite (Replace)</span>
                             </label>
                         </div>
-                    </div>
-                    <div class="mb-6">
-                        <button id="toggle-caption-prompt-btn" class="text-sm text-purple-400 hover:text-purple-300 underline mb-2 focus:outline-none">Edit System Prompt</button>
-                        <textarea id="caption-system-prompt" class="hidden w-full h-32 bg-gray-900 border border-gray-600 rounded p-2 text-xs text-gray-300 focus:outline-none focus:border-purple-500"></textarea>
                     </div>
                     <div class="flex justify-end gap-3">
                         <button id="cancel-captioning-btn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors">Cancel</button>
@@ -293,11 +434,7 @@
 
         <div id="preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
             <img id="preview-image" src="" class="max-w-full max-h-full object-contain rounded-lg">
-            <div class="absolute top-4 right-16 flex gap-2">
-                <button id="preview-crop" class="preview-action-button" title="Crop image" aria-label="Crop image">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 2v14a2 2 0 002 2h14M2 6h14a2 2 0 012 2v14M6 6h12v12" /></svg>
-                </button>
-            </div>
+            <button id="preview-crop" class="absolute top-4 right-20 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg">Crop</button>
             <button id="preview-close" class="absolute top-4 right-4 text-white text-4xl font-bold">&times;</button>
         </div>
 
@@ -317,8 +454,11 @@
         let currentTriggerWord = "";
         let isBatchProcessing = false;
         let cropper = null;
-        let currentCropIndex = -1;
-        let currentPreviewIndex = -1;
+        let currentCropItemId = null;
+        let currentPreviewItemId = null;
+        let nextDatasetItemId = 1;
+        const fileObjectUrls = new Map();
+        const transientObjectUrls = new Set();
 
         const DEFAULT_TAG_PROMPT = `You are an expert for creating photorealistic AI training datasets. Your task is to generate descriptive tags for the provided image for the purpose of SDXL lora training using kohya_ss.
 Follow these rules strictly:
@@ -340,18 +480,56 @@ The final output MUST be a comma-separated list of tags. No comments, no 'Here i
 
 Expected outcome is a human-readable continuous text consisting of several sentences without the use of numbering or bullet points.`;
 
+        const TEXT_MODEL_IDS = ['gemini', 'grok', 'openai', 'claude', 'vllm'];
+        const TAG_MODEL_IDS = [...TEXT_MODEL_IDS, 'deepdanbooru', 'wd14'];
+        const API_KEY_MODEL_IDS = [...TEXT_MODEL_IDS, 'wd14'];
+        const DEEPDANBOORU_API_BASE = 'https://hysts-deepdanbooru.hf.space/gradio_api';
+        const VLLM_DEFAULT_MODEL = 'Qwen/Qwen3-8B';
+        const VLLM_MODEL_PRESETS = [
+            'Qwen/Qwen2.5-VL-3B-Instruct',
+            'Qwen/Qwen2.5-VL-7B-Instruct',
+            'Qwen/Qwen3-VL-4B-Instruct',
+            'Qwen/Qwen3-VL-8B-Instruct',
+            'Qwen/Qwen3.5-9B-Instruct',
+            'google/gemma-3-4b-it',
+            'google/gemma-3-12b-it',
+            'mistralai/Pixtral-12B-2409',
+            'mistralai/Mistral-Small-3.1-24B-Instruct-2503'
+        ];
+        const CROP_ASPECT_RATIOS = {
+            '1:1': 1,
+            '16:9': 16 / 9,
+            '3:2': 3 / 2,
+            '4:3': 4 / 3,
+            '21:9': 21 / 9,
+            '9:16': 9 / 16,
+            '2:3': 2 / 3,
+            '3:4': 3 / 4
+        };
+
         // DOM elements
         const settingsIcon = document.getElementById('settings-icon');
         const settingsModal = document.getElementById('settingsModal');
         const closeSettingsBtn = document.getElementById('closeSettings');
-        const modelSelect = document.getElementById('modelSelect');
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        const wdApiKeyInput = document.getElementById('wdApiKeyInput');
+        const tagDefaultModel = document.getElementById('tag-default-model');
+        const captionDefaultModel = document.getElementById('caption-default-model');
+        const cropAspectRatioSelect = document.getElementById('crop-aspect-ratio');
+        const cropWidthInput = document.getElementById('crop-width');
+        const apiKeyInputs = {
+            gemini: document.getElementById('api-key-gemini'),
+            grok: document.getElementById('api-key-grok'),
+            openai: document.getElementById('api-key-openai'),
+            claude: document.getElementById('api-key-claude'),
+            vllm: document.getElementById('api-key-vllm'),
+            wd14: document.getElementById('api-key-wd14')
+        };
+        const vllmEndpointInput = document.getElementById('vllm-endpoint');
+        const vllmModelPresetSelect = document.getElementById('vllm-model-preset');
+        const vllmModelTypeInput = document.getElementById('vllm-model-type');
         const ddThreshold = document.getElementById('ddThreshold');
         const wdGeneralThresh = document.getElementById('wdGeneralThresh');
         const wdCharThresh = document.getElementById('wdCharThresh');
         const saveSettingsBtn = document.getElementById('saveSettings');
-        const clearProviderKeyBtn = document.getElementById('clearProviderKey');
 
         const imageUpload = document.getElementById('image-upload');
         const zipUpload = document.getElementById('zip-upload');
@@ -359,13 +537,14 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const placeholder = document.getElementById('placeholder');
         const taggerSection = document.getElementById('tagger-section');
         const exportButton = document.getElementById('export-button');
-        const saveWorkspaceButton = document.getElementById('save-workspace-button');
         const resetButton = document.getElementById('reset-button');
         const clearTagsButton = document.getElementById('clear-tags-button');
         const tagAllButton = document.getElementById('tag-all-button');
         const captionAllButton = document.getElementById('caption-all-button');
         const datasetNameInput = document.getElementById('dataset-name-input');
         const triggerWordInput = document.getElementById('trigger-word-input');
+        const datasetNameLabel = document.getElementById('dataset-name-label');
+        const triggerWordLabel = document.getElementById('trigger-word-label');
 
         const loader = document.getElementById('loader');
         const loaderText = document.getElementById('loader-text');
@@ -392,7 +571,6 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const settingMaxTags = document.getElementById('setting-max-tags');
         const tagProgressBar = document.getElementById('tag-progress-bar');
         const tagProgressText = document.getElementById('tag-progress-text');
-        const toggleTagPromptBtn = document.getElementById('toggle-tag-prompt-btn');
         const tagSystemPrompt = document.getElementById('tag-system-prompt');
 
         const captionSettingsModal = document.getElementById('caption-settings-modal');
@@ -404,32 +582,26 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const settingMaxCaptionLen = document.getElementById('setting-max-caption-len');
         const captionProgressBar = document.getElementById('caption-progress-bar');
         const captionProgressText = document.getElementById('caption-progress-text');
-        const toggleCaptionPromptBtn = document.getElementById('toggle-caption-prompt-btn');
         const captionSystemPrompt = document.getElementById('caption-system-prompt');
 
         const cropModal = document.getElementById('crop-modal');
         const cropImage = document.getElementById('crop-image');
         const cropSaveButton = document.getElementById('crop-save');
         const cropCancelButton = document.getElementById('crop-cancel');
-        const sessionSecrets = {
-            wd14ApiKey: '',
-        };
-        let providerStatusCache = null;
 
-        tagSystemPrompt.value = DEFAULT_TAG_PROMPT;
-        captionSystemPrompt.value = DEFAULT_CAPTION_PROMPT;
+        loadSettingsValues();
 
         // Event listeners
         settingsIcon.addEventListener('click', openSettings);
         closeSettingsBtn.addEventListener('click', closeSettings);
-        saveSettingsBtn.addEventListener('click', () => saveSettings().catch((e) => showNotification(`Error saving settings: ${e.message || e}`)));
-        clearProviderKeyBtn.addEventListener('click', () => clearProviderKey().catch((e) => showNotification(`Error clearing key: ${e.message || e}`)));
-        modelSelect.addEventListener('change', handleModelChange);
+        saveSettingsBtn.addEventListener('click', saveSettings);
+        Object.values(apiKeyInputs).forEach(input => input.addEventListener('input', updateSettingsFields));
+        vllmModelPresetSelect.addEventListener('change', applyVllmModelPreset);
+        vllmModelTypeInput.addEventListener('input', syncVllmModelPreset);
 
         imageUpload.addEventListener('change', handleImageUpload);
         zipUpload.addEventListener('change', handleZipUpload);
         exportButton.addEventListener('click', handleExport);
-        saveWorkspaceButton.addEventListener('click', handleSaveToWorkspace);
         resetButton.addEventListener('click', handleReset);
         clearTagsButton.addEventListener('click', handleClearTags);
         tagAllButton.addEventListener('click', openTagSettings);
@@ -437,26 +609,20 @@ Expected outcome is a human-readable continuous text consisting of several sente
         startTaggingBtn.addEventListener('click', startBatchTagging);
         cancelTaggingBtn.addEventListener('click', closeTagSettings);
         stopTaggingBtn.addEventListener('click', stopBatchProcessing);
-        toggleTagPromptBtn.addEventListener('click', () => tagSystemPrompt.classList.toggle('hidden'));
         startCaptioningBtn.addEventListener('click', startBatchCaptioning);
         cancelCaptioningBtn.addEventListener('click', closeCaptionSettings);
         stopCaptioningBtn.addEventListener('click', stopBatchProcessing);
-        toggleCaptionPromptBtn.addEventListener('click', () => captionSystemPrompt.classList.toggle('hidden'));
         previewClose.addEventListener('click', hidePreview);
-        previewCropButton.addEventListener('click', cropFromPreview);
-        triggerWordInput.addEventListener('input', handleTriggerWordChange);
+        previewCropButton.addEventListener('click', cropPreviewImage);
+        triggerWordInput.addEventListener('input', handleTriggerWordInput);
+        datasetNameInput.addEventListener('input', updateInputPrefixLabels);
+        updateInputPrefixLabels();
         tagViewerHeader.addEventListener('click', () => {
             tagViewerContent.classList.toggle('expanded');
             tagViewerArrow.classList.toggle('expanded');
         });
         previewModal.addEventListener('click', (e) => e.target === previewModal && hidePreview());
         document.addEventListener('keydown', (e) => {
-            const isPreviewOpen = previewModal.style.display === 'flex';
-            if (isPreviewOpen && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-                e.preventDefault();
-                navigatePreview(e.key === 'ArrowRight' ? 1 : -1);
-                return;
-            }
             if (e.key === 'Escape') {
                 hidePreview();
                 cancelCrop();
@@ -470,115 +636,472 @@ Expected outcome is a human-readable continuous text consisting of several sente
         cropCancelButton.addEventListener('click', cancelCrop);
 
         // Settings functions
+        function isTagModel(model) {
+            return TAG_MODEL_IDS.includes(model);
+        }
+
+        function isCaptionModel(model) {
+            return TEXT_MODEL_IDS.includes(model);
+        }
+
+        function getSavedTagModel() {
+            const saved = localStorage.getItem('tagModel');
+            if (isTagModel(saved)) return saved;
+            const legacy = localStorage.getItem('selectedModel');
+            if (isTagModel(legacy)) return legacy;
+            return 'gemini';
+        }
+
+        function getSavedCaptionModel() {
+            const saved = localStorage.getItem('captionModel');
+            if (isCaptionModel(saved)) return saved;
+            const legacy = localStorage.getItem('selectedModel');
+            if (isCaptionModel(legacy)) return legacy;
+            return 'gemini';
+        }
+
+        function getSavedCropAspectRatio() {
+            const saved = localStorage.getItem('cropAspectRatio') || 'freeform';
+            return saved === 'freeform' || Object.prototype.hasOwnProperty.call(CROP_ASPECT_RATIOS, saved) ? saved : 'freeform';
+        }
+
+        function getProviderKeyStorageName(model) {
+            return model === 'wd14' ? 'wd14ApiKey' : `${model}ApiKey`;
+        }
+
         function updateSettingsFields() {
-            const model = modelSelect.value;
-            const isLLM = ['gemini', 'grok', 'openai'].includes(model);
-            const isDD = model === 'deepdanbooru';
-            const isWD = model === 'wd14';
-
-            document.querySelectorAll('.api-key-label, #apiKeyInput').forEach(el => el.style.display = isLLM ? 'block' : 'none');
-            clearProviderKeyBtn.classList.toggle('hidden', !isLLM);
-            document.querySelectorAll('.dd-threshold-label, #ddThreshold').forEach(el => el.style.display = isDD ? 'block' : 'none');
-            document.querySelectorAll('.wd-apikey-label, #wdApiKeyInput, .wd-general-label, #wdGeneralThresh, .wd-char-label, #wdCharThresh').forEach(el => el.style.display = isWD ? 'block' : 'none');
+            API_KEY_MODEL_IDS.forEach(model => {
+                const status = document.querySelector(`[data-key-status='${model}']`);
+                if (!status) return;
+                const hasKey = Boolean(apiKeyInputs[model]?.value.trim());
+                status.textContent = hasKey ? 'Saved' : 'Not saved';
+                status.classList.toggle('text-teal-400', hasKey);
+                status.classList.toggle('text-gray-500', !hasKey);
+            });
         }
 
-        function rememberSecretInputs() {
-            const currentModel = modelSelect.value;
-            if (currentModel === 'wd14') {
-                sessionSecrets.wd14ApiKey = wdApiKeyInput.value.trim();
-            }
-        }
-
-        function applySecretInputs() {
-            const model = modelSelect.value;
-            if (['gemini', 'grok', 'openai'].includes(model)) {
-                const status = providerStatusCache?.providers?.find(p => p.id === model);
-                apiKeyInput.value = '';
-                apiKeyInput.placeholder = status?.configured ? 'Configured on server' : 'Paste key to save on server';
-            }
-            wdApiKeyInput.value = sessionSecrets.wd14ApiKey || '';
-        }
-
-        function handleModelChange() {
-            rememberSecretInputs();
-            updateSettingsFields();
-            applySecretInputs();
-        }
-
-        async function openSettings() {
-            settingsModal.style.display = 'flex';
-            modelSelect.value = localStorage.getItem('selectedModel') || 'gemini';
+        function loadSettingsValues() {
+            tagDefaultModel.value = getSavedTagModel();
+            captionDefaultModel.value = getSavedCaptionModel();
+            settingMaxTags.value = localStorage.getItem('settingMaxTags') || '30';
+            settingMaxCaptionLen.value = localStorage.getItem('settingMaxCaptionLen') || '50';
+            cropAspectRatioSelect.value = getSavedCropAspectRatio();
+            cropWidthInput.value = localStorage.getItem('cropWidth') || '1024';
+            tagSystemPrompt.value = localStorage.getItem('tagSystemPrompt') || DEFAULT_TAG_PROMPT;
+            captionSystemPrompt.value = localStorage.getItem('captionSystemPrompt') || DEFAULT_CAPTION_PROMPT;
+            vllmEndpointInput.value = localStorage.getItem('vllmEndpoint') || '';
+            vllmModelTypeInput.value = localStorage.getItem('vllmModelType') || VLLM_DEFAULT_MODEL;
+            syncVllmModelPreset();
             ddThreshold.value = localStorage.getItem('ddThreshold') || '0.5';
             wdGeneralThresh.value = localStorage.getItem('wdGeneralThresh') || '0.35';
             wdCharThresh.value = localStorage.getItem('wdCharThresh') || '0.85';
-            await loadProviderStatus();
+            API_KEY_MODEL_IDS.forEach(model => {
+                apiKeyInputs[model].value = localStorage.getItem(getProviderKeyStorageName(model)) || '';
+            });
             updateSettingsFields();
-            applySecretInputs();
+        }
+
+        function applyVllmModelPreset() {
+            if (vllmModelPresetSelect.value) {
+                vllmModelTypeInput.value = vllmModelPresetSelect.value;
+            }
+        }
+
+        function syncVllmModelPreset() {
+            const modelType = vllmModelTypeInput.value.trim();
+            vllmModelPresetSelect.value = VLLM_MODEL_PRESETS.includes(modelType) ? modelType : '';
+        }
+
+        function openSettings() {
+            settingsModal.style.display = 'flex';
+            loadSettingsValues();
         }
 
         function closeSettings() {
             settingsModal.style.display = 'none';
         }
 
-        async function saveSettings() {
-            const model = modelSelect.value;
-            rememberSecretInputs();
-            if (['gemini', 'grok', 'openai'].includes(model)) {
-                await saveProviderKey(model);
-            }
-            localStorage.setItem('selectedModel', model);
+        function saveSettings() {
+            localStorage.setItem('tagModel', tagDefaultModel.value);
+            localStorage.setItem('captionModel', captionDefaultModel.value);
+            localStorage.setItem('selectedModel', tagDefaultModel.value);
+            API_KEY_MODEL_IDS.forEach(model => {
+                localStorage.setItem(getProviderKeyStorageName(model), apiKeyInputs[model].value.trim());
+            });
+            localStorage.setItem('settingMaxTags', settingMaxTags.value);
+            localStorage.setItem('settingMaxCaptionLen', settingMaxCaptionLen.value);
+            localStorage.setItem('cropAspectRatio', cropAspectRatioSelect.value);
+            localStorage.setItem('cropWidth', String(getCropWidth()));
+            localStorage.setItem('tagSystemPrompt', tagSystemPrompt.value.trim());
+            localStorage.setItem('captionSystemPrompt', captionSystemPrompt.value.trim());
+            localStorage.setItem('vllmEndpoint', vllmEndpointInput.value.trim());
+            localStorage.setItem('vllmModelType', vllmModelTypeInput.value.trim() || VLLM_DEFAULT_MODEL);
             localStorage.setItem('ddThreshold', ddThreshold.value);
             localStorage.setItem('wdGeneralThresh', wdGeneralThresh.value);
             localStorage.setItem('wdCharThresh', wdCharThresh.value);
+            updateSettingsFields();
             closeSettings();
             showNotification('Settings saved');
         }
 
-        function getModel() { return localStorage.getItem('selectedModel') || 'gemini'; }
-        function getWDKey() { return sessionSecrets.wd14ApiKey || ''; }
+        function getTagModel() { return isTagModel(tagDefaultModel.value) ? tagDefaultModel.value : getSavedTagModel(); }
+        function getCaptionModel() { return isCaptionModel(captionDefaultModel.value) ? captionDefaultModel.value : getSavedCaptionModel(); }
+        function getModel() { return getTagModel(); }
+        function getApiKey(model = getModel()) { return localStorage.getItem(getProviderKeyStorageName(model)) || ''; }
+        function getWDKey() { return getApiKey('wd14'); }
+        function getVllmModelType() { return localStorage.getItem('vllmModelType') || VLLM_DEFAULT_MODEL; }
 
-        async function loadProviderStatus() {
-            try {
-                const resp = await fetch(`${API_BASE}/api/tagpilot/providers`);
-                if (!resp.ok) throw new Error(await parseResponseError(resp));
-                providerStatusCache = await resp.json();
-            } catch (e) {
-                providerStatusCache = { providers: [] };
-                console.warn("Provider status unavailable:", e);
+        function getVllmEndpoint() {
+            const endpoint = (localStorage.getItem('vllmEndpoint') || '').trim();
+            if (!endpoint) throw new Error('vLLM endpoint URL required');
+            return normalizeVllmEndpoint(endpoint);
+        }
+
+        function normalizeVllmEndpoint(endpoint) {
+            const trimmed = endpoint.replace(/\/+$/, '');
+            if (/\/v1\/chat\/completions$/.test(trimmed)) return trimmed;
+            if (/\/v1$/.test(trimmed)) return `${trimmed}/chat/completions`;
+            return `${trimmed}/v1/chat/completions`;
+        }
+
+        function getIntegerSetting(input, fallback, min, max) {
+            const parsed = parseInt(input.value, 10);
+            if (!Number.isFinite(parsed)) return fallback;
+            return Math.min(max, Math.max(min, parsed));
+        }
+
+        function getTagLimit() {
+            return getIntegerSetting(settingMaxTags, 30, 1, 100);
+        }
+
+        function getCaptionWordLimit() {
+            return getIntegerSetting(settingMaxCaptionLen, 50, 5, 200);
+        }
+
+        function getCropWidth() {
+            return getIntegerSetting(cropWidthInput, 1024, 64, 8192);
+        }
+
+        function getCropAspectRatio() {
+            return CROP_ASPECT_RATIOS[cropAspectRatioSelect.value] || NaN;
+        }
+
+        function getCropCanvasOptions() {
+            const width = getCropWidth();
+            const aspectRatio = getCropAspectRatio();
+            if (Number.isFinite(aspectRatio)) {
+                return { width, height: Math.round(width / aspectRatio) };
             }
-            return providerStatusCache;
+            if (cropper && typeof cropper.getData === 'function') {
+                const cropData = cropper.getData();
+                if (cropData?.width > 0 && cropData?.height > 0) {
+                    return { width, height: Math.round(width * cropData.height / cropData.width) };
+                }
+            }
+            return { width };
         }
 
-        async function saveProviderKey(provider) {
-            const apiKey = apiKeyInput.value.trim();
-            if (!apiKey) return;
-            await updateProviderKey(provider, apiKey);
-            apiKeyInput.value = '';
-            await loadProviderStatus();
+        function getPromptValue(input, fallback) {
+            return input.value.trim() || fallback;
         }
 
-        async function clearProviderKey() {
-            const provider = modelSelect.value;
-            if (!['gemini', 'grok', 'openai'].includes(provider)) return;
-            if (!confirm(`Clear saved ${providerLabel(provider)} API key from the server?`)) return;
-            await updateProviderKey(provider, '');
-            apiKeyInput.value = '';
-            await loadProviderStatus();
-            applySecretInputs();
-            showNotification(`${providerLabel(provider)} key cleared`);
+        function buildTagPrompt(maxTags) {
+            return `${getPromptValue(tagSystemPrompt, DEFAULT_TAG_PROMPT)}
+
+Limit the output to ${maxTags} comma-separated tags or fewer.`;
         }
 
-        function providerLabel(provider) {
-            return { gemini: 'Gemini', grok: 'Grok', openai: 'OpenAI' }[provider] || provider;
+        function buildCaptionPrompt(maxWords) {
+            return `${getPromptValue(captionSystemPrompt, DEFAULT_CAPTION_PROMPT)}
+
+Limit the caption to ${maxWords} words or fewer.`;
         }
 
-        async function updateProviderKey(provider, apiKey) {
-            const resp = await fetch(`${API_BASE}/api/tagpilot/providers/${encodeURIComponent(provider)}/key`, {
+        function trimCaptionToWordLimit(text, maxWords) {
+            const words = text.trim().split(/\s+/).filter(Boolean);
+            if (words.length <= maxWords) return text.trim();
+            return words.slice(0, maxWords).join(' ');
+        }
+
+        function buildResponsesVisionInput(promptText, imageUrl) {
+            return [{
+                role: 'user',
+                content: [
+                    { type: 'input_text', text: promptText },
+                    { type: 'input_image', image_url: imageUrl, detail: 'high' }
+                ]
+            }];
+        }
+
+        function extractResponsesText(data) {
+            if (typeof data.output_text === 'string') return data.output_text.trim();
+            const parts = [];
+            (data.output || []).forEach(item => {
+                (item.content || []).forEach(content => {
+                    if (typeof content.text === 'string') parts.push(content.text);
+                });
+            });
+            return parts.join('\n').trim();
+        }
+
+        function extractClaudeText(data) {
+            return (data.content || [])
+                .filter(part => part.type === 'text' && typeof part.text === 'string')
+                .map(part => part.text)
+                .join('\n')
+                .trim();
+        }
+
+        function extractChatCompletionText(data) {
+            const content = data?.choices?.[0]?.message?.content;
+            if (typeof content === 'string') return content.trim();
+            if (Array.isArray(content)) {
+                return content
+                    .map(part => typeof part.text === 'string' ? part.text : '')
+                    .join('\n')
+                    .trim();
+            }
+            return '';
+        }
+
+        function getImageMimeType(file) {
+            if (file.type && file.type.startsWith('image/')) return file.type;
+            const name = (file.name || '').toLowerCase();
+            if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+            if (name.endsWith('.webp')) return 'image/webp';
+            if (name.endsWith('.gif')) return 'image/gif';
+            return 'image/png';
+        }
+
+        function getFileUploadName(file) {
+            return file?.name || 'image.png';
+        }
+
+        function createResponsesProvider(name, endpoint, modelName) {
+            return {
+                name,
+                async request({ apiKey, promptText, base64 }) {
+                    const resp = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: modelName,
+                            input: buildResponsesVisionInput(promptText, base64),
+                            max_output_tokens: 300,
+                            store: false
+                        })
+                    });
+                    const data = await readProviderJson(resp, name);
+                    return extractResponsesText(data);
+                }
+            };
+        }
+
+        const TEXT_PROVIDERS = {
+            gemini: {
+                name: 'Gemini',
+                async request({ apiKey, promptText, imageData, imageMimeType }) {
+                    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [
+                                { text: promptText },
+                                { inline_data: { mime_type: imageMimeType, data: imageData } }
+                            ] }]
+                        })
+                    });
+                    const data = await readProviderJson(resp, 'Gemini');
+                    return data.candidates[0].content.parts[0].text;
+                }
+            },
+            grok: createResponsesProvider('Grok', 'https://api.x.ai/v1/responses', 'grok-4.3'),
+            openai: createResponsesProvider('OpenAI', 'https://api.openai.com/v1/responses', 'gpt-5.4-mini'),
+            claude: {
+                name: 'Claude',
+                async request({ apiKey, promptText, imageData, imageMimeType }) {
+                    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-api-key': apiKey,
+                            'anthropic-version': '2023-06-01',
+                            'anthropic-dangerous-direct-browser-access': 'true'
+                        },
+                        body: JSON.stringify({
+                            model: 'claude-sonnet-4-5-20250929',
+                            max_tokens: 300,
+                            messages: [{
+                                role: 'user',
+                                content: [
+                                    {
+                                        type: 'image',
+                                        source: {
+                                            type: 'base64',
+                                            media_type: imageMimeType,
+                                            data: imageData
+                                        }
+                                    },
+                                    { type: 'text', text: promptText }
+                                ]
+                            }]
+                        })
+                    });
+                    const data = await readProviderJson(resp, 'Claude');
+                    return extractClaudeText(data);
+                }
+            },
+            vllm: {
+                name: 'vLLM',
+                async request({ apiKey, promptText, base64 }) {
+                    const resp = await fetch(getVllmEndpoint(), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                        body: JSON.stringify({
+                            model: getVllmModelType(),
+                            messages: [{
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: promptText },
+                                    { type: 'image_url', image_url: { url: base64 } }
+                                ]
+                            }],
+                            max_tokens: 300
+                        })
+                    });
+                    const data = await readProviderJson(resp, 'vLLM');
+                    return extractChatCompletionText(data);
+                }
+            }
+        };
+
+        function getTextProviderIds() {
+            return Object.keys(TEXT_PROVIDERS);
+        }
+
+        function isTextProvider(model) {
+            return Object.prototype.hasOwnProperty.call(TEXT_PROVIDERS, model);
+        }
+
+        function getTextProvider(model) {
+            const provider = TEXT_PROVIDERS[model];
+            if (!provider) throw new Error(`Unsupported provider: ${model}`);
+            return provider;
+        }
+
+        function getProviderName(model) {
+            if (TEXT_PROVIDERS[model]) return TEXT_PROVIDERS[model].name;
+            return model;
+        }
+
+        function extractApiErrorMessage(data) {
+            if (!data) return 'Request failed';
+            if (typeof data.error === 'string') return data.error;
+            if (typeof data.error?.message === 'string') return data.error.message;
+            if (typeof data.message === 'string') return data.message;
+            return 'Request failed';
+        }
+
+        async function readProviderJson(resp, providerName) {
+            let data = null;
+            try {
+                data = await resp.json();
+            } catch (error) {
+                if (resp.ok) throw error;
+            }
+
+            if (!resp.ok) {
+                throw new Error(`${providerName} API error ${resp.status}: ${extractApiErrorMessage(data)}`);
+            }
+
+            return data;
+        }
+
+        function getDeepDanbooruThreshold() {
+            const threshold = parseFloat(localStorage.getItem('ddThreshold') || '0.5');
+            if (!Number.isFinite(threshold)) return 0.5;
+            return Math.min(1, Math.max(0, threshold));
+        }
+
+        async function fetchDeepDanbooru(path, options) {
+            try {
+                return await fetch(`${DEEPDANBOORU_API_BASE}${path}`, options);
+            } catch (error) {
+                throw new Error('DeepDanbooru request failed. The public Hugging Face Space may be unavailable.');
+            }
+        }
+
+        function parseDeepDanbooruSse(text) {
+            const blocks = String(text || '').trim().split(/\r?\n\r?\n/).filter(Boolean);
+            const completeBlock = blocks.find(block => block.split(/\r?\n/).some(line => line.trim() === 'event: complete'));
+            if (!completeBlock) throw new Error('DeepDanbooru returned no completed result');
+
+            const dataText = completeBlock
+                .split(/\r?\n/)
+                .filter(line => line.startsWith('data:'))
+                .map(line => line.replace(/^data:\s?/, ''))
+                .join('\n');
+
+            if (!dataText) throw new Error('DeepDanbooru returned no tag data');
+            return JSON.parse(dataText);
+        }
+
+        function extractDeepDanbooruTags(output, threshold) {
+            const confidences = output?.[0]?.confidences;
+            if (Array.isArray(confidences)) {
+                return formatTags(confidences
+                    .filter(item => Number(item.confidence) >= threshold)
+                    .map(item => item.label));
+            }
+
+            const scoreMap = output?.[1];
+            if (scoreMap && typeof scoreMap === 'object' && !Array.isArray(scoreMap)) {
+                return formatTags(Object.entries(scoreMap)
+                    .filter(([, confidence]) => Number(confidence) >= threshold)
+                    .map(([tag]) => tag));
+            }
+
+            if (typeof output?.[2] === 'string') {
+                return formatTags(output[2].split(','));
+            }
+
+            return '';
+        }
+
+        async function requestDeepDanbooru(imageFile, imageMimeType) {
+            const threshold = getDeepDanbooruThreshold();
+            const filename = getFileUploadName(imageFile);
+            const form = new FormData();
+            form.append('files', imageFile, filename);
+
+            const uploadResp = await fetchDeepDanbooru('/upload', { method: 'POST', body: form });
+            const uploadData = await readProviderJson(uploadResp, 'DeepDanbooru');
+            const uploadPath = Array.isArray(uploadData) ? uploadData[0] : null;
+            if (!uploadPath) throw new Error('DeepDanbooru upload failed');
+
+            const predictResp = await fetchDeepDanbooru('/call/v2/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ api_key: apiKey })
+                body: JSON.stringify({
+                    image: {
+                        path: uploadPath,
+                        orig_name: filename,
+                        mime_type: imageMimeType,
+                        meta: { _type: 'gradio.FileData' }
+                    },
+                    score_threshold: threshold
+                })
             });
-            if (!resp.ok) throw new Error(await parseResponseError(resp));
+            const predictData = await readProviderJson(predictResp, 'DeepDanbooru');
+            if (!predictData?.event_id) throw new Error('DeepDanbooru prediction did not start');
+
+            const resultResp = await fetchDeepDanbooru(`/call/predict/${predictData.event_id}`);
+            const resultText = await resultResp.text();
+            if (!resultResp.ok) {
+                throw new Error(`DeepDanbooru API error ${resultResp.status}: ${resultText || 'Request failed'}`);
+            }
+
+            return extractDeepDanbooruTags(parseDeepDanbooruSse(resultText), threshold);
         }
 
         async function fileToBase64(file) {
@@ -589,100 +1112,15 @@ Expected outcome is a human-readable continuous text consisting of several sente
             });
         }
 
-        async function parseResponseError(resp) {
-            let data = null;
-            try {
-                data = await resp.clone().json();
-            } catch (e) {}
-            if (data) {
-                if (data.error && typeof data.error === 'object') {
-                    return data.error.message || JSON.stringify(data.error);
-                }
-                if (data.error) return String(data.error);
-                if (data.message) return String(data.message);
-                if (data.detail) return String(data.detail);
-                return JSON.stringify(data);
-            }
-            try {
-                const text = await resp.text();
-                if (text) {
-                    const trimmed = text.trim();
-                    if (/^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed)) {
-                        const title = trimmed.match(/<title[^>]*>(.*?)<\/title>/i)?.[1]?.replace(/\s+/g, ' ').trim();
-                        return `${title || `HTTP ${resp.status}`} - ControlPilot/proxy returned an HTML error page instead of JSON.`;
-                    }
-                    return trimmed;
-                }
-            } catch (e) {}
-            return `HTTP ${resp.status}`;
-        }
+        async function generateImageText(imageFile, promptText, model = getModel()) {
+            const imageMimeType = getImageMimeType(imageFile);
 
-        async function generateWithBackendProvider(imageFile, mode) {
-            const provider = getModel();
-            const prompt = mode === 'caption' ? captionSystemPrompt.value : tagSystemPrompt.value;
-            const uploadFile = await prepareProviderImageFile(imageFile, provider);
-            const fd = new FormData();
-            fd.append('image', uploadFile, uploadFile.name || imageFile.name || 'image');
-            fd.append('provider', provider);
-            fd.append('mode', mode);
-            fd.append('prompt', prompt);
-            const resp = await fetch(`${API_BASE}/api/tagpilot/generate`, {
-                method: 'POST',
-                body: fd
-            });
-            if (!resp.ok) throw new Error(await parseResponseError(resp));
-            const data = await resp.json();
-            if (!data?.text) throw new Error(`${provider} response missing text`);
-            return data.text.trim();
-        }
-
-        async function prepareProviderImageFile(imageFile, provider) {
-            if (!['gemini', 'grok', 'openai'].includes(provider)) return imageFile;
-            const mime = normalizeImageMime(imageFile.type || inferMimeFromFilename(imageFile.name));
-            if (mime === 'image/jpeg' || mime === 'image/png') return imageFile;
-            return convertImageFileToPng(imageFile);
-        }
-
-        async function convertImageFileToPng(imageFile) {
-            const objectUrl = URL.createObjectURL(imageFile);
-            try {
-                const img = await new Promise((resolve, reject) => {
-                    const el = new Image();
-                    el.onload = () => resolve(el);
-                    el.onerror = () => reject(new Error('Could not decode image for cloud provider PNG conversion'));
-                    el.src = objectUrl;
-                });
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth || img.width;
-                canvas.height = img.naturalHeight || img.height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx || !canvas.width || !canvas.height) throw new Error('Could not prepare image for cloud provider PNG conversion');
-                ctx.drawImage(img, 0, 0);
-                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-                if (!blob) throw new Error('Could not convert image to PNG for cloud provider');
-                const stem = String(imageFile.name || 'image').replace(/\.[^.]+$/, '');
-                return new File([blob], `${stem || 'image'}.png`, { type: 'image/png' });
-            } finally {
-                URL.revokeObjectURL(objectUrl);
-            }
-        }
-
-        async function generateCaption(imageFile, mode = 'tags') {
-            const model = getModel();
-            if (['gemini', 'grok', 'openai'].includes(model)) {
-                return generateWithBackendProvider(imageFile, mode);
+            if (model === 'deepdanbooru') {
+                return requestDeepDanbooru(imageFile, imageMimeType);
             }
 
             const base64 = await fileToBase64(imageFile);
-
-            if (model === 'deepdanbooru') {
-                const threshold = localStorage.getItem('ddThreshold') || '0.5';
-                const resp = await fetch(`https://deepdanbooru.donmai.us/?url=${encodeURIComponent(base64)}&min_score=${threshold}`);
-                if (!resp.ok) throw new Error(`DeepDanbooru error: ${await parseResponseError(resp)}`);
-                const text = await resp.text();
-                const tags = text.split('\n').map(line => line.match(/^(.*?) \(/)?.[1].trim()).filter(Boolean);
-                return tags.join(', ');
-            }
+            const imageData = base64.split(',')[1];
 
             if (model === 'wd14') {
                 const apiKey = getWDKey();
@@ -698,21 +1136,34 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         input: { image: base64, general_thresh: general, character_thresh: char }
                     })
                 });
-                if (!create.ok) throw new Error(`Replicate error: ${await parseResponseError(create)}`);
                 const data = await create.json();
                 let result = data;
                 while (result.status !== 'succeeded' && result.status !== 'failed') {
                     await new Promise(r => setTimeout(r, 1000));
                     const poll = await fetch(result.urls.get, { headers: { 'Authorization': `Bearer ${apiKey}` } });
-                    if (!poll.ok) throw new Error(`Replicate poll error: ${await parseResponseError(poll)}`);
                     result = await poll.json();
                 }
                 if (result.status === 'failed') throw new Error('WD1.4 tagging failed');
-                const tags = result.output.map(t => t.tag).filter(Boolean).join(', ');
-                return tags;
+                return formatTags(result.output.map(t => t.tag));
             }
 
-            throw new Error(`Unsupported model: ${model}`);
+            const provider = getTextProvider(model);
+            const providerName = provider.name;
+            const apiKey = getApiKey(model);
+            if (!apiKey) throw new Error('API key missing');
+
+            const responseText = await provider.request({ apiKey, promptText, base64, imageData, imageMimeType });
+            if (!responseText) throw new Error(`${providerName} returned no text`);
+            return responseText.trim();
+        }
+
+        async function generateTags(imageFile, maxTags = getTagLimit(), model = getTagModel()) {
+            return generateImageText(imageFile, buildTagPrompt(maxTags), model);
+        }
+
+        async function generateCaption(imageFile, maxWords = getCaptionWordLimit(), model = getCaptionModel()) {
+            const caption = await generateImageText(imageFile, buildCaptionPrompt(maxWords), model);
+            return trimCaptionToWordLimit(caption, maxWords);
         }
 
         function showNotification(text, duration = 3000) {
@@ -720,58 +1171,6 @@ Expected outcome is a human-readable continuous text consisting of several sente
             notification.classList.remove('hidden', 'translate-x-full');
             notification.classList.add('translate-x-0');
             setTimeout(() => notification.classList.add('translate-x-full'), duration);
-        }
-
-        function computeApiBase() {
-            // Prefer parent origin (ControlPilot) so we always hit the same host/port as the API
-            try {
-                if (window.parent && window.parent !== window && window.parent.location) {
-                    return window.parent.location.origin;
-                }
-            } catch (e) {}
-            const url = new URL(window.location.href);
-            let host = url.host;
-            const rp = host.match(/^(.*)-(\d+)(\.proxy\.runpod\.net.*)$/);
-            if (rp) {
-                if (rp[2] === "3333") {
-                    host = `${rp[1]}-7878${rp[3]}`;
-                }
-            } else if (host.includes(":")) {
-                host = `${host.split(":")[0]}:7878`;
-            } else {
-                host = `${host}:7878`;
-            }
-            return `${url.protocol}//${host}`;
-        }
-        const API_BASE = computeApiBase();
-
-        function normalizeImageMime(mime) {
-            const value = String(mime || '').split(';', 1)[0].trim().toLowerCase();
-            return value === 'image/jpg' ? 'image/jpeg' : value;
-        }
-
-        function inferMimeFromFilename(filename) {
-            const ext = String(filename || '').split('.').pop().toLowerCase();
-            return {
-                jpg: 'image/jpeg',
-                jpeg: 'image/jpeg',
-                png: 'image/png',
-                webp: 'image/webp',
-                gif: 'image/gif',
-                bmp: 'image/bmp',
-            }[ext] || '';
-        }
-
-        function base64ToFile(b64Data, filename, mime) {
-            const byteCharacters = atob(b64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const resolvedMime = mime || inferMimeFromFilename(filename) || 'application/octet-stream';
-            const blob = new Blob([byteArray], { type: resolvedMime });
-            return new File([blob], filename, { type: resolvedMime });
         }
 
         function showLoader(text) {
@@ -783,26 +1182,101 @@ Expected outcome is a human-readable continuous text consisting of several sente
             loader.style.display = 'none';
         }
 
-        function setTheme(mode) {
-            const root = document.documentElement;
-            root.setAttribute('data-theme', mode);
+        function createDatasetItemId() {
+            return `item-${nextDatasetItemId++}`;
         }
 
-        function initTheme() {
-            // Sync with ControlPilot's theme if available; otherwise keep TagPilot dark by default.
-            let mode = 'dark';
-            try {
-                const parentTheme = window.parent?.document?.documentElement?.getAttribute('data-theme');
-                const stored = localStorage.getItem('theme'); // ControlPilot stores here
-                if (parentTheme) mode = parentTheme;
-                else if (stored) mode = stored;
-            } catch (e) {}
-            setTheme(mode);
-            window.addEventListener('storage', (e) => {
-                if (e.key === 'theme' && e.newValue) {
-                    setTheme(e.newValue === 'dark' ? 'dark' : 'light');
-                }
-            });
+        function ensureDatasetItemId(item) {
+            if (!item.id) item.id = createDatasetItemId();
+            return item;
+        }
+
+        function ensureDatasetItemIds() {
+            dataset.forEach(ensureDatasetItemId);
+        }
+
+        function createDatasetItem(file, tags = '', type = 'tags') {
+            return ensureDatasetItemId({ file, tags, type });
+        }
+
+        function findDatasetItemIndexById(itemId) {
+            return dataset.findIndex(item => item.id === itemId);
+        }
+
+        function findDatasetItemById(itemId) {
+            return dataset.find(item => item.id === itemId) || null;
+        }
+
+        function parseTags(text) {
+            return String(text || '').split(',').map(tag => tag.trim()).filter(Boolean);
+        }
+
+        function formatTags(tags) {
+            return tags.map(tag => String(tag).trim()).filter(Boolean).join(', ');
+        }
+
+        function uniqueTags(tags) {
+            return [...new Set(tags.map(tag => String(tag).trim()).filter(Boolean))];
+        }
+
+        function mergeTags(...tagGroups) {
+            const tags = tagGroups.flatMap(group => Array.isArray(group) ? group : parseTags(group));
+            return uniqueTags(tags);
+        }
+
+        function removeTriggerTag(tags, triggerWord) {
+            if (!triggerWord) return tags;
+            return tags.filter(tag => tag !== triggerWord);
+        }
+
+        function withTriggerWord(text, triggerWord) {
+            const tags = removeTriggerTag(parseTags(text), triggerWord);
+            if (triggerWord) tags.unshift(triggerWord);
+            return formatTags(tags);
+        }
+
+        function withoutTriggerWord(text, triggerWord) {
+            return formatTags(removeTriggerTag(parseTags(text), triggerWord));
+        }
+
+        function isBlankOrTriggerOnly(text, triggerWord) {
+            const tags = parseTags(text);
+            return tags.length === 0 || (Boolean(triggerWord) && tags.length === 1 && tags[0] === triggerWord);
+        }
+
+        function revokeObjectUrl(url) {
+            if (url && typeof URL.revokeObjectURL === 'function') {
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        function getFileObjectUrl(file) {
+            if (!fileObjectUrls.has(file)) {
+                fileObjectUrls.set(file, URL.createObjectURL(file));
+            }
+            return fileObjectUrls.get(file);
+        }
+
+        function revokeFileObjectUrl(file) {
+            const url = fileObjectUrls.get(file);
+            revokeObjectUrl(url);
+            fileObjectUrls.delete(file);
+        }
+
+        function clearFileObjectUrls() {
+            fileObjectUrls.forEach(url => revokeObjectUrl(url));
+            fileObjectUrls.clear();
+        }
+
+        function createTransientObjectUrl(blob) {
+            const url = URL.createObjectURL(blob);
+            transientObjectUrls.add(url);
+            return url;
+        }
+
+        function revokeTransientObjectUrl(url) {
+            revokeObjectUrl(url);
+            transientObjectUrls.delete(url);
         }
 
         async function calculateFileHash(file) {
@@ -810,49 +1284,6 @@ Expected outcome is a human-readable continuous text consisting of several sente
             const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        async function loadDatasetFromServer(dsName) {
-            showLoader(`Loading dataset ${dsName}...`);
-            try {
-                const res = await fetch(`${API_BASE}/api/tagpilot/load?name=${encodeURIComponent(dsName)}`);
-                if (!res.ok) throw new Error(await res.text());
-                const data = await res.json();
-                const files = data.files || [];
-                const images = [];
-                const texts = new Map();
-                files.forEach(f => {
-                    const lower = f.name.toLowerCase();
-                    if (lower.endsWith('.txt')) {
-                        const base = f.name.replace(/\.[^/.]+$/, '');
-                        try {
-                            const txt = atob(f.b64 || '');
-                            texts.set(base, txt);
-                        } catch {}
-                        return;
-                    }
-                    const isImg = ['.png','.jpg','.jpeg','.webp','.bmp','.gif'].some(ext => lower.endsWith(ext));
-                    if (!isImg) return;
-                    try {
-                        const fileObj = base64ToFile(f.b64, f.name, f.mime);
-                        images.push(fileObj);
-                    } catch {}
-                });
-                dataset = [];
-                images.forEach(file => {
-                    const base = file.name.replace(/\.[^/.]+$/, '');
-                    const txt = texts.get(base) || currentTriggerWord || "";
-                    dataset.push({ file, tags: txt, type: 'tags' });
-                });
-                datasetNameInput.value = dsName;
-                render();
-                showNotification(`Loaded dataset ${dsName}`);
-            } catch (e) {
-                console.error(e);
-                showNotification("Failed to load dataset");
-            } finally {
-                hideLoader();
-            }
         }
 
         async function handleImageUpload(event) {
@@ -878,7 +1309,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 }
                 
                 let initialTags = currentTriggerWord ? currentTriggerWord : "";
-                newDatasetItems.push({ file: finalFile, tags: initialTags, type: 'tags' });
+                newDatasetItems.push(createDatasetItem(finalFile, initialTags, 'tags'));
                 existingHashes.add(hash); 
             }
             
@@ -943,13 +1374,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         tags = tags.trim();
                     }
 
-                    if (currentTriggerWord) {
-                        if (!tags.startsWith(currentTriggerWord)) {
-                            tags = tags ? currentTriggerWord + ", " + tags : currentTriggerWord;
-                        }
-                    }
+                    if (currentTriggerWord) tags = withTriggerWord(tags, currentTriggerWord);
 
-                    newDatasetItems.push({ file: imageFile, tags: tags, type: 'tags' });
+                    newDatasetItems.push(createDatasetItem(imageFile, tags, 'tags'));
                     existingHashes.add(hash);
                 }
                 
@@ -969,12 +1396,15 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function handleReset() {
+            clearFileObjectUrls();
             dataset = [];
+            nextDatasetItemId = 1;
             imageUpload.value = '';
             zipUpload.value = '';
             datasetNameInput.value = '';
             triggerWordInput.value = '';
             currentTriggerWord = '';
+            updateInputPrefixLabels();
             render();
         }
 
@@ -998,69 +1428,73 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 zip.file(txtName, item.tags);
             });
             const blob = await zip.generateAsync({type:"blob"});
-            const url = URL.createObjectURL(blob);
+            const url = createTransientObjectUrl(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = (datasetNameInput.value.trim() || 'dataset') + '.zip';
             a.click();
+            setTimeout(() => revokeTransientObjectUrl(url), 0);
             showNotification("Exported ZIP");
         }
 
-        async function handleSaveToWorkspace() {
-            if (dataset.length === 0) return showNotification("No images to export");
-            try {
-                showNotification("Saving to /workspace/datasets...");
-                const name = datasetNameInput?.value.trim() || 'dataset';
-                const total = dataset.length;
-                showLoader(`Saving dataset 0 / ${total}...`);
-                for (let i = 0; i < total; i++) {
-                    const item = dataset[i];
-                    showLoader(`Saving dataset ${i + 1} / ${total}...`);
-                    const fd = new FormData();
-                    fd.append("file", item.file, item.file.name);
-                    fd.append("tags", item.tags || "");
-                    if (i === 0) fd.append("reset", "true");
-                    if (i === total - 1) fd.append("done", "true");
-                    const resp = await fetch(`${API_BASE}/api/tagpilot/save-item?name=${encodeURIComponent(name)}`, {
-                        method: 'POST',
-                        body: fd
-                    });
-                    if (!resp.ok) {
-                        throw new Error(await parseResponseError(resp));
-                    }
-                }
-                showNotification("Saved to /workspace/datasets");
-            } catch (e) {
-                console.error(e);
-                showNotification(`Error saving dataset: ${e.message || e}`);
-            } finally {
-                hideLoader();
-            }
+        function updateInputPrefixLabel(input, label) {
+            const hasValue = Boolean(input.value.trim());
+            label.style.visibility = hasValue ? 'hidden' : '';
+            label.style.opacity = hasValue ? '0' : '';
+            input.style.paddingLeft = hasValue ? '0.75rem' : '';
+        }
+
+        function updateInputPrefixLabels() {
+            updateInputPrefixLabel(triggerWordInput, triggerWordLabel);
+            updateInputPrefixLabel(datasetNameInput, datasetNameLabel);
+        }
+
+        function handleTriggerWordInput(e) {
+            updateInputPrefixLabels();
+            handleTriggerWordChange(e);
         }
 
         function handleTriggerWordChange(e) {
             const newTrigger = e.target.value.trim();
             dataset.forEach(item => {
-                let text = item.tags.trim();
-                if (currentTriggerWord && text.startsWith(currentTriggerWord)) {
-                    text = text.substring(currentTriggerWord.length).trim();
-                    if (text.startsWith(',')) text = text.substring(1).trim();
-                }
-                if (newTrigger) {
-                    text = newTrigger + (text ? ", " + text : "");
-                }
-                item.tags = text;
+                const text = withoutTriggerWord(item.tags, currentTriggerWord);
+                item.tags = newTrigger ? withTriggerWord(text, newTrigger) : text;
             });
             currentTriggerWord = newTrigger;
             renderTagUpdates();
         }
 
         function renderTagUpdates() {
-            dataset.forEach((_, i) => {
-                const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
-                if (wrapper) renderTagsInCard(wrapper, i);
+            ensureDatasetItemIds();
+            dataset.forEach(item => {
+                const wrapper = document.querySelector(`.tag-area-wrapper[data-id='${item.id}']`);
+                if (wrapper) renderTagsInCard(wrapper, item.id);
             });
             renderTagViewer();
+        }
+
+        function setSingleProcessing(itemId, label) {
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
+            item.processing = label;
+
+            const status = document.querySelector(`.single-processing-status[data-id='${itemId}']`);
+            if (!status) return;
+
+            const isProcessing = Boolean(label);
+            const text = status.querySelector('.single-processing-text');
+            const spinner = status.querySelector('.single-processing-spinner');
+            const buttons = document.querySelectorAll(`[data-id='${itemId}'].crop-btn, [data-id='${itemId}'].autotag-single-button, [data-id='${itemId}'].caption-single-button`);
+
+            status.classList.toggle('invisible', !isProcessing);
+            status.setAttribute('aria-hidden', isProcessing ? 'false' : 'true');
+            if (text) text.textContent = isProcessing ? 'Processing...' : '';
+            if (spinner) spinner.classList.toggle('hidden', !isProcessing);
+            buttons.forEach(button => {
+                button.disabled = isProcessing;
+                button.classList.toggle('opacity-50', isProcessing);
+                button.classList.toggle('cursor-not-allowed', isProcessing);
+            });
         }
 
         function openTagSettings() {
@@ -1089,115 +1523,100 @@ Expected outcome is a human-readable continuous text consisting of several sente
             isBatchProcessing = false;
         }
 
-        async function startBatchTagging() {
-            const maxTags = parseInt(settingMaxTags.value) || 30;
-            const mode = document.querySelector('input[name="tag-mode"]:checked').value;
+        function shouldProcessBatchItem(item, mode) {
+            return mode === 'overwrite' || mode === 'append' || (mode === 'ignore' && isBlankOrTriggerOnly(item.tags, currentTriggerWord));
+        }
 
-            tagSettingsConfig.classList.add('hidden');
-            tagSettingsProgress.classList.remove('hidden');
+        function updateBatchProgress(progressBar, progressText, processed, total) {
+            progressBar.style.width = `${(processed / total) * 100}%`;
+            progressText.textContent = `${processed} / ${total}`;
+        }
+
+        async function runBatchProcessing({ configPanel, progressPanel, progressBar, progressText, closeModal, completeMessage, processItem }) {
+            configPanel.classList.add('hidden');
+            progressPanel.classList.remove('hidden');
             isBatchProcessing = true;
-            let failedMessage = '';
 
             let processed = 0;
             const total = dataset.length;
-            tagProgressText.textContent = `0 / ${total}`;
-            tagProgressBar.style.width = '0%';
+            progressText.textContent = `0 / ${total}`;
+            progressBar.style.width = '0%';
 
             for (let i = 0; i < total && isBatchProcessing; i++) {
-                const item = dataset[i];
-                let shouldTag = mode === 'overwrite' || mode === 'append' || (mode === 'ignore' && (!item.tags || item.tags === currentTriggerWord));
-
-                if (shouldTag) {
-                    try {
-                        const newTags = await generateCaption(item.file, 'tags');
-                        let tags = newTags.split(',').map(t => t.trim()).filter(Boolean);
-                        if (mode === 'append') {
-                            tags = [...new Set(item.tags.split(',').map(t => t.trim()).filter(Boolean).concat(tags))];
-                        }
-                        if (currentTriggerWord) {
-                            tags = tags.filter(t => t !== currentTriggerWord);
-                            tags.unshift(currentTriggerWord);
-                        }
-                        if (tags.length > maxTags) tags = tags.slice(0, maxTags);
-                        item.tags = tags.join(', ');
-                        item.type = 'tags';
-                        const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
-                        if (wrapper) renderTagsInCard(wrapper, i);
-                    } catch (e) {
-                        failedMessage = e?.message || String(e);
-                        isBatchProcessing = false;
-                        console.error(e);
-                    }
+                try {
+                    await processItem(dataset[i], i);
+                } catch (e) {
+                    console.error(e);
                 }
                 processed++;
-                tagProgressBar.style.width = `${(processed / total) * 100}%`;
-                tagProgressText.textContent = `${processed} / ${total}`;
+                updateBatchProgress(progressBar, progressText, processed, total);
             }
 
             renderTagViewer();
-            const stoppedEarly = !failedMessage && processed < total;
             isBatchProcessing = false;
-            closeTagSettings();
-            if (failedMessage) {
-                showNotification(`Tagging failed (${processed}/${total}): ${failedMessage}`);
-            } else if (stoppedEarly) {
-                showNotification(`Tagging stopped (${processed}/${total})`);
-            } else {
-                showNotification(`Tagging complete (${processed}/${total})`);
-            }
+            closeModal();
+            showNotification(completeMessage);
+        }
+
+        async function startBatchTagging() {
+            const maxTags = getTagLimit();
+            const mode = document.querySelector('input[name="tag-mode"]:checked').value;
+
+            await runBatchProcessing({
+                configPanel: tagSettingsConfig,
+                progressPanel: tagSettingsProgress,
+                progressBar: tagProgressBar,
+                progressText: tagProgressText,
+                closeModal: closeTagSettings,
+                completeMessage: "Tagging complete",
+                async processItem(item, index) {
+                    if (!shouldProcessBatchItem(item, mode)) return;
+
+                    const newTags = await generateTags(item.file, maxTags);
+                    let tags = parseTags(newTags);
+                    if (mode === 'append') {
+                        tags = mergeTags(item.tags, tags);
+                    }
+                    if (currentTriggerWord) {
+                        tags = removeTriggerTag(tags, currentTriggerWord);
+                        tags.unshift(currentTriggerWord);
+                    }
+                    if (tags.length > maxTags) tags = tags.slice(0, maxTags);
+                    item.tags = formatTags(tags);
+                    item.type = 'tags';
+                    const wrapper = document.querySelector(`.tag-area-wrapper[data-id='${item.id}']`);
+                    if (wrapper) renderTagsInCard(wrapper, item.id);
+                }
+            });
         }
 
         async function startBatchCaptioning() {
+            const maxWords = getCaptionWordLimit();
             const mode = document.querySelector('input[name="caption-mode"]:checked').value;
 
-            captionSettingsConfig.classList.add('hidden');
-            captionSettingsProgress.classList.remove('hidden');
-            isBatchProcessing = true;
-            let failedMessage = '';
+            await runBatchProcessing({
+                configPanel: captionSettingsConfig,
+                progressPanel: captionSettingsProgress,
+                progressBar: captionProgressBar,
+                progressText: captionProgressText,
+                closeModal: closeCaptionSettings,
+                completeMessage: "Captioning complete",
+                async processItem(item, index) {
+                    if (!shouldProcessBatchItem(item, mode)) return;
 
-            let processed = 0;
-            const total = dataset.length;
-            captionProgressText.textContent = `0 / ${total}`;
-            captionProgressBar.style.width = '0%';
-
-            for (let i = 0; i < total && isBatchProcessing; i++) {
-                const item = dataset[i];
-                let shouldCaption = mode === 'overwrite' || mode === 'append' || (mode === 'ignore' && (!item.tags || item.tags === currentTriggerWord));
-
-                if (shouldCaption) {
-                    try {
-                        const caption = await generateCaption(item.file, 'caption');
-                        let final = mode === 'overwrite' ? caption : (item.tags ? item.tags + " " + caption : caption);
-                        if (currentTriggerWord && !final.startsWith(currentTriggerWord)) final = currentTriggerWord + ", " + final;
-                        item.tags = final;
-                        item.type = 'caption';
-                        const wrapper = document.querySelector(`.tag-area-wrapper[data-index='${i}']`);
-                        if (wrapper) renderTagsInCard(wrapper, i);
-                    } catch (e) {
-                        failedMessage = e?.message || String(e);
-                        isBatchProcessing = false;
-                        console.error(e);
-                    }
+                    const caption = await generateCaption(item.file, maxWords);
+                    let final = mode === 'overwrite' ? caption : (item.tags ? item.tags + " " + caption : caption);
+                    if (currentTriggerWord && !final.startsWith(currentTriggerWord)) final = currentTriggerWord + ", " + final;
+                    item.tags = final;
+                    item.type = 'caption';
+                    const wrapper = document.querySelector(`.tag-area-wrapper[data-id='${item.id}']`);
+                    if (wrapper) renderTagsInCard(wrapper, item.id);
                 }
-                processed++;
-                captionProgressBar.style.width = `${(processed / total) * 100}%`;
-                captionProgressText.textContent = `${processed} / ${total}`;
-            }
-
-            renderTagViewer();
-            const stoppedEarly = !failedMessage && processed < total;
-            isBatchProcessing = false;
-            closeCaptionSettings();
-            if (failedMessage) {
-                showNotification(`Captioning failed (${processed}/${total}): ${failedMessage}`);
-            } else if (stoppedEarly) {
-                showNotification(`Captioning stopped (${processed}/${total})`);
-            } else {
-                showNotification(`Captioning complete (${processed}/${total})`);
-            }
+            });
         }
 
         function render() {
+            ensureDatasetItemIds();
             imageGrid.innerHTML = '';
 
             if (dataset.length === 0) {
@@ -1214,29 +1633,37 @@ Expected outcome is a human-readable continuous text consisting of several sente
             dataset.forEach((item, index) => {
                 const card = document.createElement('div');
                 card.className = 'bg-gray-800 rounded-lg shadow-md overflow-hidden flex h-72 items-center';
-                const imageUrl = URL.createObjectURL(item.file);
+                const itemId = item.id;
+                const imageUrl = getFileObjectUrl(item.file);
 
                 card.innerHTML = `
                     <div class="p-4 h-full flex items-center justify-center">
                         <span class="text-2xl font-bold text-gray-500">${index + 1}</span>
                     </div>
-                    <div class="w-2/5 flex-shrink-0 cursor-pointer thumbnail-container h-full" onclick="showPreview(${index})">
+                    <div class="w-2/5 flex-shrink-0 cursor-pointer thumbnail-container h-full" data-id="${item.id}">
                         <img src="${imageUrl}" class="w-full h-full object-cover">
                     </div>
                     <div class="p-4 flex flex-col flex-grow min-w-0 h-full">
                         <div class="flex justify-between items-center mb-2">
-                            <p class="text-xs text-gray-400" id="resolution-${index}">loading...</p>
-                            <button onclick="toggleCardType(${index})" title="Toggle Tags/Caption">
+                            <p class="text-xs text-gray-400" id="resolution-${itemId}">loading...</p>
+                            <button class="toggle-type-button" data-id="${item.id}" title="Toggle Tags/Caption">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
                         </div>
                         <div class="flex flex-grow gap-3 min-h-0">
-                            <div class="tag-area-wrapper w-full flex-grow bg-gray-700 border border-gray-600 rounded-md p-2 flex flex-wrap items-start content-start gap-2 overflow-y-auto" data-index="${index}"></div>
-                            <div class="flex flex-col gap-2">
-                                <button class="crop-btn bg-blue-600 hover:bg-blue-700 py-2 px-3 rounded text-sm" data-index="${index}">Crop</button>
-                                <button class="autotag-single-button bg-teal-600 hover:bg-teal-700 py-2 px-3 rounded text-sm" data-index="${index}">Tag</button>
-                                <button class="caption-single-button bg-purple-600 hover:bg-purple-700 py-2 px-3 rounded text-sm" data-index="${index}">Caption</button>
-                                <button class="remove-btn bg-red-600 hover:bg-red-700 py-2 px-3 rounded text-sm" data-index="${index}">Remove</button>
+                            <div class="tag-area-wrapper w-full flex-grow bg-gray-700 border border-gray-600 rounded-md p-2 flex flex-wrap items-start content-start gap-2 overflow-y-auto" data-id="${item.id}"></div>
+                            <div class="flex flex-col gap-2 w-28">
+                                <div class="single-processing-status ${item.processing ? '' : 'invisible'} h-5 flex items-center justify-end gap-2 text-[11px] text-teal-300 whitespace-nowrap" data-id="${item.id}" aria-hidden="${item.processing ? 'false' : 'true'}">
+                                    <span class="single-processing-text">${item.processing ? 'Processing...' : ''}</span>
+                                    <svg class="single-processing-spinner ${item.processing ? '' : 'hidden'} animate-spin h-3.5 w-3.5 text-teal-300 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                                <button class="crop-btn bg-blue-600 hover:bg-blue-700 py-2 px-3 rounded text-sm" data-id="${item.id}">Crop</button>
+                                <button class="autotag-single-button bg-teal-600 hover:bg-teal-700 py-2 px-3 rounded text-sm" data-id="${item.id}">Tag</button>
+                                <button class="caption-single-button bg-purple-600 hover:bg-purple-700 py-2 px-3 rounded text-sm" data-id="${item.id}">Caption</button>
+                                <button class="remove-btn bg-red-600 hover:bg-red-700 py-2 px-3 rounded text-sm" data-id="${item.id}">Remove</button>
                             </div>
                         </div>
                     </div>
@@ -1245,14 +1672,16 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 imageGrid.appendChild(card);
 
                 const img = card.querySelector('img');
-                img.onload = () => document.getElementById(`resolution-${index}`).textContent = `${img.naturalWidth}x${img.naturalHeight}`;
+                img.onload = () => document.getElementById(`resolution-${itemId}`).textContent = `${img.naturalWidth}x${img.naturalHeight}`;
 
-                renderTagsInCard(card.querySelector('.tag-area-wrapper'), index);
+                renderTagsInCard(card.querySelector('.tag-area-wrapper'), itemId);
 
-                card.querySelector('.crop-btn').addEventListener('click', () => openCrop(index));
-                card.querySelector('.autotag-single-button').addEventListener('click', () => autotagSingle(index));
-                card.querySelector('.caption-single-button').addEventListener('click', () => captionSingle(index));
-                card.querySelector('.remove-btn').addEventListener('click', () => removeImage(index));
+                card.querySelector('.thumbnail-container').addEventListener('click', () => showPreview(imageUrl, itemId));
+                card.querySelector('.toggle-type-button').addEventListener('click', () => toggleCardType(itemId));
+                card.querySelector('.crop-btn').addEventListener('click', () => openCrop(itemId));
+                card.querySelector('.autotag-single-button').addEventListener('click', () => autotagSingle(itemId));
+                card.querySelector('.caption-single-button').addEventListener('click', () => captionSingle(itemId));
+                card.querySelector('.remove-btn').addEventListener('click', () => removeImage(itemId));
             });
 
             renderTagViewer();
@@ -1263,38 +1692,39 @@ Expected outcome is a human-readable continuous text consisting of several sente
             const map = new Map();
             dataset.forEach(item => {
                 if (item.type === 'caption') return;
-                item.tags.split(',').map(t => t.trim()).filter(Boolean).forEach(t => map.set(t, (map.get(t) || 0) + 1));
+                parseTags(item.tags).forEach(t => map.set(t, (map.get(t) || 0) + 1));
             });
             const sorted = [...map.entries()].sort((a, b) => b[1] - a[1]);
             sorted.forEach(([tag, count]) => {
                 const pill = document.createElement('span');
                 pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-700 text-gray-300 hover:bg-gray-600';
-                const tagText = document.createElement('span');
-                tagText.textContent = tag;
 
-                const countText = document.createElement('span');
-                countText.className = 'ml-1 text-gray-500';
-                countText.textContent = `(${count})`;
+                const label = document.createElement('span');
+                label.textContent = tag;
+                pill.appendChild(label);
 
-                const deleteBtn = document.createElement('button');
-                deleteBtn.type = 'button';
-                deleteBtn.className = 'ml-2 hover:text-red-500';
-                deleteBtn.textContent = '×';
-                deleteBtn.addEventListener('click', () => deleteTagGlobally(tag));
+                const countLabel = document.createElement('span');
+                countLabel.className = 'ml-1 text-gray-500';
+                countLabel.textContent = `(${count})`;
+                pill.appendChild(countLabel);
 
-                pill.appendChild(tagText);
-                pill.appendChild(document.createTextNode(' '));
-                pill.appendChild(countText);
-                pill.appendChild(document.createTextNode(' '));
-                pill.appendChild(deleteBtn);
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'ml-2 hover:text-red-500';
+                deleteButton.textContent = '×';
+                deleteButton.addEventListener('click', () => deleteTagGlobally(tag));
+                pill.appendChild(deleteButton);
+
                 tagViewerList.appendChild(pill);
             });
             totalTagsBadge.textContent = `${sorted.length} tags`;
         }
 
-        function renderTagsInCard(wrapper, index) {
+        function renderTagsInCard(wrapper, itemId) {
+            if (!wrapper) return;
             wrapper.innerHTML = '';
-            const item = dataset[index];
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
             if (item.type === 'caption') {
                 const ta = document.createElement('textarea');
                 ta.value = item.tags;
@@ -1305,22 +1735,22 @@ Expected outcome is a human-readable continuous text consisting of several sente
                 };
                 wrapper.appendChild(ta);
             } else {
-                const tags = item.tags.split(',').map(t => t.trim()).filter(Boolean);
+                const tags = parseTags(item.tags);
                 tags.forEach((tag, ti) => {
                     const pill = document.createElement('span');
                     pill.className = 'inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-600 text-gray-300';
-                    const tagText = document.createElement('span');
-                    tagText.textContent = tag;
 
-                    const removeBtn = document.createElement('button');
-                    removeBtn.type = 'button';
-                    removeBtn.className = 'ml-1 hover:text-red-500';
-                    removeBtn.textContent = '×';
-                    removeBtn.addEventListener('click', () => removeTagFromImage(index, ti));
+                    const label = document.createElement('span');
+                    label.textContent = tag;
+                    pill.appendChild(label);
 
-                    pill.appendChild(tagText);
-                    pill.appendChild(document.createTextNode(' '));
-                    pill.appendChild(removeBtn);
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'ml-1 hover:text-red-500';
+                    removeButton.textContent = '×';
+                    removeButton.addEventListener('click', () => removeTagFromImage(itemId, ti));
+                    pill.appendChild(removeButton);
+
                     wrapper.appendChild(pill);
                 });
                 const input = document.createElement('input');
@@ -1333,11 +1763,10 @@ Expected outcome is a human-readable continuous text consisting of several sente
                         const v = e.target.value.trim();
                         if (v) {
                             tags.push(v);
-                            item.tags = tags.join(', ');
-                            renderTagsInCard(wrapper, index);
+                            item.tags = formatTags(tags);
+                            renderTagsInCard(wrapper, itemId);
+                            input.value = '';
                             renderTagViewer();
-                            const nextInput = wrapper.querySelector('input[type="text"]');
-                            if (nextInput) nextInput.focus();
                         }
                     }
                 };
@@ -1345,12 +1774,13 @@ Expected outcome is a human-readable continuous text consisting of several sente
             }
         }
 
-        function removeTagFromImage(index, tagIndex) {
-            const item = dataset[index];
-            const tags = item.tags.split(',').map(t => t.trim()).filter(Boolean);
+        function removeTagFromImage(itemId, tagIndex) {
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
+            const tags = parseTags(item.tags);
             tags.splice(tagIndex, 1);
-            item.tags = tags.join(', ');
-            renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+            item.tags = formatTags(tags);
+            renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-id='${itemId}']`), itemId);
             renderTagViewer();
         }
 
@@ -1358,73 +1788,87 @@ Expected outcome is a human-readable continuous text consisting of several sente
             if (!confirm(`Delete "${tag}" from all images?`)) return;
             dataset.forEach(item => {
                 if (item.type === 'caption') return;
-                item.tags = item.tags.split(',').map(t => t.trim()).filter(t => t !== tag).join(', ');
+                item.tags = formatTags(parseTags(item.tags).filter(t => t !== tag));
             });
             renderTagUpdates();
         }
 
-        function toggleCardType(index) {
-            const item = dataset[index];
+        function toggleCardType(itemId) {
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
             item.type = item.type === 'caption' ? 'tags' : 'caption';
-            renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+            renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-id='${itemId}']`), itemId);
         }
 
-        async function autotagSingle(index) {
+        async function autotagSingle(itemId) {
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
+            setSingleProcessing(itemId, 'Tagging');
             try {
-                const tags = await generateCaption(dataset[index].file, 'tags');
-                dataset[index].tags = currentTriggerWord ? currentTriggerWord + ', ' + tags : tags;
-                dataset[index].type = 'tags';
-                renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+                const tags = await generateTags(item.file);
+                item.tags = currentTriggerWord ? withTriggerWord(tags, currentTriggerWord) : formatTags(parseTags(tags));
+                item.type = 'tags';
+                renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-id='${itemId}']`), itemId);
                 renderTagViewer();
                 showNotification("Tagged");
             } catch (e) {
                 showNotification("Error: " + e.message);
+            } finally {
+                setSingleProcessing(itemId, null);
             }
         }
 
-        async function captionSingle(index) {
+        async function captionSingle(itemId) {
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
+            setSingleProcessing(itemId, 'Captioning');
             try {
-                const caption = await generateCaption(dataset[index].file, 'caption');
-                dataset[index].tags = caption;
-                dataset[index].type = 'caption';
-                renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-index='${index}']`), index);
+                const caption = await generateCaption(item.file);
+                item.tags = caption;
+                item.type = 'caption';
+                renderTagsInCard(document.querySelector(`.tag-area-wrapper[data-id='${itemId}']`), itemId);
                 renderTagViewer();
                 showNotification("Captioned");
             } catch (e) {
                 showNotification("Error: " + e.message);
+            } finally {
+                setSingleProcessing(itemId, null);
             }
         }
 
-        function removeImage(index) {
+        function removeImage(itemId) {
+            const index = findDatasetItemIndexById(itemId);
+            if (index < 0) return;
+            revokeFileObjectUrl(dataset[index].file);
             dataset.splice(index, 1);
             render();
         }
 
-        function openCrop(index) {
-            currentCropIndex = index;
-            if (cropImage.dataset.objectUrl) {
-                URL.revokeObjectURL(cropImage.dataset.objectUrl);
-                delete cropImage.dataset.objectUrl;
-            }
-            cropImage.src = URL.createObjectURL(dataset[index].file);
-            cropImage.dataset.objectUrl = cropImage.src;
+        function openCrop(itemId) {
+            const item = findDatasetItemById(itemId);
+            if (!item) return;
+            currentCropItemId = itemId;
+            cropImage.src = getFileObjectUrl(item.file);
             cropModal.style.display = 'flex';
-            cropper = new Cropper(cropImage, { aspectRatio: NaN, viewMode: 1 });
+            cropper = new Cropper(cropImage, { aspectRatio: getCropAspectRatio(), viewMode: 1 });
         }
 
         async function saveCrop() {
             if (!cropper) return;
-            const canvas = cropper.getCroppedCanvas();
+            const canvas = cropper.getCroppedCanvas(getCropCanvasOptions());
             const blob = await new Promise(r => canvas.toBlob(r));
-            dataset[currentCropIndex].file = new File([blob], dataset[currentCropIndex].file.name, { type: dataset[currentCropIndex].file.type });
+            const item = findDatasetItemById(currentCropItemId);
+            if (!item) {
+                cancelCrop();
+                return;
+            }
+            const oldFile = item.file;
+            item.file = new File([blob], oldFile.name, { type: oldFile.type });
+            revokeFileObjectUrl(oldFile);
             cropper.destroy();
             cropper = null;
+            currentCropItemId = null;
             cropModal.style.display = 'none';
-            if (cropImage.dataset.objectUrl) {
-                URL.revokeObjectURL(cropImage.dataset.objectUrl);
-                delete cropImage.dataset.objectUrl;
-            }
-            cropImage.src = '';
             render();
             showNotification("Cropped");
         }
@@ -1432,63 +1876,29 @@ Expected outcome is a human-readable continuous text consisting of several sente
         function cancelCrop() {
             if (cropper) cropper.destroy();
             cropper = null;
+            currentCropItemId = null;
             cropModal.style.display = 'none';
-            if (cropImage.dataset.objectUrl) {
-                URL.revokeObjectURL(cropImage.dataset.objectUrl);
-                delete cropImage.dataset.objectUrl;
-            }
-            cropImage.src = '';
         }
 
-        function cropFromPreview(e) {
-            if (e) e.stopPropagation();
-            if (!Number.isInteger(currentPreviewIndex) || currentPreviewIndex < 0) return;
-            const index = currentPreviewIndex;
-            hidePreview();
-            openCrop(index);
-        }
-
-        function navigatePreview(step) {
-            if (!dataset.length || currentPreviewIndex < 0) return;
-            const nextIndex = (currentPreviewIndex + step + dataset.length) % dataset.length;
-            showPreview(nextIndex);
-        }
-
-        function showPreview(index) {
-            if (!Number.isInteger(index) || index < 0 || index >= dataset.length) return;
-            if (previewImage.dataset.objectUrl) {
-                URL.revokeObjectURL(previewImage.dataset.objectUrl);
-            }
-            const objectUrl = URL.createObjectURL(dataset[index].file);
-            previewImage.dataset.objectUrl = objectUrl;
-            previewImage.src = objectUrl;
-            currentPreviewIndex = index;
+        function showPreview(url, itemId = null) {
+            currentPreviewItemId = itemId;
+            previewImage.src = url;
             previewModal.style.display = 'flex';
         }
 
-        function hidePreview() {
-            if (previewImage.dataset.objectUrl) {
-                URL.revokeObjectURL(previewImage.dataset.objectUrl);
-                delete previewImage.dataset.objectUrl;
-            }
-            previewImage.src = '';
-            currentPreviewIndex = -1;
-            previewModal.style.display = 'none';
+        function cropPreviewImage() {
+            if (!currentPreviewItemId || !findDatasetItemById(currentPreviewItemId)) return;
+            const itemId = currentPreviewItemId;
+            hidePreview();
+            openCrop(itemId);
         }
 
-        // Auto-load dataset if provided in query string
-        (function initFromQuery() {
-            const params = new URLSearchParams(window.location.search);
-            const ds = params.get('dataset');
-            if (ds) loadDatasetFromServer(ds);
-        })();
-
-        // Initialize theme
-        initTheme();
+        function hidePreview() {
+            previewModal.style.display = 'none';
+            currentPreviewItemId = null;
+        }
 
         render();
     </script>
-
-    <a class="tagpilot-version" href="https://github.com/vavo/tagpilot" target="_blank" rel="noopener">TagPilot v1.1</a>
 </body>
 </html>
