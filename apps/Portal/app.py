@@ -619,6 +619,9 @@ _dataset_list_cache: dict[str, object] = {"expires_at": 0.0, "entries": []}
 _DATASET_LIST_TTL_SECONDS = 8.0
 _DATASET_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif"}
 _DATASET_TAG_EXTS = {".txt", ".caption"}
+_DATASET_ROOT = WORKSPACE_ROOT / "datasets"
+_DATASET_ZIP_ROOT = WORKSPACE_ROOT / "datasets" / "ZIPs"
+_OUTPUT_ROOT = WORKSPACE_ROOT / "outputs"
 
 
 def _scan_dataset_dir(dataset_dir: Path) -> DatasetEntry:
@@ -1187,6 +1190,36 @@ def _unique_child_path(parent: Path, filename: str) -> Path:
         idx += 1
 
 
+def _safe_dataset_path(candidate: Path) -> Path:
+    return _resolve_under_root(_DATASET_ROOT, candidate)
+
+
+def _safe_dataset_zip_path(candidate: Path) -> Path:
+    return _resolve_under_root(_DATASET_ZIP_ROOT, candidate)
+
+
+def _safe_output_path(candidate: Path) -> Path:
+    return _resolve_under_root(_OUTPUT_ROOT, candidate)
+
+
+def _iter_dataset_files(root: Path):
+    dataset_root = _safe_dataset_path(root)
+    for dirpath, _, filenames in os.walk(dataset_root):
+        current = _safe_dataset_path(Path(dirpath))
+        for name in sorted(filenames):
+            file_path = _safe_dataset_path(current / name)
+            if file_path.is_file(follow_symlinks=False):
+                yield file_path
+
+
+def _write_dataset_zip(dataset_dir: Path, zip_path: Path) -> None:
+    dataset_root = _safe_dataset_path(dataset_dir)
+    safe_zip_path = _safe_dataset_zip_path(zip_path)
+    with zipfile.ZipFile(safe_zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for p in _iter_dataset_files(dataset_root):
+            zf.write(p, p.relative_to(dataset_root).as_posix())
+
+
 @app.post("/api/datasets/create")
 def create_dataset(payload: dict):
     raw = payload.get("name", "").strip()
@@ -1195,6 +1228,7 @@ def create_dataset(payload: dict):
     target = _dataset_dir(raw)
     if target.exists():
         raise HTTPException(status_code=400, detail="dataset already exists")
+    target = _safe_dataset_path(target)
     target.mkdir(parents=True, exist_ok=True)
     _invalidate_dataset_list_cache()
     return {"status": "created", "path": str(target)}
@@ -1204,16 +1238,18 @@ def create_dataset(payload: dict):
 def upload_dataset(file: UploadFile = File(...)):
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     target_dir = WORKSPACE_ROOT / "datasets"
+    zip_dir = _safe_dataset_zip_path(zip_dir)
+    target_dir = _safe_dataset_path(target_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
     target_dir.mkdir(parents=True, exist_ok=True)
     fname_stem = _clean_name(Path(file.filename or "dataset.zip").stem)
     fname = fname_stem + ".zip"
-    dest = _resolve_under_root(zip_dir, zip_dir / fname)
+    dest = _safe_dataset_zip_path(zip_dir / fname)
     try:
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
         # Extract into /workspace/datasets/<cleaned_name>
-        extract_dir = _resolve_under_root(target_dir, target_dir / f"1_{fname_stem}")
+        extract_dir = _safe_dataset_path(target_dir / f"1_{fname_stem}")
         if extract_dir.exists():
             shutil.rmtree(extract_dir, ignore_errors=True)
         extract_dir.mkdir(parents=True, exist_ok=True)
@@ -1227,6 +1263,7 @@ def upload_dataset(file: UploadFile = File(...)):
 @app.delete("/api/datasets/{name}")
 def delete_dataset(name: str):
     target = _dataset_dir(name)
+    target = _safe_dataset_path(target)
     if not target.exists():
         raise HTTPException(status_code=404, detail="Dataset not found")
     try:
@@ -1234,10 +1271,10 @@ def delete_dataset(name: str):
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to delete dataset")
     # Best-effort cleanup of any corresponding ZIP
-    zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    zip_dir = _safe_dataset_zip_path(WORKSPACE_ROOT / "datasets" / "ZIPs")
     stem = _clean_name(name)
     for candidate in [zip_dir / f"{stem}.zip", zip_dir / f"1_{stem}.zip"]:
-        safe_candidate = _resolve_under_root(zip_dir, candidate)
+        safe_candidate = _safe_dataset_zip_path(candidate)
         if safe_candidate.exists():
             try:
                 safe_candidate.unlink()
@@ -1253,30 +1290,33 @@ def rename_dataset(name: str, payload: dict):
     new_name = payload.get("name", "").strip()
     if not new_name:
         raise HTTPException(status_code=400, detail="new name is required")
-    
+
     source = _dataset_dir(name)
     target = _dataset_dir(new_name)
-    
+    source = _safe_dataset_path(source)
+    target = _safe_dataset_path(target)
+
     if not source.exists():
         raise HTTPException(status_code=404, detail="Dataset not found")
-    
+
     if target.exists() and target != source:
         raise HTTPException(status_code=400, detail="Dataset with new name already exists")
-    
+
     try:
         # Rename the directory
         source.rename(target)
-        
+
         # Update any corresponding ZIP files
-        zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+        zip_dir = _safe_dataset_zip_path(WORKSPACE_ROOT / "datasets" / "ZIPs")
         old_stem = _clean_name(name)
         new_stem = _clean_name(new_name)
-        
+
         for old_zip in [zip_dir / f"{old_stem}.zip", zip_dir / f"1_{old_stem}.zip"]:
-            if old_zip.exists():
-                new_zip = zip_dir / f"{new_stem}.zip"
+            safe_old = _safe_dataset_zip_path(old_zip)
+            if safe_old.exists():
+                safe_new = _safe_dataset_zip_path(zip_dir / f"{new_stem}.zip")
                 try:
-                    old_zip.rename(new_zip)
+                    safe_old.rename(safe_new)
                 except Exception:
                     pass  # Best effort
         _invalidate_dataset_list_cache()
@@ -1288,12 +1328,13 @@ def rename_dataset(name: str, payload: dict):
 @app.get("/api/tagpilot/load")
 def tagpilot_load(name: str):
     target = _dataset_dir(name)
+    target = _safe_dataset_path(target)
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail="Dataset not found")
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".txt", ".caption"}
     files = []
-    for p in sorted(target.rglob("*")):
-        if not p.is_file():
+    for p in _iter_dataset_files(target):
+        if not p.is_file(follow_symlinks=False):
             continue
         if p.suffix.lower() not in allowed:
             continue
@@ -1363,13 +1404,15 @@ async def tagpilot_generate(
 @app.post("/api/tagpilot/save")
 def tagpilot_save(name: str, file: UploadFile = File(...)):
     target = _dataset_dir(name)
+    target = _safe_dataset_path(target)
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    zip_dir = _safe_dataset_zip_path(zip_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
     if target.exists():
         shutil.rmtree(target, ignore_errors=True)
     target.mkdir(parents=True, exist_ok=True)
     fname = _clean_name(name) + ".zip"
-    dest = _resolve_under_root(zip_dir, zip_dir / fname)
+    dest = _safe_dataset_zip_path(zip_dir / fname)
     try:
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
@@ -1389,7 +1432,9 @@ def tagpilot_save_item(
     done: bool = Form(False),
 ):
     target = _dataset_dir(name)
+    target = _safe_dataset_path(target)
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
+    zip_dir = _safe_dataset_zip_path(zip_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
 
     if reset:
@@ -1401,18 +1446,16 @@ def tagpilot_save_item(
 
     safe_name = _safe_upload_filename(file.filename or "")
     dst_img = _unique_child_path(target, safe_name)
-    dst_txt = dst_img.with_suffix(".txt")
-    zip_path = _resolve_under_root(zip_dir, zip_dir / f"{_clean_name(name)}.zip")
+    dst_txt = _safe_dataset_path(dst_img.with_suffix(".txt"))
+    dst_img = _safe_dataset_path(dst_img)
+    zip_path = _safe_dataset_zip_path(zip_dir / f"{_clean_name(name)}.zip")
 
     try:
         with dst_img.open("wb") as f:
             shutil.copyfileobj(file.file, f)
         dst_txt.write_text(tags or "", encoding="utf-8")
         if done:
-            with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                for p in sorted(target.rglob("*")):
-                    if p.is_file():
-                        zf.write(p, p.relative_to(target).as_posix())
+            _write_dataset_zip(target, zip_path)
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to save tagged item")
     _invalidate_dataset_list_cache()
@@ -2905,14 +2948,14 @@ def _ensure_trainpilot_toml() -> Path:
     if TRAINPILOT_BUNDLED_TOML.exists():
         shutil.copy2(TRAINPILOT_BUNDLED_TOML, TRAINPILOT_PERSISTENT_TOML)
         return TRAINPILOT_PERSISTENT_TOML
-    raise HTTPException(status_code=500, detail=f"Bundled TrainPilot TOML not found at {TRAINPILOT_BUNDLED_TOML}")
+    raise HTTPException(status_code=500, detail="Bundled TrainPilot TOML not found")
 
 
 def _resolve_trainpilot_toml_path(raw_path: str = "") -> Path:
     raw = (raw_path or "").strip()
     if not raw:
         return _ensure_trainpilot_toml()
-    candidate = Path(raw)
+    candidate = Path(os.path.expandvars(os.path.expanduser(raw)))
     if candidate == TRAINPILOT_BUNDLED_TOML:
         candidate = _ensure_trainpilot_toml()
     elif not candidate.is_absolute():
@@ -2944,7 +2987,7 @@ def trainpilot_start(req: TrainPilotRequest):
         raise HTTPException(status_code=400, detail="Invalid profile")
     toml_path = _resolve_trainpilot_toml_path(req.toml_path)
     if not toml_path.exists():
-        raise HTTPException(status_code=400, detail=f"TOML not found: {toml_path}")
+        raise HTTPException(status_code=400, detail="TOML not found")
     
     # Add debugging info to logs
     _tp_logs.append(f"=== Starting TrainPilot at {datetime.now().isoformat()} ===")
@@ -3013,7 +3056,7 @@ def trainpilot_model_check(req: TrainPilotModelCheckRequest):
     """
     toml_path = _resolve_trainpilot_toml_path(req.toml_path)
     if not toml_path.exists():
-        raise HTTPException(status_code=404, detail=f"TOML not found: {toml_path}")
+        raise HTTPException(status_code=404, detail="TOML not found")
 
     try:
         raw = toml_path.read_bytes()
@@ -3045,7 +3088,7 @@ def trainpilot_model_check(req: TrainPilotModelCheckRequest):
                 "model_name": None,
                 "reason": "Not a local file path",
             }
-        p = Path(value)
+        p = _resolve_under_root(WORKSPACE_ROOT, Path(value))
         exists = p.exists()
         model_name = None
         if not exists:
@@ -3074,7 +3117,7 @@ def trainpilot_model_check(req: TrainPilotModelCheckRequest):
         check_one("vae", "vae", vae),
     ]
     missing = [it for it in items if not it.get("exists")]
-    return {"toml_path": str(toml_path), "items": items, "missing": missing}
+    return {"toml_path": toml_path.name, "items": items, "missing": missing}
 
 
 @app.get("/api/trainpilot/logs")
@@ -3112,7 +3155,7 @@ def trainpilot_logs(limit: int = 500):
             lines.append("--- No training outputs directory found at /workspace/outputs ---")
         elif _tp_output_dir:
             output_dir = _tp_output_dir
-            log_file = output_dir / "_logs" / "train.log"
+            log_file = _safe_output_path(output_dir / "_logs" / "train.log")
             lines.append(f"--- Current output dir: {output_dir} ---")
             if log_file.exists():
                 stat_info = log_file.stat()
@@ -3131,14 +3174,17 @@ def trainpilot_logs(limit: int = 500):
             for d in outs_base.iterdir():
                 if not d.is_dir():
                     continue
-                log_file = d / "_logs" / "train.log"
+                log_file = _safe_output_path(d / "_logs" / "train.log")
                 if log_file.exists():
-                    output_dirs.append(d)
+                    output_dirs.append(_safe_output_path(d))
             lines.append(f"--- Found {len(output_dirs)} TrainPilot output directories ---")
-            output_dirs.sort(key=lambda x: (x / "_logs" / "train.log").stat().st_mtime, reverse=True)
+            output_dirs.sort(
+                key=lambda x: _safe_output_path(x / "_logs" / "train.log").stat().st_mtime,
+                reverse=True,
+            )
             for i, output_dir in enumerate(output_dirs[:3]):
                 lines.append(f"--- Checking output dir {i+1}: {output_dir.name} ---")
-                log_file = output_dir / "_logs" / "train.log"
+                log_file = _safe_output_path(output_dir / "_logs" / "train.log")
                 try:
                     stat_info = log_file.stat()
                     lines.append(f"--- Log file exists, size: {stat_info.st_size} bytes, modified: {datetime.fromtimestamp(stat_info.st_mtime)} ---")

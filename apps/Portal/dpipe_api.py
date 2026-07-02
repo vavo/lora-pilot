@@ -109,6 +109,12 @@ def _resolve_local_path(raw_value: str, *, field: str) -> Path:
     return Path(resolved)
 
 
+def _safe_exists(path: Path, *, field: str) -> bool:
+    if not any(_path_is_within_root(path, root) for root in _LOCAL_PATH_ROOTS):
+        raise HTTPException(status_code=400, detail=f"{field} must stay within approved directories")
+    return path.exists()
+
+
 def _resolve_deepspeed_bin() -> Path:
     binary = _resolve_local_path(DEEPSPEED_BIN, field="DEEPSPEED_BIN")
     if not binary.exists() or not binary.is_file():
@@ -140,6 +146,8 @@ def create_dataset_config(
     frame_buckets: list,
     ar_buckets: Optional[list],
 ) -> Path:
+    dataset_path = _resolve_under_root(str(dataset_path), root=BASE_DATASET_DIR, field="dataset_path")
+    config_dir = _resolve_under_root(str(config_dir), root=CONFIG_DIR, field="config_dir")
     for p in (dataset_path, config_dir):
         if not p.exists():
             raise HTTPException(status_code=400, detail="Invalid dataset or config path")
@@ -160,7 +168,7 @@ def create_dataset_config(
     }
     config_dir.mkdir(parents=True, exist_ok=True)
     out = config_dir / "dataset_config.toml"
-    out = _resolve_under_root(CONFIG_DIR, out)
+    out = _resolve_under_root(str(out), root=CONFIG_DIR, field="dataset config path")
     with out.open("w") as f:
         toml.dump(cfg, f)
     return out
@@ -204,6 +212,9 @@ def create_training_config(
     wandb_tracker_name: Optional[str],
     wandb_api_key: Optional[str],
 ) -> Path:
+    output_dir = _resolve_under_root(str(output_dir), root=OUTPUT_DIR, field="output_dir")
+    config_dir = _resolve_under_root(str(config_dir), root=CONFIG_DIR, field="config_dir")
+    dataset_config_path = _resolve_under_root(str(dataset_config_path), root=CONFIG_DIR, field="dataset config path")
     if not _path_is_within_root(output_dir, OUTPUT_DIR):
         raise HTTPException(status_code=400, detail="Invalid output dir")
     if not _path_is_within_root(config_dir, CONFIG_DIR):
@@ -266,7 +277,7 @@ def create_training_config(
     }
     config_dir.mkdir(parents=True, exist_ok=True)
     out = config_dir / "training_config.toml"
-    out = _resolve_under_root(CONFIG_DIR, out)
+    out = _resolve_under_root(str(out), root=CONFIG_DIR, field="training config path")
     with out.open("w") as f:
         toml.dump(cfg, f)
     return out
@@ -389,7 +400,7 @@ def validate_training_paths(req: TrainValidateRequest):
     }
     for key, value in checks.items():
         path = _resolve_local_path(value, field=key)
-        if not path.exists():
+        if not _safe_exists(path, field=key):
             missing.append({"field": key, "path": value})
     return {"ok": len(missing) == 0, "missing": missing}
 
@@ -407,7 +418,7 @@ def start_training(req: TrainRequest):
     ds_path = _resolve_under_root(req.dataset_path, root=BASE_DATASET_DIR, field="dataset_path")
     cfg_dir = _resolve_under_root(req.config_dir, root=CONFIG_DIR, field="config_dir")
     out_dir = _resolve_under_root(req.output_dir, root=OUTPUT_DIR, field="output_dir")
-    if not ds_path.exists():
+    if not _safe_exists(ds_path, field="dataset_path"):
         raise HTTPException(status_code=400, detail="dataset_path does not exist")
     deepspeed_bin = _resolve_deepspeed_bin()
     run_dir = _resolve_diffpipe_dir()

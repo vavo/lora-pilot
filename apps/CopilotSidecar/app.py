@@ -66,7 +66,8 @@ def _ensure_trusted_folder(folder: Path) -> None:
     trusted = cfg.get("trusted_folders")
     if not isinstance(trusted, list):
         trusted = []
-    folder_str = str(folder.resolve())
+    folder = _workspace_rooted_path(str(folder), default=folder)
+    folder_str = str(folder)
     if folder_str not in trusted:
         trusted.append(folder_str)
     cfg["trusted_folders"] = trusted
