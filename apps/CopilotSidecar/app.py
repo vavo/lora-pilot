@@ -19,6 +19,23 @@ DEFAULT_PORT = int(os.environ.get("COPILOT_SIDECAR_PORT", "7879"))
 DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("COPILOT_TIMEOUT_SECONDS", "1800"))
 
 
+def _workspace_rooted_path(raw: Optional[str], *, default: Path) -> Path:
+    root = os.path.realpath(str(WORKSPACE_ROOT))
+    raw_value = (raw or "").strip()
+    if not raw_value:
+        return default
+
+    expanded = os.path.expandvars(os.path.expanduser(raw_value))
+    if os.path.isabs(expanded):
+        candidate = os.path.realpath(expanded)
+    else:
+        candidate = os.path.realpath(os.path.join(root, expanded))
+
+    if candidate == root or os.path.commonpath([candidate, root]) == root:
+        return Path(candidate)
+    return default
+
+
 def _copilot_bin() -> Optional[str]:
     return shutil.which("copilot")
 
@@ -28,10 +45,11 @@ def _config_json_path() -> Path:
     Copilot CLI config defaults to ~/.copilot/config.json, and docs mention XDG_CONFIG_HOME can relocate it.
     We follow that by storing under $XDG_CONFIG_HOME/.copilot/config.json when XDG_CONFIG_HOME is set.
     """
-    xdg = os.environ.get("XDG_CONFIG_HOME")
-    if xdg:
-        return Path(xdg) / ".copilot" / "config.json"
-    home = Path(os.environ.get("HOME", str(DEFAULT_HOME)))
+    xdg_env = os.environ.get("XDG_CONFIG_HOME")
+    if xdg_env:
+        xdg = _workspace_rooted_path(xdg_env, default=DEFAULT_XDG_CONFIG_HOME)
+        return xdg / ".copilot" / "config.json"
+    home = _workspace_rooted_path(os.environ.get("HOME"), default=DEFAULT_HOME)
     return home / ".copilot" / "config.json"
 
 

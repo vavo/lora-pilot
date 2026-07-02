@@ -118,6 +118,16 @@ def _resolve_deepspeed_bin() -> Path:
     return binary
 
 
+def _resolve_training_model_path(raw_value: str, *, field: str) -> Path:
+    return _resolve_local_path(raw_value, field=field)
+
+
+def _materialize_training_config(training_cfg: Path) -> Path:
+    safe_cfg = (OUTPUT_DIR / "lp_training_config.toml").resolve()
+    safe_cfg.write_text(training_cfg.read_text(encoding="utf-8"), encoding="utf-8")
+    return safe_cfg
+
+
 def create_dataset_config(
     dataset_path: Path,
     config_dir: Path,
@@ -130,6 +140,14 @@ def create_dataset_config(
     frame_buckets: list,
     ar_buckets: Optional[list],
 ) -> Path:
+    for p in (dataset_path, config_dir):
+        if not p.exists():
+            raise HTTPException(status_code=400, detail="Invalid dataset or config path")
+        if not _path_is_within_root(p, BASE_DATASET_DIR) and p != config_dir:
+            raise HTTPException(status_code=400, detail="Invalid dataset path")
+        if not _path_is_within_root(config_dir, CONFIG_DIR):
+            raise HTTPException(status_code=400, detail="Invalid config path")
+
     cfg = {
         "resolutions": resolutions,
         "enable_ar_bucket": enable_ar_bucket,
@@ -142,6 +160,7 @@ def create_dataset_config(
     }
     config_dir.mkdir(parents=True, exist_ok=True)
     out = config_dir / "dataset_config.toml"
+    out = _resolve_under_root(CONFIG_DIR, out)
     with out.open("w") as f:
         toml.dump(cfg, f)
     return out
@@ -185,6 +204,13 @@ def create_training_config(
     wandb_tracker_name: Optional[str],
     wandb_api_key: Optional[str],
 ) -> Path:
+    if not _path_is_within_root(output_dir, OUTPUT_DIR):
+        raise HTTPException(status_code=400, detail="Invalid output dir")
+    if not _path_is_within_root(config_dir, CONFIG_DIR):
+        raise HTTPException(status_code=400, detail="Invalid config path")
+    if not _path_is_within_root(dataset_config_path, config_dir):
+        raise HTTPException(status_code=400, detail="Invalid dataset config path")
+
     num_gpus = int(NUM_GPUS)
     cfg = {
         "output_dir": str(output_dir),
@@ -240,6 +266,7 @@ def create_training_config(
     }
     config_dir.mkdir(parents=True, exist_ok=True)
     out = config_dir / "training_config.toml"
+    out = _resolve_under_root(CONFIG_DIR, out)
     with out.open("w") as f:
         toml.dump(cfg, f)
     return out
@@ -292,36 +319,6 @@ class TrainRequest(BaseModel):
     wandb_tracker_name: Optional[str] = None
     wandb_api_key: Optional[str] = None
 
-
-class TrainValidateRequest(BaseModel):
-    transformer_path: str
-    vae_path: str
-    llm_path: str
-    clip_path: str
-
-
-def _normalize_path(value: str) -> Path:
-    raw = (value or "").strip()
-    if not raw:
-        return Path("")
-    return Path(os.path.expandvars(os.path.expanduser(raw)))
-
-
-@router.post("/train/validate")
-def validate_training_paths(req: TrainValidateRequest):
-    missing = []
-    checks = {
-        "transformer_path": req.transformer_path,
-        "vae_path": req.vae_path,
-        "llm_path": req.llm_path,
-        "clip_path": req.clip_path,
-    }
-    for key, value in checks.items():
-        path = _resolve_local_path(value, field=key)
-        if not path.exists():
-            missing.append({"field": key, "path": value})
-    return {"ok": len(missing) == 0, "missing": missing}
-
     @validator("betas")
     def _parse_betas(cls, v):
         if isinstance(v, list):
@@ -366,6 +363,35 @@ def validate_training_paths(req: TrainValidateRequest):
         except Exception:
             raise ValueError("ar_buckets must be JSON list or empty string")
 
+    @validator("dtype", "save_dtype", "video_clip_mode", "partition_method", "optimizer_type")
+    def _validate_tokenish_fields(cls, v):
+        value = (v or "").strip()
+        if not value or any(ch.isspace() for ch in value):
+            raise ValueError("invalid value")
+        return value
+
+
+class TrainValidateRequest(BaseModel):
+    transformer_path: str
+    vae_path: str
+    llm_path: str
+    clip_path: str
+
+
+@router.post("/train/validate")
+def validate_training_paths(req: TrainValidateRequest):
+    missing = []
+    checks = {
+        "transformer_path": req.transformer_path,
+        "vae_path": req.vae_path,
+        "llm_path": req.llm_path,
+        "clip_path": req.clip_path,
+    }
+    for key, value in checks.items():
+        path = _resolve_local_path(value, field=key)
+        if not path.exists():
+            missing.append({"field": key, "path": value})
+    return {"ok": len(missing) == 0, "missing": missing}
 
 def _ensure_single_run():
     with _proc_lock:
@@ -395,6 +421,11 @@ def start_training(req: TrainRequest):
         arb = json.loads(req.ar_buckets) if req.ar_buckets else None
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid JSON in resolutions/frame/ar buckets: {e}")
+
+    transformer_path = _resolve_training_model_path(req.transformer_path, field="transformer_path")
+    vae_path = _resolve_training_model_path(req.vae_path, field="vae_path")
+    llm_path = _resolve_training_model_path(req.llm_path, field="llm_path")
+    clip_path = _resolve_training_model_path(req.clip_path, field="clip_path")
 
     dataset_cfg = create_dataset_config(
         ds_path,
@@ -429,10 +460,10 @@ def start_training(req: TrainRequest):
         caching_batch_size=req.caching_batch_size,
         steps_per_print=req.steps_per_print,
         video_clip_mode=req.video_clip_mode,
-        transformer_path=req.transformer_path,
-        vae_path=req.vae_path,
-        llm_path=req.llm_path,
-        clip_path=req.clip_path,
+        transformer_path=str(transformer_path),
+        vae_path=str(vae_path),
+        llm_path=str(llm_path),
+        clip_path=str(clip_path),
         dtype=req.dtype,
         rank=req.rank,
         only_double_blocks=req.only_double_blocks,
@@ -447,13 +478,14 @@ def start_training(req: TrainRequest):
         wandb_api_key=req.wandb_api_key,
     )
 
+    safe_training_cfg = _materialize_training_config(training_cfg)
     cmd = [
         str(deepspeed_bin),
         f"--num_gpus={NUM_GPUS}",
         "train.py",
         "--deepspeed",
         "--config",
-        str(training_cfg),
+        str(safe_training_cfg),
     ]
     if req.resume_from_checkpoint:
         cmd.append("--resume_from_checkpoint")

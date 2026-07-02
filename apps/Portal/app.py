@@ -1093,6 +1093,23 @@ def _clean_name(name: str) -> str:
     return cleaned or "dataset"
 
 
+def _normalize_model_name(name: str) -> str:
+    raw = (name or "").strip()
+    if not raw:
+        raise HTTPException(status_code=400, detail="model name is required")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", raw):
+        raise HTTPException(status_code=400, detail="invalid model name")
+    return raw
+
+
+def _resolve_model_name(raw: str, entries: list[models_service.ModelEntry]) -> str:
+    normalized = _normalize_model_name(raw)
+    for entry in entries:
+        if entry.name == normalized:
+            return entry.name
+    raise HTTPException(status_code=404, detail="Unknown model")
+
+
 def _resolve_under_root(root: Path, candidate: Path) -> Path:
     root_resolved = os.path.realpath(str(root))
     resolved = os.path.realpath(str(candidate))
@@ -1129,7 +1146,7 @@ def _safe_zip_member_path(name: str) -> PurePosixPath:
 
 
 def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
-    dest_dir = dest_dir.resolve()
+    dest_dir = _resolve_under_root(dest_dir, dest_dir)
     with zipfile.ZipFile(zip_path) as zf:
         for info in zf.infolist():
             if not info.filename:
@@ -1139,9 +1156,7 @@ def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
             rel_path = _safe_zip_member_path(info.filename)
             if not rel_path.parts:
                 continue
-            target = (dest_dir / Path(*rel_path.parts)).resolve()
-            if os.path.commonpath([str(dest_dir), str(target)]) != str(dest_dir):
-                raise ValueError(f"zip path escapes destination: {info.filename}")
+            target = _resolve_under_root(dest_dir, dest_dir / Path(*rel_path.parts))
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
                 continue
@@ -1193,12 +1208,12 @@ def upload_dataset(file: UploadFile = File(...)):
     target_dir.mkdir(parents=True, exist_ok=True)
     fname_stem = _clean_name(Path(file.filename or "dataset.zip").stem)
     fname = fname_stem + ".zip"
-    dest = zip_dir / fname
+    dest = _resolve_under_root(zip_dir, zip_dir / fname)
     try:
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
         # Extract into /workspace/datasets/<cleaned_name>
-        extract_dir = target_dir / f"1_{fname_stem}"
+        extract_dir = _resolve_under_root(target_dir, target_dir / f"1_{fname_stem}")
         if extract_dir.exists():
             shutil.rmtree(extract_dir, ignore_errors=True)
         extract_dir.mkdir(parents=True, exist_ok=True)
@@ -1222,9 +1237,10 @@ def delete_dataset(name: str):
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     stem = _clean_name(name)
     for candidate in [zip_dir / f"{stem}.zip", zip_dir / f"1_{stem}.zip"]:
-        if candidate.exists():
+        safe_candidate = _resolve_under_root(zip_dir, candidate)
+        if safe_candidate.exists():
             try:
-                candidate.unlink()
+                safe_candidate.unlink()
             except Exception:
                 pass
     _invalidate_dataset_list_cache()
@@ -1353,7 +1369,7 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
         shutil.rmtree(target, ignore_errors=True)
     target.mkdir(parents=True, exist_ok=True)
     fname = _clean_name(name) + ".zip"
-    dest = zip_dir / fname
+    dest = _resolve_under_root(zip_dir, zip_dir / fname)
     try:
         with dest.open("wb") as f:
             shutil.copyfileobj(file.file, f)
@@ -1386,7 +1402,7 @@ def tagpilot_save_item(
     safe_name = _safe_upload_filename(file.filename or "")
     dst_img = _unique_child_path(target, safe_name)
     dst_txt = dst_img.with_suffix(".txt")
-    zip_path = zip_dir / f"{_clean_name(name)}.zip"
+    zip_path = _resolve_under_root(zip_dir, zip_dir / f"{_clean_name(name)}.zip")
 
     try:
         with dst_img.open("wb") as f:
@@ -1416,10 +1432,9 @@ def tagpilot_save_item(
 def pull_model(name: str):
     models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
     entries = models_service.parse_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    if not any(entry.name == name for entry in entries):
-        raise HTTPException(status_code=404, detail="Unknown model")
-    cmd = ["/opt/pilot/get-models.sh", "pull", name]
-    print(f"[models] pull start name={name} cmd={' '.join(cmd)}", file=sys.stderr)
+    model_name = _resolve_model_name(name, entries)
+    cmd = ["/opt/pilot/get-models.sh", "pull", model_name]
+    print(f"[models] pull start name={model_name} cmd={' '.join(cmd)}", file=sys.stderr)
     # Use existing CLI for consistency
     try:
         result = subprocess.run(
@@ -1446,17 +1461,16 @@ def pull_model_start(name: str):
     _cleanup_model_pull_jobs()
     models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
     entries = models_service.parse_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    if not any(e.name == name for e in entries):
-        raise HTTPException(status_code=404, detail="Unknown model")
+    model_name = _resolve_model_name(name, entries)
 
     with _model_pull_lock:
         existing = _model_pull_jobs.get(name)
         if existing and existing.state == "running":
             return _model_pull_job_to_dict(existing)
-        job = ModelPullJob(name=name)
+        job = ModelPullJob(name=model_name)
         _model_pull_jobs[name] = job
 
-    cmd = ["/opt/pilot/get-models.sh", "pull", name]
+    cmd = ["/opt/pilot/get-models.sh", "pull", model_name]
     threading.Thread(target=_run_model_pull_job, args=(job, cmd), daemon=True).start()
     return _model_pull_job_to_dict(job)
 
