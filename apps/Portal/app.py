@@ -1431,7 +1431,10 @@ def tagpilot_save_item(
     reset: bool = Form(False),
     done: bool = Form(False),
 ):
-    target = _dataset_dir(name)
+    dataset_name = (name or "").strip()
+    if not dataset_name or not re.fullmatch(r"[A-Za-z0-9_-]+", dataset_name):
+        raise HTTPException(status_code=400, detail="Invalid dataset name")
+    target = _dataset_dir(dataset_name)
     target = _safe_dataset_path(target)
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     zip_dir = _safe_dataset_zip_path(zip_dir)
