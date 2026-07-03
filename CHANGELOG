@@ -1,3 +1,14 @@
+v2.5.3 (July 3rd 2026)
+
+- Made TensorBoard integration actually functional for training stacks that mattered, not just eyecandy:
+  - added shared status endpoint `GET /api/tensorboard/status`
+  - trained-stack discovery now checks `events.out.tfevents.*` for Diffusion Pipe, TrainPilot, Kohya, and AI Toolkit
+  - added shared TensorBoard source links under `/workspace/logs/tensorboard/{diffpipe,trainpilot,kohya,ai-toolkit}` in Diffusion Pipe launcher
+- Wired TensorBoard actions into UI entry points:
+  - TrainPilot and Diffusion Pipe pages now include open/status actions
+  - Services page now exposes a TensorBoard action for diffpipe/kohya/AI Toolkit with run-state aware status text
+- Updated docs for workflow visibility (`training-workflows`, stack component docs, API reference) and added release notes.
+
 v2.5.2 (July 3rd 2026)
 
 - Bumped VS Code in-browser service to code-server `4.127.0` and JupyterLab to `4.6.1` in the canonical build configuration.

@@ -310,6 +310,13 @@ cache_latents_to_disk: true
 5. Use better captions
 ```
 
+### TensorBoard
+
+Kohya SS writes TensorBoard events under `/workspace/outputs` (recursive scan). Open from:
+
+- `Services` page → `Kohya` → **TensorBoard**
+- `GET /api/tensorboard/status` source `kohya` for shared status
+
 ### Debug Commands
 
 #### Check Training Status
@@ -415,5 +422,4 @@ cp /workspace/outputs/my_lora/last.safetensors /workspace/models/loras/
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

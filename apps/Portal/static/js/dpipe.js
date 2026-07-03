@@ -57,6 +57,25 @@ window.initDpipe = function () {
     fields.forEach(f => { if (f) f.classList.toggle("is-hidden", !wandb.checked); });
   }
   startLogPoll();
+  refreshDpipeTensorBoardStatus().catch(() => {});
+};
+
+window.openDpipeTensorBoard = async function () {
+  const statusEl = document.getElementById("dp-tensorboard-status");
+  const setStatus = (msg) => {
+    if (!statusEl) return;
+    statusEl.textContent = msg || "";
+  };
+  try {
+    await window.openTensorBoard("diffpipe", {
+      label: "Diffusion Pipe",
+      onError: setStatus,
+      allowUnavailable: false,
+    });
+    setStatus("");
+  } catch (e) {
+    setStatus(e.message || e);
+  }
 };
 
 window.startDpipe = async function () {
@@ -133,6 +152,7 @@ window.startDpipe = async function () {
       body: JSON.stringify(payload),
     });
     if (status) status.textContent = "Running...";
+    refreshDpipeTensorBoardStatus().catch(() => {});
   } catch (e) {
     if (status) status.textContent = `Error: ${e.message || e}`;
   }
@@ -144,6 +164,7 @@ window.stopDpipe = async function () {
   try {
     await fetchJson("/dpipe/train/stop", { method: "POST" });
     if (status) status.textContent = "Stopped.";
+    refreshDpipeTensorBoardStatus().catch(() => {});
   } catch (e) {
     if (status) status.textContent = `Error: ${e.message || e}`;
   }
@@ -212,8 +233,24 @@ function startLogPoll() {
     }
   };
   poll();
+  refreshDpipeTensorBoardStatus().catch(() => {});
   dpLogTimer = setInterval(poll, 2000);
 }
+
+window.refreshDpipeTensorBoardStatus = async function () {
+  const statusEl = document.getElementById("dp-tensorboard-status");
+  if (!statusEl) return;
+  try {
+    const tb = await window.getTensorBoardSourceStatus("diffpipe", { force: false });
+    if (tb && tb.ready) {
+      statusEl.textContent = "TensorBoard: run logs detected";
+    } else {
+      statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
+    }
+  } catch (e) {
+    statusEl.textContent = "TensorBoard: unavailable";
+  }
+};
 
 window.stopDpipeLog = function () {
   if (dpLogTimer) clearInterval(dpLogTimer);

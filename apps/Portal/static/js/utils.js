@@ -65,6 +65,64 @@ window.buildPortUrl = function (port) {
   return current.toString();
 };
 
+const _tbStatusCache = {
+  expiresAt: 0,
+  data: null,
+};
+
+window.getTensorBoardStatus = async function (opts = {}) {
+  const force = Boolean(opts.force);
+  const now = Date.now();
+  if (!force && _tbStatusCache.data && _tbStatusCache.expiresAt > now) return _tbStatusCache.data;
+
+  const data = await fetchJson("/api/tensorboard/status");
+  _tbStatusCache.data = data || {};
+  _tbStatusCache.expiresAt = now + 5_000;
+  return data;
+};
+
+window.getTensorBoardSourceStatus = async function (source, opts = {}) {
+  const payload = await window.getTensorBoardStatus(opts);
+  if (!payload || typeof payload !== "object") return null;
+  return payload.sources && payload.sources[source] ? payload.sources[source] : null;
+};
+
+window.openTensorBoard = async function (source, opts = {}) {
+  const tb = await window.getTensorBoardSourceStatus(source, opts);
+  const label = typeof opts.label === "string" && opts.label ? opts.label : "TensorBoard";
+  if (!tb) {
+    if (typeof opts.onError === "function") {
+      opts.onError(`No TensorBoard metadata for ${label}`);
+      return false;
+    }
+    alert(`No TensorBoard metadata for ${label}`);
+    return false;
+  }
+
+  if (!tb.ready) {
+    const msg = tb.reason || `${label} has no TensorBoard events yet.`;
+    if (!opts.allowUnavailable) {
+      if (typeof opts.onError === "function") {
+        opts.onError(msg);
+        return false;
+      }
+      alert(msg);
+      return false;
+    }
+  }
+
+  const payload = await window.getTensorBoardStatus(opts);
+  const tbUrl = window.buildPortUrl(payload.port || 4444);
+  if (!tbUrl) return false;
+  window.open(tbUrl, "_blank", "noopener,noreferrer");
+  return true;
+};
+
+window.setTensorBoardStatus = function (status) {
+  _tbStatusCache.data = status;
+  _tbStatusCache.expiresAt = Date.now() + 5_000;
+};
+
 window.sanitizeHttpUrl = function (rawUrl, opts = {}) {
   if (!rawUrl) return null;
   try {

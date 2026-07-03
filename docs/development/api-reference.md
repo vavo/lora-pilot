@@ -21,6 +21,7 @@ ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 | `GET` | `/api/services/{name}/update/status` | Update job state/tail |
 | `POST` | `/api/services/{name}/settings/autostart` | Body: `{"enabled": true|false}` |
 | `GET` | `/api/services/{name}/log` | Query: `lines` (default `100`) |
+| `GET` | `/api/tensorboard/status` | Shared TensorBoard source status for Diffusion Pipe + TrainPilot + Kohya + AI Toolkit |
 
 Known service names:
 
@@ -232,7 +233,7 @@ curl -s http://localhost:7878/api/docs/sitemap
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-07-03_
 
 ---
 

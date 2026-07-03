@@ -136,6 +136,23 @@ ControlPilot exposes Dpipe endpoints and UI for this stack.
 - Service on port `4444` is TensorBoard-oriented and can run TB-only when no config is set.
 - Dpipe start requires model paths (`transformer_path`, `vae_path`, `llm_path`, `clip_path`) and dataset/config/output paths.
 
+## Shared TensorBoard
+
+You can view training metrics for all currently supported stacks on the same TensorBoard instance:
+
+- `diffpipe` stack: logs are written to `/workspace/logs/diffusion-pipe` and exposed under `ControlPilot → Services → diffpipe`
+- `TrainPilot`: uses `/workspace/logs/TrainPilot` and is available from `TrainPilot` page or `diffpipe` card
+- `Kohya SS`: scans `/workspace/outputs` for tensorboard events and is available via `Services` → Kohya
+- `AI Toolkit`: scans `/workspace/outputs/ai-toolkit` and is available via `Services` → AI Toolkit
+
+ControlPilot uses a single shared endpoint:
+
+```bash
+curl -s http://localhost:7878/api/tensorboard/status
+```
+
+If no `events.out.tfevents.*` files exist yet, the UI explains it is waiting for training output so you can still open or diagnose early.
+
 ### Ops Commands
 
 ```bash
@@ -212,5 +229,4 @@ _Last updated: 2026-02-11_
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

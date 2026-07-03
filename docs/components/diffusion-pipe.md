@@ -9,6 +9,7 @@ Current implementation provides:
 - Optional `deepspeed train.py` launch when a config is provided
 - ControlPilot API/UI for start/stop/logs and config generation
 - Single-run process guard in the API (one active training process at a time)
+- Shared TensorBoard sources for TrainPilot (`/workspace/logs/TrainPilot`) and other stacks mounted under `/workspace/logs/tensorboard`
 
 ##  Access
 
@@ -49,6 +50,9 @@ Notes:
 | `DIFFPIPE_PORT` | TensorBoard port | `4444` |
 | `DIFFPIPE_CONFIG` | Training config path for service script | empty |
 | `DIFFPIPE_LOGDIR` | TensorBoard log directory | `/workspace/logs/diffusion-pipe` |
+| `KOHYA_TENSORBOARD_LOGDIR` | Kohya symlink source for shared TensorBoard mount | `/workspace/outputs` |
+| `AI_TOOLKIT_TENSORBOARD_LOGDIR` | AI Toolkit symlink source for shared TensorBoard mount | `/workspace/outputs/ai-toolkit` |
+| `TENSORBOARD_ROOT_LOGDIR` | Shared TensorBoard mount root | `/workspace/logs/tensorboard` |
 | `DIFFPIPE_NUM_GPUS` | Passed to `deepspeed --num_gpus` | `1` |
 | `DIFFPIPE_EXTRA_ARGS` | Extra CLI args appended to train command | empty |
 | `DIFFPIPE_TENSORBOARD` | Start TensorBoard sidecar in train mode | `1` |
@@ -103,8 +107,8 @@ curl -s -X POST http://localhost:7878/dpipe/train/stop
 ```
 
 ### TensorBoard starts but shows empty runs
-- Confirm `DIFFPIPE_LOGDIR` points to the directory where your training writes events.
-- If training is launched via API, verify output/config/log paths in the Dpipe form.
+- Confirm `DIFFPIPE_LOGDIR` points to the directory where Diffusion Pipe writes events.
+- Confirm the shared links in `${TENSORBOARD_ROOT_LOGDIR}` resolve to active run directories for Kohya/AI Toolkit/TrainPilot and Diffusion Pipe.
 
 ## Related
 
@@ -116,12 +120,10 @@ curl -s -X POST http://localhost:7878/dpipe/train/stop
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-07-03_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
-

@@ -378,6 +378,14 @@ train:
   batch_size: 1
 ```
 
+### TensorBoard
+
+AI Toolkit writes TensorBoard outputs under `/workspace/outputs/ai-toolkit`.
+
+- Open via `Services` page → `AI Toolkit` → **TensorBoard**
+- Check shared status with `GET /api/tensorboard/status` (source `ai-toolkit`)
+- Ensure `${TENSORBOARD_ROOT_LOGDIR}` contains `ai-toolkit` symlink to that output directory (created by `scripts/diffusion-pipe.sh`)
+
 ### Debug Commands
 
 #### Check Service Status
@@ -468,4 +476,3 @@ cp /workspace/outputs/ai-toolkit/your_model_name/*.safetensors /workspace/models
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

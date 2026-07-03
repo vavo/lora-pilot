@@ -131,6 +131,14 @@ curl -s http://localhost:7878/api/datasets
 tail -n 200 /workspace/outputs/<output_name>/_logs/train.log
 ```
 
+### TensorBoard
+
+TrainPilot writes TensorBoard event files to `/workspace/logs/TrainPilot` and ControlPilot exposes them through:
+
+- `TrainPilot` page: **Open TensorBoard** button
+- Shared status endpoint: `GET /api/tensorboard/status` (source `trainpilot`)
+- Shared TensorBoard UI (port `4444`) used by Diffusion Pipe service
+
 ### Process hangs or OOM
 - Start with `quick_test`.
 - Lower batch and/or rank in TOML.
@@ -146,12 +154,10 @@ tail -n 200 /workspace/outputs/<output_name>/_logs/train.log
 
 ---
 
-_Last updated: 2026-02-11_
+_Last updated: 2026-07-03_
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
-

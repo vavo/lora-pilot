@@ -96,6 +96,15 @@ SERVICE_UPDATES_ROLLBACK_LOG_PATH = Path(
 SERVICE_AUTOSTART_CONFIG_PATH = Path(
     os.environ.get("SERVICE_AUTOSTART_CONFIG_PATH", str(WORKSPACE_ROOT / "config" / "service-autostart.toml"))
 )
+try:
+    TENSORBOARD_PORT = int(os.environ.get("DIFFPIPE_PORT", "4444"))
+except ValueError:
+    TENSORBOARD_PORT = 4444
+TENSORBOARD_ROOT = Path(os.environ.get("TENSORBOARD_ROOT_LOGDIR", str(WORKSPACE_ROOT / "logs" / "tensorboard")))
+DIFFPIPE_LOGDIR = Path(os.environ.get("DIFFPIPE_LOGDIR", str(WORKSPACE_ROOT / "logs" / "diffusion-pipe")))
+KOHYA_TENSORBOARD_PATH = Path(os.environ.get("KOHYA_TENSORBOARD_LOGDIR", str(WORKSPACE_ROOT / "outputs")))
+AI_TOOLKIT_TENSORBOARD_PATH = Path(os.environ.get("AI_TOOLKIT_TENSORBOARD_LOGDIR", str(WORKSPACE_ROOT / "outputs" / "ai-toolkit")))
+TRAINPILOT_TENSORBOARD_PATH = Path("/workspace/logs/TrainPilot")
 CONTROLPILOT_SETTINGS_PATH = Path(
     os.environ.get("CONTROLPILOT_SETTINGS_PATH", str(WORKSPACE_ROOT / "config" / "controlpilot-settings.json"))
 )
@@ -1200,6 +1209,93 @@ def _safe_dataset_zip_path(candidate: Path) -> Path:
 
 def _safe_output_path(candidate: Path) -> Path:
     return _resolve_under_root(_OUTPUT_ROOT, candidate)
+
+
+def _iter_tensorboard_events(base: Path, *, max_depth: int = 8):
+    try:
+        root = base.resolve()
+    except Exception:
+        return []
+
+    if not root.exists():
+        return []
+
+    if root.is_file():
+        if root.name.startswith("events.out.tfevents."):
+            try:
+                return [(root, root.stat().st_mtime)]
+            except Exception:
+                return []
+        return []
+
+    results = []
+    stack = [(root, 0)]
+    while stack:
+        current, depth = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            if depth < max_depth:
+                                stack.append((Path(entry.path), depth + 1))
+                            continue
+                        if not entry.is_file(follow_symlinks=False):
+                            continue
+                        if not entry.name.startswith("events.out.tfevents."):
+                            continue
+                        try:
+                            results.append((Path(entry.path), entry.stat(follow_symlinks=False).st_mtime))
+                        except Exception:
+                            continue
+                    except Exception:
+                        continue
+        except Exception:
+            continue
+    return results
+
+
+def _latest_tensorboard_event(base: Path, *, max_depth: int = 8) -> Optional[tuple[Path, float]]:
+    candidates = _iter_tensorboard_events(base, max_depth=max_depth)
+    if not candidates:
+        return None
+    path, mtime = max(candidates, key=lambda item: item[1])
+    return path, mtime
+
+
+def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int = 8) -> dict:
+    for path in paths:
+        latest = _latest_tensorboard_event(path, max_depth=max_depth)
+        if latest is not None:
+            event_path, event_mtime = latest
+            return {
+                "source": source,
+                "ready": True,
+                "path": str(path),
+                "event_path": str(event_path),
+                "latest_mtime": float(event_mtime),
+                "reason": "ready",
+            }
+
+    fallback = paths[0] if paths else Path()
+    if fallback.exists():
+        return {
+            "source": source,
+            "ready": False,
+            "path": str(fallback),
+            "event_path": None,
+            "latest_mtime": None,
+            "reason": f"No TensorBoard event files found in {fallback}. Start a run to create events.",
+        }
+
+    return {
+        "source": source,
+        "ready": False,
+        "path": str(fallback),
+        "event_path": None,
+        "latest_mtime": None,
+        "reason": f"TensorBoard path not available: {fallback}",
+    }
 
 
 def _iter_dataset_files(root: Path):
@@ -2466,6 +2562,33 @@ def service_log(name: str, lines: int = 100):
         except Exception:
             content = path.read_text()[-5000:]
     return {"log": content, "path": str(path)}
+
+
+@app.get("/api/tensorboard/status")
+def tensorboard_status():
+    sources = {
+        "diffpipe": _tensorboard_source_status(
+            "diffpipe",
+            [TENSORBOARD_ROOT / "diffpipe", DIFFPIPE_LOGDIR],
+            max_depth=6,
+        ),
+        "trainpilot": _tensorboard_source_status(
+            "trainpilot",
+            [TRAINPILOT_TENSORBOARD_PATH],
+            max_depth=6,
+        ),
+        "kohya": _tensorboard_source_status(
+            "kohya",
+            [KOHYA_TENSORBOARD_PATH],
+            max_depth=8,
+        ),
+        "ai-toolkit": _tensorboard_source_status(
+            "ai-toolkit",
+            [AI_TOOLKIT_TENSORBOARD_PATH, Path("/workspace/outputs")],
+            max_depth=8,
+        ),
+    }
+    return {"port": TENSORBOARD_PORT, "sources": sources}
 
 
 @app.post("/api/shutdown/schedule")

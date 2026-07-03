@@ -46,6 +46,20 @@ function servicePortLabel(name) {
   return port ? `:${port}` : "";
 }
 
+function serviceTensorBoardSource(name) {
+  if (name === "diffpipe") return "diffpipe";
+  if (name === "kohya") return "kohya";
+  if (name === "ai-toolkit") return "ai-toolkit";
+  return "";
+}
+
+function serviceDisplayLabel(name) {
+  if (name === "ai-toolkit") return "AI Toolkit";
+  if (name === "diffpipe") return "Diffusion Pipe";
+  if (name === "kohya") return "Kohya";
+  return (name || "").toString();
+}
+
 function serviceDomId(name) {
   return String(name || "").replace(/[^a-zA-Z0-9_-]/g, "-");
 }
@@ -182,6 +196,8 @@ async function loadServices() {
       const openUrl = serviceUrl(svc.name);
       const badge = stateBadge(svc);
       const running = svc.running === true || badge.raw === "RUNNING" || badge.raw === "STARTING";
+      const tbSource = serviceTensorBoardSource(svc.name);
+      const tbStatusId = tbSource ? `svc-tensorboard-status-${serviceDomId(svc.name)}` : "";
 
       const card = document.createElement("div");
       card.className = "svc-card";
@@ -211,6 +227,7 @@ async function loadServices() {
               <span class="svc-version mono-sm" id="svc-version-${domId}">Version: checking...</span>
               <button class="btn secondary svc-update-btn is-hidden" id="svc-update-${domId}" type="button" onclick="startServiceUpdate('${svc.name}')">Update</button>
             </div>
+            ${tbSource ? `<div class="svc-tensorboard-status mono-sm muted" id="${tbStatusId}">TensorBoard: checking...</div>` : ""}
             <div class="svc-update-status mono-sm is-hidden" id="svc-update-status-${domId}"></div>
           </div>
           <div class="svc-controls">
@@ -227,11 +244,15 @@ async function loadServices() {
               <button class="btn icon" data-action="restart" title="Restart" ${scheduleRestartDisabled ? "disabled" : ""} onclick="serviceAction('${svc.name}','restart')">${iconSvg("restart")}</button>
               <button class="btn icon danger" data-action="stop" title="Stop" ${scheduleStopDisabled ? "disabled" : ""} onclick="serviceAction('${svc.name}','stop')">${iconSvg("stop")}</button>
               <button class="btn icon" data-action="logs" title="View logs" onclick="viewServiceLog('${svc.name}')">${iconSvg("logs")}</button>
+              ${tbSource ? `<button class="btn secondary" type="button" onclick="openServiceTensorBoard('${svc.name}')">TensorBoard</button>` : ""}
             </div>
           </div>
         </div>
       `;
       list.appendChild(card);
+      if (tbSource) {
+        refreshServiceTensorBoardStatus(svc.name).catch(() => {});
+      }
     });
     await loadServiceVersions(data);
     status.textContent = "";
@@ -304,6 +325,45 @@ window.viewServiceLog = async function (name) {
     if (modal) modal.classList.add("show");
   } catch (e) {
     alert(`Failed to load log: ${e.message || e}`);
+  }
+};
+
+window.openServiceTensorBoard = async function (name) {
+  const source = serviceTensorBoardSource(name);
+  if (!source) return;
+  const domId = serviceDomId(name);
+  const statusEl = document.getElementById(`svc-tensorboard-status-${domId}`);
+  const setStatus = (msg) => {
+    if (!statusEl) return;
+    statusEl.textContent = msg || "";
+  };
+  try {
+    await window.openTensorBoard(source, {
+      label: serviceDisplayLabel(name),
+      onError: setStatus,
+      allowUnavailable: false,
+    });
+    setStatus("TensorBoard: opening...");
+  } catch (e) {
+    setStatus(`TensorBoard: ${e.message || e}`);
+  }
+};
+
+window.refreshServiceTensorBoardStatus = async function (name) {
+  const source = serviceTensorBoardSource(name);
+  if (!source) return;
+  const domId = serviceDomId(name);
+  const statusEl = document.getElementById(`svc-tensorboard-status-${domId}`);
+  if (!statusEl) return;
+  try {
+    const tb = await window.getTensorBoardSourceStatus(source, { force: false });
+    if (tb && tb.ready) {
+      statusEl.textContent = "TensorBoard: run logs detected";
+      return;
+    }
+    statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
+  } catch (e) {
+    statusEl.textContent = "TensorBoard: unavailable";
   }
 };
 

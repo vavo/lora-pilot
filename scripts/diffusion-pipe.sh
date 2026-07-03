@@ -7,6 +7,8 @@ REPO="/opt/pilot/repos/diffusion-pipe"
 BASE_APP_DIR="${ROOT}/apps/diffusion-pipe"
 LOGDIR="${DIFFPIPE_LOGDIR:-${ROOT}/logs/diffusion-pipe}"
 TRAINPILOT_LOGDIR="${TRAINPILOT_TENSORBOARD_LOGDIR:-${ROOT}/logs/TrainPilot}"
+KOHYA_TENSORBOARD_LOGDIR="${KOHYA_TENSORBOARD_LOGDIR:-${ROOT}/outputs}"
+AI_TOOLKIT_TENSORBOARD_LOGDIR="${AI_TOOLKIT_TENSORBOARD_LOGDIR:-${ROOT}/outputs/ai-toolkit}"
 TB_ROOT="${TENSORBOARD_ROOT_LOGDIR:-${ROOT}/logs/tensorboard}"
 CONFIG="${DIFFPIPE_CONFIG:-}"
 NUM_GPUS="${DIFFPIPE_NUM_GPUS:-1}"
@@ -14,10 +16,34 @@ NUM_GPUS="${DIFFPIPE_NUM_GPUS:-1}"
 export NCCL_P2P_DISABLE="${NCCL_P2P_DISABLE:-1}"
 export NCCL_IB_DISABLE="${NCCL_IB_DISABLE:-1}"
 
-mkdir -p "${BASE_APP_DIR}" "${LOGDIR}" "${TRAINPILOT_LOGDIR}" "${TB_ROOT}"
-rm -rf "${TB_ROOT}/diffpipe" "${TB_ROOT}/trainpilot"
-ln -s "${LOGDIR}" "${TB_ROOT}/diffpipe"
-ln -s "${TRAINPILOT_LOGDIR}" "${TB_ROOT}/trainpilot"
+mkdir -p "${BASE_APP_DIR}" "${LOGDIR}" "${TRAINPILOT_LOGDIR}" "${KOHYA_TENSORBOARD_LOGDIR}" "${AI_TOOLKIT_TENSORBOARD_LOGDIR}" "${TB_ROOT}"
+
+ensure_tb_link() {
+  local target="$1"
+  local link_path="$2"
+
+  if [ -L "${link_path}" ]; then
+    local current
+    current="$(readlink "${link_path}" || true)"
+    if [ "${current}" != "${target}" ]; then
+      rm -f "${link_path}"
+      ln -s "${target}" "${link_path}"
+    fi
+    return
+  fi
+
+  if [ -e "${link_path}" ]; then
+    return
+  fi
+
+  ln -s "${target}" "${link_path}"
+}
+
+rm -rf "${TB_ROOT}/diffpipe" "${TB_ROOT}/trainpilot" "${TB_ROOT}/kohya" "${TB_ROOT}/ai-toolkit"
+ensure_tb_link "${LOGDIR}" "${TB_ROOT}/diffpipe"
+ensure_tb_link "${TRAINPILOT_LOGDIR}" "${TB_ROOT}/trainpilot"
+ensure_tb_link "${KOHYA_TENSORBOARD_LOGDIR}" "${TB_ROOT}/kohya"
+ensure_tb_link "${AI_TOOLKIT_TENSORBOARD_LOGDIR}" "${TB_ROOT}/ai-toolkit"
 
 cd "${REPO}"
 TB_CMD=(/opt/venvs/core/bin/python -m tensorboard.main)

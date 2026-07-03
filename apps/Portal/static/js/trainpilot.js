@@ -23,6 +23,7 @@ function bindTpControls() {
     });
     updateEpochExample(output.value || "");
   }
+  refreshTrainpilotTensorBoardStatus().catch(() => {});
 }
 
 function findLatestProgress(lines) {
@@ -202,10 +203,37 @@ window.openDatasets = function (evt) {
   }
 };
 
-window.openTrainpilotTensorBoard = function () {
-  const url = typeof window.serviceUrl === "function" ? window.serviceUrl("diffpipe") : null;
-  if (!url) return;
-  window.open(url, "_blank", "noopener,noreferrer");
+window.openTrainpilotTensorBoard = async function () {
+  const statusEl = document.getElementById("tp-tensorboard-status");
+  const status = (msg) => {
+    if (!statusEl) return;
+    statusEl.textContent = msg || "";
+  };
+  try {
+    await window.openTensorBoard("trainpilot", {
+      label: "TrainPilot",
+      onError: status,
+      allowUnavailable: false,
+    });
+    status("");
+  } catch (e) {
+    status(e.message || e);
+  }
+};
+
+window.refreshTrainpilotTensorBoardStatus = async function () {
+  const statusEl = document.getElementById("tp-tensorboard-status");
+  if (!statusEl) return;
+  try {
+    const tb = await window.getTensorBoardSourceStatus("trainpilot", { force: false });
+    if (tb && tb.ready) {
+      statusEl.textContent = "TensorBoard: run logs detected";
+    } else {
+      statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
+    }
+  } catch (e) {
+    statusEl.textContent = "TensorBoard: unavailable";
+  }
 };
 
 window.startTrainPilot = async function () {
@@ -236,6 +264,7 @@ window.startTrainPilot = async function () {
       }),
     });
     if (status) status.textContent = "Running...";
+    refreshTrainpilotTensorBoardStatus().catch(() => {});
   } catch (e) {
     clearModelDownloadUI();
     if (status) status.textContent = `Error: ${e.message || e}`;
