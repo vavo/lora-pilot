@@ -1,3 +1,8 @@
+v2.5.2 (July 3rd 2026)
+
+- Bumped VS Code in-browser service to code-server `4.127.0` and JupyterLab to `4.6.1` in the canonical build configuration.
+- Updated build-time pin surfaces (`Dockerfile`, `Makefile`, `build.env.example`, and build docs) so the same tool versions are used for every image build path.
+
 v2.5.1 (July 3rd 2026)
 
 - Updated TagPilot to the latest frontend behavior set, including restored dataset loading via ControlPilot’s `?dataset=` integration, saved workspace export action, and embedded dark-mode sync.
