@@ -318,6 +318,9 @@
                         <button id="export-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
                             Export as ZIP
                         </button>
+                        <button id="save-workspace-button" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md">
+                            Save to /workspace/datasets
+                        </button>
                     </div>
                 </div>
             </div>
@@ -537,6 +540,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const placeholder = document.getElementById('placeholder');
         const taggerSection = document.getElementById('tagger-section');
         const exportButton = document.getElementById('export-button');
+        const saveWorkspaceButton = document.getElementById('save-workspace-button');
         const resetButton = document.getElementById('reset-button');
         const clearTagsButton = document.getElementById('clear-tags-button');
         const tagAllButton = document.getElementById('tag-all-button');
@@ -602,6 +606,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         imageUpload.addEventListener('change', handleImageUpload);
         zipUpload.addEventListener('change', handleZipUpload);
         exportButton.addEventListener('click', handleExport);
+        saveWorkspaceButton.addEventListener('click', handleSaveToWorkspace);
         resetButton.addEventListener('click', handleReset);
         clearTagsButton.addEventListener('click', handleClearTags);
         tagAllButton.addEventListener('click', openTagSettings);
@@ -1017,6 +1022,20 @@ Limit the caption to ${maxWords} words or fewer.`;
             return data;
         }
 
+        async function parseResponseError(response) {
+            const responseText = await response.text();
+            if (!responseText) return response.statusText || 'Request failed';
+
+            try {
+                const responseData = JSON.parse(responseText);
+                if (typeof responseData.error === 'string') return responseData.error;
+                if (typeof responseData.error?.message === 'string') return responseData.error.message;
+                if (typeof responseData.message === 'string') return responseData.message;
+            } catch (_) {}
+
+            return responseText;
+        }
+
         function getDeepDanbooruThreshold() {
             const threshold = parseFloat(localStorage.getItem('ddThreshold') || '0.5');
             if (!Number.isFinite(threshold)) return 0.5;
@@ -1286,6 +1305,76 @@ Limit the caption to ${maxWords} words or fewer.`;
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
+        function base64ToFile(base64, filename, mimeType = 'application/octet-stream') {
+            const byteCharacters = atob(base64 || '');
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: mimeType });
+            return new File([blob], filename, { type: mimeType });
+        }
+
+        async function loadDatasetFromServer(dsName) {
+            if (!dsName) return;
+
+            showLoader(`Loading dataset ${dsName}...`);
+            try {
+                clearFileObjectUrls();
+                const response = await fetch(`/api/tagpilot/load?name=${encodeURIComponent(dsName)}`);
+                if (!response.ok) {
+                    throw new Error(await parseResponseError(response));
+                }
+                const data = await response.json();
+                const files = Array.isArray(data?.files) ? data.files : [];
+
+                const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'];
+                const imageFiles = [];
+                const textFiles = new Map();
+
+                files.forEach(file => {
+                    const name = String(file?.name || '').trim();
+                    const baseName = name.replace(/\.[^/.]+$/, '');
+                    const lower = name.toLowerCase();
+                    if (lower.endsWith('.txt')) {
+                        textFiles.set(baseName, String(file?.b64 || '').trim());
+                        return;
+                    }
+                    if (imageExtensions.some(ext => lower.endsWith(ext))) {
+                        imageFiles.push(file);
+                    }
+                });
+
+                nextDatasetItemId = 1;
+                dataset = [];
+                imageFiles.forEach(file => {
+                    try {
+                        const name = String(file?.name || '').trim();
+                        if (!name) return;
+                        const baseName = name.replace(/\.[^/.]+$/, '');
+                        const b64 = String(file?.b64 || '');
+                        const mimeType = String(file?.mime || 'application/octet-stream');
+                        const imageFile = base64ToFile(b64, name, mimeType);
+                        const tags = (textFiles.get(baseName) || currentTriggerWord || '').trim();
+                        dataset.push(createDatasetItem(imageFile, tags, 'tags'));
+                    } catch (error) {
+                        console.error('Failed to load item', file?.name, error);
+                    }
+                });
+
+                datasetNameInput.value = dsName;
+                updateInputPrefixLabels();
+                render();
+                showNotification(`Loaded dataset ${dsName}`);
+            } catch (error) {
+                console.error(error);
+                showNotification("Failed to load dataset");
+            } finally {
+                hideLoader();
+            }
+        }
+
         async function handleImageUpload(event) {
             const files = Array.from(event.target.files);
             if (files.length === 0) return;
@@ -1435,6 +1524,42 @@ Limit the caption to ${maxWords} words or fewer.`;
             a.click();
             setTimeout(() => revokeTransientObjectUrl(url), 0);
             showNotification("Exported ZIP");
+        }
+
+        async function handleSaveToWorkspace() {
+            if (dataset.length === 0) return showNotification("No images to save");
+
+            const name = datasetNameInput.value.trim() || 'dataset';
+            showLoader('Saving to /workspace/datasets...');
+
+            try {
+                const total = dataset.length;
+                for (let i = 0; i < total; i++) {
+                    const item = dataset[i];
+                    const form = new FormData();
+                    form.append('file', item.file);
+                    form.append('tags', item.tags || '');
+                    if (i === 0) form.append('reset', 'true');
+                    if (i === total - 1) form.append('done', 'true');
+
+                    const response = await fetch(`/api/tagpilot/save-item?name=${encodeURIComponent(name)}`, {
+                        method: 'POST',
+                        body: form
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await parseResponseError(response);
+                        throw new Error(errorText || `Request failed (${response.status})`);
+                    }
+                }
+
+                showNotification(`Saved ${dataset.length} image(s) to /workspace/datasets`);
+            } catch (error) {
+                console.error('Save to workspace failed:', error);
+                showNotification('Save failed: ' + (error?.message || 'unknown error'));
+            } finally {
+                hideLoader();
+            }
         }
 
         function updateInputPrefixLabel(input, label) {
@@ -1898,7 +2023,15 @@ Limit the caption to ${maxWords} words or fewer.`;
             currentPreviewItemId = null;
         }
 
-        render();
+        (async function initFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            const datasetName = params.get('dataset');
+            if (datasetName) {
+                await loadDatasetFromServer(datasetName);
+                return;
+            }
+            render();
+        })();
     </script>
 </body>
 </html>

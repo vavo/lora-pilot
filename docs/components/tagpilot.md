@@ -23,6 +23,7 @@ TagPilot supports:
 - **Direct route**: `http://localhost:7878/tagpilot/`
 - **Open a dataset directly**:
   - `http://localhost:7878/tagpilot/?dataset=1_my_dataset`
+  - The ControlPilot Datasets menu now opens TagPilot with `?dataset=<dataset_name>` so edits resume from previously saved images/tags.
 
 In LoRA Pilot, TagPilot is mounted under ControlPilot; you generally do not need a separate service/port.
 
@@ -34,6 +35,7 @@ TagPilot requests:
 
 This loads files from:
 - `/workspace/datasets/1_<dataset_name>`
+- Dataset links coming from ControlPilot (for example from the Datasets list) keep the existing `dataset` query param and call the same endpoint, so tags/captions load automatically.
 
 ### Save to workspace
 The `Save to /workspace/datasets` action streams files to:

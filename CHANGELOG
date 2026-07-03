@@ -1,3 +1,10 @@
+v2.5.1 (July 3rd 2026)
+
+- Updated TagPilot to the latest frontend behavior set, including restored dataset loading via ControlPilot’s `?dataset=` integration, saved workspace export action, and embedded dark-mode sync.
+- Restored TagPilot’s save-to-workspace dataset flow so datasets can be opened from ControlPilot and edited with existing tags in place.
+- Hardened TagPilot and training path handling: dataset names are validated, and dataset/model filesystem paths are canonicalized with explicit realpath checks before use.
+- Hardened model pull input handling on backend-triggered flows to reduce path/command risk exposure flagged by security scans.
+
 v2.5.0 (June 12th 2026)
 
 - Added dual CUDA build profiles: `CUDA_PROFILE=cu130` is now the default Blackwell path on CUDA `13.0.2` with PyTorch `2.12.0`, while `CUDA_PROFILE=cu128` keeps the legacy CUDA `12.8.1` path with PyTorch `2.11.0`.
