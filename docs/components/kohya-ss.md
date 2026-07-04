@@ -300,6 +300,14 @@ cache_latents_to_disk: true
 4. No errors in logs
 ```
 
+#### `CLIPFeatureExtractor` ImportError
+
+Kohya SDXL training still imports `CLIPFeatureExtractor`. If a running pod has the shared core venv on Transformers 5.x, repair it and restart Kohya:
+
+```bash
+docker exec lora-pilot bash -lc '/opt/venvs/core/bin/pip install --quiet --no-cache-dir "transformers==4.57.6" && supervisorctl restart kohya'
+```
+
 #### Poor Quality Results
 ```bash
 # Solutions:
@@ -422,4 +430,3 @@ cp /workspace/outputs/my_lora/last.safetensors /workspace/models/loras/
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-

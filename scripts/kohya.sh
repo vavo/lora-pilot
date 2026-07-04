@@ -23,7 +23,7 @@ if [ -f "$WIN_REQ" ]; then
 fi
 
 if ! /opt/venvs/core/bin/python - <<'PY' >/dev/null 2>&1
-from transformers import Dinov2WithRegistersConfig
+from transformers import CLIPFeatureExtractor, Dinov2WithRegistersConfig
 PY
 then
   echo "Repairing core transformers for Kohya: installing ${KOHYA_TRANSFORMERS_VERSION}"

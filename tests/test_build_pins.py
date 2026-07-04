@@ -183,6 +183,7 @@ class BuildPinTests(unittest.TestCase):
             with self.subTest(path=path):
                 text = (ROOT / path).read_text()
                 self.assertIn(warning_filter, text)
+                self.assertIn("from transformers import CLIPFeatureExtractor, Dinov2WithRegistersConfig", text)
                 self.assertNotIn('pip install "setuptools<81.0"', text)
 
     def test_diffusion_pipe_suppresses_tensorboard_pkg_resources_warning(self):

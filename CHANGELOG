@@ -1,3 +1,9 @@
+v2.5.4 (July 5th 2026)
+
+- Fixed Kohya SDXL training startup against the shared core Transformers 5.x stack by making the launcher compatibility check require both `Dinov2WithRegistersConfig` and Kohya's still-used `CLIPFeatureExtractor` alias before it accepts the installed `transformers` package.
+- Preserved the existing `KOHYA_TRANSFORMERS_VERSION=4.57.6` runtime self-repair path so existing images downgrade the shared core Transformers package for Kohya instead of failing with `ImportError: cannot import name 'CLIPFeatureExtractor'`.
+- Added a regression check so both Kohya launch entrypoints keep the CLIP/DINO compatibility probe in sync.
+
 v2.5.3 (July 3rd 2026)
 
 - Made TensorBoard integration actually functional for training stacks that mattered, not just eyecandy:
