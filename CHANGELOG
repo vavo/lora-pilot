@@ -1,3 +1,8 @@
+v2.5.5 (July 5th 2026)
+
+- Fixed TagPilot dataset loading from the ControlPilot Datasets list on Python 3.11 images by removing unsupported `Path.is_file(follow_symlinks=False)` calls from the backend dataset file iterator.
+- Kept the path-hardening behavior by skipping symlinked dataset files before reading images/tags for `/api/tagpilot/load`.
+
 v2.5.4 (July 5th 2026)
 
 - Fixed Kohya SDXL training startup against the shared core Transformers 5.x stack by making the launcher compatibility check require both `Dinov2WithRegistersConfig` and Kohya's still-used `CLIPFeatureExtractor` alias before it accepts the installed `transformers` package.

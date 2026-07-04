@@ -1211,6 +1211,13 @@ def _safe_output_path(candidate: Path) -> Path:
     return _resolve_under_root(_OUTPUT_ROOT, candidate)
 
 
+def _is_regular_file_no_symlink(path: Path) -> bool:
+    try:
+        return not path.is_symlink() and path.is_file()
+    except OSError:
+        return False
+
+
 def _iter_tensorboard_events(base: Path, *, max_depth: int = 8):
     try:
         root = base.resolve()
@@ -1303,8 +1310,11 @@ def _iter_dataset_files(root: Path):
     for dirpath, _, filenames in os.walk(dataset_root):
         current = _safe_dataset_path(Path(dirpath))
         for name in sorted(filenames):
-            file_path = _safe_dataset_path(current / name)
-            if file_path.is_file(follow_symlinks=False):
+            candidate = current / name
+            if candidate.is_symlink():
+                continue
+            file_path = _safe_dataset_path(candidate)
+            if _is_regular_file_no_symlink(file_path):
                 yield file_path
 
 
@@ -1430,7 +1440,7 @@ def tagpilot_load(name: str):
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".txt", ".caption"}
     files = []
     for p in _iter_dataset_files(target):
-        if not p.is_file(follow_symlinks=False):
+        if not _is_regular_file_no_symlink(p):
             continue
         if p.suffix.lower() not in allowed:
             continue

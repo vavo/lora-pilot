@@ -9,6 +9,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.5` | TagPilot dataset-open hotfix for ControlPilot Datasets links on Python 3.11 images; backend load keeps symlink-safe file iteration without unsupported `Path.is_file` arguments |
 | `v2.5.4` | Kohya SDXL training compatibility repair for shared core Transformers 5.x images; launcher now checks the `CLIPFeatureExtractor` alias before accepting the installed package |
 | `v2.5.3` | TensorBoard integrations completed for TrainPilot + Diffusion Pipe + Kohya + AI Toolkit, with shared `/api/tensorboard/status` discovery and Services page actions |
 | `v2.5.1` | TagPilot frontend refresh (latest settings/models), restored embedded theme sync, dataset load/save integration, and path-hardening for dataset/training/model-pull flows |
