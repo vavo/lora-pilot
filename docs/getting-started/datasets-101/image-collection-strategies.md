@@ -1,6 +1,6 @@
 # Image Collection Strategies
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Effective image collection is the foundation of great datasets. This guide covers proven strategies for gathering high-quality images for different training scenarios.
 
@@ -71,6 +71,16 @@ Essential Shots:
 - **Image Libraries**: Professional image libraries
 - **Creative Commons**: High-quality free images
 - **Commissioned Art**: Hire artists for consistent character
+
+### Legal and Ethical Basics
+
+This is practical documentation, not legal advice.
+
+Google Images is a search engine, not a license. If you find an image through search, you still need permission, a license, or a rights-safe reason to use it. Scraping random copyrighted images for a training dataset creates legal and ethical risk for commercial work, recognizable people, living artists' styles, brands, products, and private locations.
+
+Safer sources are your own photos, commissioned work with training rights, images you generated and are allowed to reuse, public domain material, and sources with terms you can point to. [Creative Commons Search](https://search.creativecommons.org/) and [Openverse](https://openverse.org/) help find CC-licensed and public-domain media. [Unsplash](https://unsplash.com/license) allows broad free use under its own license, but still pay attention to recognizable people, brands, trademarks, and the site's restrictions.
+
+Keep records. Save the source URL, license, creator, download date, and any usage notes beside the dataset. Future you will not remember where `image_047_final_final2.png` came from. Future you is optimistic and unreliable.
 
 ### Collection Tips
 
@@ -433,5 +443,3 @@ Now that you understand collection strategies, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

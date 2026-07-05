@@ -1,10 +1,12 @@
 # Prompting Fundamentals
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Think of prompting like talking to a very talented but very literal artist. The more clearly and specifically you describe what you want, the better the results. This guide teaches you to speak AI's language fluently.
 
 ##  The Prompting Mindset
+
+Start smaller than you think. A useful beginner prompt has a subject, a setting, a style, and one or two visual details. If the first image is close, edit the prompt in small pieces. If the first image is nowhere close, the model, workflow, or settings may be wrong; adding thirty adjectives will not turn a bad setup into a good one.
 
 ### Think Like a Director
 Instead of just describing an image, imagine you're directing a photoshoot:
@@ -187,6 +189,8 @@ Result: Emphasis on quality, woman, and hair; less on background
 ### What Are Negative Prompts?
 
 Negative prompts tell the AI what to AVOID. They're crucial for quality control and fixing common issues.
+
+Keep the negative prompt short at first. Use it to remove real problems: blur, text, watermarks, unwanted styles, bad anatomy, or artifacts. A giant negative prompt copied from a random workflow can hide the actual issue and sometimes fights the model so hard the image gets worse. Very on-brand for copied internet magic.
 
 ### Common Negative Prompt Elements
 
@@ -469,5 +473,4 @@ Now that you understand prompting fundamentals, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

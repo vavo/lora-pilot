@@ -1,8 +1,10 @@
 # What is Inference?
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Inference is the moment a trained model uses what it already knows to create a new output. Training changes the model. Inference uses the model. That distinction matters because most beginner confusion comes from trying to fix an inference problem as if the model needs to be retrained.
+Training teaches the model. Inference uses what the model already learned. Every time you click Generate, queue a ComfyUI workflow, or run an image-to-video graph, you are doing inference.
+
+That distinction matters because most beginner confusion comes from trying to fix an inference problem as if the model needs to be retrained.
 
 If a generated image is close but not quite right, you usually start by changing inference inputs: prompt, seed, LoRA weight, guidance, denoise, sampler, resolution, or workflow shape. Training is the expensive answer. Inference is where you learn whether you even need that answer.
 

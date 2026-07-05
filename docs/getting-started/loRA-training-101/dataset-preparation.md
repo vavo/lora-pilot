@@ -1,6 +1,6 @@
 # Dataset Preparation
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Your training dataset is the foundation of your LoRA model's quality. Garbage in, garbage out - this guide shows you how to prepare high-quality datasets that train well.
 
@@ -94,6 +94,13 @@ Vague: "person"
 Better: "young woman with shoulder-length brown hair"
 Best: "25-year-old woman with shoulder-length brown hair, green eyes, wearing a navy blue business suit"
 ```
+
+#### Caption for Flexibility
+For character LoRAs, do not caption every feature you want the LoRA to lock in. If the character always has the same face shape, eye shape, or skin tone, those details can be learned from the images. Caption the things you may want to change later, such as glasses, hat, earrings, hair color, clothing, background, pose, or lighting.
+
+If a feature is present in the dataset but not captioned, the LoRA may treat it as part of the identity. That is useful for fixed identity and annoying when you later prompt the character without glasses and the LoRA keeps putting glasses back on. The prompt is not being rude; the training data taught it that glasses belong.
+
+Put the trigger word near the start of each caption when you use one. This makes the activation pattern clear and keeps captions easier to audit.
 
 ### Caption Examples
 
@@ -271,12 +278,14 @@ FLUX.1 Training:
 - **Recommended**: 20-30 images
 - **Optimal**: 50+ images with variety
 - **Quality over Quantity**: Better 20 great images than 100 poor ones
+- **Practical floor**: A tightly curated character LoRA can work from roughly 10-20 strong images, but weak images become much more damaging at that size
 
 #### Style Training
 - **Minimum**: 20 images
 - **Recommended**: 30-50 images
 - **Optimal**: 100+ images showing style
 - **Subject Variety**: Different subjects in same style
+- **Composition variety**: Keep the style consistent while varying subjects, framing, and scene content so the LoRA learns style instead of memorizing one layout
 
 #### Concept Training
 - **Minimum**: 10 images
@@ -461,5 +470,4 @@ Now that you know how to prepare datasets, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

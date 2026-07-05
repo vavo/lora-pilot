@@ -1,6 +1,6 @@
 # Training Parameters Explained
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Training parameters are like the controls on a professional camera. Understanding what each parameter does helps you get the results you want. This guide explains all the important training settings in simple terms.
 
@@ -13,6 +13,16 @@ Training parameters are like the controls on a professional camera. Understandin
 - **Alpha**: how strongly the LoRA effect is expressed
 - **Gradient checkpointing**: memory-saving mode (slower, but lighter on VRAM)
 - **Mixed precision**: memory/speed optimization using FP16/BF16
+
+## The Four Starter Parameters
+
+If you are training your first LoRA, learn these before anything else: **steps**, **learning rate**, **batch size**, and **rank**.
+
+Steps decide how long the trainer studies your dataset. Learning rate decides how large each update is. Batch size decides how many images it studies before each update. Rank decides how much capacity the LoRA has to store the concept.
+
+Everything else can wait until you have a baseline run. Alpha, schedulers, optimizers, precision formats, regularization, and block weights are useful, but they are not where a beginner should start. The first job is to train one small LoRA, save intermediate checkpoints, test them with fixed prompts, and understand what changed.
+
+The defaults in LoRA Pilot tools are there for a reason. Start with them unless you are solving a specific problem.
 
 ##  The Big Picture
 
@@ -65,6 +75,8 @@ Step 3: AI looks again, makes another small improvement
 - **Diminishing Returns**: After 2000-3000 steps, improvements are minimal
 - **Quality over Quantity**: Better to train longer with good data than short with lots of data
 
+In many trainers, total training exposure is roughly `image count x repeats x epochs`. AI Toolkit exposes total steps as the main control, but the practical question is the same: how many chances does the model get to study the dataset? Smaller datasets often need fewer total steps than large datasets, because they can overfit fast.
+
 ### Learning Rate
 
 #### What It Is
@@ -78,16 +90,18 @@ Low Learning Rate: Small changes each step (slow but safe)
 
 #### Learning Rate Guidelines
 
+These ranges depend on the model family, trainer, optimizer, and whether the text encoder is being trained. Treat them as starting points, not universal law. Kohya-style SD trainers often separate UNet and text encoder learning rates; the [Kohya SS LoRA parameter notes](https://github.com/bmaltais/kohya_ss/wiki/LoRA-training-parameters) document defaults around `1e-4` for UNet and lower values such as `5e-5` for text encoder training.
+
 | Rate Range | Effect | When to Use |
 |-------------|---------|--------------|
-| 1e-3 to 1e-4 | Very slow, safe | Complex training, fine details |
-| 5e-4 to 1e-3 | Slow, steady | Most training scenarios |
-| 1e-3 to 5e-3 | Medium, balanced | Quick training, good results |
-| 5e-3 to 1e-2 | Fast, risky | Simple concepts, quick experiments |
-| 1e-2 to 1e-1 | Very fast, very risky | Testing only |
+| 1e-5 to 5e-5 | Very gentle | Text encoder tuning, fragile subjects, or runs that overfit fast |
+| 5e-5 to 1e-4 | Conservative | Good first range for many SD LoRA experiments |
+| 1e-4 to 5e-4 | Faster | When the LoRA is underlearning and samples stay too generic |
+| 5e-4 to 1e-3 | Aggressive | Short tests or simple concepts; watch samples closely |
+| Above 1e-3 | Risky | Use only when the trainer/model guide recommends it |
 
 #### Practical Tips
-- **Start Conservative**: 1e-4 is usually safe
+- **Start Conservative**: 1e-4 is a common safe baseline for many classic LoRA runs
 - **Monitor Loss**: If loss increases, lower learning rate
 - **Use Schedulers**: Learning rate schedulers help optimize
 - **Model-Specific**: Different models may prefer different rates
@@ -175,6 +189,26 @@ High Alpha (32): Strong influence, overpowers base model
 - **Test Different Values**: Find what works best for your case
 - **Consider Use**: Subtle for style enhancement, strong for character replacement
 - **Combine with Weight**: Use with LoRA weight in generation
+
+For character LoRAs, some workflows use alpha below rank to keep the LoRA more flexible. Matching alpha to rank is a simple baseline, not a law. If the LoRA becomes rigid, overpowers prompts, or keeps reproducing near-identical faces and poses, test an earlier checkpoint first, then consider lower alpha or fewer steps on the next run.
+
+### LoRA vs LoKr
+
+AI Toolkit can expose both standard LoRA and LoKr-style targets depending on the model and configuration. LoKr can be more parameter-efficient and may help with some character consistency cases, but it can be slower, more VRAM-hungry, and more rigid.
+
+Treat LoKr as a second experiment, not the first run. Train a normal LoRA on the same dataset first. If the normal LoRA cannot hold the concept well enough and the model family supports LoKr, rerun the same dataset as LoKr and compare outputs with identical prompts and seeds.
+
+### Intermediate Saves and Samples
+
+Saving intermediate LoRAs is part of the workflow. The final checkpoint is not always the best one; late checkpoints can become overtrained and inflexible. Align `save_every` and `sample_every` where the tool allows it, then compare the sample images and saved LoRA files at the same training milestones.
+
+Sample prompts should include the trigger word and a few situations that are not direct copies of the dataset. If every sample looks like the same training image wearing a different filename, the run is probably learning too narrowly.
+
+### Overfitting, in Plain English
+
+Overfitting means the LoRA memorized your dataset instead of learning the reusable idea inside it. A character LoRA that can only produce the same face angle, outfit, lighting, and expression from the source photos is overfitting. A style LoRA that turns every prompt into the same composition is doing the same thing with nicer vocabulary.
+
+The fixes are not glamorous: use fewer steps, test an earlier checkpoint, lower the learning rate, improve captions, remove duplicate images, add more visual variety, or reduce rank if the LoRA has too much capacity for a small dataset. Start with the earlier checkpoint first. It is the cheapest experiment.
 
 ---
 
@@ -461,4 +495,3 @@ Now that you understand training parameters, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

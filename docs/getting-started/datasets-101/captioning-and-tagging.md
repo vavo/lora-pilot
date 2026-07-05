@@ -1,6 +1,6 @@
 # Captioning and Tagging
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Effective captions and tags are the "instructions" that tell your AI model what to learn. This guide covers how to write compelling descriptions and tags that train excellent models.
 
@@ -12,6 +12,12 @@ Think of captions as the teacher's lesson plan:
 - **Good Instructions**: Clear directions = student learns well
 - **Poor Instructions**: Vague directions = student gets confused
 - **Consistent Instructions**: Same terminology = student learns consistently
+
+The more useful mental model is this: captions are control knobs. They tell the trainer which parts of the image are named, movable, and promptable later.
+
+If every picture of your character has red hair and you caption "red hair" every time, you are teaching the model that red hair is a describable attribute. Later, you can ask for another hair color more easily. If you leave it uncaptioned, the model may treat red hair as part of the identity. That can be what you want for an identity LoRA, or the reason your character refuses to change. At least the failure has a cause.
+
+For a character LoRA, caption the things you want to vary later: pose, outfit, background, expression, lighting, camera angle. Be careful with permanent identity details. For a style LoRA, caption subjects and scenes so the model learns the style across many subjects instead of memorizing one subject. For a product or object LoRA, caption context and angle changes so the object itself becomes the stable idea.
 
 ### The Captioning Formula
 
@@ -218,10 +224,11 @@ Clear Subject + Accurate Details + Style Information = Effective Caption
 - **FastStone**: Free image converter and optimizer
 
 #### AI-Assisted Captioning
-- **Image Description**: AI tools for generating captions
-- **Tag Suggestions**: AI tools for suggesting tags
-- **Translation**: Multi-language support
-- **Quality Check**: AI tools for caption quality assessment
+- **WD14-style taggers**: Good for anime, illustration, and booru-style tags. The [SmilingWolf WD tagger](https://huggingface.co/spaces/SmilingWolf/wd-tagger) family is the common reference point.
+- **BLIP-style captioners**: Good for natural language image descriptions and photo-like datasets. Hugging Face documents BLIP as an image-captioning model in the [Transformers BLIP docs](https://huggingface.co/docs/transformers/en/model_doc/blip).
+- **Manual review**: Still required. Auto-captioners miss important details, invent details, and use inconsistent wording. They are assistants, not witnesses under oath.
+
+Use WD14-style tags when the target model and dataset benefit from tag vocabulary, as in anime or illustration workflows. Use BLIP-style captions when you want sentence-like descriptions for photos, products, scenes, or mixed realistic datasets. In both cases, edit the output before training.
 
 ### Captioning Techniques
 
@@ -495,5 +502,3 @@ Now that you understand captioning and tagging, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

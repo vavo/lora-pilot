@@ -1,10 +1,16 @@
 # Inference Stacks
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 LoRA Pilot gives you two main inference surfaces: ComfyUI and InvokeAI. They overlap on purpose. Both can generate images, but they are built around different working styles.
 
 InvokeAI is the cleaner place to iterate when you want a guided interface, quick prompt changes, boards, and fewer moving parts. ComfyUI is the place to go when the workflow itself matters: branching graphs, ControlNet chains, LoRA experiments, upscale passes, model-specific video pipelines, or any setup where you need to see each operation as a connected node.
+
+## Where LoRA Pilot Fits
+
+LoRA Pilot is the packaged workspace around the tools. It gives you the container, model storage, startup scripts, shared paths, and bundled interfaces so you are not assembling a GPU image by hand. ComfyUI and InvokeAI are the inference applications inside that workspace. Diffusers is one of the underlying Python libraries many AI tools use. RunPod, when you use it, is the rented GPU computer running the LoRA Pilot image.
+
+You do not need to choose a tribe. If an online guide says "use ComfyUI", that means use the ComfyUI surface inside LoRA Pilot. If another guide mentions Diffusers, it often means library-level code, not a separate button you must find. AUTOMATIC1111 is a different web UI from the same broader Stable Diffusion ecosystem; useful to know, not required for this workspace.
 
 ## ComfyUI: The Workshop Bench
 

@@ -1,8 +1,16 @@
 # Precision Formats Explained
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Precision formats determine how AI models store and process numbers. Understanding these helps you optimize for quality vs. performance.
+
+## Beginner Recommendation
+
+You can skip this page until a tool asks you to choose a precision format or until you hit a VRAM problem.
+
+For most first runs, use the trainer default. Use **BF16** for modern model families when your GPU and toolchain support it. Use **FP16** when BF16 is unavailable or the model guide recommends FP16. Avoid **FP32** unless you are debugging or following a research workflow. Treat **FP8** as an inference or memory-saving option, not the first choice for a beginner LoRA training run.
+
+The practical question is not "which number format is best?" The question is "which format lets this model train on this GPU without wasting memory?"
 
 ##  Overview
 
@@ -296,5 +304,3 @@ Now that you understand precision formats, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

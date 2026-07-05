@@ -1,8 +1,10 @@
 # LoRA Training 101
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Welcome to LoRA Training 101! This comprehensive chapter covers everything you need to know about training custom LoRA models, from absolute basics to advanced techniques. Whether you want to create consistent characters, unique styles, or specialized concepts, this guide will take you there.
+LoRA training is how you teach a base model a new reusable idea without retraining the whole thing. That idea might be a character, product, outfit, drawing style, logo treatment, or visual habit you want to use again and again.
+
+The beginner trap is thinking LoRA quality comes mostly from secret settings. Settings matter, but the dataset does most of the work. A clean set of varied images, honest captions, and a small test loop will beat a giant settings spreadsheet with bad data almost every time.
 
 ## Beginner Terms (Plain English)
 
@@ -11,8 +13,8 @@ Welcome to LoRA Training 101! This comprehensive chapter covers everything you n
 - **Steps**: how many training passes to run
 - **Learning rate**: how big each training update is
 - **Batch size**: how many images are processed together per update
-- **VRAM**: your GPU memory
-- **Precision (FP16/BF16)**: number format that affects speed and memory
+- **VRAM**: memory on the GPU; if normal RAM is your desk, VRAM is the workbench beside the image-making machine
+- **Precision (FP16/BF16)**: number format that affects speed and memory; useful later, not where beginners should start
 
 ##  Chapter Overview
 
@@ -23,13 +25,13 @@ This chapter is structured to help you master LoRA training progressively:
 ###  Learning Path
 1. **[What is LoRA Training?](what-is-loRA-training.md)** - Basic concepts and how it works
 2. **[Training Methods Compared](training-methods-compared.md)** - Different training approaches, explained simply
-3. **[Training Parameters Explained](training-parameters-explained.md)** - All settings and what they mean
-4. **[Precision Formats Explained](precision-formats.md)** - Number formats (speed vs memory)
-5. **[Dataset Preparation](dataset-preparation.md)** - Creating effective training data
-6. **[Training Workflows](training-workflows.md)** - Step-by-step training processes
-7. **[Advanced Training Techniques](advanced-training-techniques.md)** - Professional-level training methods
-8. **[Troubleshooting Training](troubleshooting-training.md)** - Common issues and solutions
-9. **[Practical Training Projects](practical-training-projects.md)** - Real-world training projects
+3. **[Dataset Preparation](dataset-preparation.md)** - Creating effective training data
+4. **[Training Parameters Explained](training-parameters-explained.md)** - The few settings that matter first
+5. **[Training Workflows](training-workflows.md)** - Step-by-step training processes
+6. **[Troubleshooting Training](troubleshooting-training.md)** - Common issues and solutions
+7. **[Practical Training Projects](practical-training-projects.md)** - Real-world training projects
+8. **[Advanced Training Techniques](advanced-training-techniques.md)** - Professional-level training methods
+9. **[Precision Formats Explained](precision-formats.md)** - Optional technical appendix for memory, speed, and hardware choices
 
 ###  Learning Goals
 
@@ -49,7 +51,8 @@ If you're eager to start training, here's the fastest path:
 
 1. **[What is LoRA Training?](what-is-loRA-training.md)** - 5 minute read
 2. **[Training Methods Compared](training-methods-compared.md)** - 10 minute read
-3. **[Practical Training Projects](practical-training-projects.md)** - Start with your first project!
+3. **[Dataset Preparation](dataset-preparation.md)** - Build the tiny dataset first
+4. **[Practical Training Projects](practical-training-projects.md)** - Start with your first project
 
 ###  Prerequisites
 
@@ -61,7 +64,7 @@ No prior training knowledge needed! We assume:
 
 ###  Why This Chapter Matters
 
-LoRA training can seem complex with all the technical options and parameters. This chapter breaks everything down into simple, understandable concepts with practical examples. By the end, you'll have the confidence to train high-quality custom models.
+LoRA training gives you repeatability. A prompt can ask for "a red jacket" once. A LoRA can make your exact jacket show up across many prompts, poses, lighting setups, and scenes. The chapter teaches the loop: collect images, caption what should vary, train a small adapter, test checkpoints, and keep the version that behaves best.
 
 ### 🤝 How to Use This Chapter
 
@@ -80,36 +83,36 @@ Let's begin your journey into LoRA training!
 **Focus**: Understanding the basics
 - **What is LoRA Training?**: Core concepts explained simply
 - **Training Methods Compared**: Different approaches and when to use each
-- **Training Parameters Explained**: All settings and what they do
-- **Precision Formats Explained**: FP32, FP16, BF16 explained
 - **Dataset Preparation**: Creating effective training data
+- **Training Parameters Explained**: Starter settings before the advanced knobs
 
 ###  Application Section (Documents 6-7)
 **Focus**: Practical application
 - **Training Workflows**: Step-by-step training processes
-- **Advanced Training Techniques**: Professional-level methods
+- **Troubleshooting Training**: Common issues and solutions
 
 ###  Advanced Section (Documents 8-9)
 **Focus**: Mastery and troubleshooting
-- **Troubleshooting Training**: Common issues and solutions
 - **Practical Training Projects**: Real-world training projects
+- **Advanced Training Techniques**: Professional-level methods
+- **Precision Formats Explained**: Optional technical appendix
 
 ###  Learning Timeline
 
 #### Week 1: Foundations
 - **Day 1-2**: What is LoRA Training? + Training Methods Compared
-- **Day 3-4**: Training Parameters + Precision Formats
-- **Day 5-7**: Dataset Preparation + Practice with basic training
+- **Day 3-4**: Dataset Preparation
+- **Day 5-7**: Starter Training Parameters + one tiny test run
 
 #### Week 2: Application
-- **Day 8-10**: Training Workflows + Advanced Techniques
-- **Day 11-12**: Troubleshooting Training + Practice projects
+- **Day 8-10**: Training Workflows
+- **Day 11-12**: Troubleshooting Training + checkpoint comparison
 - **Day 13-14**: Complete first training project
 
 #### Week 3: Mastery
 - **Day 15-21**: Advanced training projects
-- **Day 22-28**: Portfolio development and refinement
-- **Day 29-30**: Experimentation and optimization
+- **Day 22-28**: Advanced techniques and precision formats only if they solve a real problem
+- **Day 29-30**: Portfolio development and refinement
 
 ![LoRA Training 101 Learning Path](../../assets/images/learning-101/lora-training-101-learning-path.svg)
 
@@ -124,9 +127,9 @@ Let's begin your journey into LoRA training!
 - **Confidence Building**: Start simple, gradually increase complexity
 
 ###  Comprehensive Coverage
-- **All Training Methods**: DreamBooth, LoRA, LyCORIS, full fine-tuning
-- **Complete Parameters**: Every training setting explained
-- **All Precision Formats**: FP32, FP16, BF16, FP8 explained
+- **Training Methods**: The common approaches and when they make sense
+- **Starter Parameters**: The few settings you should touch before the advanced panel
+- **Technical Appendices**: Precision formats and advanced options when hardware or quality issues force the topic
 - **Real-World Projects**: Practical projects you can actually build
 
 ###  Progressive Learning
@@ -144,7 +147,7 @@ Let's begin your journey into LoRA training!
 #### Technical Skills
 - ✅ Understand how LoRA training works
 - ✅ Choose appropriate training methods
-- ✅ Master training parameters and settings
+- ✅ Configure starter training parameters without guessing wildly
 - ✅ Prepare effective training datasets
 - ✅ Execute training workflows with confidence
 - ✅ Troubleshoot common training problems
@@ -171,11 +174,10 @@ Ready to start training amazing custom models?
 
 **Start here**: [What is LoRA Training?](what-is-loRA-training.md)
 
-Remember: Every expert was once a beginner. Take your time, experiment freely, and most importantly - have fun creating!
+Remember: the first goal is not a perfect LoRA. The first goal is a run you can explain, repeat, and improve.
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

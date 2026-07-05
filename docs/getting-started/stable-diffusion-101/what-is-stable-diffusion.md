@@ -1,188 +1,65 @@
 # What is Stable Diffusion?
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Welcome to your first step into AI image generation! Let's break down what Stable Diffusion is in simple terms, without the technical jargon.
+Stable Diffusion turns a written prompt into an image. That sentence sounds like magic because the useful version of the idea is magic-shaped: you describe a cat on a windowsill, press Generate, and a new image appears.
 
-##  The Big Picture
+The real mechanism is more interesting. Stable Diffusion starts with noise, the kind of visual chaos that looks like TV static. Then it removes a little noise at a time while your prompt pulls the image toward "cat", "windowsill", "soft morning light", or whatever else you asked for. It is a sculptor in reverse: it starts with a block of chaos and chips away everything that does not belong.
 
-Imagine you have a magic box that can create any image you describe. You type "a cute cat sitting on a windowsill," and the box creates that exact image. That's essentially what Stable Diffusion does - it's an AI that turns text descriptions into images.
-
-## 🧩 How It Actually Works
-
-### The "Noise to Image" Magic
-
-Think of Stable Diffusion like this:
-
-```
-Step 1: Start with Random Noise (like TV static)
-Step 2: AI gradually removes noise based on your text
-Step 3: After 20-50 steps, you get a clear image!
+```mermaid
+flowchart LR
+  A["Prompt"] --> B["Text encoder"]
+  B --> C["Denoising steps"]
+  D["Random noise"] --> C
+  C --> E["Latent image"]
+  E --> F["VAE decoder"]
+  F --> G["Finished image"]
 ```
 
-**Real-World Analogy**: It's like having a skilled artist who starts with a blurry canvas and slowly sharpens it until it matches your description perfectly.
+You do not need to memorize those parts on day one. You only need the shape of the process: prompt plus noise, repeated denoising, decoded into pixels.
 
-### The Three Main Parts
+## The Three Things Happening
 
-#### 1. Text Understanding
-The AI first reads your prompt and understands what you want:
-- "cat" → understands feline features
-- "sitting" → knows the pose
-- "windowsill" → adds the background
+First, the model reads your prompt as conditioning. It does not understand language like a person does, but it has learned patterns between words and images. "Cat" points toward feline shapes. "Sitting" points toward posture. "Windowsill" points toward a setting.
 
-#### 2. The "Magic" Process
-The AI then goes through a step-by-step process:
-- **Step 1**: Very blurry, cat-like blob
-- **Step 10**: Starting to look like a cat
-- **Step 25**: Clear cat on windowsill
-- **Step 50**: Final detailed image
+Second, the sampler walks through a series of denoising steps. Early steps decide the rough composition. Middle steps find the subject and large forms. Later steps refine texture, lighting, small details, and all the little ways a model can still make hands weird. Progress, yes. Perfection, no.
 
-#### 3. Image Creation
-The final step produces the actual image file you can save and share.
+Third, the VAE decoder turns the model's internal latent image into pixels you can save. That is why model components matter later: the checkpoint, text encoder, sampler, and VAE each affect the final result.
 
-##  Why It's Called "Stable" Diffusion
+## Why the Name Is a Little Misleading
 
-### "Stable" Means Reliable
-- **Consistent Results**: Same prompt = similar results
-- **Predictable**: You can learn how it behaves
-- **Controllable**: You can guide the output
+"Diffusion" is the important technical word. Diffusion models learn how to reverse a noising process: they start from noise and recover an image step by step. Stable Diffusion is also a latent diffusion model, which means most of that work happens in a compressed image space instead of full-size pixels. That is one reason it became practical to run on consumer GPUs.
 
-### "Diffusion" Means Gradual Change
-- **Step-by-Step**: Not instant, but gradual improvement
-- **Noise Reduction**: Slowly removes randomness
-- **Refinement**: Gets better with each step
+"Stable" does not mean the model always gives stable or reliable output. The name is tied to Stability AI's release of Stable Diffusion and the latent diffusion research behind it. If you want repeatable output, use the same seed, model, prompt, and settings. The word "stable" will not do that job for you. Nice try, branding department.
 
-##  What Makes Stable Diffusion Special
+For the curious, the technical foundation is the paper [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752), and Stability AI's launch context is in their [Stable Diffusion public release](https://stability.ai/news-updates/stable-diffusion-public-release).
 
-### It's Open Source
-- **Free to Use**: No subscription fees
-- **Customizable**: People can modify and improve it
-- **Community Driven**: Thousands of people contribute improvements
+## What You Can Make With It
 
-### It's Incredibly Versatile
-- **Any Style**: Photos, paintings, cartoons, 3D renders
-- **Any Subject**: People, animals, landscapes, abstract art
-- **Any Quality**: From simple sketches to photorealistic images
+Stable Diffusion can create photorealistic portraits, painted landscapes, product mockups, concept art, game assets, fashion sketches, storyboards, and strange little accidents you will pretend were intentional. It can also edit images, fill missing regions, upscale results, follow rough composition guides, and use LoRAs to repeat a character, product, or style.
 
-### It's Constantly Improving
-- **Regular Updates**: New versions with better quality
-- **Community Models**: People train specialized versions
-- **Technique Advances**: New ways to control the output
+The catch is that the model is not a mind reader. A short prompt like "beautiful landscape" gives it room to improvise. A more directed prompt like "wide photo of a misty pine forest at sunrise, lake reflection, soft orange light, natural colors" gives it a cleaner target. Settings then decide how hard the model follows that target, how long it refines, and whether you can reproduce the result.
 
-##  Real-World Examples
+## What Beginners Usually Get Wrong
 
-### Example 1: Simple Portrait
-```
-Your Prompt: "photo of a smiling woman with brown hair, outdoor lighting"
-AI Process:
-1. Understands "woman", "brown hair", "smiling", "outdoor"
-2. Starts with random noise
-3. Gradually shapes it into a woman
-4. Adds brown hair and smile
-5. Applies outdoor lighting
-6. Final: Photorealistic portrait of smiling woman
-```
+The first mistake is changing everything at once. If an image looks bad, keep the same seed and change one thing: the prompt, CFG or guidance, steps, sampler, resolution, or model. If you change five things and the next image improves, you learned almost nothing. Maybe it was the prompt. Maybe it was Tuesday.
 
-### Example 2: Art Style
-```
-Your Prompt: "fantasy castle in anime style, colorful, detailed"
-AI Process:
-1. Understands "castle", "fantasy", "anime style"
-2. Creates castle structure
-3. Applies anime art style
-4. Adds fantasy elements
-5. Enhances colors and details
-6. Final: Anime-style fantasy castle
-```
+The second mistake is treating every model as interchangeable. SD1.5, SDXL, Flux, video models, and specialized checkpoints have different strengths, resolutions, workflows, and settings. A prompt or LoRA that works well in one family may do nothing useful in another.
 
-### Example 3: Complex Scene
-```
-Your Prompt: "cyberpunk city street at night, neon lights, rain, people walking"
-AI Process:
-1. Breaks down into: city + cyberpunk + night + neon + rain + people
-2. Creates city street layout
-3. Adds cyberpunk architecture
-4. Applies night atmosphere
-5. Adds neon lighting effects
-6. Adds rain and reflections
-7. Places walking people
-8. Final: Detailed cyberpunk night scene
-```
+The third mistake is expecting prompt text to overpower bad inputs. A model can ignore vague words, fight impossible compositions, or hallucinate details. Better inputs often beat louder prompts.
 
-##  The Creative Possibilities
+## A Simple First Exercise
 
-### What You Can Create
-- **Art**: Any style you can imagine
-- **Photography**: Realistic images of anything
-- **Design**: Logos, concepts, mockups
-- **Stories**: Sequential images for narratives
-- **Characters**: Consistent characters across images
-- **Products**: Product visualization and mockups
+Pick one image idea and write it as a normal sentence. Add the subject, setting, style, and lighting. Generate with a fixed seed. Then change only one phrase and generate again.
 
-### Industries Using It
-- **Entertainment**: Movie concepts, game art
-- **Advertising**: Product visualization
-- **Fashion**: Design concepts and mockups
-- **Architecture**: Building visualization
-- **Education**: Illustrations and diagrams
-- **Personal**: Creative projects and hobbies
+Example: start with "photo of a tabby cat sitting on a wooden windowsill, morning light, cozy apartment". Keep the seed. Change "morning light" to "blue evening light". The subject should stay similar while the mood changes. That is the first useful lesson: control comes from small, visible changes.
 
-##  Key Concepts to Remember
+## What's Next?
 
-### Prompts Are Your Instructions
-- **Be Specific**: More detail = better results
-- **Use Descriptive Words**: "beautiful", "detailed", "high quality"
-- **Think Like an Artist**: Describe lighting, composition, mood
-
-### AI Learns from Billions of Images
-- **Vast Knowledge**: Has seen millions of photos and artworks
-- **Pattern Recognition**: Understands how things should look
-- **Style Adaptation**: Can mimic any artistic style
-
-### It's Not Perfect (Yet!)
-- **Sometimes Makes Mistakes**: Extra fingers, weird proportions
-- **Needs Guidance**: Your prompt quality matters a lot
-- **Improving**: Gets better with each new version
-
-##  Why This Matters for You
-
-### You're Now an Artist
-- **No Drawing Skills Needed**: Your words are your brush
-- **Instant Creation**: Ideas become images in seconds
-- **Unlimited Possibilities**: Only limited by your imagination
-
-### You Have Control
-- **Guide the AI**: Your prompt directs the outcome
-- **Refine Results**: Adjust and improve until perfect
-- **Learn Techniques**: Get better with practice
-
-### You Can Be Unique
-- **Create Your Style**: Develop your own visual aesthetic
-- **Combine Ideas**: Mix concepts in new ways
-- **Stand Out**: Create images no one has seen before
-
-##  What's Next?
-
-Now that you understand the basics, you're ready to learn about:
-
-1. **[Model Components](model-components.md)** - Understanding the different types of models
-2. **[Complete Model Guide](complete-model-guide.md)** - All available models in LoRA Pilot
-3. **[Prompting Fundamentals](prompting-fundamentals.md)** - How to write better prompts
-
-## 💡 Quick Exercise
-
-Try this mental exercise:
-1. **Think of a simple image** you'd like to create
-2. **Describe it in words** like you're explaining to someone who can't see
-3. **Break it down** into main subject, style, and details
-4. **Imagine** how the AI might interpret each part
-
-This is exactly how you'll start creating your own images!
+Continue with [Model Components](model-components.md) to learn what checkpoints, VAEs, LoRAs, and text encoders do. Then read [Prompting Fundamentals](prompting-fundamentals.md) before you start collecting other people's 400-word prompt soups from the internet.
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

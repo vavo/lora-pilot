@@ -1,6 +1,6 @@
 # AI Toolkit
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 AI Toolkit is a modern training stack for diffusion models, specifically designed for training FLUX.1 and other latest models. It provides a Next.js interface with Gradio backend and integrates seamlessly with the LoRA Pilot workspace.
 
@@ -98,6 +98,8 @@ network:
   lokr_factor: -1                # LoKR factor
 ```
 
+Use standard `lora` first. LoKr can be useful for some character runs, but it costs more compute and can make the result more rigid. If a normal LoRA is close but not consistent enough, rerun the same dataset as LoKr and compare with the same sample prompts and seeds.
+
 #### Dataset Configuration
 ```yaml
 datasets:
@@ -135,6 +137,8 @@ train:
   dtype: "bf16"                   # Data type
 ```
 
+For small character datasets, watch for overtraining more than undertraining. Save intermediate LoRAs and inspect samples during the run. The best checkpoint may be earlier than the final step count.
+
 #### Model Configuration
 ```yaml
 model:
@@ -169,6 +173,8 @@ model:
 - **Sample Generation**: See generated samples
 - **Resource Usage**: Monitor GPU and memory usage
 - **Logs**: View detailed training logs
+
+Sample prompts should include the trigger word and a few cases that differ from the training images. If every sample collapses back to the same pose, outfit, or camera angle, stop treating the loss graph as the whole truth.
 
 ### Configuration Management
 
@@ -359,6 +365,8 @@ sqlite3 /workspace/config/ai-toolkit/aitk_db.db ".tables"
 export HF_TOKEN="your_hf_token_here"
 huggingface-cli login
 ```
+
+For gated Hugging Face models, set the token before starting a remote or fresh environment. Adding it after a failed model download is possible, but it is tedious and usually involves restarting the service or rerunning the job setup. In LoRA Pilot, prefer configuring secrets before launching long AI Toolkit runs.
 
 #### Database Connection Errors
 ```bash

@@ -1,6 +1,6 @@
 # Generation Parameters
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Think of generation parameters like camera settings on a professional camera. Just as a photographer adjusts aperture, shutter speed, and ISO, you'll adjust AI parameters to get the perfect image. This guide explains each parameter in simple terms.
 
@@ -19,6 +19,20 @@ In ComfyUI, most of these live on `KSampler`. Width, height, and batch size usua
 ##  The Big Picture
 
 Generation parameters control **how** the AI creates your image, not **what** it creates. Your prompt determines the content, but parameters determine the style, quality, and characteristics.
+
+## Learn These First
+
+Most beginners do not need every setting yet. Start with four.
+
+Use a fixed **seed** while testing. That keeps the starting noise stable, so you can see what your change did.
+
+Change **CFG or guidance** when the model is either ignoring the prompt or following it so hard that the image looks brittle. For classic SD1.5 and SDXL workflows, moderate CFG often beats heroic CFG. Newer model families may use different guidance ranges, so model notes win over internet folklore.
+
+Adjust **steps** when the image looks unfinished or when you are wasting time on extra refinement that does not improve anything. More steps are not a morality system.
+
+Keep **resolution and batch size** conservative until the workflow works. Giant first passes are a quick way to learn your VRAM limit and not much else.
+
+Once those four make sense, the sampler, scheduler, denoise, upscaling, and model-specific controls become easier to reason about.
 
 ---
 

@@ -1,6 +1,6 @@
 # Inference 101
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Inference is where the model stops being theory and starts making images. This chapter is for the moment when you have LoRA Pilot running, a model loaded, and a screen full of settings that all look important. Some of them are important. Some mostly generate heat.
 
@@ -19,10 +19,11 @@ Start with the mental model, then move toward workflow choice and settings. The 
 | 3 | [Model Selection for Inference](model-selection-for-inference.md) | How to avoid mixing incompatible checkpoints, VAEs, and LoRAs. |
 | 4 | [Core Generation Settings](core-generation-settings.md) | Seed, steps, CFG, sampler, resolution, denoise, and batch size. |
 | 5 | [Workflow Types](workflow-types.md) | Text-to-image, image-to-image, inpainting, ControlNet, LoRA, upscale, text-to-video, and image-to-video. |
-| 6 | [Inference Workflows](inference-workflows.md) | A practical daily loop for testing, comparing, and saving work. |
-| 7 | [Performance Optimization](performance-optimization.md) | How to move faster without turning quality into soup. |
-| 8 | [Troubleshooting Inference](troubleshooting-inference.md) | What to check when outputs look wrong or ComfyUI complains. |
-| 9 | [Practical Inference Projects](practical-inference-projects.md) | Short projects that build intuition without a week-long detour. |
+| 6 | [Reference Image Workflows](reference-image-workflows.md) | Img2img, ControlNet, IP-Adapter-style references, Redux-style blending, and caption-assisted edits. |
+| 7 | [Inference Workflows](inference-workflows.md) | A practical daily loop for testing, comparing, and saving work. |
+| 8 | [Performance Optimization](performance-optimization.md) | How to move faster without turning quality into soup. |
+| 9 | [Troubleshooting Inference](troubleshooting-inference.md) | What to check when outputs look wrong or ComfyUI complains. |
+| 10 | [Practical Inference Projects](practical-inference-projects.md) | Short projects that build intuition without a week-long detour. |
 
 ## The One Idea That Saves the Most Time
 
@@ -38,7 +39,7 @@ This chapter assumes you have either read [Stable Diffusion 101](../stable-diffu
 
 ## Quick Start
 
-If you only have twenty minutes, read [What is Inference?](what-is-inference.md), then [Workflow Types](workflow-types.md), then [Core Generation Settings](core-generation-settings.md). After that, run the first exercise in [Practical Inference Projects](practical-inference-projects.md) with a fixed seed and batch size 1.
+If you only have twenty minutes, read [What is Inference?](what-is-inference.md), then [Workflow Types](workflow-types.md), then [Core Generation Settings](core-generation-settings.md). If you already have a source image or style reference, add [Reference Image Workflows](reference-image-workflows.md). After that, run the first exercise in [Practical Inference Projects](practical-inference-projects.md) with a fixed seed and batch size 1.
 
 That small loop teaches more than importing a giant community workflow and immediately installing six mystery nodes. Community workflows are useful. Learning on top of a mystery graph is how beginners accidentally become unpaid dependency managers.
 

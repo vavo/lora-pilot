@@ -1,6 +1,6 @@
 # Model Selection for Inference
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Model selection is the quiet part of inference that decides whether the rest of your settings make sense. A good prompt with the wrong model family is still the wrong setup. A correct LoRA on an incompatible checkpoint is not "almost right"; it is a small ceremony for wasting GPU time.
 
@@ -21,6 +21,14 @@ A LoRA is not a replacement checkpoint. It nudges a compatible base model toward
 For many image workflows, a LoRA weight around `0.6` to `0.9` is a sensible first test. Too low and the concept may disappear. Too high and the LoRA can distort anatomy, texture, composition, or the base model's strengths. The right number depends on how the LoRA was trained and what checkpoint it expects.
 
 The important habit is to test LoRAs one at a time. If three LoRAs are loaded and the output breaks, you have created a small mystery, not a diagnosis.
+
+Many LoRAs need a trigger word in the prompt before they do anything useful. Some always affect the image once loaded. Some have several trigger words for different behaviors. Read the LoRA notes and save the trigger words with your workflow.
+
+In ComfyUI, LoRA loaders often expose separate `strength_model` and `strength_clip` values, though many workflows tie them together behind one strength control. Keep them equal at first. Split them only when you are deliberately testing activation versus visual strength.
+
+Stacking LoRAs is allowed, but the order and relative strengths can change the output. A style LoRA, a character LoRA, and an acceleration LoRA are three different kinds of influence. Add them one at a time, test with a fixed seed, and keep the stack small unless the result improves.
+
+Some LoRAs do not add a subject or style. They modify model behavior, such as reducing sampler steps, sharpening detail, changing depth of field, or pushing realism. Treat these as workflow modifiers. They can save time or fix a model habit, but they can also alter composition in ways the prompt did not ask for.
 
 ## The VAE Is Easy to Ignore Until It Is Wrong
 

@@ -1,6 +1,6 @@
 # Workflow Types
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Workflow type is the first real decision in inference. Before you argue with CFG or rewrite a prompt for the ninth time, ask what kind of input you already have and what kind of change you want.
 
@@ -35,6 +35,12 @@ Use inpainting for replacing a background detail, fixing a face, changing clothi
 ControlNet gives the model a structural guide such as pose, depth, edges, line art, canny maps, or segmentation. It is useful when the prompt describes what you want but cannot reliably hold the composition.
 
 Use ControlNet when a subject must stand in a specific pose, a product must keep its silhouette, a room layout must survive, or an illustration needs to follow a sketch. The control image and preprocessor matter. A weak or mismatched control signal gives weak control.
+
+## Reference Image Workflows: Borrow Style, Identity, or Layout
+
+Some workflows use reference images without being plain image-to-image. IP-Adapter-style workflows, Flux Redux-style workflows, face reference nodes, and caption-assisted img2img can borrow style, identity, or composition from one or more images.
+
+Use these when a source image should influence the result, but you do not need to preserve every pixel. They work well for style transfer, image blending, moodboards, quick identity tests, and cases where training a LoRA would be overkill. See [Reference Image Workflows](reference-image-workflows.md) for the longer guide.
 
 ## LoRA Workflows: Add Identity or Style
 
@@ -74,7 +80,7 @@ Good workflow documentation should name the starting input, the model family, th
 
 ## Choosing Fast
 
-If you have no source image, start with text-to-image. If you have a source image, use image-to-image. If only part of the image should change, use inpainting. If structure must hold, add ControlNet. If identity or style must carry through, add a LoRA. If the still image is already good and needs quality, upscale or refine. If the output must move, choose text-to-video or image-to-video based on whether you already have the first frame.
+If you have no source image, start with text-to-image. If you have a source image, use image-to-image. If only part of the image should change, use inpainting. If structure must hold, add ControlNet. If one or more reference images should influence style, face, mood, or composition, use a reference-image workflow. If identity or style must carry through repeatedly, add or train a LoRA. If the still image is already good and needs quality, upscale or refine. If the output must move, choose text-to-video or image-to-video based on whether you already have the first frame.
 
 That decision tree sounds obvious. Most useful workflow rules do.
 

@@ -1,8 +1,8 @@
 # Getting Started
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Setup and onboarding index for LoRA Pilot.
+Setup gets LoRA Pilot running. The 101 chapters teach you what you are looking at after the browser opens and the sliders start making threats.
 
 ## Recommended Order
 
@@ -31,6 +31,16 @@ docker compose -f docker-compose.yml up -d
 - [Datasets 101](datasets-101/README.md)
 - [LoRA Training 101](loRA-training-101/README.md)
 - [Inference 101](inference-101/README.md), including [Workflow Types](inference-101/workflow-types.md)
+
+## First 90 Minutes
+
+If you are new, do not start by importing a huge community workflow. Start with one small loop and make it boring on purpose.
+
+Read [Stable Diffusion 101](stable-diffusion-101/README.md) until the noise-to-image idea makes sense. Then read [What is Inference?](inference-101/what-is-inference.md) and generate one image with a fixed seed. Change only the prompt once, then only CFG or guidance once. That teaches more than memorizing sampler names.
+
+After that, read [What Makes a Good Dataset](datasets-101/what-makes-a-good-dataset.md). You do not need a perfect dataset yet; you need to understand why ten sharp, varied, honest images can beat a folder of two hundred near-duplicates. Finish with [What is LoRA Training?](loRA-training-101/what-is-loRA-training.md), then try one small project from [Practical Training Projects](loRA-training-101/practical-training-projects.md).
+
+The first milestone is simple: make one image, reproduce it, change it on purpose, collect a tiny dataset, and understand what a LoRA would add.
 
 ## Beginner Learning Flow
 
@@ -62,4 +72,3 @@ flowchart LR
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

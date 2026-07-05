@@ -1,6 +1,6 @@
 # Training Workflows
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Training workflows are step-by-step processes that guide you from dataset to trained model. This guide covers the complete training process using LoRA Pilot's tools.
 
@@ -94,6 +94,8 @@ Logging: /workspace/outputs/my_character/logs
 3. **Sampler**: DPM++ 2M Karras
 4. **CFG Scale**: 7.0
 
+Use sample prompts as tests, not decoration. Include the trigger word and at least one prompt that asks for a new outfit, pose, setting, or lighting condition. If the sample cannot leave the dataset pose, the LoRA may already be getting too rigid.
+
 #### Step 9: Start Training
 1. **Review Configuration**: Double-check all settings
 2. **Start Training**: Click "Start Training" button
@@ -179,6 +181,8 @@ AI Toolkit is a modern training interface optimized for FLUX.1 and latest models
 3. **Set Save Every**: 500 steps
 4. **Set Max Saves**: Keep last 4 checkpoints
 
+Do not assume the final saved LoRA is the winner. Keep several intermediate saves and test them. A checkpoint from the middle of training can be more flexible than the final one for small character datasets.
+
 #### Step 8: Start Training
 1. **Review Configuration**: Check all settings
 2. **Start Job**: Click "Start Training"
@@ -197,6 +201,14 @@ AI Toolkit is a modern training interface optimized for FLUX.1 and latest models
 3. **Evaluate Quality**: Test with various prompts
 4. **Compare Results**: Compare with your expectations
 
+### How to Judge Checkpoints
+
+Use the same test prompts for every saved checkpoint. Include one easy prompt, one prompt close to the dataset, one prompt that changes pose or angle, one prompt that changes clothing or context, and one prompt that should not activate the LoRA much. Keep the seed, checkpoint, base model, sampler, resolution, and LoRA strength fixed while comparing.
+
+Then run a small strength sweep on the best candidates: `0.5`, `0.7`, `0.9`, and `1.0` are enough for a first pass. A good LoRA should appear without crushing the base model. If the subject only works at very high strength, it may be undertrained. If it overwhelms every prompt at normal strength, it may be overfit or trained too rigidly.
+
+Save the checkpoint you can reuse, not the one that copied the training images. Hugging Face's [Diffusers LoRA training guide](https://huggingface.co/docs/diffusers/en/training/lora) uses validation prompts and checkpoints for the same reason: training quality needs repeatable evidence, not vibes with a filename.
+
 ### AI Toolkit Tips
 
 #### Best Practices
@@ -204,6 +216,8 @@ AI Toolkit is a modern training interface optimized for FLUX.1 and latest models
 - **Monitor GPU**: Watch GPU memory usage closely
 - **Save Frequently**: Don't wait until completion
 - **Test Early**: Test model during training
+- **Start with LoRA**: Try standard LoRA before LoKr; compare LoKr only when normal LoRA is not holding the concept well enough
+- **Align Samples and Saves**: Generate samples at the same cadence as checkpoint saves so you can match visual quality to the actual LoRA file
 
 #### Common Issues
 - **Memory Issues**: Reduce batch size or enable gradient checkpointing
@@ -454,4 +468,3 @@ Now that you understand training workflows, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

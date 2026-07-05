@@ -1,8 +1,12 @@
 # Datasets 101
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Welcome to Datasets 101! This comprehensive chapter covers everything you need to know about creating and managing datasets for AI model training. Whether you're training characters, styles, or concepts, good datasets are the foundation of great models.
+You cannot fix a bad dataset with good training settings. The images you feed into training decide most of what the LoRA can learn, what it memorizes by accident, and where it fails later.
+
+That is why this chapter matters more than the settings page, even if settings look more technical and therefore more important. Twenty clear, varied, well-captioned images can beat two hundred near-duplicates. A tiny dataset with honest captions can teach a cleaner concept than a huge folder full of mixed lighting, random crops, hidden watermarks, and "whatever Google had lying around." Very rude of reality, but useful.
+
+Datasets 101 teaches you how to collect, caption, clean, organize, and test the examples before you spend GPU time training on them.
 
 ##  Chapter Overview
 
@@ -53,7 +57,7 @@ No prior dataset knowledge needed! We assume:
 
 ###  Why This Chapter Matters
 
-The quality of your dataset determines 80% of your model's quality. This chapter breaks down dataset creation into simple, understandable processes with practical examples. By the end, you'll have the confidence to create datasets that train excellent models.
+Dataset quality determines most of your final LoRA quality. The trainer can adjust weights, but it cannot guess which details matter if the examples contradict each other or the captions hide the wrong things. By the end, you should be able to look at a folder of images and predict whether it will train cleanly.
 
 ### 🤝 How to Use This Chapter
 
@@ -162,5 +166,3 @@ Remember: Every expert was once a beginner. Take your time, be detail-oriented, 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

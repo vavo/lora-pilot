@@ -1,6 +1,6 @@
 # What is LoRA Training?
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Welcome to your first step into custom model training! LoRA training is one of the most powerful and accessible ways to teach AI your specific characters, styles, or concepts. Let's break it down in simple terms.
 
@@ -21,6 +21,10 @@ Result: Base model can now draw YOUR specific person
 **LoRA** stands for **Low-Rank Adaptation**. Think of it like:
 - **"Low-Rank"**: Small, efficient changes (not retraining entire model)
 - **"Adaptation"**: Adapting existing knowledge to new specific cases
+
+The best beginner analogy is a removable vinyl decal, not a new paint job. Full fine-tuning repaints the wall. LoRA keeps the wall and adds a thin, precise layer that changes how the model behaves when you load it. Remove the LoRA, and the base model is still there.
+
+The math version is compact: instead of changing a huge weight matrix, LoRA freezes the original model weights and trains two much smaller matrices. When those two small matrices are multiplied together, they approximate the change the model needs. That is the "low-rank" part. The original [LoRA paper](https://arxiv.org/abs/2106.09685) introduced this trick for language models, and image trainers adapted the same idea for diffusion models.
 
 ### The Magic Formula
 
@@ -191,9 +195,7 @@ Full Model: Knows everything about drawing (huge knowledge)
 LoRA Model: Knows only the differences for your specific case (small knowledge)
 ```
 
-#### Mathematical Analogy
-- **Full Model**: Like knowing every word in a language
-- **LoRA Model**: Like knowing only the words you need for a specific conversation
+In training terms, the base model keeps its original knowledge. The LoRA learns a compact correction: the face shape of your character, the material behavior of your product, the color rhythm of your style, or the little visual rules your dataset repeats. Rank controls how much room that correction has. Too little rank can underlearn the concept. Too much rank can memorize noise if the dataset is weak.
 
 ### How It Integrates
 
@@ -357,5 +359,3 @@ Now that you understand what LoRA training is, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
