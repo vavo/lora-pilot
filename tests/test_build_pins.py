@@ -44,12 +44,16 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("devIndicators", patch_text)
         self.assertIn("buildActivity", patch_text)
 
-    def test_invokeai_613_uses_required_diffusers_pin(self):
-        expected = "0.37.0"
+    def test_invokeai_6135_uses_required_dependency_pins(self):
+        expected = {
+            "INVOKEAI_VERSION": "6.13.5",
+            "INVOKE_DIFFUSERS_VERSION": "0.37.0",
+            "INVOKE_TRANSFORMERS_VERSION": "5.5.4",
+        }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
-                self.assertEqual(read_pin(path, "INVOKEAI_VERSION"), "6.13.0")
-                self.assertEqual(read_pin(path, "INVOKE_DIFFUSERS_VERSION"), expected)
+                for name, value in expected.items():
+                    self.assertEqual(read_pin(path, name), value)
 
     def test_invokeai_613_uses_supported_cuda_torch_stack(self):
         expected = {
@@ -110,7 +114,7 @@ class BuildPinTests(unittest.TestCase):
                 "INVOKE_TORCHVISION_VERSION": "0.22.1+cu128",
                 "INVOKE_XFORMERS_VERSION": "0.0.31.post1",
                 "INVOKE_DIFFUSERS_VERSION": "0.37.0",
-                "INVOKE_TRANSFORMERS_VERSION": "4.57.6",
+                "INVOKE_TRANSFORMERS_VERSION": "5.5.4",
                 "INVOKE_ACCELERATE_VERSION": "1.14.0",
                 "INVOKE_HF_HUB_VERSION": "0.36.2",
                 "DIFFPIPE_DIFFUSERS_VERSION": "0.38.0",
@@ -129,6 +133,7 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("torchvision==0.22.1+cu128\n", constraints)
         self.assertIn("xformers==0.0.31.post1\n", constraints)
         self.assertIn("diffusers==0.37.0\n", constraints)
+        self.assertIn("transformers==5.5.4\n", constraints)
         self.assertNotIn("torch==2.12.0\n", constraints)
 
     def test_makefile_passes_service_install_flags_to_docker(self):

@@ -1,3 +1,9 @@
+v2.5.8 (July 5th 2026)
+
+- Updated AI Toolkit to upstream `0.10.20` at commit `6c0d1c4`.
+- Updated InvokeAI to `6.13.5`.
+- Updated the InvokeAI-isolated Transformers pin to `5.5.4` so the `6.13.5` build uses InvokeAI's supported dependency range without changing the shared core GPU stack.
+
 v2.5.7 (July 5th 2026)
 
 - Updated bundled ComfyUI to `v0.27.0` and ComfyUI-Manager to `4.2.2`.
