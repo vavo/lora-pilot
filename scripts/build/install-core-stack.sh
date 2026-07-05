@@ -14,6 +14,17 @@ set -euo pipefail
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
+: "${FASTAPI_VERSION:?FASTAPI_VERSION is required}"
+: "${UVICORN_VERSION:?UVICORN_VERSION is required}"
+: "${PYDANTIC_VERSION:?PYDANTIC_VERSION is required}"
+: "${PYTHON_MULTIPART_VERSION:?PYTHON_MULTIPART_VERSION is required}"
+: "${FLASK_VERSION:?FLASK_VERSION is required}"
+: "${FLASK_CORS_VERSION:?FLASK_CORS_VERSION is required}"
+: "${REQUESTS_VERSION:?REQUESTS_VERSION is required}"
+: "${PYTHON_DOTENV_VERSION:?PYTHON_DOTENV_VERSION is required}"
+: "${PYTHON_SOCKETIO_VERSION:?PYTHON_SOCKETIO_VERSION is required}"
+: "${WEBSOCKETS_VERSION:?WEBSOCKETS_VERSION is required}"
+: "${HTTPX_VERSION:?HTTPX_VERSION is required}"
 
 if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
   pip_install_in_venv /opt/venvs/core \
@@ -70,15 +81,15 @@ pip_install_in_venv /opt/venvs/core \
 
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \
-  fastapi \
-  "uvicorn[standard]" \
-  pydantic \
-  python-multipart \
-  flask \
-  flask-cors \
-  requests \
-  python-dotenv \
-  python-socketio \
-  websockets \
+  "fastapi==${FASTAPI_VERSION}" \
+  "uvicorn[standard]==${UVICORN_VERSION}" \
+  "pydantic==${PYDANTIC_VERSION}" \
+  "python-multipart==${PYTHON_MULTIPART_VERSION}" \
+  "flask==${FLASK_VERSION}" \
+  "flask-cors==${FLASK_CORS_VERSION}" \
+  "requests==${REQUESTS_VERSION}" \
+  "python-dotenv==${PYTHON_DOTENV_VERSION}" \
+  "python-socketio==${PYTHON_SOCKETIO_VERSION}" \
+  "websockets==${WEBSOCKETS_VERSION}" \
   pillow \
-  httpx
+  "httpx==${HTTPX_VERSION}"

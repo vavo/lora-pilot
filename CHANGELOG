@@ -1,3 +1,10 @@
+v2.5.10 (July 5th 2026)
+
+- Moved AI Toolkit UI builds from the old Node 20 setup script to a pinned Node major build arg (`NODE_MAJOR=24`) and npm `11.18.0`, using an explicit NodeSource apt source instead of piping the setup script into bash.
+- Pinned ComfyUI-Downloader to commit `03146df` instead of cloning floating `main`.
+- Pinned ControlPilot/runtime web dependencies and TensorBoard versions so build output is reproducible across FastAPI/Uvicorn/Flask/httpx/TensorBoard releases.
+- Refreshed Diffusion Pipe to upstream commit `a7e7dec`.
+
 v2.5.9 (July 5th 2026)
 
 - Refreshed the default model manifest by replacing stale SDXL/SD1.5 checkpoint rows with verified current upstream files: DreamShaper XL v2 Turbo, Juggernaut XL Lightning, CyberRealistic XL v10, and the actual ToonYou checkpoint.

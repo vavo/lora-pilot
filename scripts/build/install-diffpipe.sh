@@ -15,6 +15,7 @@ fi
 : "${DIFFPIPE_TRANSFORMERS_VERSION:?DIFFPIPE_TRANSFORMERS_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
+: "${TENSORBOARD_VERSION:?TENSORBOARD_VERSION is required}"
 
 /opt/pilot/build/lib/git_checkout.sh --recurse-submodules \
   https://github.com/tdrussell/diffusion-pipe.git \
@@ -29,7 +30,7 @@ pip_install_in_venv /opt/venvs/core \
   "transformers==${DIFFPIPE_TRANSFORMERS_VERSION}" \
   "accelerate==${ACCELERATE_VERSION}" \
   "peft==${PEFT_VERSION}" \
-  tensorboard
+  "tensorboard==${TENSORBOARD_VERSION}"
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/diffpipe-constraints.txt \
   -r /opt/pilot/repos/diffusion-pipe/requirements.txt

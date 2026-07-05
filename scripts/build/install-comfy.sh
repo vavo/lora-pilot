@@ -10,6 +10,7 @@ fi
 
 : "${COMFYUI_REF:?COMFYUI_REF is required}"
 : "${COMFYUI_MANAGER_REF:?COMFYUI_MANAGER_REF is required}"
+: "${COMFYUI_DOWNLOADER_REF:?COMFYUI_DOWNLOADER_REF is required}"
 
 /opt/pilot/build/lib/git_checkout.sh \
   https://github.com/Comfy-Org/ComfyUI.git \
@@ -40,8 +41,10 @@ pip_install_in_venv /opt/venvs/core \
   -r /tmp/comfy-manager-req.txt
 rm -f /tmp/comfy-manager-req.txt
 
-git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git \
-  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader
+/opt/pilot/build/lib/git_checkout.sh \
+  https://github.com/romandev-codex/ComfyUI-Downloader.git \
+  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader \
+  "${COMFYUI_DOWNLOADER_REF}"
 
 cp -a /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager /opt/pilot/bundled/comfy-custom-nodes/
 cp -a /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader /opt/pilot/bundled/comfy-custom-nodes/

@@ -3,6 +3,7 @@ set -euo pipefail
 
 : "${CUDA_NVCC_PKG:?CUDA_NVCC_PKG is required}"
 : "${CROC_VERSION:?CROC_VERSION is required}"
+: "${NODE_MAJOR:?NODE_MAJOR is required}"
 : "${NPM_VERSION:?NPM_VERSION is required}"
 
 apt-get update
@@ -16,6 +17,7 @@ apt-get install -y --no-install-recommends \
   tini \
   supervisor \
   software-properties-common \
+  gnupg \
   build-essential \
   iproute2 \
   libgl1 \
@@ -29,9 +31,16 @@ apt-get clean
 rm -rf /var/lib/apt/lists/*
 
 if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]; then
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+  install -d -m 0755 /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  chmod 644 /etc/apt/keyrings/nodesource.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+    > /etc/apt/sources.list.d/nodesource.list
+  apt-get update
   apt-get install -y --no-install-recommends nodejs
   npm install -g "npm@${NPM_VERSION}"
+  apt-get clean
   rm -rf /var/lib/apt/lists/*
   node -v
   npm -v

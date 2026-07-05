@@ -37,17 +37,20 @@ ARG INSTALL_AI_TOOLKIT_UI=1
 ARG INSTALL_COPILOT_CLI=1
 ARG COPILOT_CLI_VERSION=1.0.10
 ARG CODE_SERVER_VERSION=4.127.0
-ARG NPM_VERSION=11.17.0
+ARG NODE_MAJOR=24
+ARG NPM_VERSION=11.18.0
 ARG JUPYTERLAB_VERSION=4.6.1
 ARG IPYWIDGETS_VERSION=8.1.8
 ARG COMFYUI_REF=v0.27.0
 ARG COMFYUI_MANAGER_REF=4.2.2
+ARG COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
 ARG KOHYA_REF=v25.2.1
-ARG DIFFPIPE_REF=5aa65772168809346629d65a094d3a5523331669
+ARG DIFFPIPE_REF=a7e7decf4325c1f03e4b88b7de93640029abd011
 ARG AI_TOOLKIT_REF=6c0d1c4679cf8fe153ef56bdc779c93239e1cf0f
 ARG AI_TOOLKIT_DIFFUSERS_VERSION=git
 ARG DIFFPIPE_DIFFUSERS_VERSION=0.38.0
 ARG DIFFPIPE_TRANSFORMERS_VERSION=5.11.0
+ARG TENSORBOARD_VERSION=2.21.0
 
 ARG TORCH_VERSION=2.12.0
 ARG TORCHVISION_VERSION=0.27.0
@@ -61,6 +64,17 @@ ARG UV_VERSION=0.11.26
 ARG PEFT_VERSION=0.19.1
 ARG ACCELERATE_VERSION=1.14.0
 ARG HF_HUB_VERSION=1.19.0
+ARG FASTAPI_VERSION=0.139.0
+ARG UVICORN_VERSION=0.50.0
+ARG PYDANTIC_VERSION=2.13.4
+ARG PYTHON_MULTIPART_VERSION=0.0.32
+ARG FLASK_VERSION=3.1.3
+ARG FLASK_CORS_VERSION=6.0.5
+ARG REQUESTS_VERSION=2.34.2
+ARG PYTHON_DOTENV_VERSION=1.2.2
+ARG PYTHON_SOCKETIO_VERSION=5.16.3
+ARG WEBSOCKETS_VERSION=16.0
+ARG HTTPX_VERSION=0.28.1
 ARG INVOKEAI_VERSION=6.13.5
 ARG INVOKE_TORCH_VERSION=2.7.1+cu128
 ARG INVOKE_TORCHVISION_VERSION=0.22.1+cu128
@@ -100,7 +114,7 @@ RUN /opt/pilot/build/create-venvs.sh && \
 # Cache key: explicitly reference PyTorch/core versions
 COPY scripts/build/install-core-stack.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/install-core-stack.sh
-ARG TORCH_CACHE_BUST="${CUDA_PROFILE}-${TORCH_VERSION}-${TORCHVISION_VERSION}-${TORCHAUDIO_VERSION}-${XFORMERS_VERSION}"
+ARG TORCH_CACHE_BUST="${CUDA_PROFILE}-${TORCH_VERSION}-${TORCHVISION_VERSION}-${TORCHAUDIO_VERSION}-${XFORMERS_VERSION}-${FASTAPI_VERSION}-${UVICORN_VERSION}-${HTTPX_VERSION}"
 RUN /opt/pilot/build/install-core-stack.sh
 
 # ----- LAYER 5-9: Service installs (variable frequency, separated by service) -----
@@ -109,7 +123,7 @@ COPY scripts/build/lib/git_checkout.sh /opt/pilot/build/lib/
 COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/
 COPY scripts/build/install-comfy.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/lib/git_checkout.sh /opt/pilot/build/patches/patch-comfy.sh /opt/pilot/build/install-comfy.sh
-ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}"
+ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}-${COMFYUI_DOWNLOADER_REF}"
 RUN if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
 
 COPY scripts/build/patches/patch-kohya.sh /opt/pilot/build/patches/
@@ -120,7 +134,7 @@ RUN if [ "${INSTALL_KOHYA:-1}" = "1" ]; then /opt/pilot/build/install-kohya.sh; 
 
 COPY scripts/build/install-diffpipe.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/install-diffpipe.sh
-ARG DIFFPIPE_CACHE_BUST="${DIFFPIPE_REF}-${DIFFPIPE_DIFFUSERS_VERSION}"
+ARG DIFFPIPE_CACHE_BUST="${DIFFPIPE_REF}-${DIFFPIPE_DIFFUSERS_VERSION}-${TENSORBOARD_VERSION}"
 RUN if [ "${INSTALL_DIFFPIPE:-1}" = "1" ]; then /opt/pilot/build/install-diffpipe.sh; fi
 
 COPY scripts/build/install-invoke.sh /opt/pilot/build/

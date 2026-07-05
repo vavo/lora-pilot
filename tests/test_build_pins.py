@@ -25,16 +25,23 @@ def read_pin(path, name):
 
 class BuildPinTests(unittest.TestCase):
     def test_node_tooling_uses_pinned_npm_version(self):
-        expected = "11.17.0"
+        expected_node = "24"
+        expected_npm = "11.18.0"
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
-                self.assertEqual(read_pin(path, "NPM_VERSION"), expected)
+                self.assertEqual(read_pin(path, "NODE_MAJOR"), expected_node)
+                self.assertEqual(read_pin(path, "NPM_VERSION"), expected_npm)
 
         make_text = (ROOT / "Makefile").read_text()
         system_tools = (ROOT / "scripts/build/install-system-tools.sh").read_text()
 
+        self.assertIn('--build-arg NODE_MAJOR="$(NODE_MAJOR)"', make_text)
         self.assertIn('--build-arg NPM_VERSION="$(NPM_VERSION)"', make_text)
+        self.assertIn(': "${NODE_MAJOR:?NODE_MAJOR is required}"', system_tools)
         self.assertIn(': "${NPM_VERSION:?NPM_VERSION is required}"', system_tools)
+        self.assertIn("https://deb.nodesource.com/node_${NODE_MAJOR}.x", system_tools)
+        self.assertNotIn("setup_20.x", system_tools)
+        self.assertNotIn("| bash", system_tools)
         self.assertIn('npm install -g "npm@${NPM_VERSION}"', system_tools)
 
     def test_ai_toolkit_patch_removes_deprecated_next_dev_indicator(self):
@@ -71,11 +78,23 @@ class BuildPinTests(unittest.TestCase):
         expected = {
             "COMFYUI_REF": "v0.27.0",
             "COMFYUI_MANAGER_REF": "4.2.2",
+            "COMFYUI_DOWNLOADER_REF": "03146df738191004a8aad8264dca5c3530907f56",
         }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
                 for name, value in expected.items():
                     self.assertEqual(read_pin(path, name), value)
+
+        install_text = (ROOT / "scripts/build/install-comfy.sh").read_text()
+        self.assertIn(": \"${COMFYUI_DOWNLOADER_REF:?COMFYUI_DOWNLOADER_REF is required}\"", install_text)
+        self.assertIn("${COMFYUI_DOWNLOADER_REF}", install_text)
+        self.assertNotIn("git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git", install_text)
+
+    def test_diffpipe_uses_latest_verified_ref(self):
+        expected = "a7e7decf4325c1f03e4b88b7de93640029abd011"
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            with self.subTest(path=path):
+                self.assertEqual(read_pin(path, "DIFFPIPE_REF"), expected)
 
     def test_core_stack_installs_required_comfy_modules(self):
         expected = {
@@ -95,6 +114,35 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn('core_import_modules="torchaudio ${core_import_modules}"', core_stack)
         self.assertIn('CORE_IMPORT_MODULES="${core_import_modules}"', core_stack)
 
+    def test_runtime_service_dependencies_are_pinned(self):
+        expected = {
+            "FASTAPI_VERSION": "0.139.0",
+            "UVICORN_VERSION": "0.50.0",
+            "PYDANTIC_VERSION": "2.13.4",
+            "PYTHON_MULTIPART_VERSION": "0.0.32",
+            "FLASK_VERSION": "3.1.3",
+            "FLASK_CORS_VERSION": "6.0.5",
+            "REQUESTS_VERSION": "2.34.2",
+            "PYTHON_DOTENV_VERSION": "1.2.2",
+            "PYTHON_SOCKETIO_VERSION": "5.16.3",
+            "WEBSOCKETS_VERSION": "16.0",
+            "HTTPX_VERSION": "0.28.1",
+            "TENSORBOARD_VERSION": "2.21.0",
+        }
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            with self.subTest(path=path):
+                for name, value in expected.items():
+                    self.assertEqual(read_pin(path, name), value)
+
+        core_stack = (ROOT / "scripts/build/install-core-stack.sh").read_text()
+        self.assertIn('"fastapi==${FASTAPI_VERSION}"', core_stack)
+        self.assertIn('"uvicorn[standard]==${UVICORN_VERSION}"', core_stack)
+        self.assertIn('"httpx==${HTTPX_VERSION}"', core_stack)
+
+        diffpipe = (ROOT / "scripts/build/install-diffpipe.sh").read_text()
+        self.assertIn(': "${TENSORBOARD_VERSION:?TENSORBOARD_VERSION is required}"', diffpipe)
+        self.assertIn('"tensorboard==${TENSORBOARD_VERSION}"', diffpipe)
+
     def test_generated_invoke_constraints_use_invoke_torch_stack(self):
         env = os.environ.copy()
         env.update(
@@ -110,6 +158,17 @@ class BuildPinTests(unittest.TestCase):
                 "PEFT_VERSION": "0.19.1",
                 "ACCELERATE_VERSION": "1.14.0",
                 "HF_HUB_VERSION": "1.19.0",
+                "FASTAPI_VERSION": "0.139.0",
+                "UVICORN_VERSION": "0.50.0",
+                "PYDANTIC_VERSION": "2.13.4",
+                "PYTHON_MULTIPART_VERSION": "0.0.32",
+                "FLASK_VERSION": "3.1.3",
+                "FLASK_CORS_VERSION": "6.0.5",
+                "REQUESTS_VERSION": "2.34.2",
+                "PYTHON_DOTENV_VERSION": "1.2.2",
+                "PYTHON_SOCKETIO_VERSION": "5.16.3",
+                "WEBSOCKETS_VERSION": "16.0",
+                "HTTPX_VERSION": "0.28.1",
                 "INVOKE_TORCH_VERSION": "2.7.1+cu128",
                 "INVOKE_TORCHVISION_VERSION": "0.22.1+cu128",
                 "INVOKE_XFORMERS_VERSION": "0.0.31.post1",
@@ -119,6 +178,7 @@ class BuildPinTests(unittest.TestCase):
                 "INVOKE_HF_HUB_VERSION": "0.36.2",
                 "DIFFPIPE_DIFFUSERS_VERSION": "0.38.0",
                 "DIFFPIPE_TRANSFORMERS_VERSION": "5.11.0",
+                "TENSORBOARD_VERSION": "2.21.0",
             }
         )
         with tempfile.TemporaryDirectory() as tmp:
