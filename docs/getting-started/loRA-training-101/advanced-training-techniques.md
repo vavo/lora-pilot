@@ -1,5 +1,7 @@
 # Advanced Training Techniques
 
+_Last updated: 2026-07-05_
+
 Advanced training techniques help you achieve professional-quality results and optimize your training process. This guide covers sophisticated methods for experienced users.
 
 ##  Overview

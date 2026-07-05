@@ -1,5 +1,7 @@
 # What is Inference?
 
+_Last updated: 2026-07-05_
+
 Inference is the moment the model turns your prompt and settings into an image.
 
 ## Inference in One Sentence

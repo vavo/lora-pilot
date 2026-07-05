@@ -1,5 +1,7 @@
 # Practical Inference Projects
 
+_Last updated: 2026-07-05_
+
 Three short projects to build inference intuition fast.
 
 ## Project 1: Controlled Portrait Iteration

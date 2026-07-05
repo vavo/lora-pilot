@@ -1,5 +1,7 @@
 # Troubleshooting (Reference)
 
+_Last updated: 2026-07-05_
+
 This page is a quick reference for runtime issues tied to concrete LoRA Pilot behavior in repo code/scripts.
 
 ## Fast Triage
@@ -110,8 +112,6 @@ If still broken, inspect:
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

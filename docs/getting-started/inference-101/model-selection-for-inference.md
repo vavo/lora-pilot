@@ -1,5 +1,7 @@
 # Model Selection for Inference
 
+_Last updated: 2026-07-05_
+
 Picking the wrong model setup is the fastest way to waste GPU time.
 
 ## Minimal Model Setup

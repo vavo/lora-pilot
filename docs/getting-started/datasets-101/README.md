@@ -1,5 +1,7 @@
 # Datasets 101
 
+_Last updated: 2026-07-05_
+
 Welcome to Datasets 101! This comprehensive chapter covers everything you need to know about creating and managing datasets for AI model training. Whether you're training characters, styles, or concepts, good datasets are the foundation of great models.
 
 ##  Chapter Overview

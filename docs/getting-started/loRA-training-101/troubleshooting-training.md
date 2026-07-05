@@ -1,5 +1,7 @@
 # Troubleshooting Training
 
+_Last updated: 2026-07-05_
+
 Training problems can be frustrating, but most issues have clear solutions. This guide covers common training problems and their fixes.
 
 ##  Overview

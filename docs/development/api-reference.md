@@ -1,5 +1,7 @@
 # API Reference
 
+_Last updated: 2026-07-05_
+
 ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 
 ## Conventions
@@ -232,8 +234,6 @@ curl -s http://localhost:7878/api/docs/sitemap
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-07-03_
 
 ---
 

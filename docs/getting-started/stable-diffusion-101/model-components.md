@@ -1,5 +1,7 @@
 # Model Components Explained
 
+_Last updated: 2026-07-05_
+
 Think of AI image generation like building with LEGOs. You need different pieces to create something amazing. In Stable Diffusion, these pieces are called "model components." Let's understand each one in simple terms.
 
 ## Beginner Terms (Quick Glossary)
@@ -9,6 +11,10 @@ Think of AI image generation like building with LEGOs. You need different pieces
 - **VAE**: the part that affects final image clarity and color rendering
 - **Refiner**: an optional second pass for extra detail
 - **ControlNet**: a way to guide pose/composition more strictly
+- **CLIP / text encoder**: the component that converts prompt text into conditioning
+- **Latent image**: the compressed image space that the sampler edits before VAE decode
+
+In ComfyUI, `Load Checkpoint` commonly outputs `MODEL`, `CLIP`, and `VAE`. Those outputs explain the whole graph: model to sampler, CLIP to prompt encoders, VAE to encode/decode image data.
 
 ## 🧩 Base Models (Checkpoints)
 
@@ -104,12 +110,15 @@ Image Generation Process:
 3. Compressed Information → Image (VAE Decoder)
 ```
 
+In a basic ComfyUI text-to-image workflow, you mostly see the decoder path: `KSampler` outputs a latent, then `VAEDecode` turns it into an image for preview or saving. Image-to-image and inpainting also use `VAEEncode` to push an input image into latent space.
+
 ### Why VAE Matter
 
 #### Image Quality
 - **Better VAE**: Clearer, more detailed images
 - **Poor VAE**: Blurry or washed-out images
 - **Custom VAE**: Can enhance specific qualities
+- **Wrong VAE**: Black, flat, odd-color, or washed-out output
 
 #### Efficiency
 - **Compression**: Makes processing faster
@@ -127,6 +136,8 @@ Image Generation Process:
 - **Specialized**: Enhanced for specific purposes
 - **High Quality**: Better detail and clarity
 - **Style-Specific**: Optimized for certain art styles
+
+Match the VAE to the model family. SDXL, SD 1.5, Flux, and video models do not all expect the same files.
 
 ##  Refiner Models
 
@@ -259,13 +270,13 @@ Embeddings are like pre-learned concepts that the AI can use. They're similar to
 ### Complete Generation Pipeline
 
 ```
-Full Process Example:
-1. Base Model (SDXL): Provides image knowledge
-2. LoRA (Character): Adds specific character
-3. VAE (Custom): Enhances image quality
-4. ControlNet (Pose): Controls composition
-5. Refiner: Adds final polish
-Result: High-quality image of specific character in exact pose
+ComfyUI Text-to-Image Example:
+1. Load Checkpoint: provides MODEL, CLIP, and VAE
+2. CLIP Text Encode: turns positive/negative prompts into conditioning
+3. Empty Latent Image: sets width, height, and batch size
+4. KSampler: denoises the latent with model, conditioning, seed, steps, CFG, sampler, and scheduler
+5. VAE Decode: turns latent into pixels
+6. Save Image: writes the output and workflow metadata
 ```
 
 ### Component Combinations
@@ -287,6 +298,14 @@ Base Model + LoRA + Custom VAE
 Base Model + LoRA + ControlNet + VAE + Refiner
 = Professional quality with precise control
 ```
+
+### What to Check When Components Do Not Match
+
+- `Value not in list: ckpt_name`: the workflow references a checkpoint you do not have.
+- Red node blocks: a required custom node package is missing or failed to import.
+- Black or flat images: the VAE path or VAE connection is suspect.
+- Bad prompt following: check CLIP/text encoder wiring before over-tuning CFG.
+- Wrong style or broken anatomy: confirm LoRA weights and base model family.
 
 ##  Choosing Your Components
 
@@ -340,4 +359,3 @@ Now that you understand all the components, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

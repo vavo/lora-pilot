@@ -1,5 +1,7 @@
 # Practical Examples
 
+_Last updated: 2026-07-05_
+
 Time to put your knowledge into practice! These real-world projects will help you master Stable Diffusion through hands-on experience.
 
 ##  Project-Based Learning

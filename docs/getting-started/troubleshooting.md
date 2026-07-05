@@ -1,5 +1,7 @@
 # Troubleshooting Guide
 
+_Last updated: 2026-07-05_
+
 This guide covers common issues you might encounter during installation and first run of LoRA Pilot, along with their solutions.
 
 ## 🚨 Quick Diagnostics

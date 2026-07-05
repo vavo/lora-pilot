@@ -1,5 +1,7 @@
 # Advanced Techniques
 
+_Last updated: 2026-07-05_
+
 Ready to level up your AI art skills? These advanced techniques will give you professional-level control over your image generation.
 
 ##  Overview of Advanced Techniques

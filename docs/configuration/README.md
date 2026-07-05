@@ -1,5 +1,7 @@
 # Configuration
 
+_Last updated: 2026-07-05_
+
 This section is the index for LoRA Pilot configuration docs.
 
 ## Pages
@@ -42,8 +44,6 @@ This section is the index for LoRA Pilot configuration docs.
 - [User Guide](../user-guide/README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

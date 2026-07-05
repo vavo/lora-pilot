@@ -1,5 +1,7 @@
 # Windows Installation Guide for LoRA Pilot
 
+_Last updated: 2026-07-05_
+
 This guide will help Windows users install and run LoRA Pilot using Docker Desktop. LoRA Pilot is a comprehensive AI platform that includes ComfyUI, Kohya SS, JupyterLab, VS Code, and more in a single Docker container.
 
 ## System Requirements

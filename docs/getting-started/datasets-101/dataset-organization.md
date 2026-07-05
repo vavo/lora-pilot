@@ -1,5 +1,7 @@
 # Dataset Organization
 
+_Last updated: 2026-07-05_
+
 Proper dataset organization makes your data manageable, shareable, and professional. This guide covers best practices for structuring and managing AI training datasets.
 
 ##  Overview

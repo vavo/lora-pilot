@@ -1,5 +1,7 @@
 # Kohya SS
 
+_Last updated: 2026-07-05_
+
 Kohya SS is a battle-tested LoRA training interface that provides extensive configuration options and broad model support. It's one of the most popular tools for training custom Stable Diffusion models.
 
 ##  Overview

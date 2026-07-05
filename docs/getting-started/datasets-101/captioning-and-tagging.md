@@ -1,5 +1,7 @@
 # Captioning and Tagging
 
+_Last updated: 2026-07-05_
+
 Effective captions and tags are the "instructions" that tell your AI model what to learn. This guide covers how to write compelling descriptions and tags that train excellent models.
 
 ##  Overview

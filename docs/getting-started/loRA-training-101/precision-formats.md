@@ -1,5 +1,7 @@
 # Precision Formats Explained
 
+_Last updated: 2026-07-05_
+
 Precision formats determine how AI models store and process numbers. Understanding these helps you optimize for quality vs. performance.
 
 ##  Overview

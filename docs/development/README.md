@@ -1,5 +1,7 @@
 # Development
 
+_Last updated: 2026-07-05_
+
 This section covers LoRA Pilot internals and contributor-facing engineering docs.
 
 ## Pages
@@ -24,8 +26,6 @@ This section covers LoRA Pilot internals and contributor-facing engineering docs
 - [Configuration](../configuration/README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

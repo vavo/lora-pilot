@@ -1,5 +1,7 @@
 # Character Consistency with LoRA
 
+_Last updated: 2026-07-05_
+
 Creating consistent characters across multiple images is one of the biggest challenges in AI art. LoRA (Low-Rank Adaptation) is the perfect solution - let's learn how to use it effectively.
 
 ##  The Character Consistency Problem

@@ -1,5 +1,7 @@
 # Training Workflows
 
+_Last updated: 2026-07-05_
+
 This page is the practical training runbook for LoRA Pilot as it exists now.
 
 ## Stack Chooser
@@ -221,8 +223,6 @@ docker exec lora-pilot nvidia-smi
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

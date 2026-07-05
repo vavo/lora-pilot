@@ -1,5 +1,7 @@
 # Video LoRA Datasets
 
+_Last updated: 2026-07-05_
+
 Video LoRA datasets are specifically designed for training video generation models. This guide covers the unique requirements and best practices for creating effective video LoRA datasets.
 
 ##  Overview

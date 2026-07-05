@@ -1,5 +1,7 @@
 # TrainPilot
 
+_Last updated: 2026-07-05_
+
 TrainPilot is the quick-start training automation layer for Kohya in LoRA Pilot. It wraps a curated SDXL training flow around dataset selection, profile presets, and TOML patching.
 
 ##  Overview
@@ -157,8 +159,6 @@ TrainPilot writes TensorBoard event files to `/workspace/logs/TrainPilot` and Co
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-07-03_
 
 ---
 

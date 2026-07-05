@@ -1,5 +1,7 @@
 # TagPilot
 
+_Last updated: 2026-07-05_
+
 TagPilot is the dataset preparation UI for LoRA Pilot. It is a browser-first tool for loading images, generating tags/captions, editing labels, and saving datasets into `/workspace/datasets`.
 
 ##  Overview
@@ -159,8 +161,6 @@ docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-07-03_
 
 ---
 

@@ -1,5 +1,7 @@
 # Prompting Fundamentals
 
+_Last updated: 2026-07-05_
+
 Think of prompting like talking to a very talented but very literal artist. The more clearly and specifically you describe what you want, the better the results. This guide teaches you to speak AI's language fluently.
 
 ##  The Prompting Mindset

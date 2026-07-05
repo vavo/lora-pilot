@@ -1,5 +1,7 @@
 # Components
 
+_Last updated: 2026-07-05_
+
 This section is the map of LoRA Pilot components. Keep this page as an index; use component pages for actual workflows and settings.
 
 ## Component Index
@@ -51,8 +53,6 @@ docker exec lora-pilot tail -n 200 /workspace/logs/invoke.out.log
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

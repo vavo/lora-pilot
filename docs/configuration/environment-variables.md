@@ -1,5 +1,7 @@
 # Environment Variables
 
+_Last updated: 2026-07-05_
+
 This page documents environment variables currently used by LoRA Pilot runtime scripts, ControlPilot services, Docker Compose files, and Docker image build args.
 
 ## High-Impact Quick Reference
@@ -259,8 +261,6 @@ docker compose -f docker-compose.yml up -d --force-recreate
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-07-05_
 
 ---
 

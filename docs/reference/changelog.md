@@ -1,5 +1,7 @@
 # Changelog
 
+_Last updated: 2026-07-05_
+
 Canonical release history lives in the repository root file: `CHANGELOG`.
 
 ControlPilot exposes the same content at:
@@ -54,8 +56,6 @@ When adding a new release:
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-07-05_
 
 ---
 

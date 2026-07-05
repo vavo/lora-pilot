@@ -1,5 +1,7 @@
 # What is Stable Diffusion?
 
+_Last updated: 2026-07-05_
+
 Welcome to your first step into AI image generation! Let's break down what Stable Diffusion is in simple terms, without the technical jargon.
 
 ##  The Big Picture

@@ -1,5 +1,7 @@
 # Supported Models
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot supports a comprehensive range of AI models for training and inference. This reference covers all supported model families, their requirements, and use cases.
 
 ##  Model Families Overview

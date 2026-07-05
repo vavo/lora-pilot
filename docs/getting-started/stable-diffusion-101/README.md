@@ -1,5 +1,7 @@
 # Stable Diffusion 101
 
+_Last updated: 2026-07-05_
+
 Imagine describing your dream vacation to a friend who's an incredibly talented artist. You mention a sunset beach with purple sand and floating lanterns, and within seconds, they hand you a perfect painting of exactly what you described. That's essentially what Stable Diffusion does—except the artist is an AI that learned from billions of images.
 
 This guide takes you from "what is this magic?" to confidently creating images that match your vision. You don't need any background in AI or machine learning. If you can describe what you want to see in a picture, you already have the most important skill.

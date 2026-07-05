@@ -1,5 +1,7 @@
 # What is LoRA Training?
 
+_Last updated: 2026-07-05_
+
 Welcome to your first step into custom model training! LoRA training is one of the most powerful and accessible ways to teach AI your specific characters, styles, or concepts. Let's break it down in simple terms.
 
 ##  The Big Picture

@@ -1,5 +1,7 @@
 # Training Workflows
 
+_Last updated: 2026-07-05_
+
 Training workflows are step-by-step processes that guide you from dataset to trained model. This guide covers the complete training process using LoRA Pilot's tools.
 
 ## Beginner Terms (Quick)

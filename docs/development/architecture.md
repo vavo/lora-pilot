@@ -1,5 +1,7 @@
 # Architecture
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot is built as a comprehensive, containerized AI workspace that integrates multiple diffusion model tools into a unified system. This document outlines the system architecture, component relationships, and design principles.
 
 ## 🏗️ System Overview

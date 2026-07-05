@@ -1,5 +1,7 @@
 # Docker Compose
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot ships three Compose variants in the repo. Use the standard file for normal GPU use, dev for source-mounted hacking, and cpu for minimal no-GPU runs.
 
 ## Compose Files
@@ -138,8 +140,6 @@ docker compose exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

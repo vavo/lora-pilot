@@ -1,5 +1,7 @@
 # MediaPilot
 
+_Last updated: 2026-07-05_
+
 MediaPilot is the built-in gallery and curation layer for generated images in LoRA Pilot. It is embedded into ControlPilot and optimized for large output directories.
 
 ##  Overview
@@ -167,8 +169,6 @@ curl -s http://localhost:7878/api/mediapilot/status
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

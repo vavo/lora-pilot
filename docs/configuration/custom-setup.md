@@ -1,5 +1,7 @@
 # Custom Setup
 
+_Last updated: 2026-07-05_
+
 This page covers practical overrides when default Compose behavior is not enough: custom images, custom mounts, port remaps, bootstrap toggles, and update policy wiring.
 
 ## 1) Use Override Files, Not Ad-Hoc Edits
@@ -204,8 +206,6 @@ Use `docker-compose.dev.yml` so Portal/scripts/supervisor config are mounted fro
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

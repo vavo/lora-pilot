@@ -1,5 +1,7 @@
 # AI Toolkit
 
+_Last updated: 2026-07-05_
+
 AI Toolkit is a modern training stack for diffusion models, specifically designed for training FLUX.1 and other latest models. It provides a Next.js interface with Gradio backend and integrates seamlessly with the LoRA Pilot workspace.
 
 ##  Overview

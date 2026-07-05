@@ -1,5 +1,7 @@
 # First Run
 
+_Last updated: 2026-07-05_
+
 This is the short, non-ceremonial boot checklist.
 
 ## 1) Start the Stack
@@ -100,8 +102,6 @@ docker exec lora-pilot tail -n 200 /workspace/logs/kohya.err.log
 - [Configuration](../configuration/README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

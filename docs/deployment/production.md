@@ -1,5 +1,7 @@
 # Production Deployment
 
+_Last updated: 2026-07-05_
+
 This guide covers deploying LoRA Pilot in production environments, including scaling, security, monitoring, and maintenance considerations.
 
 ##  Production Overview

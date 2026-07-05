@@ -1,5 +1,7 @@
 # What Makes a Good Dataset
 
+_Last updated: 2026-07-05_
+
 A good dataset is the foundation of a great AI model. This guide covers the essential qualities and standards that separate mediocre datasets from exceptional ones.
 
 ##  The Big Picture

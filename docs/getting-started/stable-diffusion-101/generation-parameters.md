@@ -1,5 +1,7 @@
 # Generation Parameters
 
+_Last updated: 2026-07-05_
+
 Think of generation parameters like camera settings on a professional camera. Just as a photographer adjusts aperture, shutter speed, and ISO, you'll adjust AI parameters to get the perfect image. This guide explains each parameter in simple terms.
 
 ## Beginner Terms (Before You Start)
@@ -9,6 +11,10 @@ Think of generation parameters like camera settings on a professional camera. Ju
 - **Sampler**: the method used to build the image
 - **Scheduler**: timing strategy used by some samplers
 - **Seed**: randomness number (same seed = similar result)
+- **Denoise**: how much the sampler can change the starting latent or source image
+- **Batch size**: how many images the workflow tries to generate at once
+
+In ComfyUI, most of these live on `KSampler`. Width, height, and batch size usually live on `EmptyLatentImage` for text-to-image workflows.
 
 ##  The Big Picture
 
@@ -37,6 +43,7 @@ Seed -1 (Random): Creates different image each time
 - **Consistency**: Need the same image multiple times
 - **Debugging**: Troubleshooting why something looks wrong
 - **Iterative Improvement**: Gradually improving an image
+- **ComfyUI Workflow Checks**: Confirming that a new node or wire changed the output for a real reason
 
 #### Use Random Seeds When:
 - **Exploring**: Want to see different possibilities
@@ -107,6 +114,8 @@ High CFG (13-20): AI strictly follows prompt, less creative
 - Balanced results
 - Everyday generation
 
+For SDXL in ComfyUI, start lower than old web UI habits if images look harsh. Try 5-7 before pushing into double digits.
+
 #### High CFG (13-20)
 - **Strict Control**: AI follows prompt very closely
 - **Less Creative**: Less artistic interpretation
@@ -118,6 +127,8 @@ High CFG (13-20): AI strictly follows prompt, less creative
 - Specific requirements
 - When you need exact results
 - Product visualization
+
+High CFG can create crunchy textures, distorted faces, and over-literal compositions. If a prompt needs CFG 18 to work, the prompt, model, or workflow probably needs attention.
 
 ### Practical Examples
 
@@ -219,6 +230,7 @@ But they take different paths to get there
 - **Start with DPM++ 2M**: Best all-around choice
 - **Try Euler a**: For faster generation
 - **Experiment**: Try different ones to see what you like
+- **Keep scheduler fixed**: Otherwise you are comparing two changes at once
 
 #### For Quality
 - **DPM++ 2M Karras**: Excellent quality
@@ -293,6 +305,8 @@ After about 30-40 steps, additional steps provide minimal improvement:
 - **30 to 50 steps**: Small improvement
 - **50 to 100 steps**: Very minimal improvement
 
+Use low steps for composition scouting and higher steps for finalists. If a 12-step draft is broken, 50 steps usually produces a slower broken image.
+
 ### Step Recommendations by Model
 
 #### SD1.5
@@ -306,6 +320,10 @@ After about 30-40 steps, additional steps provide minimal improvement:
 #### FLUX.1
 - **Recommended**: 30-50 steps
 - **Maximum**: 100 steps
+
+#### Turbo, Lightning, LCM, and Distilled Models
+- **Recommended**: Use the model card or workflow notes first
+- **Typical Pattern**: Fewer steps, different CFG/guidance expectations, and less tolerance for old SDXL defaults
 
 ---
 
@@ -438,6 +456,17 @@ Seed: Fixed (same each time)
 Result: Identical images for testing
 ```
 
+### ComfyUI Tuning Pass
+
+Use this when a workflow produces almost-good output:
+
+1. Fix seed, sampler, scheduler, checkpoint, VAE, LoRA weights, and resolution.
+2. Change the prompt only.
+3. If composition is good but quality is weak, tune steps.
+4. If prompt pressure is wrong, tune CFG or model-specific guidance.
+5. If image-to-image changes too much, lower denoise.
+6. Save the PNG or workflow JSON when the result is worth keeping.
+
 ---
 
 ## 💡 Practical Tips
@@ -446,11 +475,13 @@ Result: Identical images for testing
 - **Use Defaults**: Most models have good default parameters
 - **Change One Thing**: Adjust one parameter at a time
 - **Learn Effects**: Understand what each parameter does
+- **Use Metadata**: In ComfyUI, drag a generated PNG back onto the canvas to reload its workflow and settings
 
 ### Test Systematically
 - **Parameter Grids**: Test different combinations
 - **Keep Notes**: Remember what works for your style
 - **Save Good Settings**: Reuse successful combinations
+- **Same Workflow**: Do not install custom nodes, swap models, and tune CFG in the same test
 
 ### Understand Trade-offs
 - **Speed vs Quality**: Faster usually means lower quality
@@ -461,6 +492,8 @@ Result: Identical images for testing
 - **SD1.5**: Works well with lower steps (20-25)
 - **SDXL**: Benefits from more steps (30-40)
 - **FLUX.1**: Needs more steps for best quality (30-50)
+- **Match Resolution**: SD 1.5, SDXL, Flux, Wan, and LTX workflows do not share one universal canvas size
+- **Match Loader Inputs**: Use the correct VAE, text encoder, and checkpoint family for the workflow
 
 ##  Troubleshooting Parameters
 
@@ -486,6 +519,16 @@ Result: Identical images for testing
 - **Use Creative Sampler**: Try DPM++ SDE
 - **Lower CFG**: Allow more creativity
 
+#### ComfyUI Workflow Loads but Fails
+- **Cause**: Missing model, missing custom node, or wrong-family replacement model
+- **Solution**: Read the failing loader node, install required nodes, and replace models with the same family
+- **Prevention**: Save model requirements with shared workflows
+
+#### CUDA Out of Memory
+- **Cause**: Resolution, batch size, model size, or extra processing branch exceeds VRAM
+- **Solution**: Batch size 1, smaller latent size, quantized model variant, fewer concurrent branches
+- **Prevention**: Test small before queueing final renders
+
 ##  What's Next?
 
 Now that you understand parameters, you're ready to:
@@ -499,4 +542,3 @@ Now that you understand parameters, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

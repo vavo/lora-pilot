@@ -1,5 +1,7 @@
 # CLI Commands Reference
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot provides a comprehensive command-line interface for managing services, models, datasets, and workflows. This reference covers all available commands and their usage.
 
 ##  Quick Start

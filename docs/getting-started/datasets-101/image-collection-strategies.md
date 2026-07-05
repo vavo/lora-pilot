@@ -1,5 +1,7 @@
 # Image Collection Strategies
 
+_Last updated: 2026-07-05_
+
 Effective image collection is the foundation of great datasets. This guide covers proven strategies for gathering high-quality images for different training scenarios.
 
 ##  Overview

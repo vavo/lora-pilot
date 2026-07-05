@@ -1,5 +1,7 @@
 # User Guide
 
+_Last updated: 2026-07-05_
+
 Task-oriented guide for day-to-day LoRA Pilot usage.
 
 ## Start Here
@@ -48,8 +50,6 @@ Task-oriented guide for day-to-day LoRA Pilot usage.
 - [Troubleshooting](../getting-started/troubleshooting.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

@@ -1,5 +1,7 @@
 # LoRA Pilot Documentation
 
+_Last updated: 2026-07-05_
+
 Welcome to the comprehensive documentation for LoRA Pilot, your all-in-one Stable Diffusion workspace. This documentation covers everything from initial setup to advanced configuration and development.
 
 ## Documentation Structure

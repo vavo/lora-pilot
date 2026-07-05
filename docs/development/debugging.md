@@ -1,5 +1,7 @@
 # Debugging
 
+_Last updated: 2026-07-05_
+
 This page covers practical debugging flows for the current LoRA Pilot runtime.
 
 ## Fast Triage
@@ -135,8 +137,6 @@ docker compose exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

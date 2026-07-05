@@ -1,5 +1,7 @@
 # Building LoRA Pilot
 
+_Last updated: 2026-07-05_
+
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
 
 ##  Overview

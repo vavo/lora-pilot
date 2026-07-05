@@ -1,5 +1,7 @@
 # Inference 101
 
+_Last updated: 2026-07-05_
+
 Welcome to Inference 101. This chapter is for people starting from zero who want predictable results without random guessing.
 
 ## Chapter Overview

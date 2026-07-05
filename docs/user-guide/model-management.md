@@ -1,5 +1,7 @@
 # Model Management
 
+_Last updated: 2026-07-05_
+
 Comprehensive guide to managing AI models in LoRA Pilot, including downloading, organizing, validating, and maintaining your model library.
 
 ##  Overview

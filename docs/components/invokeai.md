@@ -1,5 +1,7 @@
 # InvokeAI
 
+_Last updated: 2026-07-05_
+
 InvokeAI is the second inference engine bundled in LoRA Pilot. It runs as a supervised service and is wired to the shared workspace model tree so it can reuse the same assets as ComfyUI and training tools.
 
 ##  Overview
@@ -109,8 +111,6 @@ docker exec lora-pilot tail -n 300 /workspace/logs/invoke.err.log
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-06-12_
 
 ---
 

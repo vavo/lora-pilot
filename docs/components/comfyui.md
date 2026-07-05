@@ -1,5 +1,7 @@
 # ComfyUI
 
+_Last updated: 2026-07-05_
+
 ComfyUI is a powerful node-based interface for Stable Diffusion that allows you to create complex image generation workflows through a visual programming interface. It's integrated into LoRA Pilot with custom nodes and workspace integration.
 
 ##  Overview
@@ -33,6 +35,13 @@ ComfyUI offers:
 
 ### Main Components
 
+#### Canvas Basics
+- Arrange workflows left to right: loaders on the left, processing in the middle, outputs on the right.
+- Nodes have inputs on the left, editable settings in the center, and outputs on the right.
+- Connection colors and socket labels matter. A `MODEL` output cannot plug into an `IMAGE` input, and ComfyUI will reject incompatible links.
+- One output can feed multiple inputs. Reuse the same `MODEL`, `CLIP`, `VAE`, seed, or image output when comparing branches.
+- Double-click empty canvas space to search nodes. This is faster than digging through menus once you know the node name.
+
 #### Node Categories
 - **Loaders**: Model, VAE, CLIP loaders
 - **Conditioning**: Text encoding, prompt management
@@ -41,10 +50,11 @@ ComfyUI offers:
 - **Utility**: Math, logic, control flow
 
 #### Workflow Management
-- **Save Workflow**: Save your workflow as JSON/API format
-- **Load Workflow**: Import workflows from community or your own
-- **Queue Management**: Queue multiple prompts for batch processing
-- **Lightning Mode**: Fast execution without UI updates
+- **Save Workflow**: Save important workflows as JSON. Browser storage is not a backup.
+- **Load Workflow**: Import JSON workflows, or drag a ComfyUI-generated PNG back onto the canvas to reload embedded workflow metadata.
+- **Queue Management**: Queue prompts with `Ctrl+Enter` / `Cmd+Enter`.
+- **Versioning**: Save working milestones as `workflow-v1.json`, `workflow-v2-upscale.json`, etc. Overwriting the only good copy is how people invent unpaid archaeology.
+- **Lightning Mode**: Fast execution without UI updates.
 
 ### Essential Nodes
 
@@ -69,9 +79,16 @@ CLIPTextEncode:
 KSampler:
   - Main sampling node
   - Inputs: MODEL, CONDITIONING, NEGATIVE_CONDITIONING, LATENT_IMAGE
-  - Parameters: seed, steps, cfg, sampler_name, scheduler
+  - Parameters: seed, steps, cfg, sampler_name, scheduler, denoise
   - Output: LATENT_IMAGE
 ```
+
+Key KSampler fields:
+- **Seed**: Controls the starting noise. Fix it while tuning prompts or settings; randomize it when exploring new compositions.
+- **Steps**: Controls denoising passes. Start around 20-30 for classic SD workflows, then only increase when details still look unfinished.
+- **CFG**: Controls prompt pressure. Classic SD/SDXL often starts around 6-8, while Flux workflows commonly use much lower CFG and separate guidance controls.
+- **Scheduler / sampler**: Keep these fixed while learning. Changing sampler, scheduler, seed, prompt, and CFG together gives you a mystery, not a test.
+- **Denoise**: Controls how much the sampler can change the starting latent. Use lower values for image-to-image and inpainting when you need to preserve the source.
 
 #### Image Processing
 ```yaml
@@ -92,7 +109,16 @@ SaveImage:
 ```
 CheckpointLoader → CLIPTextEncode (positive) → KSampler → VAEDecode → SaveImage
                  ↘ CLIPTextEncode (negative) ↗
+EmptyLatentImage ─────────────────────────────↗
 ```
+
+Build and check the starter workflow in this order:
+1. Load a checkpoint and confirm `MODEL`, `CLIP`, and `VAE` outputs are present.
+2. Add two `CLIPTextEncode` nodes, one positive and one negative, both connected to the checkpoint `CLIP`.
+3. Add `EmptyLatentImage` at a model-appropriate resolution.
+4. Wire `MODEL`, positive conditioning, negative conditioning, and latent image into `KSampler`.
+5. Decode with `VAEDecode`, then connect `IMAGE` to `SaveImage`.
+6. Before queueing, scan for unconnected required inputs, wrong checkpoint names, and a seed mode that matches your goal.
 
 ### LoRA Workflow
 ```
@@ -120,7 +146,7 @@ LoadImage → VAEEncode ↗
 
 #### ComfyUI-Manager
 - **Purpose**: Node management and installation
-- **Features**: Browse, install, update custom nodes
+- **Features**: Browse, install, update custom nodes, and install missing nodes from loaded workflows
 - **Access**: Available in ComfyUI interface
 
 #### ComfyUI-Downloader
@@ -145,6 +171,8 @@ LoadImage → VAEEncode ↗
 2. Click "Install Custom Nodes"
 3. Browse or search for nodes
 4. Click "Install" and restart ComfyUI
+
+For red missing-node blocks in an imported workflow, use Manager's missing-node install flow, restart ComfyUI, then reload the workflow. If the workflow also references missing checkpoints, LoRAs, VAEs, or upscalers, install those models separately.
 
 #### Manual Installation
 ```bash
@@ -173,15 +201,22 @@ VAELoader:
 ```yaml
 # Increase batch size for efficiency
 KSampler:
-  batch_size: 4  # If VRAM allows
+  batch_size: 1  # Raise only after the workflow is stable and VRAM allows
 ```
 
 #### Memory Management
 ```yaml
 # Automatic memory management
 # ComfyUI automatically manages VRAM
-# Use LightGBM for large models
+# Prefer quantized/FP8 models when large models exhaust VRAM
 ```
+
+Practical VRAM triage:
+- Reduce batch size to 1.
+- Test at a smaller latent size, then upscale later.
+- Restart ComfyUI after swapping large checkpoints or adding several custom nodes.
+- Prefer FP8 or other quantized model variants when the model family supports them.
+- Avoid queueing several heavy prompts while debugging memory pressure.
 
 ### Speed Optimization
 
@@ -344,6 +379,8 @@ docker exec lora-pilot models pull sdxl-base
 4. Close other applications
 ```
 
+For large modern models, also try FP8/quantized variants before assuming the workflow is broken.
+
 #### Node Errors
 ```bash
 # Problem: Custom node not working
@@ -353,6 +390,26 @@ docker exec lora-pilot models pull sdxl-base
 3. Update custom node
 4. Check for conflicts
 ```
+
+#### Black, Flat, or Washed-Out Output
+```bash
+# Fast checks:
+1. Confirm VAE Decode is connected to the checkpoint VAE or the intended external VAE
+2. Check the model card for baked-in VAE guidance
+3. Use the correct VAE family, e.g. SDXL VAE for SDXL and ae.safetensors for Flux
+4. Restart ComfyUI after changing VAE/model files
+```
+
+#### Imported Workflow Fails Validation
+```bash
+# Common causes:
+1. Missing checkpoint, LoRA, VAE, or upscale model
+2. Missing custom node package
+3. Node changed after a ComfyUI/custom-node update
+4. Workflow uses settings from a different model family
+```
+
+Match the model family first. An SDXL workflow wants SDXL-size latents and SDXL checkpoints; a Flux workflow wants Flux models and Flux-appropriate guidance.
 
 ### Debug Commands
 
@@ -396,10 +453,12 @@ print('✅ Model loads successfully')
 ##  Best Practices
 
 ### Workflow Design
-1. **Modular Design**: Create reusable workflow components
-2. **Clear Naming**: Use descriptive node names
-3. **Documentation**: Add notes to complex workflows
-4. **Version Control**: Save workflow versions
+1. **Modular Design**: Create reusable workflow components.
+2. **Clear Layout**: Keep loaders left, samplers center, outputs right.
+3. **Clear Naming**: Use descriptive node and group names.
+4. **Documentation**: Add notes to complex workflows.
+5. **Version Control**: Save workflow versions.
+6. **Small Tests**: Build from a known-good text-to-image chain before adding ControlNet, LoRAs, upscalers, or face/detailer nodes.
 
 ### Performance Optimization
 1. **Batch Processing**: Queue multiple prompts
@@ -408,15 +467,15 @@ print('✅ Model loads successfully')
 4. **Memory Management**: Monitor VRAM usage
 
 ### Quality Improvement
-1. **Prompt Engineering**: Craft detailed prompts
-2. **Negative Prompts**: Use effective negative prompts
-3. **Parameter Tuning**: Experiment with sampling parameters
-4. **Iterative Refinement**: Refine based on results
+1. **Prompt Engineering**: Craft clear prompts and keep negative prompts focused.
+2. **Parameter Tuning**: Change one parameter at a time with a fixed seed.
+3. **Model-Specific Defaults**: Check the model card before trusting generic CFG, step, and resolution advice.
+4. **Workflow Metadata**: Drag a saved PNG back into ComfyUI to recover the exact workflow and settings.
+5. **Iterative Refinement**: Compare outputs side by side and keep the seed, model, LoRA weights, sampler, scheduler, CFG, steps, and resolution with the final image.
 
 ---
 
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
 

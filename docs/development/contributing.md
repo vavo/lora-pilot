@@ -1,5 +1,7 @@
 # Contributing to LoRA Pilot
 
+_Last updated: 2026-07-05_
+
 Thank you for your interest in contributing to LoRA Pilot! This guide covers how to contribute effectively, including development setup, contribution guidelines, and community practices.
 
 ##  Contribution Overview

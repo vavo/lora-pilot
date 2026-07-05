@@ -1,5 +1,7 @@
 # File Structure
 
+_Last updated: 2026-07-05_
+
 This page documents both the repository layout and the runtime `/workspace` layout created by bootstrap.
 
 ## Repository Layout (Source Tree)
@@ -89,8 +91,6 @@ Important examples:
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

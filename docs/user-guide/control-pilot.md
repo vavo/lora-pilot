@@ -1,5 +1,7 @@
 # ControlPilot
 
+_Last updated: 2026-07-05_
+
 ControlPilot is the central web interface for LoRA Pilot, providing a unified dashboard for managing all services, models, datasets, and training workflows. It's your command center for the entire AI workspace.
 
 ##  Overview

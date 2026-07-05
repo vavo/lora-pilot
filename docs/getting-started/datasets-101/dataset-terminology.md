@@ -1,5 +1,7 @@
 # Dataset Terminology
 
+_Last updated: 2026-07-05_
+
 Welcome to Dataset Terminology! This guide covers all the essential terms and concepts you need to understand when working with AI training datasets. Think of this as learning the language of dataset creation.
 
 ##  The Big Picture

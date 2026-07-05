@@ -1,5 +1,7 @@
 # Training Parameters Explained
 
+_Last updated: 2026-07-05_
+
 Training parameters are like the controls on a professional camera. Understanding what each parameter does helps you get the results you want. This guide explains all the important training settings in simple terms.
 
 ## Beginner Terms (Before You Dive In)

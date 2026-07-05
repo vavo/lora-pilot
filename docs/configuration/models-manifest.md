@@ -1,5 +1,7 @@
 # Models Manifest
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot model downloads are driven by a pipe-delimited manifest file.
 
 ## Locations
@@ -136,8 +138,6 @@ For shared top-level model folders, repo-file selection has an extra guard to av
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-06-12_
 
 ---
 

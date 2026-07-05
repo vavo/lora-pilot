@@ -1,5 +1,7 @@
 # Cloud Platforms
 
+_Last updated: 2026-07-05_
+
 This page documents cloud deployment paths that are explicitly supported by repository code and configuration.
 
 ## Supported By Repo Evidence
@@ -103,8 +105,6 @@ Expected:
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

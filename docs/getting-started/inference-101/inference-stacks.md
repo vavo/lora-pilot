@@ -1,5 +1,7 @@
 # Inference Stacks
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot gives you two main inference paths: **ComfyUI** and **InvokeAI**.
 
 ## Quick Comparison

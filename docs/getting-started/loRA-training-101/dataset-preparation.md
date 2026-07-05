@@ -1,5 +1,7 @@
 # Dataset Preparation
 
+_Last updated: 2026-07-05_
+
 Your training dataset is the foundation of your LoRA model's quality. Garbage in, garbage out - this guide shows you how to prepare high-quality datasets that train well.
 
 ##  The Big Picture

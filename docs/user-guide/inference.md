@@ -1,5 +1,7 @@
 # Inference
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot has two inference paths sharing the same model store:
 - ComfyUI (`5555`) for workflow control.
 - InvokeAI (`9090`) for faster UI-driven iteration.
@@ -112,8 +114,6 @@ ls -la /workspace/apps/invoke/models
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

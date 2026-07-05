@@ -1,5 +1,7 @@
 # Practical Training Projects
 
+_Last updated: 2026-07-05_
+
 Practical training projects help you apply your knowledge and build real-world experience. This guide provides step-by-step projects from beginner to advanced levels.
 
 ##  Overview

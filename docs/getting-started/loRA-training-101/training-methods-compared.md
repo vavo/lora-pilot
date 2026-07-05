@@ -1,5 +1,7 @@
 # Training Methods Compared
 
+_Last updated: 2026-07-05_
+
 When it comes to customizing AI models, you have several methods to choose from. Each has different strengths and use cases. Let's compare them so you can choose the right one for your needs.
 
 ##  Overview of Methods

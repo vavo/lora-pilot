@@ -1,5 +1,7 @@
 # System Requirements
 
+_Last updated: 2026-07-05_
+
 This guide outlines the hardware and software requirements for running LoRA Pilot effectively. Requirements vary based on your intended use case (inference vs training) and model complexity.
 
 ## 💻 Hardware Requirements

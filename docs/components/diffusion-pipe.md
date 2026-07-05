@@ -1,5 +1,7 @@
 # Diffusion Pipe
 
+_Last updated: 2026-07-05_
+
 Diffusion Pipe in LoRA Pilot is an experimental DeepSpeed-based training path with TensorBoard baked in. It is exposed as the `diffpipe` supervisor service and as the `Dpipe` training tab in ControlPilot.
 
 ##  Overview
@@ -119,8 +121,6 @@ curl -s -X POST http://localhost:7878/dpipe/train/stop
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-07-03_
 
 ---
 

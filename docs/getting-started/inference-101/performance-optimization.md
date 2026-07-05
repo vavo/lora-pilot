@@ -1,5 +1,7 @@
 # Performance Optimization
 
+_Last updated: 2026-07-05_
+
 Goal: faster iteration without turning outputs into mush.
 
 ## Fast Wins

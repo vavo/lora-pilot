@@ -1,5 +1,7 @@
 # Image LoRA Datasets
 
+_Last updated: 2026-07-05_
+
 Image LoRA datasets are specifically designed for training image generation models. This guide covers the unique requirements and best practices for creating effective image LoRA datasets.
 
 ##  Overview

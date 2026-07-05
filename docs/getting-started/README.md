@@ -1,5 +1,7 @@
 # Getting Started
 
+_Last updated: 2026-07-05_
+
 Setup and onboarding index for LoRA Pilot.
 
 ## Recommended Order
@@ -56,8 +58,6 @@ flowchart LR
 - [GitHub Issues](https://github.com/vavo/lora-pilot/issues)
 
 ---
-
-_Last updated: 2026-02-12_
 
 ---
 

@@ -1,5 +1,7 @@
 # Windows Installer
 
+_Last updated: 2026-07-05_
+
 This guide covers creating a Windows installer for LoRA Pilot, providing a native Windows experience for users who prefer not to use Docker Desktop directly.
 
 ##  Overview

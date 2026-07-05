@@ -1,5 +1,7 @@
 # Complete Model Guide
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot supports an incredible variety of AI models - from classic Stable Diffusion to cutting-edge experimental models. This guide covers every model available, helping you choose the perfect one for your needs.
 
 ##  Model Categories

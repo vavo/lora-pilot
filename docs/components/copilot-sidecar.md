@@ -1,5 +1,7 @@
 # Copilot Sidecar
 
+_Last updated: 2026-07-05_
+
 Copilot Sidecar is an optional FastAPI service that lets ControlPilot call the `copilot` CLI through HTTP.
 It is designed for workspace-local execution and persists Copilot config/auth under `/workspace`.
 
@@ -87,8 +89,6 @@ curl -s http://127.0.0.1:7878/api/copilot/status
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

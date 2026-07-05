@@ -1,5 +1,7 @@
 # Supervisor
 
+_Last updated: 2026-07-05_
+
 LoRA Pilot uses `supervisord` as the in-container process manager.
 
 ## Startup Path
@@ -174,8 +176,6 @@ docker exec lora-pilot supervisorctl update
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

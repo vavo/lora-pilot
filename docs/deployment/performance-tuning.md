@@ -1,5 +1,7 @@
 # Performance Tuning
 
+_Last updated: 2026-07-05_
+
 This page documents performance controls that are explicitly present in this repository.
 
 ## High-Impact Knobs
@@ -143,8 +145,6 @@ Use these to monitor:
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-06-12_
 
 ---
 

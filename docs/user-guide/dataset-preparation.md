@@ -1,5 +1,7 @@
 # Dataset Preparation
 
+_Last updated: 2026-07-05_
+
 This guide covers the dataset workflow that is actually wired in LoRA Pilot today: ControlPilot dataset APIs + TagPilot editing/saving.
 
 ## Storage and Naming Rules
@@ -119,8 +121,6 @@ If import fails, rebuild ZIP with normal relative paths only.
 - [Documentation Home](../README.md)
 
 ---
-
-_Last updated: 2026-02-11_
 
 ---
 

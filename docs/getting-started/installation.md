@@ -1,5 +1,7 @@
 # Installation Guide
 
+_Last updated: 2026-07-05_
+
 This comprehensive guide will walk you through installing LoRA Pilot on Windows, macOS, and Linux. LoRA Pilot uses Docker to provide a consistent, isolated environment for all AI tools.
 
 ##  Quick Install (Recommended)

@@ -1,5 +1,7 @@
 # LoRA Training 101
 
+_Last updated: 2026-07-05_
+
 Welcome to LoRA Training 101! This comprehensive chapter covers everything you need to know about training custom LoRA models, from absolute basics to advanced techniques. Whether you want to create consistent characters, unique styles, or specialized concepts, this guide will take you there.
 
 ## Beginner Terms (Plain English)

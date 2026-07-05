@@ -1,5 +1,7 @@
 # Image Processing and Preparation
 
+_Last updated: 2026-07-05_
+
 Image processing and preparation transforms your collected images into optimal training data. This guide covers the technical aspects of preparing images for AI model training.
 
 ##  Overview
