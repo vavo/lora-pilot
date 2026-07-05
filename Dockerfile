@@ -114,8 +114,9 @@ RUN /opt/pilot/build/create-venvs.sh && \
 # Cache key: explicitly reference PyTorch/core versions
 COPY scripts/build/install-core-stack.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/install-core-stack.sh
-ARG TORCH_CACHE_BUST="${CUDA_PROFILE}-${TORCH_VERSION}-${TORCHVISION_VERSION}-${TORCHAUDIO_VERSION}-${XFORMERS_VERSION}-${FASTAPI_VERSION}-${UVICORN_VERSION}-${HTTPX_VERSION}"
-RUN /opt/pilot/build/install-core-stack.sh
+ARG TORCH_CACHE_BUST="${CUDA_PROFILE}-${TORCH_VERSION}-${TORCHVISION_VERSION}-${TORCHAUDIO_VERSION}-${XFORMERS_VERSION}-${BITSANDBYTES_VERSION}-${CORE_DIFFUSERS_VERSION}-${TRANSFORMERS_VERSION}-${UV_VERSION}-${PEFT_VERSION}-${ACCELERATE_VERSION}-${HF_HUB_VERSION}-${FASTAPI_VERSION}-${UVICORN_VERSION}-${PYDANTIC_VERSION}-${HTTPX_VERSION}"
+RUN echo "TORCH_CACHE_BUST=${TORCH_CACHE_BUST}" >/dev/null && \
+    /opt/pilot/build/install-core-stack.sh
 
 # ----- LAYER 5-9: Service installs (variable frequency, separated by service) -----
 # These layers rebuild independently when service refs change
@@ -124,29 +125,34 @@ COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/
 COPY scripts/build/install-comfy.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/lib/git_checkout.sh /opt/pilot/build/patches/patch-comfy.sh /opt/pilot/build/install-comfy.sh
 ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}-${COMFYUI_DOWNLOADER_REF}"
-RUN if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
+RUN echo "COMFY_CACHE_BUST=${COMFY_CACHE_BUST}" >/dev/null && \
+    if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
 
 COPY scripts/build/patches/patch-kohya.sh /opt/pilot/build/patches/
 COPY scripts/build/install-kohya.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/patches/patch-kohya.sh /opt/pilot/build/install-kohya.sh
 ARG KOHYA_CACHE_BUST="${KOHYA_REF}"
-RUN if [ "${INSTALL_KOHYA:-1}" = "1" ]; then /opt/pilot/build/install-kohya.sh; fi
+RUN echo "KOHYA_CACHE_BUST=${KOHYA_CACHE_BUST}" >/dev/null && \
+    if [ "${INSTALL_KOHYA:-1}" = "1" ]; then /opt/pilot/build/install-kohya.sh; fi
 
 COPY scripts/build/install-diffpipe.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/install-diffpipe.sh
-ARG DIFFPIPE_CACHE_BUST="${DIFFPIPE_REF}-${DIFFPIPE_DIFFUSERS_VERSION}-${TENSORBOARD_VERSION}"
-RUN if [ "${INSTALL_DIFFPIPE:-1}" = "1" ]; then /opt/pilot/build/install-diffpipe.sh; fi
+ARG DIFFPIPE_CACHE_BUST="${DIFFPIPE_REF}-${XFORMERS_VERSION}-${BITSANDBYTES_VERSION}-${DIFFPIPE_DIFFUSERS_VERSION}-${DIFFPIPE_TRANSFORMERS_VERSION}-${ACCELERATE_VERSION}-${PEFT_VERSION}-${TENSORBOARD_VERSION}"
+RUN echo "DIFFPIPE_CACHE_BUST=${DIFFPIPE_CACHE_BUST}" >/dev/null && \
+    if [ "${INSTALL_DIFFPIPE:-1}" = "1" ]; then /opt/pilot/build/install-diffpipe.sh; fi
 
 COPY scripts/build/install-invoke.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/install-invoke.sh
-ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${INVOKE_TORCH_VERSION}-${INVOKE_XFORMERS_VERSION}"
-RUN if [ "${INSTALL_INVOKE:-1}" = "1" ]; then /opt/pilot/build/install-invoke.sh; fi
+ARG INVOKE_CACHE_BUST="${INVOKEAI_VERSION}-${INVOKE_TORCH_VERSION}-${INVOKE_TORCHVISION_VERSION}-${INVOKE_XFORMERS_VERSION}-${INVOKE_DIFFUSERS_VERSION}-${INVOKE_TRANSFORMERS_VERSION}-${INVOKE_ACCELERATE_VERSION}-${INVOKE_HF_HUB_VERSION}-${PEFT_VERSION}"
+RUN echo "INVOKE_CACHE_BUST=${INVOKE_CACHE_BUST}" >/dev/null && \
+    if [ "${INSTALL_INVOKE:-1}" = "1" ]; then /opt/pilot/build/install-invoke.sh; fi
 
 COPY scripts/build/patches/patch-ai-toolkit.sh /opt/pilot/build/patches/
 COPY scripts/build/install-ai-toolkit.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/patches/patch-ai-toolkit.sh /opt/pilot/build/install-ai-toolkit.sh
-ARG AI_TOOLKIT_CACHE_BUST="${AI_TOOLKIT_REF}"
-RUN if [ "${INSTALL_AI_TOOLKIT:-1}" = "1" ]; then /opt/pilot/build/install-ai-toolkit.sh; fi
+ARG AI_TOOLKIT_CACHE_BUST="${AI_TOOLKIT_REF}-${AI_TOOLKIT_DIFFUSERS_VERSION}-${INSTALL_AI_TOOLKIT_UI}"
+RUN echo "AI_TOOLKIT_CACHE_BUST=${AI_TOOLKIT_CACHE_BUST}" >/dev/null && \
+    if [ "${INSTALL_AI_TOOLKIT:-1}" = "1" ]; then /opt/pilot/build/install-ai-toolkit.sh; fi
 
 
 # ----- LAYER 10: Config + runtime setup (semi-stable) -----

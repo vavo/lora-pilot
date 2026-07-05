@@ -247,11 +247,57 @@ class BuildPinTests(unittest.TestCase):
 
     def test_service_scripts_are_copied_after_core_stack_for_cache_stability(self):
         text = (ROOT / "Dockerfile").read_text()
-        core_run = text.index("RUN /opt/pilot/build/install-core-stack.sh")
+        core_run = text.index("\n    /opt/pilot/build/install-core-stack.sh")
         ai_toolkit_copy = text.index("COPY scripts/build/install-ai-toolkit.sh")
         invoke_copy = text.index("COPY scripts/build/install-invoke.sh")
         self.assertGreater(ai_toolkit_copy, core_run)
         self.assertGreater(invoke_copy, core_run)
+
+    def test_dependency_cache_busts_cover_relevant_pins(self):
+        text = (ROOT / "Dockerfile").read_text()
+        expected = {
+            "TORCH_CACHE_BUST": (
+                "TORCH_VERSION",
+                "TORCHVISION_VERSION",
+                "TORCHAUDIO_VERSION",
+                "XFORMERS_VERSION",
+                "BITSANDBYTES_VERSION",
+                "CORE_DIFFUSERS_VERSION",
+                "TRANSFORMERS_VERSION",
+                "HF_HUB_VERSION",
+                "FASTAPI_VERSION",
+                "PYDANTIC_VERSION",
+            ),
+            "DIFFPIPE_CACHE_BUST": (
+                "DIFFPIPE_REF",
+                "DIFFPIPE_DIFFUSERS_VERSION",
+                "DIFFPIPE_TRANSFORMERS_VERSION",
+                "TENSORBOARD_VERSION",
+            ),
+            "INVOKE_CACHE_BUST": (
+                "INVOKEAI_VERSION",
+                "INVOKE_TORCH_VERSION",
+                "INVOKE_TORCHVISION_VERSION",
+                "INVOKE_XFORMERS_VERSION",
+                "INVOKE_DIFFUSERS_VERSION",
+                "INVOKE_TRANSFORMERS_VERSION",
+                "INVOKE_ACCELERATE_VERSION",
+                "INVOKE_HF_HUB_VERSION",
+            ),
+            "AI_TOOLKIT_CACHE_BUST": (
+                "AI_TOOLKIT_REF",
+                "AI_TOOLKIT_DIFFUSERS_VERSION",
+                "INSTALL_AI_TOOLKIT_UI",
+            ),
+        }
+        for name, pins in expected.items():
+            with self.subTest(name=name):
+                match = re.search(rf"ARG {name}=([^\n]+)", text)
+                self.assertIsNotNone(match)
+                value = match.group(1)
+                for pin in pins:
+                    self.assertIn(pin, value)
+                self.assertIn(f'echo "{name}=${{{name}}}" >/dev/null', text)
 
     def test_build_scripts_are_copied_before_they_are_used(self):
         lines = (ROOT / "Dockerfile").read_text().splitlines()

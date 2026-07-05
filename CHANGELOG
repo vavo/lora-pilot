@@ -1,3 +1,8 @@
+v2.5.14 (July 5th 2026)
+
+- Tightened Docker install-layer cache busting so dependency pin changes for core, Diffusion Pipe, InvokeAI, and AI Toolkit explicitly invalidate their install layers before rebuilds.
+- Added a regression check that cache-bust args cover the dependency pins that affect each install layer.
+
 v2.5.13 (July 5th 2026)
 
 - Fixed the InvokeAI build resolver conflict by updating the isolated Invoke Hugging Face Hub pin to `1.22.0`, matching the `transformers==5.5.4` requirement while staying inside Diffusers' `<2.0` range.
