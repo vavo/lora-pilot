@@ -2,9 +2,9 @@
 
 _Last updated: 2026-07-05_
 
-LoRA Pilot has two inference paths sharing the same model store:
-- ComfyUI (`5555`) for workflow control.
-- InvokeAI (`9090`) for faster UI-driven iteration.
+LoRA Pilot has two inference paths sharing the same model store. ComfyUI (`5555`) is the graph-based workbench for workflow control. InvokeAI (`9090`) is the faster UI-driven path for prompt iteration and selection.
+
+If you are deciding whether a task should be text-to-image, image-to-image, inpainting, ControlNet, text-to-video, or image-to-video, start with [Workflow Types](../getting-started/inference-101/workflow-types.md).
 
 ## Engine Selection
 
@@ -66,10 +66,7 @@ curl -s http://localhost:7878/api/comfy/latest-image
 
 ## Practical Iteration Pattern
 
-1. Explore style/concept rapidly in InvokeAI.
-2. Lock final repeatable setup in ComfyUI workflow graph.
-3. Review/triage outputs in MediaPilot.
-4. Promote good outputs back into datasets for retraining.
+Explore style or concept rapidly in InvokeAI when the workflow is simple. Move the repeatable setup into ComfyUI when the graph matters: LoRAs, ControlNet, inpainting, upscales, detailers, or video nodes. Review outputs in MediaPilot, then promote strong outputs back into datasets when they are useful for future training.
 
 ## Diagnostics
 
@@ -108,6 +105,8 @@ ls -la /workspace/apps/invoke/models
 
 - [ComfyUI](../components/comfyui.md)
 - [InvokeAI](../components/invokeai.md)
+- [Inference 101](../getting-started/inference-101/README.md)
+- [Workflow Types](../getting-started/inference-101/workflow-types.md)
 - [MediaPilot](../components/mediapilot.md)
 - [Model Management](model-management.md)
 - [Section Index](README.md)
@@ -115,10 +114,7 @@ ls -la /workspace/apps/invoke/models
 
 ---
 
----
-
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 

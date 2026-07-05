@@ -10,11 +10,8 @@ from typing import Optional
 
 SERVICE_UPDATE_SPECS: dict[str, dict[str, str]] = {
     "invoke": {"kind": "pip", "python_bin": "/opt/venvs/invoke/bin/python", "package": "invokeai"},
-    "comfy": {"kind": "git", "repo_dir": "/opt/pilot/repos/ComfyUI"},
-    "kohya": {"kind": "git", "repo_dir": "/opt/pilot/repos/kohya_ss"},
-    "diffpipe": {"kind": "git", "repo_dir": "/opt/pilot/repos/diffusion-pipe"},
-    "ai-toolkit": {"kind": "git", "repo_dir": "/opt/pilot/repos/ai-toolkit"},
 }
+IMAGE_MANAGED_SERVICES = {"comfy", "kohya", "diffpipe", "ai-toolkit"}
 
 
 def run_cmd_capture(cmd: list[str], timeout: int = 45) -> str:
@@ -59,32 +56,6 @@ def pip_installed_version(python_bin: str, package: str) -> Optional[str]:
         return None
 
 
-def git_current_branch(repo: Path) -> Optional[str]:
-    try:
-        branch = run_cmd_capture(["git", "-C", str(repo), "rev-parse", "--abbrev-ref", "HEAD"], timeout=12)
-    except Exception:
-        return None
-    if branch and branch != "HEAD":
-        return branch
-    try:
-        remote_head = run_cmd_capture(
-            ["git", "-C", str(repo), "symbolic-ref", "--short", "refs/remotes/origin/HEAD"],
-            timeout=12,
-        )
-        if remote_head.startswith("origin/"):
-            return remote_head.split("/", 1)[1]
-    except Exception:
-        pass
-    return None
-
-
-def git_local_sha(repo: Path) -> Optional[str]:
-    try:
-        return run_cmd_capture(["git", "-C", str(repo), "rev-parse", "HEAD"], timeout=12)
-    except Exception:
-        return None
-
-
 def service_marker(name: str, spec: dict[str, str]) -> Optional[str]:
     kind = spec.get("kind", "")
     if kind == "pip":
@@ -93,11 +64,6 @@ def service_marker(name: str, spec: dict[str, str]) -> Optional[str]:
         if not py or not pkg:
             return None
         return pip_installed_version(py, pkg)
-    if kind == "git":
-        repo = Path(spec.get("repo_dir", ""))
-        if not repo.exists():
-            return None
-        return git_local_sha(repo)
     return None
 
 
@@ -159,13 +125,13 @@ def run_reconcile(config_path: Path, rollback_log_path: Path) -> int:
             continue
         spec = SERVICE_UPDATE_SPECS.get(name)
         if not spec:
-            print(f"[service-updates] {name}: unsupported (image-managed)", flush=True)
+            if name in IMAGE_MANAGED_SERVICES:
+                print(f"[service-updates] {name}: skipped (image-managed; rebuild the image to update)", flush=True)
+            else:
+                print(f"[service-updates] {name}: unsupported", flush=True)
             continue
 
         kind = spec.get("kind", "unknown")
-        if kind == "git":
-            print(f"[service-updates] {name}: skipped (git services are image-managed)", flush=True)
-            continue
         target = None
         before = service_marker(name, spec)
 
@@ -177,13 +143,6 @@ def run_reconcile(config_path: Path, rollback_log_path: Path) -> int:
                 target = str(service_cfg.get("target_version", "") or "").strip()
                 pkg_ref = f"{package}=={target}" if target else package
                 run_cmd_stream([python_bin, "-m", "pip", "install", "--no-cache-dir", "--upgrade", pkg_ref])
-            elif kind == "git":
-                repo = Path(spec.get("repo_dir", ""))
-                target = str(service_cfg.get("target_ref", "") or "").strip()
-                if not target:
-                    target = git_current_branch(repo) or "main"
-                run_cmd_stream(["git", "-C", str(repo), "fetch", "--depth", "1", "origin", target])
-                run_cmd_stream(["git", "-C", str(repo), "pull", "--ff-only", "origin", target])
             else:
                 print(f"[service-updates] {name}: unknown update kind {kind}; skipping", flush=True)
                 continue

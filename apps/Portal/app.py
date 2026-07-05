@@ -1893,10 +1893,6 @@ def _default_service_updates_config() -> dict:
         "restart_after_update": True,
         "services": {
             "invoke": {"auto_update": False, "target_version": ""},
-            "comfy": {"auto_update": False, "target_ref": ""},
-            "kohya": {"auto_update": False, "target_ref": ""},
-            "diffpipe": {"auto_update": False, "target_ref": ""},
-            "ai-toolkit": {"auto_update": False, "target_ref": ""},
         },
     }
 
@@ -2193,16 +2189,6 @@ def _service_update_commands(name: str, target_version: Optional[str]) -> tuple[
             resolved_target = (info.latest or "").strip()
         pkg_ref = f"{package}=={resolved_target}" if resolved_target else package
         return [[python_bin, "-m", "pip", "install", "--no-cache-dir", "--upgrade", pkg_ref]], resolved_target or None
-
-    if kind == "git":
-        repo_dir = Path(spec.get("repo_dir", ""))
-        if not repo_dir.exists():
-            raise RuntimeError(f"Repo not found: {repo_dir}")
-        branch = (target_version or "").strip() or (_git_current_branch(repo_dir) or "main")
-        return [
-            ["git", "-C", str(repo_dir), "fetch", "--depth", "1", "origin", branch],
-            ["git", "-C", str(repo_dir), "pull", "--ff-only", "origin", branch],
-        ], branch
 
     raise RuntimeError(f"Unsupported update kind: {kind}")
 

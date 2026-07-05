@@ -1,122 +1,40 @@
-v2.5.14 (July 5th 2026)
-
-- Tightened Docker install-layer cache busting so dependency pin changes for core, Diffusion Pipe, InvokeAI, and AI Toolkit explicitly invalidate their install layers before rebuilds.
-- Added a regression check that cache-bust args cover the dependency pins that affect each install layer.
-
-v2.5.13 (July 5th 2026)
-
-- Fixed the InvokeAI build resolver conflict by updating the isolated Invoke Hugging Face Hub pin to `1.22.0`, matching the `transformers==5.5.4` requirement while staying inside Diffusers' `<2.0` range.
-
-v2.5.12 (July 5th 2026)
-
-- Synced build/configuration docs with the current Docker build pins: Node 24/npm `11.18.0`, pinned ComfyUI-Downloader, Diffusion Pipe `a7e7dec`, TensorBoard `2.21.0`, and pinned ControlPilot runtime web packages.
-- Clarified the default CUDA 13.0 torchaudio policy in docs: `TORCHAUDIO_VERSION` stays empty for `cu130` until upstream publishes a matching `2.12.x` cu130 wheel.
-- Refreshed the environment-variable documentation timestamp after the build-pin documentation pass.
-
-v2.5.11 (July 5th 2026)
-
-- Updated the default CUDA 13.0 core stack to the latest matching cu130 torch pair: `torch==2.12.1` and `torchvision==0.27.1`.
-- Made default `TORCHAUDIO_VERSION` empty for cu130 again because upstream has no matching `torchaudio==2.12.x` cu130 wheel; the installer keeps torchaudio optional and the cu128 profile still pins `torchaudio==2.11.0`.
-- Documented the policy in `build.env.example` so future patch bumps do not reintroduce a mixed torch/torchaudio stack.
-
-v2.5.10 (July 5th 2026)
-
-- Moved AI Toolkit UI builds from the old Node 20 setup script to a pinned Node major build arg (`NODE_MAJOR=24`) and npm `11.18.0`, using an explicit NodeSource apt source instead of piping the setup script into bash.
-- Pinned ComfyUI-Downloader to commit `03146df` instead of cloning floating `main`.
-- Pinned ControlPilot/runtime web dependencies and TensorBoard versions so build output is reproducible across FastAPI/Uvicorn/Flask/httpx/TensorBoard releases.
-- Refreshed Diffusion Pipe to upstream commit `a7e7dec`.
-
-v2.5.9 (July 5th 2026)
-
-- Refreshed the default model manifest by replacing stale SDXL/SD1.5 checkpoint rows with verified current upstream files: DreamShaper XL v2 Turbo, Juggernaut XL Lightning, CyberRealistic XL v10, and the actual ToonYou checkpoint.
-- Fixed broken manifest include patterns for Juggernaut XL Ragnarok and Wan 2.2 Animate so repository snapshots no longer request files that upstream does not publish.
-- Kept `config/models.manifest` and `config/models.manifest.default` aligned.
-
-v2.5.8 (July 5th 2026)
-
-- Updated AI Toolkit to upstream `0.10.20` at commit `6c0d1c4`.
-- Updated InvokeAI to `6.13.5`.
-- Updated the InvokeAI-isolated Transformers pin to `5.5.4` so the `6.13.5` build uses InvokeAI's supported dependency range without changing the shared core GPU stack.
-
-v2.5.7 (July 5th 2026)
-
-- Updated bundled ComfyUI to `v0.27.0` and ComfyUI-Manager to `4.2.2`.
-- Made the core Python venv explicitly own Comfy/Manager runtime modules: `torchaudio`, `uv`, `transformers`, and `xformers`, with a build-time import smoke check.
-- Added ComfyUI-Manager requirements installation into `/opt/venvs/core` so Manager's latest tagged dependency set is installed instead of relying on whatever ComfyUI happened to pull in.
-
-v2.5.6 (July 5th 2026)
-
-- Added a TrainPilot startup guard: when starting a Kohya training run from ControlPilot, the UI now checks whether Kohya and the TensorBoard service are running, warns if either is stopped, and offers to start the missing service(s) before submitting training.
-
-v2.5.5 (July 5th 2026)
-
-- Fixed TagPilot dataset loading from the ControlPilot Datasets list on Python 3.11 images by removing unsupported `Path.is_file(follow_symlinks=False)` calls from the backend dataset file iterator.
-- Kept the path-hardening behavior by skipping symlinked dataset files before reading images/tags for `/api/tagpilot/load`.
-
 v2.5.4 (July 5th 2026)
 
-- Fixed Kohya SDXL training startup against the shared core Transformers 5.x stack by making the launcher compatibility check require both `Dinov2WithRegistersConfig` and Kohya's still-used `CLIPFeatureExtractor` alias before it accepts the installed `transformers` package.
-- Preserved the existing `KOHYA_TRANSFORMERS_VERSION=4.57.6` runtime self-repair path so existing images downgrade the shared core Transformers package for Kohya instead of failing with `ImportError: cannot import name 'CLIPFeatureExtractor'`.
-- Added a regression check so both Kohya launch entrypoints keep the CLIP/DINO compatibility probe in sync.
+- Refreshed the Docker build stack and bundled app pins, including ComfyUI, AI Toolkit, InvokeAI, Diffusion Pipe, Node, TensorBoard, and runtime web dependencies.
+- Cleaned up CUDA profile handling for the core GPU stack and kept CUDA 13.0 torchaudio optional until a matching wheel is available.
+- Fixed recent training and workflow issues across Kohya, TrainPilot, TagPilot dataset loading, TensorBoard visibility, model manifest links, and Docker rebuild reliability.
+- Updated build and configuration docs to match the current image behavior.
 
 v2.5.3 (July 3rd 2026)
 
-- Made TensorBoard integration actually functional for training stacks that mattered, not just eyecandy:
-  - added shared status endpoint `GET /api/tensorboard/status`
-  - trained-stack discovery now checks `events.out.tfevents.*` for Diffusion Pipe, TrainPilot, Kohya, and AI Toolkit
-  - added shared TensorBoard source links under `/workspace/logs/tensorboard/{diffpipe,trainpilot,kohya,ai-toolkit}` in Diffusion Pipe launcher
-- Wired TensorBoard actions into UI entry points:
-  - TrainPilot and Diffusion Pipe pages now include open/status actions
-  - Services page now exposes a TensorBoard action for diffpipe/kohya/AI Toolkit with run-state aware status text
-- Updated docs for workflow visibility (`training-workflows`, stack component docs, API reference) and added release notes.
-
-v2.5.2 (July 3rd 2026)
-
-- Bumped VS Code in-browser service to code-server `4.127.0` and JupyterLab to `4.6.1` in the canonical build configuration.
-- Updated build-time pin surfaces (`Dockerfile`, `Makefile`, `build.env.example`, and build docs) so the same tool versions are used for every image build path.
-
-v2.5.1 (July 3rd 2026)
-
-- Updated TagPilot to the latest frontend behavior set, including restored dataset loading via ControlPilot’s `?dataset=` integration, saved workspace export action, and embedded dark-mode sync.
-- Restored TagPilot’s save-to-workspace dataset flow so datasets can be opened from ControlPilot and edited with existing tags in place.
-- Hardened TagPilot and training path handling: dataset names are validated, and dataset/model filesystem paths are canonicalized with explicit realpath checks before use.
-- Hardened model pull input handling on backend-triggered flows to reduce path/command risk exposure flagged by security scans.
+- Updated TagPilot with the newer frontend and settings flow, while preserving ControlPilot dataset handoff, workspace export, and dark-mode behavior.
+- Completed TensorBoard integration across training pages and the Services view.
+- Updated JupyterLab, code-server, and related build documentation.
 
 v2.5.0 (June 12th 2026)
 
-- Added dual CUDA build profiles: `CUDA_PROFILE=cu130` is now the default Blackwell path on CUDA `13.0.2` with PyTorch `2.12.0`, while `CUDA_PROFILE=cu128` keeps the legacy CUDA `12.8.1` path with PyTorch `2.11.0`.
-- Made `torchaudio` optional for the CUDA 13.0 profile because the matching official `cu130` wheel is not currently available.
-- Consolidated runtime Python environments from five venvs to three: `/opt/venvs/core` now owns the shared GPU stack plus JupyterLab, Diffusion Pipe, and TensorBoard; `/opt/venvs/invoke` and `/opt/venvs/ai-toolkit` keep local package isolation while importing the core GPU stack.
-- Refreshed major build pins: ComfyUI `v0.24.1`, InvokeAI `6.13.0`, JupyterLab `4.5.8`, code-server `4.123.0`, Diffusion Pipe `5aa6577`, AI Toolkit `8812755`, xFormers `0.0.35`, Diffusers `0.38.0`, Transformers `5.11.0`, Accelerate `1.14.0`, PEFT `0.19.1`, Hugging Face Hub `1.19.0`, and bitsandbytes `0.49.2`.
-- Pinned npm to `11.17.0` for the AI Toolkit UI build/runtime path and patched AI Toolkit's deprecated Next dev indicator config out of the bundled UI.
-- Suppressed Kohya's upstream `pkg_resources` deprecation warning without doing runtime setuptools repairs during service startup.
-- Suppressed TensorBoard's `pkg_resources` deprecation warning in the Diffusion Pipe launcher readiness check and both TensorBoard start paths.
-- Refreshed `models.manifest` so the image default and repo reference manifest stay aligned, and added Comfy-ready quantized Ideogram 4, Lens, and PixelDiT entries without duplicating the shared `flux2-vae` entry.
-- Preserved TagPilot provider key clearing in the UI and the bootstrap secret rewrite behavior for `HF_TOKEN`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, and `XAI_API_KEY`.
+- Added the CUDA 13.0 default build profile, with CUDA 12.8 kept as the legacy profile.
+- Consolidated Python environments around a shared core stack while keeping InvokeAI and AI Toolkit isolated where needed.
+- Refreshed bundled training and image tools, the model manifest, and build scripts for the Blackwell-focused image.
+- Improved runtime warning handling, service startup behavior, and bootstrap secret handling.
 
 v2.4.3 (May 7th 2026)
 
-- Fixed TagPilot cloud-provider image uploads by normalizing/inferring image MIME types before calling OpenAI, Gemini, and Grok. JPEG/PNG/WebP/etc. no longer arrive upstream as useless `application/octet-stream`, truly a concept humanity should have retired already.
-- Updated Gemini generation to try stable `v1` first with a `v1beta` fallback, and updated Grok generation to prefer xAI Responses API with chat-completions fallback.
-- Changed TagPilot provider failures to return JSON `424` responses instead of gateway-style `502` responses, preventing RunPod/Cloudflare from replacing useful provider errors with their HTML lecture.
-- Made TagPilot provider keys persist to `/workspace/config/secrets.env` and preserved those saved keys across bootstrap secret rewrites.
-- Added `/opt/pilot/tagpilot-provider-smoke.py` for live OpenAI/Gemini/Grok compatibility checks against the current provider APIs.
-- Fixed TagPilot dark-mode startup and added a crop quick-action button to the image preview modal.
-- Reworked Dockerfile service install layers for cacheable rebuilds, fixed optional install shell conditionals, and kept runtime finalization after runtime scripts are copied.
+- Improved TagPilot provider handling for OpenAI, Gemini, and Grok, including API compatibility, persisted provider keys, and clearer provider errors.
+- Fixed TagPilot dark-mode startup and image preview crop behavior.
+- Cleaned up Docker service install layers and runtime finalization.
 
 v2.4.2 (May 6th 2026)
 
-- Upgraded the Blackwell-focused build baseline to CUDA `12.8.1` with core `torch==2.8.0`, `torchvision==0.23.0`, `torchaudio==2.8.0`, `xformers==0.0.32.post2`, and `bitsandbytes==0.49.2`.
-- Refreshed bundled service refs/pins: ComfyUI `v0.20.2`, ComfyUI-Manager `4.2.1`, Kohya `v25.2.1`, InvokeAI `6.12.0`, AI Toolkit `6bb8acb`, and Diffusion Pipe `535bc58`.
-- Split AI Toolkit into its own `/opt/venvs/ai-toolkit` environment so its newer Transformers/Diffusers stack no longer fights InvokeAI. Tiny mercy, big payoff.
-- Moved TagPilot Gemini/Grok/OpenAI generation through ControlPilot backend endpoints and persisted provider keys in `/workspace/config/secrets.env` instead of browser-side storage.
-- Added TagPilot provider APIs: `GET /api/tagpilot/providers`, `POST /api/tagpilot/providers/{provider}/key`, and `POST /api/tagpilot/generate`.
+- Updated the Blackwell and CUDA build baseline and refreshed the bundled ComfyUI, Kohya, InvokeAI, AI Toolkit, and Diffusion Pipe stack.
+- Split AI Toolkit into its own Python environment and moved TagPilot provider calls through backend APIs.
+- Added backend TagPilot provider APIs and persisted provider configuration in the workspace.
 
 v2.4.1 (April 6th 2026)
 
-- Cleared the GitHub CodeQL/code-scanning findings by hardening ControlPilot, MediaPilot, Portal JS, and the Copilot sidecar around path handling, process launch inputs, secret storage, exception exposure, and client-side URL/DOM handling.
-- Retired the legacy `apps/Portal/dpipe-gui.py` Gradio entrypoint and replaced it with a deprecation stub in favor of the active ControlPilot Diffusion Pipe UI/API path.
-- Upgraded the shared core GPU stack to `torch==2.7.0+cu128`, `torchvision==0.22.0+cu128`, `torchaudio==2.7.0+cu128`, switched the core wheel index to `cu128`, and relaxed xFormers to `>=0.0.30` for Blackwell testing.
+- Closed the GitHub code-scanning hardening pass across ControlPilot, MediaPilot, Portal, and the Copilot sidecar.
+- Retired the legacy Diffusion Pipe Gradio entrypoint in favor of the ControlPilot path.
+- Prepared the shared GPU stack for the CUDA 12.8 and Blackwell transition.
 
 v2.4 (March 27th 2026)
 

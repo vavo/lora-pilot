@@ -2,16 +2,15 @@
 
 _Last updated: 2026-07-05_
 
-ComfyUI is a powerful node-based interface for Stable Diffusion that allows you to create complex image generation workflows through a visual programming interface. It's integrated into LoRA Pilot with custom nodes and workspace integration.
+ComfyUI is the node-based inference workbench in LoRA Pilot. It shows the generation pipeline directly: models load on the left, prompts and conditioning feed the middle, samplers turn latent noise into structure, and output nodes decode and save the result.
+
+Use ComfyUI when the workflow matters as much as the prompt. It is the right surface for custom graph building, imported community workflows, ControlNet branches, LoRA experiments, image-to-image, inpainting, upscales, and many video model pipelines. If you are still choosing between text-to-image, image-to-image, text-to-video, and image-to-video, start with [Workflow Types](../getting-started/inference-101/workflow-types.md).
 
 ##  Overview
 
-ComfyUI offers:
-- **Node-Based Interface**: Visual workflow creation
-- **Custom Nodes**: Extended functionality with custom nodes
-- **Workflow Sharing**: Import/export workflows
-- **High Performance**: Optimized for batch processing
-- **Extensible**: Large ecosystem of custom nodes
+ComfyUI is powerful because it makes the invisible parts visible. You can see which checkpoint is loaded, which `CLIP` output feeds the prompt encoders, which latent source enters `KSampler`, which VAE decodes the result, and where the final image is saved. That visibility makes complex workflows possible. It also means weak wiring, missing models, and wrong-family files are easier to create if you skip the basics.
+
+The practical path is to learn one small graph first, save it, then add complexity one branch at a time.
 
 ##  Quick Start
 
@@ -25,22 +24,22 @@ ComfyUI offers:
 
 ### First Workflow
 
-1. **Load Model**: Add "CheckpointLoader" node and select a model
-2. **Add Prompt**: Add "CLIPTextEncode" nodes for prompt and negative prompt
-3. **Configure Sampling**: Add "KSampler" node with desired settings
-4. **Generate**: Add "VAEDecode" and "SaveImage" nodes
-5. **Queue Prompt**: Click "Queue Prompt" to generate
+Your first graph should be plain text-to-image. Load a checkpoint, feed its `CLIP` output into positive and negative `CLIPTextEncode` nodes, create an `EmptyLatentImage`, connect everything into `KSampler`, decode the latent with `VAEDecode`, then save with `SaveImage`.
+
+![ComfyUI workflow anatomy](../assets/images/learning-101/comfyui-workflow-anatomy.svg)
+
+Before queueing, scan the graph from left to right. Required inputs should be connected, loader dropdowns should point to real files, the model family should match the workflow, and the seed behavior should match your goal. Fixed seed for testing. Random seed for exploration.
 
 ## 🖥️ Interface Guide
 
 ### Main Components
 
 #### Canvas Basics
-- Arrange workflows left to right: loaders on the left, processing in the middle, outputs on the right.
-- Nodes have inputs on the left, editable settings in the center, and outputs on the right.
-- Connection colors and socket labels matter. A `MODEL` output cannot plug into an `IMAGE` input, and ComfyUI will reject incompatible links.
-- One output can feed multiple inputs. Reuse the same `MODEL`, `CLIP`, `VAE`, seed, or image output when comparing branches.
-- Double-click empty canvas space to search nodes. This is faster than digging through menus once you know the node name.
+Arrange workflows left to right: loaders on the left, processing in the middle, outputs on the right. Nodes have inputs on the left, editable settings in the center, and outputs on the right.
+
+Connection colors and socket labels matter. A `MODEL` output cannot plug into an `IMAGE` input, and ComfyUI will reject incompatible links. One output can feed multiple inputs, so you can reuse the same `MODEL`, `CLIP`, `VAE`, seed, or image output when comparing branches.
+
+Double-click empty canvas space to search nodes. It is faster than digging through menus once you know the node name.
 
 #### Node Categories
 - **Loaders**: Model, VAE, CLIP loaders
@@ -105,6 +104,8 @@ SaveImage:
 
 ##  Basic Workflow Templates
 
+These are starting shapes, not sacred recipes. For the decision process behind them, see [Workflow Types](../getting-started/inference-101/workflow-types.md).
+
 ### Simple Text-to-Image
 ```
 CheckpointLoader → CLIPTextEncode (positive) → KSampler → VAEDecode → SaveImage
@@ -112,13 +113,9 @@ CheckpointLoader → CLIPTextEncode (positive) → KSampler → VAEDecode → Sa
 EmptyLatentImage ─────────────────────────────↗
 ```
 
-Build and check the starter workflow in this order:
-1. Load a checkpoint and confirm `MODEL`, `CLIP`, and `VAE` outputs are present.
-2. Add two `CLIPTextEncode` nodes, one positive and one negative, both connected to the checkpoint `CLIP`.
-3. Add `EmptyLatentImage` at a model-appropriate resolution.
-4. Wire `MODEL`, positive conditioning, negative conditioning, and latent image into `KSampler`.
-5. Decode with `VAEDecode`, then connect `IMAGE` to `SaveImage`.
-6. Before queueing, scan for unconnected required inputs, wrong checkpoint names, and a seed mode that matches your goal.
+Build this graph until you can explain every wire. The checkpoint provides `MODEL`, `CLIP`, and `VAE`. The two prompt encoders produce positive and negative conditioning. `EmptyLatentImage` supplies the starting latent at a model-appropriate size. `KSampler` does the denoising work, `VAEDecode` turns latent output into pixels, and `SaveImage` writes the result with metadata.
+
+Save this as your known-good starter workflow before adding LoRAs, ControlNet, upscalers, detailers, or video nodes.
 
 ### LoRA Workflow
 ```
@@ -181,7 +178,7 @@ docker exec -it lora-pilot bash
 
 # Install custom node
 cd /workspace/apps/comfy/custom_nodes
-git clone https://github.com/author/custom-node.git
+git clone <custom-node-repo-url>
 docker-compose restart comfyui
 ```
 
@@ -477,5 +474,4 @@ print('✅ Model loads successfully')
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)

@@ -11,23 +11,12 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
-| `v2.5.14` | Docker install-layer cache busting now tracks dependency pins for core, Diffusion Pipe, InvokeAI, and AI Toolkit rebuilds |
-| `v2.5.13` | InvokeAI build fix: isolated Hugging Face Hub pin moved to `1.22.0` to satisfy Transformers `5.5.4` and Diffusers `0.37.0` |
-| `v2.5.12` | Docs sync for current build pins, runtime web package pins, TensorBoard pin, and the CUDA 13.0 torchaudio policy |
-| `v2.5.11` | CUDA 13.0 core stack policy: torch `2.12.1`, torchvision `0.27.1`, and optional/empty torchaudio until a matching cu130 wheel exists |
-| `v2.5.10` | Node 24/npm `11.18.0`, pinned ComfyUI-Downloader, pinned runtime web/TensorBoard deps, and Diffusion Pipe `a7e7dec` |
-| `v2.5.9` | Model manifest refresh: DreamShaper XL v2 Turbo, Juggernaut XL Lightning, CyberRealistic XL v10, actual ToonYou checkpoint, and broken include-pattern fixes |
-| `v2.5.8` | AI Toolkit `0.10.20` (`6c0d1c4`), InvokeAI `6.13.5`, and InvokeAI-isolated Transformers `5.5.4` pin alignment |
-| `v2.5.7` | ComfyUI `v0.27.0`, ComfyUI-Manager `4.2.2`, and explicit core-venv ownership of `torchaudio`, `uv`, `transformers`, and `xformers` |
-| `v2.5.6` | TrainPilot now warns before starting Kohya training if Kohya or TensorBoard is stopped, with an option to start the missing service(s) |
-| `v2.5.5` | TagPilot dataset-open hotfix for ControlPilot Datasets links on Python 3.11 images; backend load keeps symlink-safe file iteration without unsupported `Path.is_file` arguments |
-| `v2.5.4` | Kohya SDXL training compatibility repair for shared core Transformers 5.x images; launcher now checks the `CLIPFeatureExtractor` alias before accepting the installed package |
-| `v2.5.3` | TensorBoard integrations completed for TrainPilot + Diffusion Pipe + Kohya + AI Toolkit, with shared `/api/tensorboard/status` discovery and Services page actions |
-| `v2.5.1` | TagPilot frontend refresh (latest settings/models), restored embedded theme sync, dataset load/save integration, and path-hardening for dataset/training/model-pull flows |
-| `v2.5.0` | CUDA 13.0 default plus CUDA 12.8 legacy profile, shared core GPU stack with fewer venvs, refreshed Comfy/Invoke/Jupyter/code-server/AI Toolkit/Diffusion Pipe pins, Ideogram/Lens/PixelDiT manifest additions |
-| `v2.4.3` | TagPilot provider MIME fixes, Gemini/Grok API compatibility updates, persistent provider secrets, JSON provider errors, provider smoke script, dark-mode and preview-crop UX fixes, Dockerfile cache/finalization fixes |
-| `v2.4.2` | CUDA 12.8/PyTorch 2.8 Blackwell baseline, refreshed Comfy/Kohya/Invoke/AI Toolkit/Diffusion Pipe pins, server-side TagPilot provider APIs |
-| `v2.4.1` | CodeQL hardening, Dpipe Gradio retirement, core CUDA 12.8 stack preparation |
+| `v2.5.4` | July 5 build/runtime refresh, CUDA profile cleanup, model manifest refresh, and training workflow fixes |
+| `v2.5.3` | July 3 TagPilot frontend refresh, TensorBoard integration, and JupyterLab/code-server update |
+| `v2.5.0` | CUDA 13.0 default profile, shared core Python stack, refreshed bundled tools, and manifest/build updates |
+| `v2.4.3` | TagPilot provider compatibility, persisted provider keys, dark-mode/crop fixes, and Docker layer cleanup |
+| `v2.4.2` | Blackwell/CUDA baseline refresh, AI Toolkit isolation, and backend TagPilot provider APIs |
+| `v2.4.1` | CodeQL hardening, legacy Diffusion Pipe Gradio retirement, and CUDA 12.8 stack preparation |
 | `v2.4` | ControlPilot settings/security, embedded app layout cleanup, TrainPilot/Diffusion Pipe improvements, extracted Docker build scripts |
 | `v2.3` | Pinned Comfy/Kohya/Diffusion Pipe/build dependency refresh and InvokeAI `6.11.1` baseline |
 | `v2.2` | MediaPilot embed under `/mediapilot`, service update endpoints/jobs, TagPilot incremental save endpoint, InvokeAI `INVOKEAI_VERSION` pin update |
@@ -39,6 +28,8 @@ ControlPilot exposes the same content at:
 ## Notes About Format
 
 - Entries are newest-first.
+- Release notes are grouped by release date, with at most one changelog version per day.
+- Keep highlights broad and user-facing; detailed commit history belongs in git.
 - Version headers currently mix formats (`v2.2` vs `Version 1.99`).
 - Recent v2.x entries include calendar dates in the root `CHANGELOG`; older entries may not.
 
@@ -61,4 +52,4 @@ When adding a new release:
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)

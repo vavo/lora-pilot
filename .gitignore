@@ -112,3 +112,4 @@ local_settings.py
 # Plans / local scratch docs
 WINDOWS_WSL_INSTALLER_PLAN.md
 docs/development/dockerfile-refactor-plan.md
+docs/development/2026-07-05-lora-pilot-value-suggestions.md

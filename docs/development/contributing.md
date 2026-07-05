@@ -21,7 +21,7 @@ LoRA Pilot welcomes contributions in many forms:
 ```bash
 # Fork the repository on GitHub
 # Clone your fork
-git clone https://github.com/your-username/lora-pilot.git
+git clone git@github.com:<your-username>/lora-pilot.git
 cd lora-pilot
 
 # Add upstream remote
@@ -732,6 +732,5 @@ protection:
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 

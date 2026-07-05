@@ -116,5 +116,5 @@ docker exec lora-pilot tail -n 300 /workspace/logs/invoke.err.log
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 

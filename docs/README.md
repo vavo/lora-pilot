@@ -13,7 +13,7 @@ New to AI and LoRA training? Follow our structured learning path from zero to pr
 - [Stable Diffusion 101](getting-started/stable-diffusion-101/README.md) - **Start Here** - Learn generation fundamentals and prompting basics
 - [Datasets 101](getting-started/datasets-101/README.md) - **Step 2** - Master dataset creation, collection, and quality standards
 - [LoRA Training 101](getting-started/loRA-training-101/README.md) - **Step 3** - Learn LoRA methods, parameters, and training workflows
-- [Inference 101](getting-started/inference-101/README.md) - **Step 4** - Master inference stacks and practical workflows
+- [Inference 101](getting-started/inference-101/README.md) - **Step 4** - Master inference stacks, workflow types, and practical generation loops
 
 ###  Getting Started
 New to LoRA Pilot? Start here for installation and first-run guidance.
@@ -29,6 +29,7 @@ Learn how to use LoRA Pilot's features and workflows.
 - [Model Management](user-guide/model-management.md) - Download and manage models
 - [Dataset Preparation](user-guide/dataset-preparation.md) - Create and tag datasets
 - [Inference](user-guide/inference.md) - Using ComfyUI and InvokeAI
+- [Workflow Types](getting-started/inference-101/workflow-types.md) - Choosing text-to-image, image-to-image, inpainting, video, and refinement workflows
 
 ### 🧩 Components
 Detailed guides for each LoRA Pilot component.
@@ -107,4 +108,4 @@ Found an error or want to improve the documentation? Please see the [Contributin
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)

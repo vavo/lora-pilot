@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">Inference Workflow Types</title>
+  <desc id="desc">A decision map for choosing text-to-image, image-to-image, inpainting, ControlNet, LoRA, upscale, text-to-video, or image-to-video workflows.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#eef2ff"/>
+    </linearGradient>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#4f46e5"/>
+    </marker>
+    <style>
+      .h1 { font: 800 40px 'Inter', 'Segoe UI', sans-serif; fill: #111827; }
+      .p { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #334155; }
+      .q { font: 800 22px 'Inter', 'Segoe UI', sans-serif; fill: #1e1b4b; }
+      .k { font: 750 18px 'Inter', 'Segoe UI', sans-serif; fill: #111827; }
+      .small { font: 600 14px 'Inter', 'Segoe UI', sans-serif; fill: #475569; }
+      .tag { font: 800 13px 'Inter', 'Segoe UI', sans-serif; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="820" fill="url(#bg)"/>
+  <text x="60" y="76" class="h1">Choose the Workflow by What You Already Have</text>
+  <text x="60" y="112" class="p">The right graph shape is decided before prompts and sampler settings get interesting.</text>
+
+  <rect x="530" y="160" width="340" height="120" rx="20" fill="#ffffff" stroke="#c7d2fe" stroke-width="2"/>
+  <text x="582" y="210" class="q">What is your starting point?</text>
+  <text x="614" y="242" class="small">blank canvas, source image, mask, pose, LoRA, or video</text>
+
+  <line x1="610" y1="280" x2="260" y2="348" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="680" y1="280" x2="500" y2="348" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="724" y1="280" x2="700" y2="348" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="772" y1="280" x2="900" y2="348" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="830" y1="280" x2="1140" y2="348" stroke="#4f46e5" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <g transform="translate(60,350)">
+    <rect width="260" height="148" rx="18" fill="#ffffff" stroke="#bfdbfe"/>
+    <rect x="24" y="22" width="92" height="30" rx="15" fill="#2563eb"/>
+    <text x="43" y="42" class="tag">txt2img</text>
+    <text x="24" y="82" class="k">Blank Canvas</text>
+    <text x="24" y="112" class="small">Prompt + empty latent.</text>
+    <text x="24" y="136" class="small">Best starter workflow.</text>
+  </g>
+
+  <g transform="translate(360,350)">
+    <rect width="260" height="148" rx="18" fill="#ffffff" stroke="#99f6e4"/>
+    <rect x="24" y="22" width="92" height="30" rx="15" fill="#0f766e"/>
+    <text x="43" y="42" class="tag">img2img</text>
+    <text x="24" y="82" class="k">Source Image</text>
+    <text x="24" y="112" class="small">VAE encode image.</text>
+    <text x="24" y="136" class="small">Denoise sets freedom.</text>
+  </g>
+
+  <g transform="translate(660,350)">
+    <rect width="260" height="148" rx="18" fill="#ffffff" stroke="#fecaca"/>
+    <rect x="24" y="22" width="98" height="30" rx="15" fill="#dc2626"/>
+    <text x="43" y="42" class="tag">inpaint</text>
+    <text x="24" y="82" class="k">Image + Mask</text>
+    <text x="24" y="112" class="small">Change one region.</text>
+    <text x="24" y="136" class="small">Protect the rest.</text>
+  </g>
+
+  <g transform="translate(960,350)">
+    <rect width="320" height="148" rx="18" fill="#ffffff" stroke="#fde68a"/>
+    <rect x="24" y="22" width="116" height="30" rx="15" fill="#d97706"/>
+    <text x="42" y="42" class="tag">ControlNet</text>
+    <text x="24" y="82" class="k">Pose, Depth, Canny, Layout</text>
+    <text x="24" y="112" class="small">When prompt alone cannot hold structure.</text>
+    <text x="24" y="136" class="small">Use a matching preprocessor.</text>
+  </g>
+
+  <g transform="translate(110,570)">
+    <rect width="280" height="144" rx="18" fill="#ffffff" stroke="#c4b5fd"/>
+    <rect x="24" y="22" width="74" height="30" rx="15" fill="#7c3aed"/>
+    <text x="42" y="42" class="tag">LoRA</text>
+    <text x="24" y="82" class="k">Add a Learned Concept</text>
+    <text x="24" y="112" class="small">Style, character, product, or subject.</text>
+    <text x="24" y="136" class="small">Start with modest weights.</text>
+  </g>
+
+  <g transform="translate(430,570)">
+    <rect width="280" height="144" rx="18" fill="#ffffff" stroke="#fed7aa"/>
+    <rect x="24" y="22" width="98" height="30" rx="15" fill="#ea580c"/>
+    <text x="43" y="42" class="tag">refine</text>
+    <text x="24" y="82" class="k">Upscale or Detail</text>
+    <text x="24" y="112" class="small">Generate clean first.</text>
+    <text x="24" y="136" class="small">Polish selected winners.</text>
+  </g>
+
+  <g transform="translate(750,570)">
+    <rect width="250" height="144" rx="18" fill="#ffffff" stroke="#bae6fd"/>
+    <rect x="24" y="22" width="92" height="30" rx="15" fill="#0284c7"/>
+    <text x="40" y="42" class="tag">txt2vid</text>
+    <text x="24" y="82" class="k">Prompt to Motion</text>
+    <text x="24" y="112" class="small">Duration, frames, and model</text>
+    <text x="24" y="136" class="small">matter as much as prompt.</text>
+  </g>
+
+  <g transform="translate(1040,570)">
+    <rect width="250" height="144" rx="18" fill="#ffffff" stroke="#bbf7d0"/>
+    <rect x="24" y="22" width="92" height="30" rx="15" fill="#16a34a"/>
+    <text x="40" y="42" class="tag">img2vid</text>
+    <text x="24" y="82" class="k">Image to Motion</text>
+    <text x="24" y="112" class="small">A still image anchors</text>
+    <text x="24" y="136" class="small">identity and composition.</text>
+  </g>
+</svg>

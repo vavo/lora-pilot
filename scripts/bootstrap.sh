@@ -53,22 +53,6 @@ restart_after_update = true
 [services.invoke]
 auto_update = false
 target_version = ""
-
-[services.comfy]
-auto_update = false
-target_ref = ""
-
-[services.kohya]
-auto_update = false
-target_ref = ""
-
-[services.diffpipe]
-auto_update = false
-target_ref = ""
-
-[services."ai-toolkit"]
-auto_update = false
-target_ref = ""
 EOT
 fi
 

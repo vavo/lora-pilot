@@ -334,7 +334,7 @@ C:\lora-pilot\workspace\datasets\images\my_dataset\
 ## 🆘 Support
 
 If you encounter issues:
-1. Check the [GitHub Issues](https://github.com/your-username/lora-pilot/issues)
+1. Check the [GitHub Issues](https://github.com/vavo/lora-pilot/issues)
 2. Review the [main documentation](README.md)
 3. Join the community Discord (if available)
 4. Include system specs and error logs when reporting issues
@@ -347,4 +347,4 @@ If you encounter issues:
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)

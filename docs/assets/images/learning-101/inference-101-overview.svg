@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" role="img" aria-labelledby="title desc">
+  <title id="title">Inference 101 Overview</title>
+  <desc id="desc">A readable map of the generation loop from intent to workflow, settings, output, and review.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#0284c7"/>
+    </marker>
+    <style>
+      .h1 { font: 800 42px 'Inter', 'Segoe UI', sans-serif; fill: #0f172a; }
+      .h2 { font: 750 24px 'Inter', 'Segoe UI', sans-serif; fill: #0f172a; }
+      .p { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #334155; }
+      .small { font: 600 14px 'Inter', 'Segoe UI', sans-serif; fill: #475569; }
+      .tag { font: 800 14px 'Inter', 'Segoe UI', sans-serif; fill: #ffffff; }
+      .label { font: 750 16px 'Inter', 'Segoe UI', sans-serif; fill: #075985; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="780" fill="url(#bg)"/>
+  <text x="60" y="76" class="h1">Inference 101: The Useful Loop</text>
+  <text x="60" y="112" class="p">Generation gets easier when every run has a purpose, a known setup, and evidence you can compare.</text>
+
+  <rect x="60" y="162" width="270" height="174" rx="18" fill="url(#card)" stroke="#bae6fd"/>
+  <rect x="84" y="188" width="98" height="34" rx="17" fill="#0284c7"/>
+  <text x="107" y="211" class="tag">Intent</text>
+  <text x="84" y="254" class="h2">Start With a Job</text>
+  <text x="84" y="286" class="small">Portrait, product shot, edit,</text>
+  <text x="84" y="310" class="small">upscale, video, or repair.</text>
+
+  <rect x="390" y="162" width="270" height="174" rx="18" fill="url(#card)" stroke="#bae6fd"/>
+  <rect x="414" y="188" width="122" height="34" rx="17" fill="#0f766e"/>
+  <text x="438" y="211" class="tag">Workflow</text>
+  <text x="414" y="254" class="h2">Pick the Shape</text>
+  <text x="414" y="286" class="small">Text-to-image, image-to-image,</text>
+  <text x="414" y="310" class="small">ControlNet, LoRA, or video.</text>
+
+  <rect x="720" y="162" width="270" height="174" rx="18" fill="url(#card)" stroke="#bae6fd"/>
+  <rect x="744" y="188" width="116" height="34" rx="17" fill="#7c3aed"/>
+  <text x="766" y="211" class="tag">Settings</text>
+  <text x="744" y="254" class="h2">Lock a Baseline</text>
+  <text x="744" y="286" class="small">Model, seed, resolution,</text>
+  <text x="744" y="310" class="small">steps, CFG, sampler.</text>
+
+  <rect x="1050" y="162" width="290" height="174" rx="18" fill="url(#card)" stroke="#bae6fd"/>
+  <rect x="1074" y="188" width="100" height="34" rx="17" fill="#ea580c"/>
+  <text x="1098" y="211" class="tag">Output</text>
+  <text x="1074" y="254" class="h2">Compare, Do Not Guess</text>
+  <text x="1074" y="286" class="small">Review images side by side</text>
+  <text x="1074" y="310" class="small">with metadata intact.</text>
+
+  <line x1="330" y1="249" x2="378" y2="249" stroke="#0284c7" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="660" y1="249" x2="708" y2="249" stroke="#0284c7" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="990" y1="249" x2="1038" y2="249" stroke="#0284c7" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="60" y="410" width="1280" height="270" rx="22" fill="#ffffff" stroke="#bae6fd"/>
+  <text x="90" y="462" class="h2">The Beginner Mistake Pattern</text>
+  <text x="90" y="496" class="p">A weak output appears. The user changes prompt, model, seed, CFG, sampler, resolution, LoRA weight, and denoise at once. The next image is different, but nobody knows why.</text>
+
+  <g transform="translate(90,548)">
+    <rect width="280" height="82" rx="14" fill="#eff6ff" stroke="#93c5fd"/>
+    <text x="24" y="34" class="label">Keep one starter workflow</text>
+    <text x="24" y="60" class="small">Never edit the only good copy.</text>
+  </g>
+  <g transform="translate(400,548)">
+    <rect width="280" height="82" rx="14" fill="#ecfdf5" stroke="#5eead4"/>
+    <text x="24" y="34" class="label">Change one thing</text>
+    <text x="24" y="60" class="small">A test needs a control.</text>
+  </g>
+  <g transform="translate(710,548)">
+    <rect width="280" height="82" rx="14" fill="#f5f3ff" stroke="#c4b5fd"/>
+    <text x="24" y="34" class="label">Save the evidence</text>
+    <text x="24" y="60" class="small">Prompt, seed, model, settings.</text>
+  </g>
+  <g transform="translate(1020,548)">
+    <rect width="280" height="82" rx="14" fill="#fff7ed" stroke="#fdba74"/>
+    <text x="24" y="34" class="label">Iterate in phases</text>
+    <text x="24" y="60" class="small">Preview first, polish later.</text>
+  </g>
+</svg>

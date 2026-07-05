@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="780" viewBox="0 0 1400 780" role="img" aria-labelledby="title desc">
+  <title id="title">Generation Settings Map</title>
+  <desc id="desc">A practical map of seed, steps, CFG, sampler, resolution, denoise, and batch size.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#ecfeff"/>
+    </linearGradient>
+    <style>
+      .h1 { font: 800 42px 'Inter', 'Segoe UI', sans-serif; fill: #0f172a; }
+      .p { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #334155; }
+      .k { font: 800 20px 'Inter', 'Segoe UI', sans-serif; fill: #111827; }
+      .small { font: 600 14px 'Inter', 'Segoe UI', sans-serif; fill: #475569; }
+      .center { font: 800 26px 'Inter', 'Segoe UI', sans-serif; fill: #ffffff; }
+      .center-small { font: 600 15px 'Inter', 'Segoe UI', sans-serif; fill: #dbeafe; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="780" fill="url(#bg)"/>
+  <text x="60" y="74" class="h1">The Settings Are Questions, Not Magic Numbers</text>
+  <text x="60" y="110" class="p">Good tuning starts by knowing which question each control answers.</text>
+
+  <circle cx="700" cy="388" r="132" fill="#0f172a"/>
+  <text x="610" y="370" class="center">One Baseline</text>
+  <text x="592" y="404" class="center-small">fixed model, prompt, seed,</text>
+  <text x="622" y="428" class="center-small">resolution, sampler</text>
+
+  <g transform="translate(96,168)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#93c5fd"/>
+    <text x="24" y="42" class="k">Seed</text>
+    <text x="24" y="74" class="small">Question: same idea or new variation?</text>
+    <text x="24" y="100" class="small">Fix it while testing. Randomize it later.</text>
+  </g>
+
+  <g transform="translate(490,116)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#a7f3d0"/>
+    <text x="24" y="42" class="k">Steps</text>
+    <text x="24" y="74" class="small">Question: enough refinement yet?</text>
+    <text x="24" y="100" class="small">More is slower and eventually useless.</text>
+  </g>
+
+  <g transform="translate(884,168)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#fecaca"/>
+    <text x="24" y="42" class="k">CFG / Guidance</text>
+    <text x="24" y="74" class="small">Question: how hard should prompt pull?</text>
+    <text x="24" y="100" class="small">Too high gets brittle and harsh.</text>
+  </g>
+
+  <g transform="translate(96,390)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#fde68a"/>
+    <text x="24" y="42" class="k">Sampler + Scheduler</text>
+    <text x="24" y="74" class="small">Question: how should noise resolve?</text>
+    <text x="24" y="100" class="small">Keep fixed while learning the workflow.</text>
+  </g>
+
+  <g transform="translate(984,390)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#c4b5fd"/>
+    <text x="24" y="42" class="k">Resolution</text>
+    <text x="24" y="74" class="small">Question: what size fits the model?</text>
+    <text x="24" y="100" class="small">Preview smaller. Upscale winners.</text>
+  </g>
+
+  <g transform="translate(252,590)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#fed7aa"/>
+    <text x="24" y="42" class="k">Denoise</text>
+    <text x="24" y="74" class="small">Question: how much may it change?</text>
+    <text x="24" y="100" class="small">Critical for img2img and inpainting.</text>
+  </g>
+
+  <g transform="translate(828,590)">
+    <rect width="320" height="130" rx="18" fill="#ffffff" stroke="#bae6fd"/>
+    <text x="24" y="42" class="k">Batch Size</text>
+    <text x="24" y="74" class="small">Question: how many at once?</text>
+    <text x="24" y="100" class="small">Use 1 until stable, then scale.</text>
+  </g>
+
+  <line x1="416" y1="232" x2="572" y2="326" stroke="#2563eb" stroke-width="4"/>
+  <line x1="650" y1="246" x2="670" y2="256" stroke="#16a34a" stroke-width="4"/>
+  <line x1="884" y1="232" x2="824" y2="308" stroke="#dc2626" stroke-width="4"/>
+  <line x1="416" y1="456" x2="568" y2="416" stroke="#d97706" stroke-width="4"/>
+  <line x1="984" y1="456" x2="830" y2="416" stroke="#7c3aed" stroke-width="4"/>
+  <line x1="572" y1="624" x2="628" y2="506" stroke="#ea580c" stroke-width="4"/>
+  <line x1="828" y1="624" x2="772" y2="506" stroke="#0284c7" stroke-width="4"/>
+</svg>

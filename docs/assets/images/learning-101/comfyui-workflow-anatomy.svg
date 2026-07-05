@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760" role="img" aria-labelledby="title desc">
+  <title id="title">ComfyUI Workflow Anatomy</title>
+  <desc id="desc">A left-to-right ComfyUI workflow showing loader, prompts, latent source, sampler, decode, and save nodes.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <marker id="arrow" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#38bdf8"/>
+    </marker>
+    <style>
+      .h1 { font: 800 40px 'Inter', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .p { font: 500 18px 'Inter', 'Segoe UI', sans-serif; fill: #cbd5e1; }
+      .node-title { font: 800 18px 'Inter', 'Segoe UI', sans-serif; fill: #f8fafc; }
+      .small { font: 600 13px 'Inter', 'Segoe UI', sans-serif; fill: #cbd5e1; }
+      .socket { font: 800 12px 'Inter', 'Segoe UI', sans-serif; fill: #0f172a; }
+    </style>
+  </defs>
+
+  <rect width="1400" height="760" fill="url(#bg)"/>
+  <text x="58" y="72" class="h1">ComfyUI Graph Anatomy</text>
+  <text x="58" y="108" class="p">Read the canvas left to right: load ingredients, condition the model, sample latents, decode pixels, save output.</text>
+
+  <g transform="translate(58,170)">
+    <rect width="250" height="180" rx="18" fill="#1e40af" stroke="#60a5fa" stroke-width="2"/>
+    <text x="24" y="42" class="node-title">CheckpointLoader</text>
+    <text x="24" y="74" class="small">Select checkpoint.</text>
+    <text x="24" y="98" class="small">Outputs model stack.</text>
+    <rect x="174" y="118" width="52" height="24" rx="12" fill="#bfdbfe"/><text x="184" y="135" class="socket">MODEL</text>
+    <rect x="174" y="146" width="52" height="24" rx="12" fill="#fde68a"/><text x="188" y="163" class="socket">CLIP</text>
+  </g>
+
+  <g transform="translate(382,118)">
+    <rect width="250" height="136" rx="18" fill="#0f766e" stroke="#5eead4" stroke-width="2"/>
+    <text x="24" y="42" class="node-title">CLIPTextEncode</text>
+    <text x="24" y="74" class="small">Positive prompt.</text>
+    <rect x="174" y="94" width="52" height="24" rx="12" fill="#bbf7d0"/><text x="180" y="111" class="socket">COND</text>
+  </g>
+
+  <g transform="translate(382,296)">
+    <rect width="250" height="136" rx="18" fill="#991b1b" stroke="#fca5a5" stroke-width="2"/>
+    <text x="24" y="42" class="node-title">CLIPTextEncode</text>
+    <text x="24" y="74" class="small">Negative prompt.</text>
+    <rect x="174" y="94" width="52" height="24" rx="12" fill="#fecaca"/><text x="180" y="111" class="socket">COND</text>
+  </g>
+
+  <g transform="translate(382,500)">
+    <rect width="250" height="120" rx="18" fill="#7c2d12" stroke="#fdba74" stroke-width="2"/>
+    <text x="24" y="42" class="node-title">EmptyLatentImage</text>
+    <text x="24" y="74" class="small">Width, height, batch.</text>
+    <rect x="166" y="82" width="60" height="24" rx="12" fill="#fed7aa"/><text x="177" y="99" class="socket">LATENT</text>
+  </g>
+
+  <g transform="translate(735,222)">
+    <rect width="270" height="220" rx="20" fill="#581c87" stroke="#c084fc" stroke-width="2"/>
+    <text x="24" y="44" class="node-title">KSampler</text>
+    <text x="24" y="78" class="small">Seed, steps, CFG, sampler,</text>
+    <text x="24" y="102" class="small">scheduler, denoise.</text>
+    <text x="24" y="142" class="small">This is where most image</text>
+    <text x="24" y="166" class="small">behavior is decided.</text>
+    <rect x="188" y="178" width="58" height="24" rx="12" fill="#ddd6fe"/><text x="197" y="195" class="socket">LATENT</text>
+  </g>
+
+  <g transform="translate(1084,210)">
+    <rect width="220" height="132" rx="18" fill="#9a3412" stroke="#fdba74" stroke-width="2"/>
+    <text x="24" y="44" class="node-title">VAEDecode</text>
+    <text x="24" y="78" class="small">Latent becomes image.</text>
+    <rect x="144" y="94" width="52" height="24" rx="12" fill="#ffedd5"/><text x="154" y="111" class="socket">IMAGE</text>
+  </g>
+
+  <g transform="translate(1084,410)">
+    <rect width="220" height="132" rx="18" fill="#166534" stroke="#86efac" stroke-width="2"/>
+    <text x="24" y="44" class="node-title">SaveImage</text>
+    <text x="24" y="78" class="small">PNG plus metadata.</text>
+  </g>
+
+  <line x1="308" y1="300" x2="722" y2="300" stroke="#38bdf8" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="308" y1="328" x2="370" y2="190" stroke="#facc15" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="308" y1="328" x2="370" y2="364" stroke="#facc15" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="632" y1="186" x2="724" y2="280" stroke="#22c55e" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="632" y1="364" x2="724" y2="360" stroke="#ef4444" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="632" y1="560" x2="724" y2="410" stroke="#fb923c" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1005" y1="332" x2="1072" y2="276" stroke="#a78bfa" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1194" y1="342" x2="1194" y2="398" stroke="#fb923c" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <rect x="58" y="664" width="1280" height="56" rx="16" fill="#f8fafc" opacity="0.96"/>
+  <text x="86" y="700" class="small" fill="#0f172a">Debug rule: when a workflow fails, follow the wire backward from the broken node and check socket type, model family, and missing assets before changing settings.</text>
+</svg>

@@ -78,8 +78,8 @@ CROC_VERSION ?= 10.4.2
 WORKSPACE_DIR ?= $(CURDIR)/workspace
 
 # Random secrets (deterministic enough, but not sacred)
-JUPYTER_TOKEN ?= $(shell openssl rand -hex 16)
-CODE_SERVER_PASSWORD ?= $(shell openssl rand -hex 16)
+export JUPYTER_TOKEN := $(or $(JUPYTER_TOKEN),$(shell openssl rand -hex 16))
+export CODE_SERVER_PASSWORD := $(or $(CODE_SERVER_PASSWORD),$(shell openssl rand -hex 16))
 
 DOCKER_BUILD_ARGS = \
 	--build-arg CUDA_BASE_IMAGE="$(CUDA_BASE_IMAGE)" \

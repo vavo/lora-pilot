@@ -112,7 +112,8 @@ curl -s -X POST http://localhost:7878/api/services/invoke/settings/autostart \
 
 ControlPilot includes update orchestration for selected services:
 
-- Supported: `invoke` (pip), `comfy`/`kohya`/`diffpipe`/`ai-toolkit` (git)
+- Supported: `invoke` (pip)
+- Image-managed: `comfy`, `kohya`, `diffpipe`, and `ai-toolkit` are updated by rebuilding the image with new build refs
 - Endpoints:
   - `GET /api/services/versions`
   - `POST /api/services/{name}/update/start`
@@ -181,6 +182,5 @@ docker exec lora-pilot supervisorctl update
 
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 

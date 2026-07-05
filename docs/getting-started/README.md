@@ -30,7 +30,7 @@ docker compose -f docker-compose.yml up -d
 - [Stable Diffusion 101](stable-diffusion-101/README.md)
 - [Datasets 101](datasets-101/README.md)
 - [LoRA Training 101](loRA-training-101/README.md)
-- [Inference 101](inference-101/README.md)
+- [Inference 101](inference-101/README.md), including [Workflow Types](inference-101/workflow-types.md)
 
 ## Beginner Learning Flow
 
@@ -59,10 +59,7 @@ flowchart LR
 
 ---
 
----
-
 ## 📝 Feedback
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/notri1/lora-pilot/discussions/categories/documentation-feedback)
-
+Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 
