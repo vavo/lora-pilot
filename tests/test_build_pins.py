@@ -185,7 +185,7 @@ class BuildPinTests(unittest.TestCase):
                 "INVOKE_DIFFUSERS_VERSION": "0.37.0",
                 "INVOKE_TRANSFORMERS_VERSION": "5.5.4",
                 "INVOKE_ACCELERATE_VERSION": "1.14.0",
-                "INVOKE_HF_HUB_VERSION": "0.36.2",
+                "INVOKE_HF_HUB_VERSION": "1.22.0",
                 "DIFFPIPE_DIFFUSERS_VERSION": "0.38.0",
                 "DIFFPIPE_TRANSFORMERS_VERSION": "5.11.0",
                 "TENSORBOARD_VERSION": "2.21.0",

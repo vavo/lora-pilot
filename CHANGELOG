@@ -1,3 +1,7 @@
+v2.5.13 (July 5th 2026)
+
+- Fixed the InvokeAI build resolver conflict by updating the isolated Invoke Hugging Face Hub pin to `1.22.0`, matching the `transformers==5.5.4` requirement while staying inside Diffusers' `<2.0` range.
+
 v2.5.12 (July 5th 2026)
 
 - Synced build/configuration docs with the current Docker build pins: Node 24/npm `11.18.0`, pinned ComfyUI-Downloader, Diffusion Pipe `a7e7dec`, TensorBoard `2.21.0`, and pinned ControlPilot runtime web packages.

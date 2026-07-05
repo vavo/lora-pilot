@@ -9,6 +9,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.13` | InvokeAI build fix: isolated Hugging Face Hub pin moved to `1.22.0` to satisfy Transformers `5.5.4` and Diffusers `0.37.0` |
 | `v2.5.12` | Docs sync for current build pins, runtime web package pins, TensorBoard pin, and the CUDA 13.0 torchaudio policy |
 | `v2.5.11` | CUDA 13.0 core stack policy: torch `2.12.1`, torchvision `0.27.1`, and optional/empty torchaudio until a matching cu130 wheel exists |
 | `v2.5.10` | Node 24/npm `11.18.0`, pinned ComfyUI-Downloader, pinned runtime web/TensorBoard deps, and Diffusion Pipe `a7e7dec` |
