@@ -57,6 +57,8 @@ curl -s http://localhost:7878/api/comfy/status
 curl -s http://localhost:7878/api/comfy/latest-image
 ```
 
+When debugging ComfyUI directly, the upstream API is also useful through the Comfy service itself: `/system_stats` for hardware and VRAM, `/object_info` for available node classes and valid inputs, `/models/{folder}` for visible model files, `/queue` for execution state, and `/history/{prompt_id}` for outputs after a prompt is submitted.
+
 ## InvokeAI Workflow
 
 1. Open InvokeAI.
@@ -117,4 +119,3 @@ ls -la /workspace/apps/invoke/models
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
