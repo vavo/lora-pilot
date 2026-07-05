@@ -40,9 +40,9 @@ TORCH_INDEX_URL ?= https://download.pytorch.org/whl/cu128
 CUDA_NVCC_PKG ?= cuda-nvcc-12-8
 else
 CUDA_BASE_IMAGE ?= nvidia/cuda:13.0.2-runtime-ubuntu22.04
-TORCH_VERSION ?= 2.12.0
-TORCHVISION_VERSION ?= 0.27.0
-TORCHAUDIO_VERSION ?= 2.11.0
+TORCH_VERSION ?= 2.12.1
+TORCHVISION_VERSION ?= 0.27.1
+TORCHAUDIO_VERSION ?=
 TORCH_INDEX_URL ?= https://download.pytorch.org/whl/cu130
 CUDA_NVCC_PKG ?= cuda-nvcc-13-0
 endif

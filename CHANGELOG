@@ -1,3 +1,9 @@
+v2.5.11 (July 5th 2026)
+
+- Updated the default CUDA 13.0 core stack to the latest matching cu130 torch pair: `torch==2.12.1` and `torchvision==0.27.1`.
+- Made default `TORCHAUDIO_VERSION` empty for cu130 again because upstream has no matching `torchaudio==2.12.x` cu130 wheel; the installer keeps torchaudio optional and the cu128 profile still pins `torchaudio==2.11.0`.
+- Documented the policy in `build.env.example` so future patch bumps do not reintroduce a mixed torch/torchaudio stack.
+
 v2.5.10 (July 5th 2026)
 
 - Moved AI Toolkit UI builds from the old Node 20 setup script to a pinned Node major build arg (`NODE_MAJOR=24`) and npm `11.18.0`, using an explicit NodeSource apt source instead of piping the setup script into bash.

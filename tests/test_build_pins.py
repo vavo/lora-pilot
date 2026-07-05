@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def read_pin(path, name):
     text = (ROOT / path).read_text()
     patterns = [
-        rf"ARG {re.escape(name)}=([^\s]+)",
-        rf"{re.escape(name)} \?= ([^\s]+)",
-        rf"^{re.escape(name)}=([^\s]+)",
+        rf"ARG {re.escape(name)}=([^\s#]*)",
+        rf"{re.escape(name)} \?= ?([^\s#]*)",
+        rf"^{re.escape(name)}=([^\s#]*)",
     ]
     for pattern in patterns:
         match = re.search(pattern, text, re.MULTILINE)
@@ -96,17 +96,27 @@ class BuildPinTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(read_pin(path, "DIFFPIPE_REF"), expected)
 
-    def test_core_stack_installs_required_comfy_modules(self):
+    def test_core_stack_uses_cu130_torch_pair_with_optional_torchaudio(self):
         expected = {
-            "TORCHAUDIO_VERSION": "2.11.0",
+            "TORCH_VERSION": "2.12.1",
+            "TORCHVISION_VERSION": "0.27.1",
+            "TORCHAUDIO_VERSION": "",
             "XFORMERS_VERSION": "0.0.35",
             "TRANSFORMERS_VERSION": "5.11.0",
             "UV_VERSION": "0.11.26",
         }
-        for path in ("Dockerfile", "Makefile", "build.env.example"):
+        for path in ("Dockerfile", "build.env.example"):
             with self.subTest(path=path):
                 for name, value in expected.items():
                     self.assertEqual(read_pin(path, name), value)
+
+        make_text = (ROOT / "Makefile").read_text()
+        self.assertIn("TORCH_VERSION ?= 2.11.0", make_text)
+        self.assertIn("TORCHVISION_VERSION ?= 0.26.0", make_text)
+        self.assertIn("TORCHAUDIO_VERSION ?= 2.11.0", make_text)
+        self.assertIn("TORCH_VERSION ?= 2.12.1", make_text)
+        self.assertIn("TORCHVISION_VERSION ?= 0.27.1", make_text)
+        self.assertRegex(make_text, r"TORCHVISION_VERSION \?= 0\.27\.1\nTORCHAUDIO_VERSION \?=\nTORCH_INDEX_URL \?= https://download\.pytorch\.org/whl/cu130")
 
         core_stack = (ROOT / "scripts/build/install-core-stack.sh").read_text()
         self.assertIn('"torchaudio==${TORCHAUDIO_VERSION}"', core_stack)
@@ -147,9 +157,9 @@ class BuildPinTests(unittest.TestCase):
         env = os.environ.copy()
         env.update(
             {
-                "TORCH_VERSION": "2.12.0",
-                "TORCHVISION_VERSION": "0.27.0",
-                "TORCHAUDIO_VERSION": "2.11.0",
+                "TORCH_VERSION": "2.12.1",
+                "TORCHVISION_VERSION": "0.27.1",
+                "TORCHAUDIO_VERSION": "",
                 "XFORMERS_VERSION": "0.0.35",
                 "BITSANDBYTES_VERSION": "0.49.2",
                 "CORE_DIFFUSERS_VERSION": "0.38.0",
@@ -188,13 +198,17 @@ class BuildPinTests(unittest.TestCase):
                 env=env,
             )
             constraints = (Path(tmp) / "invoke-constraints.txt").read_text()
+            core_constraints = (Path(tmp) / "core-constraints.txt").read_text()
+            diffpipe_constraints = (Path(tmp) / "diffpipe-constraints.txt").read_text()
 
         self.assertIn("torch==2.7.1+cu128\n", constraints)
         self.assertIn("torchvision==0.22.1+cu128\n", constraints)
         self.assertIn("xformers==0.0.31.post1\n", constraints)
         self.assertIn("diffusers==0.37.0\n", constraints)
         self.assertIn("transformers==5.5.4\n", constraints)
-        self.assertNotIn("torch==2.12.0\n", constraints)
+        self.assertNotIn("torch==2.12.1\n", constraints)
+        self.assertNotIn("torchaudio==", core_constraints)
+        self.assertNotIn("torchaudio==", diffpipe_constraints)
 
     def test_makefile_passes_service_install_flags_to_docker(self):
         text = (ROOT / "Makefile").read_text()
