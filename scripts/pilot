@@ -5,6 +5,19 @@ cmd="${1:-}"
 shift || true
 
 case "$cmd" in
+  status) exec supervisorctl status "$@" ;;
+  start)
+    if (( $# == 0 )); then
+      set -- all
+    fi
+    exec supervisorctl start "$@"
+    ;;
+  stop)
+    if (( $# == 0 )); then
+      set -- all
+    fi
+    exec supervisorctl stop "$@"
+    ;;
   comfy) exec /opt/pilot/comfy.sh "$@" ;;
   kohya) exec /opt/pilot/kohya.sh "$@" ;;
   diffpipe) exec /opt/pilot/diffusion-pipe.sh "$@" ;;
@@ -25,7 +38,7 @@ case "$cmd" in
     fi
     ;;
   *)
-    echo "usage: pilot {comfy|kohya|diffpipe|jupyter|code|urls} [args...]"
+    echo "usage: pilot {status|start|stop|comfy|kohya|diffpipe|jupyter|code|urls} [args...]"
     exit 2
     ;;
 esac

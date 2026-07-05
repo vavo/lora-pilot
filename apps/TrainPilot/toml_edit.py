@@ -2,31 +2,36 @@
 import sys, os, json
 
 try:
-    import toml
-    if not hasattr(toml, "load"):
-        raise ImportError
+    import tomlkit
 except ImportError:
-    try:
-        import tomli as toml
-    except ImportError:
-        print("Installing toml into /opt/venvs/core...", file=sys.stderr)
-        import subprocess
-        subprocess.run(["/opt/venvs/core/bin/pip", "install", "-q", "toml==0.10.2"], check=False)
-        import toml
+    print("Installing tomlkit into the active Python environment...", file=sys.stderr)
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "tomlkit==0.15.0"], check=True)
+    import tomlkit
 
 # --------- IO helpers ---------
-def load_dict(path: str) -> dict:
+def load_dict(path: str):
     if not path or not isinstance(path, str):
         raise TypeError("load_dict(path): path must be a string")
     if not os.path.exists(path) or os.path.getsize(path) == 0:
-        return {}
+        return tomlkit.document()
     with open(path, "r", encoding="utf-8") as f:
-        return toml.load(f)
+        return tomlkit.load(f)
 
-def save_dict(path: str, data: dict) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def save_dict(path: str, data) -> None:
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        toml.dump(data, f)
+        tomlkit.dump(data, f)
+
+def is_table(value) -> bool:
+    return hasattr(value, "get") and hasattr(value, "__setitem__")
+
+def plain_value(value):
+    if hasattr(value, "unwrap"):
+        return value.unwrap()
+    return value
 
 # --------- dotted key utils ---------
 def set_key(path: str, dotted_key: str, mode: str, value: str) -> None:
@@ -34,8 +39,8 @@ def set_key(path: str, dotted_key: str, mode: str, value: str) -> None:
     d = data
     parts = dotted_key.split(".")
     for p in parts[:-1]:
-        if p not in d or not isinstance(d[p], dict):
-            d[p] = {}
+        if p not in d or not is_table(d[p]):
+            d[p] = tomlkit.table()
         d = d[p]
     last = parts[-1]
 
@@ -67,7 +72,7 @@ def del_key(path: str, dotted_key: str) -> None:
     d = data
     parts = dotted_key.split(".")
     for p in parts[:-1]:
-        if p not in d or not isinstance(d[p], dict):
+        if p not in d or not is_table(d[p]):
             # nothing to delete
             print("")  # stay silent/harmless
             return
@@ -80,11 +85,11 @@ def get_key(path: str, dotted_key: str) -> None:
     d = data
     parts = dotted_key.split(".")
     for p in parts[:-1]:
-        if p not in d or not isinstance(d[p], dict):
+        if p not in d or not is_table(d[p]):
             print("")  # not found
             return
         d = d[p]
-    val = d.get(parts[-1], "")
+    val = plain_value(d.get(parts[-1], ""))
     if isinstance(val, (dict, list)):
         print(json.dumps(val))
     else:

@@ -14,6 +14,8 @@ Use text-to-image when you want a new composition and do not need to preserve an
 
 The beginner trap is expecting prompt language to solve structural problems forever. If you need a specific pose, depth layout, edge structure, product silhouette, or room composition, text-to-image may fight you. That is when ControlNet or image-to-image becomes the adult answer.
 
+In ComfyUI, official Workflow Templates are a good way to start text-to-image for a specific model family. They often include the right loader chain and can prompt for missing model downloads, which is much better than discovering three missing files after queueing.
+
 ## Image-to-Image: Start From a Source Image
 
 Image-to-image begins with an existing image. The image is encoded into latent space, then the sampler modifies it according to the prompt and denoise value.
@@ -54,11 +56,15 @@ Text-to-video is not just text-to-image with extra frames. Video models care abo
 
 Use text-to-video when the entire shot can be described from scratch. Keep early tests short and low-cost. Lock the prompt and seed when comparing duration, motion, or guidance changes. For model families such as Wan, LTX, HunyuanVideo, or other video stacks, follow the workflow notes first.
 
+For newer video families, check ComfyUI Workflow Templates before assuming your installed ComfyUI is ready. If the official workflow is missing or a core node is unavailable, update ComfyUI; Desktop and Cloud releases can lag behind the newest self-hosted templates.
+
 ## Image-to-Video: Move an Existing Image
 
 Image-to-video starts with a still image and asks the model to animate it. The input image anchors identity, composition, product shape, character design, or art direction more strongly than a prompt alone.
 
 Use image-to-video when the starting frame matters. Product motion, character animation, camera drift, animated poster shots, and style-preserving clips are natural fits. The first frame should already be strong; image-to-video is not a good place to repair a weak still image and invent motion at the same time.
+
+Treat the input image as a dependency of the workflow. If an API run or imported graph says the image does not exist, verify upload paths and `LoadImage` filenames before changing model settings.
 
 ## About FLF and Local Shorthand
 

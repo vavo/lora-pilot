@@ -30,16 +30,42 @@ Your first graph should be plain text-to-image. Load a checkpoint, feed its `CLI
 
 Before queueing, scan the graph from left to right. Required inputs should be connected, loader dropdowns should point to real files, the model family should match the workflow, and the seed behavior should match your goal. Fixed seed for testing. Random seed for exploration.
 
+### Use Official Templates First
+
+ComfyUI ships a Workflow Templates browser. Open it from the Templates icon in the sidebar or from `Workflow` -> `Browse Workflow Templates`. Templates cover natively supported model workflows and some custom-node examples, and they are the safest starting point when a model family uses unfamiliar loaders.
+
+When a template loads, ComfyUI checks for required model files. In Comfy Desktop it can download missing model files for you. In other LoRA Pilot or self-hosted setups, use the template prompt as a shopping list, place the model files under the matching `/workspace/models` location, then select the files in the loader nodes.
+
 ## 🖥️ Interface Guide
 
 ### Main Components
+
+#### Sidebar Panels
+Current ComfyUI exposes the most useful working areas as side panels:
+
+- **Queue / Workflow History**: active and past generations.
+- **Node Library**: core nodes plus installed custom nodes.
+- **Model Library**: model files found by ComfyUI.
+- **Workflows**: locally saved user workflows.
+
+If a model exists on disk but is missing from a loader dropdown, check the Model Library, the model folder, and the loader's expected model type before editing the graph.
 
 #### Canvas Basics
 Arrange workflows left to right: loaders on the left, processing in the middle, outputs on the right. Nodes have inputs on the left, editable settings in the center, and outputs on the right.
 
 Connection colors and socket labels matter. A `MODEL` output cannot plug into an `IMAGE` input, and ComfyUI will reject incompatible links. One output can feed multiple inputs, so you can reuse the same `MODEL`, `CLIP`, `VAE`, seed, or image output when comparing branches.
 
-Double-click empty canvas space to search nodes. It is faster than digging through menus once you know the node name.
+Double-click empty canvas space to search nodes. It is faster than digging through menus once you know the node name. For complex graphs, use reroute points or native reroutes to keep wires readable; hiding all links may reduce clutter, but it makes learning and debugging harder.
+
+#### Node States
+Nodes are not just boxes with knobs. They show state while the workflow runs:
+
+- **Normal**: ready to run.
+- **Running**: currently executing.
+- **Error**: a node input or setting failed validation or execution.
+- **Missing**: the workflow references a node class that is not available locally.
+
+Missing nodes split into two buckets. If a core node is missing, ComfyUI may be older than the workflow. If a custom node is missing, install the matching custom-node package, usually through ComfyUI Manager, then restart and reload the workflow.
 
 #### Node Categories
 - **Loaders**: Model, VAE, CLIP loaders
@@ -51,6 +77,7 @@ Double-click empty canvas space to search nodes. It is faster than digging throu
 #### Workflow Management
 - **Save Workflow**: Save important workflows as JSON. Browser storage is not a backup.
 - **Load Workflow**: Import JSON workflows, or drag a ComfyUI-generated PNG back onto the canvas to reload embedded workflow metadata.
+- **Use Templates**: Prefer official Workflow Templates for new model families before importing random community graphs.
 - **Queue Management**: Queue prompts with `Ctrl+Enter` / `Cmd+Enter`.
 - **Versioning**: Save working milestones as `workflow-v1.json`, `workflow-v2-upscale.json`, etc. Overwriting the only good copy is how people invent unpaid archaeology.
 - **Lightning Mode**: Fast execution without UI updates.
@@ -171,6 +198,8 @@ LoadImage → VAEEncode ↗
 
 For red missing-node blocks in an imported workflow, use Manager's missing-node install flow, restart ComfyUI, then reload the workflow. If the workflow also references missing checkpoints, LoRAs, VAEs, or upscalers, install those models separately.
 
+Imported workflows have more dependencies than their JSON file. A workflow may also need source images, masks, video/audio inputs, model files, custom nodes, and Python packages. Treat the workflow file as the recipe, not the whole meal.
+
 #### Manual Installation
 ```bash
 # Access container shell
@@ -259,6 +288,23 @@ ComfyUI workflows can be saved as API format for automation:
   }
 }
 ```
+
+Useful direct ComfyUI API routes in LoRA Pilot:
+
+| Route | Purpose |
+|---|---|
+| `GET /system_stats` | Check Python, device, and VRAM information. |
+| `GET /models` | List model folder types known to ComfyUI. |
+| `GET /models/{folder}` | List models in one folder type, such as checkpoints or LoRAs. |
+| `GET /object_info` | Inspect available node classes, inputs, defaults, and allowed values. |
+| `POST /prompt` | Submit an API-format workflow to the execution queue. |
+| `GET /history/{prompt_id}` | Retrieve outputs and execution history for one queued prompt. |
+| `GET /queue` | Inspect the current queue. |
+| `POST /interrupt` | Stop the current workflow execution. |
+| `POST /free` | Ask ComfyUI to unload models and free memory. |
+| `WS /ws` | Receive live execution, progress, cache, and error updates. |
+
+For production-ish integrations, combine `POST /prompt`, `WS /ws`, and `GET /history/{prompt_id}`. Fire-and-forget queue submission is fine for quick tests, but it is thin evidence when debugging.
 
 #### Batch Processing
 ```python
@@ -407,6 +453,8 @@ For large modern models, also try FP8/quantized variants before assuming the wor
 ```
 
 Match the model family first. An SDXL workflow wants SDXL-size latents and SDXL checkpoints; a Flux workflow wants Flux models and Flux-appropriate guidance.
+
+If the workflow came from an official template and the template is missing, update ComfyUI first. Desktop and Cloud releases can lag behind the newest self-hosted or nightly nodes, so a missing core node is not always your model folder's fault.
 
 ### Debug Commands
 

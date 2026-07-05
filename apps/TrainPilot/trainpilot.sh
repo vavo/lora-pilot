@@ -28,17 +28,28 @@ if [[ "${1:-}" == "--queue" ]]; then
   shift
   (( $# > 0 )) || { echo "Usage: $0 --queue \"TOML:DATASET[:OUTPUT[:PROFILE]]\"" >&2; exit 1; }
   idx=1
+  failures=0
   for item in "$@"; do
     IFS=: read -r _toml _ds _out _prof <<<"$item"
     [[ -n "$_toml" && -n "$_ds" ]] || { echo "Queue item #$idx malformed: '$item'"; exit 1; }
-    PROFILE="${_prof:-${PROFILE:-regular}}" \
-    DATASET_NAME="$_ds" \
-    OUTPUT_NAME="${_out:-$_ds}" \
-    TOML="$_toml" \
-    NO_CONFIRM=1 \
-    bash "$0"
+    if PROFILE="${_prof:-${PROFILE:-regular}}" \
+      DATASET_NAME="$_ds" \
+      OUTPUT_NAME="${_out:-$_ds}" \
+      TOML="$_toml" \
+      NO_CONFIRM=1 \
+      bash "$0"; then
+      :
+    else
+      status=$?
+      echo "Queue item #$idx failed (exit ${status}): ${item}" >&2
+      ((failures+=1))
+    fi
     ((idx++))
   done
+  if (( failures > 0 )); then
+    echo "=== Queue complete with ${failures} failure(s) ==="
+    exit 1
+  fi
   echo "=== Queue complete ==="
   exit 0
 fi
@@ -325,9 +336,12 @@ while :; do
       echo "Log file: $OUT_DIR/_logs/train.log"
       echo
 
-      (cd "$KOHYA_ROOT" && stdbuf -oL -eL "${CMD[@]}" 2>&1 |
-        tee -a "$OUT_DIR/_logs/train.log")
-      status=$?
+      if (cd "$KOHYA_ROOT" && stdbuf -oL -eL "${CMD[@]}" 2>&1 |
+        tee -a "$OUT_DIR/_logs/train.log"); then
+        status=0
+      else
+        status=$?
+      fi
 
       echo "=== Training finished (exit $status) ==="
       (( NO_CONFIRM == 0 )) && {

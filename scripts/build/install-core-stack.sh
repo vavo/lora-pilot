@@ -11,6 +11,7 @@ set -euo pipefail
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
 : "${UV_VERSION:?UV_VERSION is required}"
+: "${TOMLKIT_VERSION:?TOMLKIT_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
@@ -46,6 +47,7 @@ if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
     "xformers==${XFORMERS_VERSION}" \
     "bitsandbytes==${BITSANDBYTES_VERSION}" \
     toml \
+    "tomlkit==${TOMLKIT_VERSION}" \
     "accelerate==${ACCELERATE_VERSION}" \
     "diffusers==${CORE_DIFFUSERS_VERSION}" \
     "transformers==${TRANSFORMERS_VERSION}" \
@@ -62,7 +64,7 @@ else
 fi
 
 if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
-  core_import_modules="uv transformers xformers"
+  core_import_modules="tomlkit uv transformers xformers"
   if [[ -n "${TORCHAUDIO_VERSION:-}" ]]; then
     core_import_modules="torchaudio ${core_import_modules}"
   fi

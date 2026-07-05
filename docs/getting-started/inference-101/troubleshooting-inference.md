@@ -36,11 +36,15 @@ Use ComfyUI Manager to install missing custom nodes, restart ComfyUI, then reloa
 
 Missing nodes are only one half of the problem. Imported workflows can also reference missing checkpoints, LoRAs, VAEs, upscalers, ControlNet models, or video model files. Those do not appear just because the node package installed successfully.
 
+A missing core node usually means the workflow expects a newer ComfyUI than the one you are running. A missing custom node means the workflow depends on a third-party node package. Treat those as different problems; updating ComfyUI and installing a custom node are not interchangeable fixes.
+
 ## ComfyUI Says a Model Value Is Not in the List
 
 Find the loader named in the error, often `CheckpointLoaderSimple`, `LoraLoader`, `VAELoader`, `ControlNetLoader`, or an upscaler loader. Select a file that exists in the dropdown and belongs to the workflow family.
 
 If the model is supposed to be managed by LoRA Pilot, pull it through model management when it exists in the manifest. Restart or refresh ComfyUI after adding model files.
+
+Official templates can prompt for missing model files, but detection is still tied to expected filenames and model categories. If the file lives in an unexpected subfolder or the wrong model type, the template may still warn even though you downloaded something that looks similar.
 
 ## CUDA Out of Memory
 
@@ -53,6 +57,8 @@ If a workflow fails at high resolution, rerun it at a small test size. A small s
 When stuck, reproduce with the saved starter workflow, change one variable, compare side by side, check loader nodes for missing or wrong-family models, check ComfyUI Manager and service logs, then document the winning config.
 
 If the starter workflow is gone, rebuild one. That hurts once. Debugging without it hurts repeatedly.
+
+For deeper ComfyUI debugging, check the direct API surfaces: `/system_stats` for hardware and VRAM, `/models/{folder}` for visible model files, `/object_info` for available nodes and allowed values, `/queue` for execution state, and `/history/{prompt_id}` for outputs from a submitted workflow.
 
 ## Next
 

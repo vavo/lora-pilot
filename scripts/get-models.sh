@@ -70,6 +70,39 @@ require_manifest() {
   fi
 }
 
+safe_model_dest() {
+  local subdir="$1" py
+  py="${VENV_PY}"
+  if [[ ! -x "${py}" ]]; then
+    py="$(command -v python3 || true)"
+  fi
+  [[ -n "${py}" ]] || { echo "ERROR: python3 not found for model path validation" >&2; exit 4; }
+
+  "${py}" - "${MODELS_DIR}" "${subdir}" <<'PY'
+import os
+import sys
+
+base = sys.argv[1]
+subdir = sys.argv[2]
+
+if not subdir or os.path.isabs(subdir):
+    raise SystemExit(f"ERROR: invalid model subdir: {subdir!r}")
+
+base_real = os.path.realpath(base)
+dest_real = os.path.realpath(os.path.join(base_real, subdir))
+
+try:
+    common = os.path.commonpath([base_real, dest_real])
+except ValueError:
+    common = ""
+
+if common != base_real:
+    raise SystemExit(f"ERROR: model subdir escapes MODELS_DIR: {subdir!r}")
+
+print(dest_real)
+PY
+}
+
 # Manifest format (| separated):
 # name|kind|source|subdir|include|size(optional)
 # kind: url | hf_file | hf_repo
@@ -151,7 +184,8 @@ pull_one() {
     subdir="${override_subdir}"
   fi
 
-  local dest="${MODELS_DIR}/${subdir}"
+  local dest
+  dest="$(safe_model_dest "${subdir}")"
   case "${kind}" in
     url)
       download_url "${source}" "${dest}"

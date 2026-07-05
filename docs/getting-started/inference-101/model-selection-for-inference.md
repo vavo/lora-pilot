@@ -12,6 +12,8 @@ The checkpoint is the base model. It decides the general visual language, suppor
 
 When you download a model, read the model card before trusting generic settings. Many modern models are distilled, turbo-style, or built around family-specific guidance. Copying an old SDXL preset into a newer model family is how people get bad images and then blame the prompt like it personally betrayed them.
 
+In ComfyUI, first-party support usually shows up as a matching Workflow Template. If a new model family has an official template, use that graph before building from memory. It shows the expected loaders, companion files, and model pairing more reliably than a generic text-to-image graph.
+
 ## LoRAs Add a Specific Bias
 
 A LoRA is not a replacement checkpoint. It nudges a compatible base model toward a trained subject, style, character, product, clothing item, lighting pattern, or other concept. Start with one LoRA, confirm that it works, then add complexity.
@@ -42,6 +44,8 @@ For image generation, start with one reliable checkpoint, one optional LoRA, and
 The simplest rule is also the least glamorous: keep model families together. SDXL workflows want SDXL checkpoints and SDXL-size latents. Flux workflows need Flux-compatible loaders and guidance behavior. Video workflows often need a matched text encoder, VAE, transformer, scheduler assumptions, and frame settings.
 
 When importing a workflow, replace missing models with the same family first. "This file exists in the dropdown" is not the same as "this file belongs in the graph."
+
+ComfyUI model discovery is type-aware. A checkpoint, LoRA, VAE, ControlNet, text encoder, diffusion model, and upscaler may all belong in different model categories. In LoRA Pilot, the shared `/workspace/models` store is wired into the tools, but loader nodes still care about model type. If a file is present but not listed, check whether it is in the right category and whether ComfyUI needs a refresh or restart.
 
 ## Next
 

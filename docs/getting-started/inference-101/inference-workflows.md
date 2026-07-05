@@ -12,6 +12,8 @@ Before experimenting, create one small setup that works. For text-to-image in Co
 
 Do not keep editing the only working copy. Save it as the starter. Duplicate it for experiments. A baseline is not sacred because it is perfect; it is sacred because it gives you a place to return when the experiment turns into a crime scene.
 
+When learning a new ComfyUI model family, an official Workflow Template is often the best baseline. Templates are built around supported model graphs and can surface missing model files before you waste time debugging a half-loaded canvas.
+
 ## Make One Change Per Run
 
 Once the baseline works, choose a single variable. Change the prompt, or the LoRA weight, or CFG, or steps, or sampler, or denoise, or resolution. Not all of them. Generate, compare, and decide whether the change helped.
@@ -29,6 +31,8 @@ In ComfyUI, keep generated PNGs while testing. Dragging a ComfyUI-generated PNG 
 Community workflows are useful because someone else already built the graph. They are also fragile because the graph assumes specific checkpoints, LoRAs, VAEs, upscalers, custom nodes, model families, and sometimes old node versions.
 
 When importing a workflow, read the notes first. Install missing custom nodes through ComfyUI Manager, restart ComfyUI, then reload the workflow. Replace missing models with the same family, not the first file that appears in a dropdown. Run a small resolution test before sending a heavy render. If the small test fails, the large render was not going to become wise through suffering.
+
+Remember that the JSON is not the whole workflow. A ComfyUI graph may depend on source images, masks, video files, audio files, model weights, custom nodes, and Python packages. If any of those are missing, the graph can be perfectly valid and still fail.
 
 ## Name Versions Like You Expect to Reuse Them
 
@@ -49,6 +53,8 @@ Use this loop for normal work:
 | Polish | Upscale, refine, inpaint, or detail selected outputs. | Original winner remains saved. |
 
 This loop is intentionally plain. Inference already has enough knobs. The process does not need to cosplay as a research paper.
+
+For API work, use ComfyUI's API-format workflow export rather than the regular editor JSON. The editor file preserves canvas layout; the API format is what `POST /prompt` expects.
 
 ## Next
 
