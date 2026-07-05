@@ -1,3 +1,9 @@
+v2.5.7 (July 5th 2026)
+
+- Updated bundled ComfyUI to `v0.27.0` and ComfyUI-Manager to `4.2.2`.
+- Made the core Python venv explicitly own Comfy/Manager runtime modules: `torchaudio`, `uv`, `transformers`, and `xformers`, with a build-time import smoke check.
+- Added ComfyUI-Manager requirements installation into `/opt/venvs/core` so Manager's latest tagged dependency set is installed instead of relying on whatever ComfyUI happened to pull in.
+
 v2.5.6 (July 5th 2026)
 
 - Added a TrainPilot startup guard: when starting a Kohya training run from ControlPilot, the UI now checks whether Kohya and the TensorBoard service are running, warns if either is stopped, and offers to start the missing service(s) before submitting training.

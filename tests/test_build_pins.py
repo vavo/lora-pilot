@@ -63,17 +63,46 @@ class BuildPinTests(unittest.TestCase):
                 for name, value in expected.items():
                     self.assertEqual(read_pin(path, name), value)
 
+    def test_comfy_uses_latest_verified_refs(self):
+        expected = {
+            "COMFYUI_REF": "v0.27.0",
+            "COMFYUI_MANAGER_REF": "4.2.2",
+        }
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            with self.subTest(path=path):
+                for name, value in expected.items():
+                    self.assertEqual(read_pin(path, name), value)
+
+    def test_core_stack_installs_required_comfy_modules(self):
+        expected = {
+            "TORCHAUDIO_VERSION": "2.11.0",
+            "XFORMERS_VERSION": "0.0.35",
+            "TRANSFORMERS_VERSION": "5.11.0",
+            "UV_VERSION": "0.11.26",
+        }
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            with self.subTest(path=path):
+                for name, value in expected.items():
+                    self.assertEqual(read_pin(path, name), value)
+
+        core_stack = (ROOT / "scripts/build/install-core-stack.sh").read_text()
+        self.assertIn('"torchaudio==${TORCHAUDIO_VERSION}"', core_stack)
+        self.assertIn('"uv==${UV_VERSION}"', core_stack)
+        self.assertIn('core_import_modules="torchaudio ${core_import_modules}"', core_stack)
+        self.assertIn('CORE_IMPORT_MODULES="${core_import_modules}"', core_stack)
+
     def test_generated_invoke_constraints_use_invoke_torch_stack(self):
         env = os.environ.copy()
         env.update(
             {
                 "TORCH_VERSION": "2.12.0",
                 "TORCHVISION_VERSION": "0.27.0",
-                "TORCHAUDIO_VERSION": "",
+                "TORCHAUDIO_VERSION": "2.11.0",
                 "XFORMERS_VERSION": "0.0.35",
                 "BITSANDBYTES_VERSION": "0.49.2",
                 "CORE_DIFFUSERS_VERSION": "0.38.0",
                 "TRANSFORMERS_VERSION": "5.11.0",
+                "UV_VERSION": "0.11.26",
                 "PEFT_VERSION": "0.19.1",
                 "ACCELERATE_VERSION": "1.14.0",
                 "HF_HUB_VERSION": "1.19.0",

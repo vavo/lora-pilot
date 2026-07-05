@@ -9,6 +9,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.7` | ComfyUI `v0.27.0`, ComfyUI-Manager `4.2.2`, and explicit core-venv ownership of `torchaudio`, `uv`, `transformers`, and `xformers` |
 | `v2.5.6` | TrainPilot now warns before starting Kohya training if Kohya or TensorBoard is stopped, with an option to start the missing service(s) |
 | `v2.5.5` | TagPilot dataset-open hotfix for ControlPilot Datasets links on Python 3.11 images; backend load keeps symlink-safe file iteration without unsupported `Path.is_file` arguments |
 | `v2.5.4` | Kohya SDXL training compatibility repair for shared core Transformers 5.x images; launcher now checks the `CLIPFeatureExtractor` alias before accepting the installed package |

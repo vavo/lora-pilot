@@ -10,6 +10,7 @@ mkdir -p "${config_dir}"
 : "${BITSANDBYTES_VERSION:?BITSANDBYTES_VERSION is required}"
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
+: "${UV_VERSION:?UV_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
@@ -40,6 +41,7 @@ pillow<12
 huggingface-hub==${HF_HUB_VERSION}
 diffusers==${CORE_DIFFUSERS_VERSION}
 transformers==${TRANSFORMERS_VERSION}
+uv==${UV_VERSION}
 peft==${PEFT_VERSION}
 accelerate==${ACCELERATE_VERSION}
 EOF

@@ -32,6 +32,14 @@ mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes /opt/pilot/bundled/comfy-custom-n
   /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager \
   "${COMFYUI_MANAGER_REF}"
 
+grep -v -E '^(torch|torchvision|torchaudio|xformers|triton|bitsandbytes|numpy|pillow|Pillow|diffusers|transformers|peft|huggingface-hub|accelerate)' \
+  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager/requirements.txt > /tmp/comfy-manager-req.txt
+
+pip_install_in_venv /opt/venvs/core \
+  -c /opt/pilot/config/core-constraints.txt \
+  -r /tmp/comfy-manager-req.txt
+rm -f /tmp/comfy-manager-req.txt
+
 git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git \
   /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader
 
