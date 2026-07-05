@@ -213,6 +213,15 @@ These only affect image build, not runtime container env unless baked into image
 
 `CUDA_PROFILE=cu130` is the default Blackwell build profile. Use `CUDA_PROFILE=cu128` for the legacy CUDA 12.8 profile; see `build.env.example` for the matching base image, PyTorch index, Torch versions, and NVCC package.
 
+Current defaults worth calling out:
+
+- `NODE_MAJOR=24` and `NPM_VERSION=11.18.0` are used only when `INSTALL_AI_TOOLKIT_UI=1`.
+- `COMFYUI_DOWNLOADER_REF` is pinned to a commit, just like the other bundled service refs.
+- `DIFFPIPE_REF` tracks the pinned Diffusion Pipe commit used at image build time.
+- `TENSORBOARD_VERSION` pins the TensorBoard package used by the training integrations.
+- Runtime web packages are pinned with `FASTAPI_VERSION`, `UVICORN_VERSION`, `PYDANTIC_VERSION`, `FLASK_VERSION`, `HTTPX_VERSION`, and related variables so ControlPilot builds do not float on PyPI release timing.
+- The default `cu130` stack uses `TORCH_VERSION=2.12.1` and `TORCHVISION_VERSION=0.27.1`; `TORCHAUDIO_VERSION` is intentionally empty until upstream publishes a matching cu130 torchaudio wheel for the selected torch version.
+
 Use `build.env.example` as the source template for build args.
 
 ## Minimal `.env` Example
@@ -251,7 +260,7 @@ docker compose -f docker-compose.yml up -d --force-recreate
 
 ---
 
-_Last updated: 2026-05-06_
+_Last updated: 2026-07-05_
 
 ---
 

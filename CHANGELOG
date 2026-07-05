@@ -1,3 +1,9 @@
+v2.5.12 (July 5th 2026)
+
+- Synced build/configuration docs with the current Docker build pins: Node 24/npm `11.18.0`, pinned ComfyUI-Downloader, Diffusion Pipe `a7e7dec`, TensorBoard `2.21.0`, and pinned ControlPilot runtime web packages.
+- Clarified the default CUDA 13.0 torchaudio policy in docs: `TORCHAUDIO_VERSION` stays empty for `cu130` until upstream publishes a matching `2.12.x` cu130 wheel.
+- Refreshed the environment-variable documentation timestamp after the build-pin documentation pass.
+
 v2.5.11 (July 5th 2026)
 
 - Updated the default CUDA 13.0 core stack to the latest matching cu130 torch pair: `torch==2.12.1` and `torchvision==0.27.1`.

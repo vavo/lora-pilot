@@ -229,6 +229,8 @@ ARG TORCHAUDIO_VERSION=
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 ```
 
+For the default `cu130` profile, `TORCHAUDIO_VERSION` is intentionally empty because the official cu130 index currently has matching `torch==2.12.1` and `torchvision==0.27.1` wheels but no matching `torchaudio==2.12.x` wheel. The installer skips torchaudio when the value is empty; do not set it unless it matches the selected torch version.
+
 #### Library Versions
 ```dockerfile
 # Custom library versions
