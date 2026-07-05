@@ -9,16 +9,16 @@ sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_re
 
 # --- SDXL Fine-tuned Models ---
 juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
-ragnarok-xl|hf_repo|eniora/Juggernaut_XL_Ragnarok|diffusers/ragnarok-xl|*.json,*.safetensors,README.md|
+ragnarok-xl|hf_repo|eniora/Juggernaut_XL_Ragnarok|diffusers/ragnarok-xl|*.json,*.safetensors|
 epicrealism-xl|hf_repo|John6666/epicrealism-xl-vxvii-crystal-clear-realism-sdxl|diffusers/epicrealism-xl|*.json,*.safetensors,README.md|
 realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints||6.94GB
 realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints||6.94GB
 realvisxl-v5|hf_file|SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors|checkpoints||6.94GB
 pony-xl|hf_file|LyliaEngine/Pony_Diffusion_V6_XL:ponyDiffusionV6XL_v6StartWithThisOne.safetensors|checkpoints||6.94GB
-dreamshaper-xl|hf_file|Lykon/DreamShaper:DreamShaperXL1.0Alpha2_fixedVae_half_00001_.safetensors|checkpoints||6.94GB
-juggernaut-xl-v8|hf_file|RunDiffusion/Juggernaut-XL-v8:juggernautXL_v8Rundiffusion.safetensors|checkpoints||7.11GB
+dreamshaper-xl-v2-turbo|hf_file|Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors|checkpoints||6.94GB
+juggernaut-xl-lightning|hf_file|RunDiffusion/Juggernaut-XL-Lightning:Juggernaut_RunDiffusionPhoto2_Lightning_4Steps.safetensors|checkpoints||7.11GB
 juggernaut-xl-v9|hf_file|RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors|checkpoints||7.11GB
-cyberrealistic-xl|hf_file|voxiliummusic/cyberrealistic_V4.0:cyberrealistic_v40.safetensors|checkpoints||6.94GB
+cyberrealistic-xl-v10|hf_file|cyberdelia/CyberRealisticXL:CyberRealisticXLPlay_V10.0_FP16.safetensors|checkpoints||6.94GB
 analog-madness-xl|hf_file|dwells/Analog_Madness_XL3:analogMadnessSDXL_xl3.safetensors|checkpoints||6.94GB
 opendalle-xl|hf_file|dataautogpt3/OpenDalleV1.1:OpenDalleV1.1.safetensors|checkpoints||6.94GB
 
@@ -30,7 +30,7 @@ realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1_noVAE:Realistic_Vision_V
 realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1_noVAE:Realistic_Vision_V6.0_NV_B1_fp16.safetensors|checkpoints||4.27GB
 epicrealism|hf_file|philz1337x/epicrealism:epicrealism_naturalSinRC1VAE.safetensors|checkpoints||2.13GB
 rev-animated|hf_file|danbrown/RevAnimated-v1-2-2:rev-animated-v1-2-2.safetensors|checkpoints||4.24GB
-toonyou|hf_file|Linaqruf/anything-v3.0:anything-v3-fp16-pruned.safetensors|checkpoints||2.13GB
+toonyou|hf_file|ckpt/toonyou:toonyou_alpha3.safetensors|checkpoints||2.13GB
 
 # --- SD3.x ---
 # NOTE: stabilityai/stable-diffusion-3-medium is gated on Hugging Face (you must accept the license + be logged in)
@@ -74,7 +74,7 @@ wan2.1-t2v-1.3b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusi
 wan2.1-t2v-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_14B_fp16.safetensors|wan/wan2.1|*.safetensors|28.58GB
 wan2.1-i2v-720p-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_i2v_720p_14B_fp16.safetensors|wan/wan2.1|*.safetensors|32.79GB
 wan2.1-vae|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/vae/wan_2.1_vae.safetensors|wan/wan2.1|*.safetensors|0.25GB
-wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
+wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,README.md|72.40GB
 wan2.2-ti2v-5b|hf_repo|Wan-AI/Wan2.2-TI2V-5B|wan/wan2.2-ti2v-5b|*.json,*.pth,*.safetensors,google/umt5-xxl/*,README.md|
 
 # --- Hunyuan Image Models ---

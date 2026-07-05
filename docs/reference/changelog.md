@@ -9,6 +9,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.9` | Model manifest refresh: DreamShaper XL v2 Turbo, Juggernaut XL Lightning, CyberRealistic XL v10, actual ToonYou checkpoint, and broken include-pattern fixes |
 | `v2.5.8` | AI Toolkit `0.10.20` (`6c0d1c4`), InvokeAI `6.13.5`, and InvokeAI-isolated Transformers `5.5.4` pin alignment |
 | `v2.5.7` | ComfyUI `v0.27.0`, ComfyUI-Manager `4.2.2`, and explicit core-venv ownership of `torchaudio`, `uv`, `transformers`, and `xformers` |
 | `v2.5.6` | TrainPilot now warns before starting Kohya training if Kohya or TensorBoard is stopped, with an option to start the missing service(s) |

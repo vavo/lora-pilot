@@ -1,3 +1,9 @@
+v2.5.9 (July 5th 2026)
+
+- Refreshed the default model manifest by replacing stale SDXL/SD1.5 checkpoint rows with verified current upstream files: DreamShaper XL v2 Turbo, Juggernaut XL Lightning, CyberRealistic XL v10, and the actual ToonYou checkpoint.
+- Fixed broken manifest include patterns for Juggernaut XL Ragnarok and Wan 2.2 Animate so repository snapshots no longer request files that upstream does not publish.
+- Kept `config/models.manifest` and `config/models.manifest.default` aligned.
+
 v2.5.8 (July 5th 2026)
 
 - Updated AI Toolkit to upstream `0.10.20` at commit `6c0d1c4`.
