@@ -41,6 +41,10 @@ Additional behavior:
 
 ## 🧪 What Happens on Start
 
+0. **Service preflight**
+   - ControlPilot checks `kohya` and the TensorBoard service (`diffpipe`) before submitting training.
+   - If either service is stopped, the UI warns and offers to start the missing service(s).
+
 1. **Model preflight**
    - `POST /api/trainpilot/model-check` parses TOML and validates:
    - `pretrained_model_name_or_path`

@@ -1,3 +1,7 @@
+v2.5.6 (July 5th 2026)
+
+- Added a TrainPilot startup guard: when starting a Kohya training run from ControlPilot, the UI now checks whether Kohya and the TensorBoard service are running, warns if either is stopped, and offers to start the missing service(s) before submitting training.
+
 v2.5.5 (July 5th 2026)
 
 - Fixed TagPilot dataset loading from the ControlPilot Datasets list on Python 3.11 images by removing unsupported `Path.is_file(follow_symlinks=False)` calls from the backend dataset file iterator.

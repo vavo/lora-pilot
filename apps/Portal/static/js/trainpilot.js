@@ -99,6 +99,72 @@ function clearModelDownloadUI() {
   text.textContent = "";
 }
 
+const TRAINPILOT_RUNTIME_SERVICES = [
+  { name: "kohya", label: "Kohya" },
+  { name: "diffpipe", label: "TensorBoard" },
+];
+
+function serviceStateLabel(service) {
+  if (!service) return "not found";
+  return service.state || service.state_raw || (service.running ? "RUNNING" : "not running");
+}
+
+async function fetchServiceMap() {
+  const services = await fetchJson("/api/services");
+  const byName = {};
+  (Array.isArray(services) ? services : []).forEach(service => {
+    if (service && service.name) byName[service.name] = service;
+  });
+  return byName;
+}
+
+async function waitForTrainpilotServices(names, statusEl) {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const byName = await fetchServiceMap();
+    const missing = names.filter(name => !(byName[name] && byName[name].running));
+    if (!missing.length) return true;
+    if (statusEl) {
+      const labels = missing.map(name => TRAINPILOT_RUNTIME_SERVICES.find(s => s.name === name)?.label || name);
+      statusEl.textContent = `Waiting for ${labels.join(", ")}...`;
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  return false;
+}
+
+async function ensureTrainpilotRuntimeServices(statusEl) {
+  if (statusEl) statusEl.textContent = "Checking services...";
+  const byName = await fetchServiceMap();
+  const missing = TRAINPILOT_RUNTIME_SERVICES
+    .map(service => ({ ...service, current: byName[service.name] || null }))
+    .filter(service => !(service.current && service.current.running));
+
+  if (!missing.length) return true;
+
+  const lines = missing
+    .map(service => `- ${service.label}: ${serviceStateLabel(service.current)}`)
+    .join("\n");
+  const ok = confirm(
+    `Training works best when Kohya and TensorBoard are running.\n\n` +
+    `These services are not running:\n${lines}\n\n` +
+    `Start missing service(s) now?`
+  );
+  if (!ok) return false;
+
+  for (const service of missing) {
+    if (statusEl) statusEl.textContent = `Starting ${service.label}...`;
+    await fetchJson(`/api/services/${encodeURIComponent(service.name)}/start`, { method: "POST" });
+  }
+
+  const ready = await waitForTrainpilotServices(missing.map(service => service.name), statusEl);
+  if (!ready) {
+    const labels = missing.map(service => service.label).join(", ");
+    throw new Error(`${labels} did not report RUNNING after start request`);
+  }
+  return true;
+}
+
 async function ensureTrainpilotModelsPresent(tomlPath) {
   const check = await fetchJson("/api/trainpilot/model-check", {
     method: "POST",
@@ -247,6 +313,11 @@ window.startTrainPilot = async function () {
   updateEpochExample(output);
   if (status) status.textContent = "Starting...";
   try {
+    const servicesOk = await ensureTrainpilotRuntimeServices(status);
+    if (!servicesOk) {
+      if (status) status.textContent = "Canceled.";
+      return;
+    }
     clearModelDownloadUI();
     const ok = await ensureTrainpilotModelsPresent(toml);
     if (!ok) {
