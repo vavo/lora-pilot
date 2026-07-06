@@ -1,480 +1,130 @@
 # Image Processing and Preparation
 
-_Last updated: 2026-07-05_
-
-Image processing and preparation transforms your collected images into optimal training data. This guide covers the technical aspects of preparing images for AI model training.
-
-##  Overview
-
-### Why Processing Matters
-
-Think of image processing like preparing ingredients for cooking:
-- **Raw Ingredients**: Collected images (raw vegetables)
-- **Preparation**: Cleaning and cutting vegetables (processing)
-- **Recipe Ready**: Prepared ingredients (processed images)
-- **Cooking**: Training process (model training)
-
-### The Processing Pipeline
-
-```
-Raw Images → Processing → Optimized Images → Training Ready
-     ↓            ↓              ↓                ↓
-Collected → Resized → Color Corrected → Ready for Training
-```
-
----
-
-##  Resolution Standardization
-
-### Why Standardize
-- **Consistent Input**: All images same size for training
-- **Predictable Memory**: Consistent memory usage during training
-- **Better Learning**: Model learns from consistent input
-- **Quality Control**: Uniform quality across dataset
-
-### Resolution Guidelines
-
-#### Model-Specific Standards
-```
-SD1.5 Training:
-- Minimum: 512×512 pixels
-- Recommended: 512×512 pixels
-- Higher: 768×768 pixels (if model supports)
-- Aspect Ratio: 1:1 (square)
-
-SDXL Training:
-- Minimum: 1024×1024 pixels
-- Recommended:  1024×1024 pixels
-- Higher: 1280×1280 pixels (if VRAM allows)
-- Aspect Ratio: 1:1 (square)
-
-FLUX.1 Training:
-- Minimum: 1024×1024 pixels
-- Recommended: 1024×1024 pixels
-- Higher: 1280×1280 pixels (if VRAM allows)
-- Aspect Ratio: 1:1 (square)
-```
-
-### Resolution Considerations
+_Last updated: 2026-07-06_
 
-#### Training Efficiency
-- **Lower Resolution**: Faster training, less memory usage
-- **Higher Resolution**: Better detail but slower training
-- **VRAM Impact**: Higher resolution requires more VRAM
-- **Model Compatibility**: Ensure resolution matches model capabilities
-
-#### Quality vs. Speed
-- **Quality Priority**: Use higher resolution when quality is critical
-- **Speed Priority**: Use lower resolution when speed is important
-- **Resource Constraints**: Adjust based on your hardware limitations
-
----
-
-## 🖼️ Resizing Methods
-
-### Resizing Algorithms
-
-#### Lanczos
-- **Characteristics**: Good downscaling quality
-- **Best For**: Downscaling high-resolution images
-- **Speed**: Medium speed
-- **Quality**: Very good quality
-- **When to Use**: Most downscaling needs
-
-#### Bicubic
-- **Characteristics**: Good downscaling quality
-- **Speed**: Fast
-- **Quality**: Good quality
-- **When to Use**: When speed is important
-
-#### Nearest Neighbor
-- **Characteristics**: Fastest downscaling
-- **Speed**: Very fast
-- **Quality**: Acceptable quality
-- **When to Use**: When speed is critical
+Image processing is the quiet step where good datasets either get cleaner or get ruined with good intentions. You are not trying to make every image look fancy. You are trying to make each image teach the same lesson without adding artifacts, distortions, or hidden contradictions.
 
-#### Box (Area) vs. Bilinear
-- **Area (Box)**: Preserves area relationships
-- **Bilinear**: Preserves straight lines
-- **When to Use**: Area for architectural elements
-- **When to Use**: Bilinear for general use
-
-### Resizing Best Practices
+In LoRA Pilot, collect first, review in TagPilot, then process only what needs processing. Do not batch-transform a whole dataset because a tutorial said "always sharpen" in 2023. That is how you train a LoRA on sharpening halos and regret.
 
-#### Quality First
-- **Choose Quality Algorithm**: Lanczos or Bicubic for best results
-- **Test Different Methods**: Compare results on sample images
-- **Consider Use Case**: Choose based on your specific needs
-- **Avoid Over-Resizing**: Don't resize more than necessary
+## The Rule: Fix Problems, Do Not Invent a New Style
 
-#### Batch Processing
-- **Process in Batches**: Process multiple images at once
-- **Consistent Settings**: Use same settings for all images
-- **Memory Management**: Monitor memory usage during processing
-
----
-
-##  Color Space and Correction
+Processing should remove barriers to learning:
 
-### Color Space Considerations
-
-#### sRGB Standard
-- **Universal Compatibility**: Works with most tools
-- **Web Safe**: Standard web color space
-- **Training Compatibility**: Most models expect sRGB
-- **Display Consistency**: Consistent display across devices
-
-#### Linear vs. Non-Linear
-- **Linear**: Straight line relationships between colors
-- **Non-Linear**: Natural color relationships
-- **When to Use**: Linear for natural color relationships
-- **When to Use**: Non-linear for artistic effects
+- crop away dead space
+- resize to a model-appropriate range
+- correct obvious rotation or exposure issues
+- remove duplicates
+- reject blur, artifacts, and unusable frames
+- keep color and texture faithful to the concept
 
-### Color Correction
+Processing should not create a second style on top of the data. Heavy filters, aggressive sharpening, face enhancement, denoise plugins, AI upscalers, and automatic beautification can become part of what the LoRA learns. If every image gets the same plastic-skin enhancement, the model may treat plastic skin as part of the subject.
 
-#### White Balance
-- **Neutral White**: Pure white reference point
-- **Custom White**: Match lighting conditions
-- **Color Temperature**: Adjust color temperature if needed
-- **Gray Point**: Middle gray reference point
+> **Why does this work?** The trainer does not see "edited image" and "true subject" separately. It sees pixels and captions. If processing artifacts repeat across the dataset, they become training signal.
 
-#### Color Grading
-- **Contrast Adjustment**: Brightness and contrast adjustments
-- **Color Balance**: Overall color balance adjustments
-- **Selective Adjustment**: Targeted color adjustments
+## Resolution Without Ritual
 
-### Color Consistency
+Use the model family as your starting point:
 
-#### Color Palette
-- **Consistent Palette**: Use consistent color choices
-- **Style Matching**: Match color palette to artistic style
-- **Mood Matching**: Match color palette to intended mood
-- **Cultural Considerations**: Consider cultural color meanings
+| Family | Practical Starting Size | Notes |
+|---|---|---|
+| SD1.5 | 512-class images | Works well for older LoRA workflows and low VRAM |
+| SDXL | 1024-class images | Strong default for modern image LoRAs |
+| Flux/newer image families | 1024-class or model-card guidance | Follow the trainer and workflow notes |
+| Video frames | Workflow-specific | Preserve motion consistency before chasing resolution |
 
----
+Square images are not mandatory for every modern workflow, but they are easier for a first training run. If your subject needs a portrait or landscape frame, keep the aspect ratio consistent enough that the trainer does not learn random cropping as part of the concept.
 
-##  Cropping and Composition
+Do not upscale tiny images just to hit a number. A blurry 400px face upscaled to 1024px is still a blurry face, now with higher-resolution lies.
 
-### Cropping Strategies
+## Cropping: Keep the Lesson in Frame
 
-#### Center Cropping
-- **Subject Focus**: Center main subject in frame
-- **Consistent Framing**: Consistent composition across dataset
-- **Rule of Thirds**: Place key elements at intersection points
-- **When to Use**: Character portraits and central subjects
+Crop for the thing you want the model to learn. A character LoRA needs identity features visible. A product LoRA needs the product readable. A style LoRA needs enough composition to show the style, not only tiny texture samples.
 
-#### Rule of Thirds
-- **Composition**: Better composition than centering
-- **Dynamic Tension**: More interesting compositions
-- **Artistic Balance**: Better artistic compositions
-- **When to Use**: Landscapes and artistic compositions
+Bad crops teach bad priorities:
 
-#### Safety Margins
-- **Processing Margin**: Leave margin for post-processing
-- **Future Flexibility**: Allow room for cropping variations
-- **Print Considerations**: Leave margin for printing needs
-
-### Composition Guidelines
-
-#### Subject Placement
-- **Rule of Thirds**: Place subject at intersection of thirds
-- **Leading Lines**: Use leading lines to guide eye movement
-- **Head Room**: Give subject looking room
-- **Breathing Room**: Give subject breathing room
-
-#### Background Considerations
-- **Simple Backgrounds**: Simple backgrounds for character training
-- **Consistent Backgrounds**: Use similar backgrounds for consistency
-- **Context Appropriate**: Backgrounds that match the subject
-- **Depth Separation**: Ensure subject separation from background
-
----
-
-##  Noise Reduction
-
-### Noise Sources
-- **Digital Noise**: Sensor noise from camera
-- **Compression Artifacts**: JPEG compression artifacts
-- **Processing Artifacts**: Processing-induced noise
-- **Environmental Noise**: Environmental interference
-
-### Noise Reduction Techniques
-
-#### Software Noise Reduction
-- **AI Denoising**: AI tools for noise reduction
-- **Manual Editing**: Manual noise removal in editing software
-- **Filtering**: Noise reduction filters
-- **AI Enhancement**: AI tools for noise reduction
-
-#### Hardware Considerations
-- **Low ISO Photography**: Use low ISO to minimize noise
-- **Fast Shutter**: Fast shutter speed to reduce motion blur
-- **Stable Camera**: Use tripod or stable support
-- **Good Lighting**: Proper lighting reduces noise
-
-### Quality Preservation
-
-#### Lossless Formats
-- **PNG**: Lossless format preserves all image data
-- **TIFF**: Professional format with maximum quality
-- **RAW**: RAW format for maximum editing flexibility
-- **Working Format**: Use lossless format during editing
-
-#### Compression Settings
-- **Minimal Compression**: Use minimal compression when saving
-- **Quality Priority**: Use lossless when quality is critical
-- **Size vs Quality**: Balance file size and quality needs
-
----
-
-## 🖼️ File Format Optimization
-
-### Format Selection
-
-#### Training Formats
-- **PNG**: Lossless, best quality
-- **TIFF**: Professional, maximum quality
-- **WEBP**: Good balance of quality and size
-- **JPEG**: Use only when necessary
-
-#### Format Considerations
-- **Training Compatibility**: Ensure format compatibility with training tools
-- **Storage Requirements**: Consider storage space and cost
-- **Sharing Needs**: Consider sharing requirements
-
-#### Compression Settings
-- **Quality Settings**: Use highest quality settings
-- **Size Optimization**: Optimize for storage efficiency
-- **Metadata Preservation**: Preserve metadata when possible
-
----
-
-##  Batch Processing
-
-### Automation Tools
-
-#### Command Line Tools
-- **ImageMagick**: Powerful command-line image processing
-- **FFmpeg**: Video and image processing
-- **GraphicsMagick**: Advanced image processing
-- **XnView MP**: Batch image management
-
-#### GUI Tools
-- **Adobe Bridge**: Professional photo management
-- **Adobe Lightroom**: Professional photo editing
-- **XnView MP**: Free image management
-- **FastStone**: Batch image conversion
-
-#### Batch Processing Workflow
-```bash
-# Example: Batch resize all images
-mogrify -resize 1024x1024 *.png
-
-# Example: Batch convert all images to PNG
-for file in *.jpg; do
-    convert "$file" "${file%.png"
-done
+- face cut off in character datasets
+- product too small in a large scene
+- style examples reduced to isolated fragments
+- inconsistent framing that makes scale unpredictable
+- important details hidden behind borders, text, or watermarks
+
+> **Try this variation:** In TagPilot, scan the dataset as thumbnails. If the important subject disappears at thumbnail size, crop tighter or cut the image. Thumbnail review catches weak composition fast.
+
+## Color and Exposure
+
+Correct obvious mistakes. Do not normalize the life out of the dataset.
+
+For character and product LoRAs, stable color helps. If the same jacket appears blue in one image, teal in another, and gray in a third because of bad white balance, the model may learn the color as flexible even when you wanted it fixed.
+
+For style LoRAs, color may be the point. Preserve the style's palette unless the source has scanning errors, camera casts, or compression damage. A style dataset with "improved" color on half the images and original color on the other half teaches two styles badly.
+
+Use sRGB unless a specific tool or workflow says otherwise. It is boring. Boring color management is a gift.
+
+## Blur, Noise, and Compression
+
+Cut images with motion blur, missed focus, heavy JPEG blocks, watermarks, UI overlays, or visible AI artifacts unless those artifacts are part of the intended style. The trainer cannot guess that the watermark was not invited.
+
+Noise reduction and sharpening are last resorts. If a source image needs heavy repair to become usable, it is often cheaper to replace it. A dataset of repaired weak images usually trains worse than a smaller set of clean originals.
+
+## Duplicates and Near-Duplicates
+
+Duplicates overvote a pose, expression, background, or lighting setup. Near-duplicates are worse because they look like variety while teaching the same thing again.
+
+Remove:
+
+- same frame exported twice
+- burst photos with tiny changes
+- video frames too close together
+- generated variants with the same composition
+- cropped copies of the same source unless the crop teaches something new
+
+For video datasets, sample frames far enough apart to show motion without flooding training with the same frame wearing a different timestamp.
+
+## File Naming and Folder Hygiene
+
+Use names that help you audit later:
+
+```text
+character_front_001.png
+character_side_002.png
+product_outdoor_003.png
+style_landscape_004.png
 ```
 
-### Processing Scripts
+Avoid names like `final_final2_goodmaybe.png`. The file is not funny enough to justify future confusion.
 
-#### Python Automation
-```python
-# Example: Batch resize with PIL
-from PIL import Image
-import os
-import glob
+Keep raw sources separate from processed training images:
 
-def resize_images(input_dir, output_dir, size):
-    for file_path in glob.glob(os.path.join(input_dir, "*.[pjg,png]"):
-        if os.path.isfile(file_path):
-            with Image.open(file_path) as img:
-                resized_img = img.resize(size, Image.LANCZOS)
-                resized_img.save(os.path.join(output_dir, os.path.basename(file_path))
-                print(f"Resized {file_path} to {os.path.join(output_dir, os.path.basename(file_path))")
-
-# Usage
-resize_images("raw_images", "processed_images", (1024, 1024))
+```text
+my_dataset/
+  sources/
+  processed/
+  captions/
+  SOURCES.md
 ```
 
----
+TagPilot should work from the processed training folder. Keep the source folder in case you need to recrop, prove rights, or undo a bad preprocessing choice.
 
-##  Quality Control
+## Processing Order
 
-### Quality Assessment
+Use this order for most image LoRA datasets:
 
-#### Visual Inspection
-- **Systematic Review**: Review all processed images
-- **Quality Standards**: Check against quality standards
-- **Consistency Check**: Ensure uniform quality across dataset
-- **Issue Identification**: Identify problematic images
+1. Review and cut weak images.
+2. Fix rotation and obvious exposure issues.
+3. Crop for the subject or style.
+4. Resize only as much as needed.
+5. Check for blur, compression, watermarks, and duplicates.
+6. Load into TagPilot and caption.
+7. Run one final thumbnail review before training.
 
-#### Quality Metrics
-- **Sharpness**: Measure edge definition and clarity
-- **Noise Level**: Assess noise levels
-- **Color Accuracy**: Check color accuracy and consistency
-- **Compression Artifacts**: Check for compression artifacts
+Caption after major crops. A caption written before cropping may describe objects that no longer appear in the training image. The model will still try to learn that mismatch, because apparently it has not learned sarcasm.
 
-#### Quality Assurance
-- **Acceptance Criteria**: Define minimum quality thresholds
-- **Rejection Criteria**: Define rejection criteria
-- **Improvement Process**: Systematic quality improvement
+## Next
+
+Continue with [Dataset Organization](dataset-organization.md) or [Image LoRA Datasets](image-lora-datasets.md).
 
 ---
 
-##  Image Enhancement
-
-### Sharpening Techniques
-
-#### Unsharp Masking
-- **Amount**: Control sharpening intensity
-- **Radius**: Size of sharpening kernel
-- **Threshold**: Threshold for edge detection
-- **When to Use**: Slightly soft images
-
-#### High Pass Filtering
-- **Radius**: Control sharpening radius
-- **Strength**: Control sharpening strength
-- **Threshold**: Threshold for edge detection
-- **When to Use**: When images are slightly soft
-
-#### AI Enhancement
-- **AI Sharpening**: AI tools for intelligent sharpening
-- **Detail Enhancement**: AI tools for detail enhancement
-- **Noise Reduction**: AI tools for noise reduction
-- **Quality Improvement**: AI tools for quality improvement
-
-### Contrast Enhancement
-
-#### Local Contrast Adjustment
-- **Histogram Equalization**: Balance histogram distribution
-- **Contrast Stretching**: Adjust contrast range
-- **Local Adaptation**: Localized contrast enhancement
-- **Adaptive Methods**: Adaptive contrast enhancement
-
-### Color Enhancement
-
-#### Saturation Adjustment
-- **Vibrance Increase**: Enhance color saturation
-- **Color Balance**: Adjust color relationships
-- **HSL Adjustments**: Adjust hue, saturation, lightness
-- **Selective Adjustment**: Targeted color adjustments
-
----
-
-##  File Organization
-
-### Naming Conventions
-
-#### Sequential Naming
-- **Numbers**: 001.jpg, 002.jpg, 003.jpg...
-- **Descriptive**: character_name_pose_001.jpg
-- **Date-Based**: 2025-02-11_001.jpg
-- **Version Control**: Add version suffixes when needed
-
-#### Metadata Integration
-- **EXIF Preservation**: Preserve camera metadata
-- **Processing History**: Record processing steps
-- **Quality Scores**: Store quality assessment results
-
-#### File Structure
-```
-processed/
-├── images/
-│   ├── 001.jpg
-│   ├── 001.txt
-│   └── 001.json
-├── metadata/
-│   ├── processing_log.json
-│   └── quality_assessment.json
-```
-
-### Version Control
-
-#### Git Integration
-- **Version Control**: Track dataset changes
-- **Branch Strategy**: Use branches for different versions
-- **Commit Messages**: Descriptive commit messages
-- **Tagging**: Use tags for version identification
-
-#### Backup Strategy
-- **Multiple Locations**: Multiple backup systems
-- **Regular Backups**: Regular backup schedule
-- **Offsite Storage**: Cloud storage for important datasets
-
----
-
-##  Validation and Testing
-
-### Automated Validation
-
-#### File Existence
-- **File Count**: Verify expected file count
-- **Path Validation**: Check file paths
-- **Format Validation**: Verify file formats
-- **Permission Check**: Verify file permissions
-
-#### Content Validation
-- **Image Quality**: Check image quality standards
-- **Caption Accuracy**: Verify caption accuracy
-- **Metadata Consistency**: Check metadata consistency
-
-### Quality Metrics
-
-#### Automated Scoring
-- **Quality Score**: Automated quality assessment
-- **Consistency Score**: Consistency measurement
-- **Completeness Score**: Dataset completeness assessment
-- **Error Detection**: Automatic error identification
-
-### Validation Reports
-
-#### Quality Reports
-- **Summary Statistics**: Overall dataset quality statistics
-- **Issue Identification**: List of identified issues
-- **Improvement Suggestions**: Recommendations for improvement
-- **Validation Log**: Detailed validation log
-
----
-
-## 💡 Practical Tips
-
-### Processing Workflow
-
-#### Test Small Batch First
-- **Sample Processing**: Test on small batch first
-- **Method Validation**: Test different processing methods
-- **Quality Check**: Verify results before full processing
-- **Performance Check**: Monitor processing speed
-
-#### Monitor Progress
-- **Progress Tracking**: Monitor processing progress
-- **Error Handling**: Handle errors appropriately
-- **Resource Monitoring**: Monitor memory and storage usage
-
-### Documentation
-
-#### Process Documentation
-- **Processing Steps**: Document all processing steps
-- **Parameter Settings**: Record all parameters used
-- **Quality Standards**: Document quality standards
-- **Lessons Learned**: Record insights for future use
-
----
-
-##  What's Next?
-
-Now that you understand image processing and preparation, you're ready to:
-
-1. **[Dataset Organization](dataset-organization.md)** - Structure your dataset professionally
-2. **[Image LoRA Datasets](image-lora-datasets.md)** - Create image LoRA datasets
-3. **[Video LoRA Datasets](video-lora-datasets.md)** - Create video LoRA datasets
-4. **[Dataset Validation and Testing](dataset-validation-and-testing.md)** - Ensure dataset quality
-
----
-
-## 📝 Feedback
+## Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

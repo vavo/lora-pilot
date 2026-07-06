@@ -2,446 +2,105 @@
 
 _Last updated: 2026-07-06_
 
-Effective image collection is the foundation of great datasets. This guide covers proven strategies for gathering high-quality images for different training scenarios.
+Collecting images for a LoRA is not hoarding. It is casting. Every image you keep teaches the model what the subject, style, product, or concept is allowed to become.
 
-##  Overview
+The beginner instinct is to gather a huge folder and let training "figure it out." Training will figure something out. You may not like what it chooses.
 
-### Collection Philosophy
-- **Quality Over Quantity**: 20 excellent images > 100 mediocre images
-- **Consistency Over Variety**: Uniform quality beats diverse quality
-- **Purpose-Driven**: Collect with specific training goals in mind
-- **Systematic Approach**: Organized collection process
+## Start With the Job
 
-### The Collection Pipeline
+Write one sentence before collecting:
 
-```
-Planning → Collection → Selection → Processing → Organization
-     ↓           ↓           ↓           ↓
-Define Needs → Gather Images → Choose Best → Prepare → Structure Dataset
-```
+> I want this LoRA to generate `____` across `____`.
 
----
+Examples:
 
-##  Character Image Collection
+- I want this character LoRA to generate the same woman across new outfits, poses, and lighting.
+- I want this product LoRA to generate the same backpack across studio shots and outdoor scenes.
+- I want this style LoRA to generate many subjects in the same ink-and-watercolor look.
+- I want this video LoRA to keep a motion pattern consistent across short clips.
 
-### Character Training Goals
+That sentence tells you what to vary and what to protect. For a character, identity stays stable while pose, crop, expression, outfit, and background vary. For a style, the style stays stable while subject matter varies. For a product, the product stays readable while angle, context, and lighting vary.
 
-#### What You're Training For
-- **Consistent Character**: Same person across different situations
-- **Multiple Poses**: Character in various positions and actions
-- **Varied Expressions**: Different emotions and facial expressions
-- **Context Variety**: Character in different settings and backgrounds
+> **Why does this work?** The trainer learns from repeated patterns. If the repeated pattern is "same face in many contexts", you get identity. If the repeated pattern is "same background in every shot", you may train a background by accident. The dataset votes; the model counts votes without understanding your intention.
 
-### Planning Phase
+## Build a Candidate Pile, Then Cut It
 
-#### Character Definition
-- **Character Profile**: Age, appearance, personality, style
-- **Clothing Style**: Consistent clothing or style approach
-- **Setting Context**: Time period, location, environment
-- **Reference Materials**: Character sheets, mood boards
+Start with more images than you need, then remove the weak ones before captioning. A useful first pass is:
 
-#### Shot List Creation
-```
-Character: "Aria" - Fantasy Elf Ranger
-Essential Shots:
-- Front portrait (neutral expression)
-- Side profiles (left and right)
-- 3/4 view (action pose)
-- Close-ups (detailed face and clothing)
-- Environmental shots (in forest, in tavern)
-- Expression variety (happy, serious, sad, angry)
-```
+1. Collect 30 to 60 candidates.
+2. Open them in TagPilot or a file browser with large thumbnails.
+3. Sort into `strong`, `usable`, and `cut`.
+4. Delete the obvious `cut` group before you write captions.
+5. Train the first small run from the strongest set.
 
-### Collection Methods
+Twenty sharp, varied images often beat a hundred mediocre ones. The mediocre images are not harmless. Blur, bad crops, harsh lighting, watermarks, odd hands, wrong objects, duplicate poses, and compression artifacts all become part of the lesson.
 
-#### Professional Photography
-- **Hire Photographer**: Professional results, consistent lighting
-- **Control Environment**: Studio setting with controlled lighting
-- **Professional Equipment**: High-quality camera and lenses
-- **Consistent Styling**: Professional makeup and styling
+> **Try this variation:** In TagPilot, review only thumbnails first. If you cannot recognize the subject or style at thumbnail size, the trainer will also get a weak signal. Fix the crop, replace the image, or cut it.
 
-#### DIY Photography
-- **Controlled Environment**: Consistent lighting setup
-- **Good Equipment**: DSLR or mirrorless camera
-- **Consistent Background**: Use same background or green screen
-- **Multiple Sessions**: Multiple sessions to get variety
+## Character Datasets
 
-#### Found Images
-- **Stock Photos**: Professional stock photography
-- **Image Libraries**: Professional image libraries
-- **Creative Commons**: High-quality free images
-- **Commissioned Art**: Hire artists for consistent character
+For a character or real person, collect images that prove identity from several angles. Use front, three-quarter, side, closer crop, wider crop, different expressions, and different lighting. Avoid ten near-identical selfies unless you want a LoRA that knows one camera angle and panics outside it.
 
-### Legal and Ethical Basics
+Good character datasets usually include:
 
-This is practical documentation, not legal advice.
+- face visible in most images
+- varied crops and poses
+- clean lighting
+- a few different backgrounds
+- enough outfit variety if clothing should change later
+- consistent identity across the whole set
 
-Google Images is a search engine, not a license. If you find an image through search, you still need permission, a license, or a rights-safe reason to use it. Scraping random copyrighted images for a training dataset creates legal and ethical risk for commercial work, recognizable people, living artists' styles, brands, products, and private locations.
+Cut images where the face is obscured, the subject is tiny, the crop removes important identity features, or another person looks too similar. If you train on photos of real people, read [Data Rights and Consent](data-rights-and-consent.md) before you start. Consent is not an optional metadata field.
 
-Safer sources are your own photos, commissioned work with training rights, images you generated and are allowed to reuse, public domain material, and sources with terms you can point to. [Creative Commons Search](https://search.creativecommons.org/) and [Openverse](https://openverse.org/) help find CC-licensed and public-domain media. [Unsplash](https://unsplash.com/license) allows broad free use under its own license, but still pay attention to recognizable people, brands, trademarks, and the site's restrictions.
+## Style Datasets
 
-Keep records. Save the source URL, license, creator, download date, and any usage notes beside the dataset. Future you will not remember where `image_047_final_final2.png` came from. Future you is optimistic and unreliable.
+For a style, the subject should vary. If every training image is a portrait, the model may learn "portrait" as part of the style. If every image has the same color palette, the model may refuse other colors later.
 
-For the longer checklist, read [Data Rights and Consent](data-rights-and-consent.md) before you start collecting.
+Good style datasets include multiple subjects, compositions, and lighting setups that share the same visual treatment. The repeated signal should be brushwork, line quality, color handling, materials, lens behavior, or composition rhythm.
 
-### Collection Tips
+Use captions to name the subject matter so the trainer can separate "what is depicted" from "how it is depicted." Style LoRAs go sideways when captions hide the subject and the model treats a repeated object as part of the style.
 
-#### Consistency is Key
-- **Same Person**: Ensure all images show the same person
-- **Same Clothing**: Consistent clothing or style approach
-- **Same Lighting**: Similar lighting conditions when possible
-- **Same Camera**: Use same camera settings for consistency
+## Product and Object Datasets
 
-#### Quality Over Quantity
-- **20 Perfect Images**: Better than 100 mediocre images
-- **Focus on Essentials**: Prioritize key poses and expressions
-- **Professional Quality**: High resolution, good lighting
-- **Post-Processing**: Professional editing when needed
+Products and objects need clarity. Show the object from multiple angles, scales, and contexts. Include clean reference-like images and real-world scenes if you want both catalog and lifestyle prompts later.
 
----
+Watch logos, trademark use, and client restrictions. If you are training on a real product, keep source notes and usage rights with the dataset. Your future self will not remember which batch came from a client folder and which batch came from a moodboard at 1:12 a.m.
 
-##  Style Image Collection
+## Video Datasets
 
-### Style Training Goals
+Video LoRAs add time as a training signal. You are collecting frames, but the important lesson may be motion: a head turn, fabric movement, camera push, product spin, walk cycle, or style of transition.
 
-#### What You're Training For
-- **Artistic Style**: Specific artistic style or technique
-- **Medium Consistency**: Same artistic medium throughout
-- **Subject Variety**: Different subjects demonstrating the style
-- **Quality Examples**: Best examples of the style
+Choose clips with stable framing and readable motion. Cut clips with heavy motion blur, hard scene cuts, random camera shake, or inconsistent subjects. Extract frames in a way that preserves the motion story without filling the dataset with duplicates.
 
-### Planning Phase
+For first experiments, train image LoRAs before video LoRAs unless the concept only makes sense in motion. Video training is not a gentle place to learn basic dataset hygiene.
 
-#### Style Definition
-- **Style Profile**: Artistic movement, techniques, characteristics
-- **Medium**: Digital painting, traditional, photography
-- **Color Palette**: Consistent color choices and mood
-- **Reference Artists**: Artists whose work inspires the style
+## Rights and Sources
 
-#### Style Examples
-```
-Style: "Watercolor Fantasy"
-Essential Elements:
-- Soft brushstrokes with visible texture
-- Vibrant but natural color palette
-- Light and shadow interplay
-- Organic, flowing compositions
-- Fantasy elements (dragons, magic)
-```
+Use your own images, commissioned work with training rights, generated images you can reuse, public domain media, or licensed sources that allow your planned use. Google Images is a search engine, not a permission slip.
 
-### Collection Methods
+Keep a `SOURCES.md` or `sources.csv` next to the dataset. Record source URL, creator, license, download date, and restrictions. For Creative Commons and public domain media, tools such as [Creative Commons Search](https://search.creativecommons.org/) and [Openverse](https://openverse.org/) can help. Unsplash has its own [license terms](https://unsplash.com/license); read them instead of assuming "free" means "no constraints."
 
-#### Create Original Content
-- **Commission Artists**: Hire artists to create examples
-- **Create Yourself**: If you have artistic skills
-- **Collaborate**: Work with other artists
-- **Style Studies**: Practice the style before final collection
+Read [Data Rights and Consent](data-rights-and-consent.md) for the longer version.
 
-#### Curate Existing Content
-- **Art Communities**: Find artists working in your desired style
-- **Portfolio Sites**: Professional portfolio platforms
-- **Social Media**: Instagram, ArtStation, DeviantArt
-- **Stock Images**: Style-specific stock photography
+## The Collection Checklist
 
-#### Mixed Media Collection
-- **Photography**: Photos in your desired style
-- **Digital Art**: Digital paintings and illustrations
-- **Traditional Art**: Scanned traditional artwork
-- **3D Renders**: 3D renders with consistent styling
+Before captioning, answer these:
 
-### Collection Tips
+- Does every image earn its place?
+- Does the repeated pattern match the thing I want to train?
+- Do I have enough variation for the prompts I want later?
+- Did I remove duplicates and near-duplicates?
+- Are rights and sources recorded?
+- Can TagPilot load the folder cleanly?
 
-#### Style Consistency
-- **Same Medium**: Use consistent artistic medium
-- **Technique Consistency**: Similar techniques across examples
-- **Color Harmony**: Consistent color relationships
-- **Composition Style**: Similar compositional approaches
+If the answer is no, fix the folder before training. GPU time is a bad place to discover a lazy dataset.
 
-#### Quality Standards
-- **High Resolution**: Ensure sufficient detail for training
-- **Professional Quality**: Professional-level execution
-- **Clear Examples**: Clear demonstration of style
-- **Minimal Noise**: Clean, noise-free images
+## Next
+
+Continue with [Captioning and Tagging](captioning-and-tagging.md), then [Image Processing and Preparation](image-processing-preparation.md).
 
 ---
 
-## 🏷️ Concept Image Collection
-
-### Concept Training Goals
-
-#### What You're Training For
-- **Specific Object**: Unique object or item
-- **Abstract Concept**: Abstract idea or theme
-- **Design Element**: Specific design feature or pattern
-- **Functional Concept**: Practical or utilitarian concept
-
-### Planning Phase
-
-#### Concept Definition
-- **Concept Description**: Clear definition of what the concept is
-- **Key Features**: Essential characteristics that define the concept
-- **Boundaries**: What is and isn't part of the concept
-- **Use Cases**: How the concept will be used
-
-#### Concept Examples
-```
-Concept: "Magical Crystal"
-Essential Features:
-- Glowing blue light emanating from crystal
-- Intricate faceted surfaces
-- Magical energy particles
-- Ethereal, otherworldly appearance
-- Various sizes and shapes
-
-Use Cases:
-- Fantasy weapon training
-- Magic effect training
-- Environmental element training
-- Accessory design training
-```
-
-### Collection Methods
-
-#### Photography
-- **Real Objects**: Photograph actual objects if they exist
-- **Prop Creation**: Create physical props for photography
-- **Studio Photography**: Controlled lighting for magical effects
-- **Digital Manipulation**: Add effects in post-processing
-
-#### Digital Creation
-- **3D Modeling**: Create 3D models of the concept
-- **Digital Painting**: Paint the concept digitally
-- **Photo Manipulation**: Add effects in Photoshop
-- **Generative AI**: Use AI to create concept examples
-
-#### Mixed Media
-- **Photography + Digital**: Photograph objects, add effects digitally
-- **3D + Photography**: Render 3D models with photography
-- **Video + Stills**: Video frames extracted as images
-- **Multiple Angles**: Same object from different perspectives
-
-### Collection Tips
-
-#### Clarity is Essential
-- **Clear Definition**: Concept should be clearly visible
-- **Consistent Features**: Same characteristics across all examples
-- **Good Lighting**: Lighting that enhances the concept
-- **Multiple Contexts**: Show concept in different situations
-
-#### Quality Over Quantity
-- **10-20 Examples**: Sufficient for concept training
-- **High Quality**: Professional-level execution
-- **Varied Contexts**: Different situations and uses
-- **Clear Examples**: Clear demonstration of concept
-
----
-
-##  Technical Collection Strategies
-
-### Resolution Planning
-
-#### Resolution Standards
-- **Minimum Requirements**: Meet training model requirements
-- **Higher is Better**: 2× minimum resolution recommended
-- **Consistent Resolution**: Same resolution across dataset
-- **Aspect Ratio**: Consider final use case aspect ratio
-
-#### Resolution Guidelines
-```
-SD1.5 Training:
-- Minimum: 512×512
-- Recommended: 512×512
-- Higher: 768×768 (if model supports)
-
-SDXL Training:
-- Minimum: 1024×1024
-- Recommended: 1024×1024
-- Higher: 1280×1280 (if VRAM allows)
-
-FLUX.1 Training:
-- Minimum: 1024×1024
-- Recommended: 1024×1024
-- Higher: 1280×1280 (if VRAM allows)
-```
-
-### Camera Settings
-
-#### Manual Settings
-- **Aperture**: f/8-f/11 for depth of field
-- **Shutter Speed**: 1/125s or faster to avoid motion blur
-- **ISO**: 100-200 for clean images
-- **White Balance**: Custom white balance for consistent color
-- **Focus Mode**: Single-point AF for sharp focus
-
-#### Automatic Settings
-- **Auto Mode**: Camera chooses optimal settings
-- **RAW Format**: Capture in RAW for maximum quality
-- **Burst Mode**: Multiple shots to choose best
-
-### File Format Considerations
-
-#### Training Format
-- **Lossless Preferred**: PNG or TIFF for best quality
-- **Compression**: Minimal or no compression
-- **Color Space**: sRGB for consistency
-- **Bit Depth**: 8-bit per channel sufficient
-
-#### Storage Format
-- **Working Files**: RAW or high-quality JPEG during editing
-- **Archive Format**: Lossless PNG for final storage
-- **Backup Strategy**: Multiple backup locations
-
----
-
-## 📱 Sourcing Strategies
-
-### Online Resources
-
-#### Stock Photography
-- **Professional Services**: Adobe Stock, Getty Images
-- **Affordable Options**: Unsplash, Pexels, Pixabay
-- **Specialized Services**: Style-specific stock photo services
-- **Quality Focus**: Professional quality over quantity
-
-#### Creative Commons
-- **Free Resources**: High-quality free images
-- **Search Terms**: Specific search terms for your needs
-- **License Awareness**: Understand usage restrictions
-- **Attribution**: Follow attribution requirements
-
-#### Community Resources
-- **Art Communities**: DeviantArt, ArtStation
-- **Photography Forums**: Specialized photography communities
-- **Social Media**: Instagram, Pinterest for inspiration
-- **Open Source**: Free-to-use image collections
-
-### Legal Considerations
-
-#### Copyright
-- **Original Content**: Use only content you have rights to
-- **Licensed Content**: Follow license terms carefully
-- **Fair Use**: Understand fair use doctrines
-- **Commercial Use**: Commercial licenses for commercial use
-
-#### Model Training
-- **Training Rights**: Ensure rights to train on collected images
-- **Distribution Rights**: Understand distribution limitations
-- **Attribution Requirements**: Credit original creators
-
----
-
-## 💡 Collection Organization
-
-### File Management
-
-#### Directory Structure
-```
-collection/
-├── raw/              # Original, unprocessed images
-├── processed/          # Resized and edited images
-├── selected/           # Chosen best images
-├── rejected/            # Images that didn't meet standards
-└── metadata/           # Collection documentation
-```
-
-#### Version Control
-- **Git Repository**: Track changes to collection
-- **Backup Systems**: Multiple backup locations
-- **Collaboration**: Enable team collaboration
-- **Documentation**: Track collection decisions and changes
-
-### Metadata Management
-
-#### Image Metadata
-- **EXIF Data**: Camera settings, date, location
-- **Creation Info**: When and how image was created
-- **Processing History**: What operations were performed
-- **Quality Ratings**: Quality assessment scores
-
-#### Collection Metadata
-- **Collection Name**: Descriptive name for the collection
-- **Creation Date**: When collection was created
-- **Purpose**: Intended use of collection
-- **License**: Usage terms and restrictions
-- **Contributors**: People who contributed to collection
-
----
-
-##  Quality Assurance
-
-### Review Process
-
-#### Initial Review
-- **Quality Check**: Review all images for quality standards
-- **Consistency Check**: Ensure uniformity across collection
-- **Completeness Check**: Verify all required images are present
-- **Standards Compliance**: Ensure all standards are met
-
-#### Ongoing Review
-- **Regular Assessment**: Periodic quality checks
-- **Standards Updates**: Update standards as needed
-- **Issue Resolution**: Address quality issues promptly
-- **Continuous Improvement**: Learn and improve over time
-
-### Validation Metrics
-
-#### Quality Score
-- **Technical Quality**: Resolution, focus, lighting, noise
-- **Artistic Quality**: Composition, color, style
-- **Consistency**: Uniformity across collection
-- **Completeness**: Coverage of required elements
-
-#### Acceptance Criteria
-- **Minimum Standards**: All images meet minimum requirements
-- **Quality Threshold**: Images meet quality threshold
-- **Consistency Level**: Images meet consistency requirements
-- **Completeness Level**: Collection covers all required elements
-
----
-
-##  Practical Tips
-
-### Time Management
-
-#### Efficient Collection
-- **Batch Processing**: Process images in batches
-- **Parallel Tasks**: Multiple collection activities simultaneously
-- **Scheduled Sessions**: Regular collection sessions
-- **Deadlines**: Set realistic collection timelines
-
-### Resource Optimization
-- **Equipment Planning**: Optimize equipment usage
-- **Storage Planning**: Plan storage needs in advance
-- **Software Tools**: Use efficient software tools
-- **Automation**: Automate repetitive tasks
-
-### Quality Control
-- **Real-Time Review**: Check images as you capture them
-- **Immediate Feedback**: Address issues immediately
-- **Quality Thresholds**: Set minimum quality standards
-- **Selective Inclusion**: Only accept images meeting standards
-
-### Documentation
-
-#### Process Documentation
-- **Collection Methods**: Document how images were collected
-- **Processing Steps**: Record all processing operations
-- **Decision Criteria**: Document why images were included or excluded
-- **Lessons Learned**: Record insights for future collections
-
----
-
-##  What's Next?
-
-Now that you understand collection strategies, you're ready to:
-
-1. **[Captioning and Tagging](captioning-and-tagging.md)** - Start writing effective descriptions
-2. **[Image Processing and Preparation](image-processing-preparation.md)** - Prepare your images
-3. **[Dataset Organization](dataset-organization.md)** - Structure your dataset
-4. **[Dataset Validation and Testing](dataset-validation-and-testing.md)** - Ensure dataset quality
-
----
-
-## 📝 Feedback
+## Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
