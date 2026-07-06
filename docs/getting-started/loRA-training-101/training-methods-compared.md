@@ -18,28 +18,15 @@ Use **full fine-tuning** only when you want to change the base model itself and 
 
 > **Why does this work?** Most custom visual tasks are narrow. You do not need to rewrite the base model's knowledge of the world to teach one face, jacket, product, or drawing style. A small adapter is enough when the base model already understands the surrounding visual language.
 
-## Method Comparison
+## The Four Paths
 
-| Method | Output | Best For | Avoid When |
-|---|---|---|---|
-| LoRA | Small adapter | First training runs, reusable subjects, styles, products | You need to change the whole base model |
-| DreamBooth-style | Larger personalized model or heavier adapter | One subject with high identity pressure | You need many mixable concepts |
-| LyCORIS / LoKr | Advanced adapter | Concepts normal LoRA cannot hold | You are still learning basics |
-| Full fine-tuning | Modified model | Broad domain shift | You have a small dataset or limited VRAM |
+LoRA gives you a small adapter for a narrow reusable concept. DreamBooth-style training pushes harder on one subject and tends to produce a larger, less mixable result. LyCORIS and LoKr-style variants are adapter methods for cases where normal LoRA cannot hold the concept. Full fine-tuning changes the model itself and belongs to broad domain shifts, large datasets, and expensive mistakes with a business case.
 
 ## LoRA: The Default Workhorse
 
 LoRA keeps the base model intact and trains a compact adjustment. You can load it, unload it, combine it with another LoRA, change its strength, or share it as a small file.
 
-Use LoRA for:
-
-- character consistency
-- product identity
-- clothing or accessory reuse
-- style transfer
-- small concept training
-- first experiments in TrainPilot or Kohya
-- Flux/SDXL model-family adapters when the trainer supports them
+Use LoRA for character consistency, product identity, clothing or accessory reuse, style transfer, small concept training, first experiments in TrainPilot or Kohya, and Flux or SDXL adapters when the trainer supports them.
 
 The tradeoff is that LoRA depends on the base model. If the base model cannot draw the broader scene, your LoRA will not rescue it. A great character LoRA on a weak checkpoint still lives inside a weak checkpoint.
 
@@ -49,12 +36,7 @@ The tradeoff is that LoRA depends on the base model. If the base model cannot dr
 
 DreamBooth-style training pushes harder on personalization. It can work well for one subject, especially when identity matters more than mix-and-match flexibility.
 
-Use it when:
-
-- one person or subject must dominate the result
-- file size matters less than identity pressure
-- you do not need to stack several trained concepts
-- your workflow or trainer recommends it for the model family
+Use it when one person or subject must dominate the result, file size matters less than identity pressure, you do not need to stack several trained concepts, and your workflow or trainer recommends it for the model family.
 
 Avoid it when you want a library of small mixable assets. Three DreamBooth-style subjects are not as convenient as three LoRAs. The storage and workflow overhead becomes a hobby you did not request.
 
@@ -64,12 +46,7 @@ LyCORIS and LoKr-style methods are adapter variants that can capture some concep
 
 Try them only after you have a baseline LoRA on the same dataset. Otherwise you cannot tell whether the method helped or whether you changed five things and got lucky.
 
-Use them when:
-
-- standard LoRA underfits a complex concept
-- character consistency remains weak after dataset cleanup
-- the model family supports the method well
-- you can compare outputs with the same prompts and seeds
+Use them when standard LoRA underfits a complex concept, character consistency remains weak after dataset cleanup, the model family supports the method well, and you can compare outputs with the same prompts and seeds.
 
 Avoid them for your first run. A more advanced method does not fix a vague dataset.
 
@@ -77,13 +54,7 @@ Avoid them for your first run. A more advanced method does not fix a vague datas
 
 Full fine-tuning changes more of the model. That gives you more power and more ways to waste compute.
 
-Use it when:
-
-- you have a large curated dataset
-- the whole visual domain should change
-- LoRAs are too narrow for the goal
-- you can afford longer runs and larger artifacts
-- you understand licensing and distribution consequences
+Use it when you have a large curated dataset, the whole visual domain should change, LoRAs are too narrow for the goal, you can afford longer runs and larger artifacts, and you understand licensing and distribution consequences.
 
 For most LoRA Pilot users, full fine-tuning belongs later. It is a production choice, not a beginner rite of passage.
 
@@ -103,10 +74,7 @@ Prepare the dataset in **TagPilot** first. Review outputs in **MediaPilot** afte
 
 Run one normal LoRA first. Save samples and checkpoints. Test it with [Is My LoRA Good?](is-my-lora-good.md). Only switch methods after you know what failed:
 
-- **Underfit**: train longer, improve captions, or adjust rank/learning rate.
-- **Overfit**: test earlier checkpoints, reduce steps, improve dataset variety.
-- **Wrong base model**: train against the model family you plan to use.
-- **Weak method fit**: then consider DreamBooth-style, LyCORIS, LoKr, or full fine-tuning.
+If the LoRA underfits, train longer, improve captions, or adjust rank and learning rate. If it overfits, test earlier checkpoints, reduce steps, and improve dataset variety. If you trained against the wrong base model, rerun against the model family you plan to use. If the method itself is the weak fit, then consider DreamBooth-style training, LyCORIS, LoKr, or full fine-tuning.
 
 ## Next
 

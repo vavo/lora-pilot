@@ -8,12 +8,7 @@ Use this page after one run has produced evidence: logs, sample images, checkpoi
 
 ## Training Will Not Start
 
-Common signs:
-
-- TrainPilot or Kohya fails before progress begins.
-- AI Toolkit rejects the config.
-- Logs show missing files, missing models, bad paths, or permissions.
-- Progress stays at zero.
+Training launch failures usually appear before progress begins. TrainPilot or Kohya exits early, AI Toolkit rejects the config, logs mention missing files or permissions, or progress stays at zero.
 
 Check these first:
 
@@ -22,12 +17,7 @@ ls -la /workspace/datasets
 ls -la /workspace/models
 ```
 
-Then check the tool:
-
-- In ControlPilot, confirm the service is running.
-- In TrainPilot, confirm the selected dataset exists.
-- In Kohya, confirm image and caption paths match the config.
-- In AI Toolkit, confirm the model family and config format match.
+Then check the tool. In ControlPilot, confirm the service is running. In TrainPilot, confirm the selected dataset exists. In Kohya, confirm image and caption paths match the config. In AI Toolkit, confirm the model family and config format match.
 
 Path problems are boring and common. Spaces, renamed folders, missing captions, and model files in the wrong category can look like deeper training failures. They are not deeper. They are typos with ambition.
 
@@ -35,14 +25,7 @@ Path problems are boring and common. Spaces, renamed folders, missing captions, 
 
 Out-of-memory errors mean the run does not fit the GPU. Do not make this philosophical.
 
-Use this order:
-
-1. Set batch size to `1`.
-2. Enable gradient checkpointing.
-3. Use the recommended mixed precision for the model family.
-4. Lower training resolution.
-5. Lower rank.
-6. Use a smaller model or a larger GPU.
+Use the cheap fixes first. Set batch size to `1`, enable gradient checkpointing, use the recommended mixed precision for the model family, lower training resolution, then lower rank. If the run still does not fit, use a smaller model or a larger GPU.
 
 Restart the service or container if a previous failed run left memory occupied. In ControlPilot, use the service controls before assuming the whole machine needs ritual cleansing.
 
@@ -50,20 +33,9 @@ Restart the service or container if a previous failed run left memory occupied. 
 
 ## The LoRA Does Nothing
 
-Common signs:
+The dead-LoRA symptom is easy to spot: the trigger word has little effect, samples look like the base model, or LoRA strength must be very high before anything changes.
 
-- The trigger word has little effect.
-- Samples look like the base model.
-- LoRA strength must be very high before anything changes.
-
-Check these:
-
-- The LoRA was trained for the same base family you are using.
-- The trigger word appears in captions and prompts.
-- Captions actually describe the concept.
-- Training ran long enough to learn.
-- Rank is not too low for the concept.
-- The LoRA file is loaded in the workflow and not silently missing.
+Check the boring causes first. The LoRA must be trained for the same base family you are using. The trigger word must appear in captions and prompts. Captions need to describe the concept. The run needs enough exposure. Rank cannot be too low for the concept. The LoRA file must be loaded in the workflow and not silently missing.
 
 In ComfyUI, confirm the LoRA loader points to the right file and model branch. In ControlPilot or InvokeAI, confirm the active model stack matches the LoRA family.
 
@@ -73,25 +45,11 @@ First fix: test with a simple prompt and strength around `0.8` to `1.0`. If that
 
 That is overfitting. The model memorized examples instead of learning a flexible concept.
 
-Common signs:
-
-- same pose keeps returning
-- same background appears everywhere
-- character cannot change outfit
-- product always appears at the same angle
-- style LoRA forces the same composition
+You will see the same pose returning, the same background appearing everywhere, a character refusing to change outfit, a product stuck at one angle, or a style LoRA forcing the same composition across prompts.
 
 Use [Is My LoRA Good?](is-my-lora-good.md) to compare checkpoints. A middle checkpoint can fix what looks like a settings problem.
 
-First fixes:
-
-- test earlier checkpoints
-- reduce steps
-- lower learning rate
-- remove duplicates
-- add pose, crop, lighting, and background variety
-- caption variable details
-- lower rank if the dataset is small
+First test earlier checkpoints. If that does not solve it, reduce steps, lower learning rate, remove duplicates, add pose, crop, lighting, and background variety, caption variable details, and lower rank if the dataset is small.
 
 Do not add more near-duplicates. That is how overfitting gets a bigger vocabulary.
 
@@ -101,26 +59,13 @@ Training can improve early and degrade later. That does not mean the run failed;
 
 Check saved samples by step. If step 1000 looks flexible and step 2500 looks rigid, keep step 1000. Align `save_every` and `sample_every` in future runs so the good sample has a matching LoRA file.
 
-First fixes:
-
-- reduce total steps
-- save more often
-- use validation prompts that leave the dataset context
-- lower learning rate
-- improve dataset variety
+The fixes are ordinary: reduce total steps, save more often, use validation prompts that leave the dataset context, lower learning rate, and improve dataset variety.
 
 ## Outputs Are Blurry or Low Quality
 
 Blur can come from the dataset, base model, VAE, resolution, sampler, or training settings.
 
-Check in order:
-
-1. Are source images sharp?
-2. Did preprocessing upscale weak images?
-3. Is the base model good at this subject?
-4. Is the VAE or model stack correct?
-5. Are sample prompts too vague?
-6. Is the LoRA overtrained?
+Check the source before blaming the sampler. Are the original images sharp? Did preprocessing upscale weak images? Is the base model good at this subject? Is the VAE or model stack correct? Are sample prompts too vague? Did the LoRA overtrain?
 
 If the dataset is blurry, training will learn blur. If preprocessing added sharpening halos, training may learn halos. The trainer is not a photo editor with morals.
 
@@ -128,14 +73,7 @@ If the dataset is blurry, training will learn blur. If preprocessing added sharp
 
 For character LoRAs, identity drift usually points to dataset variety problems, weak trigger usage, wrong base model, or undertraining.
 
-Check:
-
-- enough face angles and expressions
-- identity features visible in most images
-- captions do not over-caption fixed identity traits
-- trigger word appears consistently
-- LoRA strength tested across a range
-- base model compatible with the LoRA
+Check that the dataset includes enough face angles and expressions, identity features are visible in most images, captions do not over-caption fixed identity traits, the trigger word appears consistently, LoRA strength has been tested across a range, and the base model is compatible with the LoRA.
 
 If the dataset mixes people, cut the wrong images. If the dataset has one angle, add angles. If the character only works at high strength, train or caption more cleanly before stacking more LoRAs.
 
@@ -147,18 +85,7 @@ Use loss to spot crashes, instability, or obvious divergence. Use fixed sample p
 
 ## Before You Rerun
 
-Write down the failed run:
-
-- base model
-- dataset version
-- trigger word
-- steps
-- learning rate
-- rank
-- batch size
-- precision
-- checkpoint that looked best
-- symptom you are fixing
+Write down the failed run before rerunning it: base model, dataset version, trigger word, steps, learning rate, rank, batch size, precision, checkpoint that looked best, and the symptom you are fixing.
 
 Then change one thing. If you change dataset, captions, rank, steps, and learning rate at once, the next run may improve while teaching you nothing. That is an expensive shrug.
 

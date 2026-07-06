@@ -10,13 +10,7 @@ For your first LoRA, focus on four controls: **steps**, **learning rate**, **bat
 
 Use the defaults from TrainPilot, Kohya, or AI Toolkit unless you are solving a specific problem. A good first run should:
 
-- use a clean TagPilot-reviewed dataset
-- train one concept
-- save intermediate checkpoints
-- generate sample images during training
-- use fixed sample prompts with the trigger word
-- keep batch size conservative
-- document the base model and settings
+Use a clean TagPilot-reviewed dataset, train one concept, save intermediate checkpoints, generate sample images during training, use fixed sample prompts with the trigger word, keep batch size conservative, and document the base model and settings. That sounds dull because reproducible training is dull. Dull is the point.
 
 > **Why does this work?** A baseline gives you evidence. If the LoRA underfits, overfits, or crashes, you know which part of the setup to change next. Without a baseline, every parameter tweak becomes folk medicine with a progress bar.
 
@@ -38,13 +32,7 @@ Learning rate controls update size. Higher values move faster and can damage the
 
 Kohya-style SD training often separates UNet and text encoder rates. The [Kohya SS LoRA parameter notes](https://github.com/bmaltais/kohya_ss/wiki/LoRA-training-parameters) document common defaults around `1e-4` for UNet and lower values such as `5e-5` for text encoder training. Treat these as starting points, not commandments.
 
-| Range | Use |
-|---|---|
-| `1e-5` to `5e-5` | fragile subjects, text encoder tuning, runs that overfit fast |
-| `5e-5` to `1e-4` | conservative first SD LoRA experiments |
-| `1e-4` to `5e-4` | stronger learning when samples stay generic |
-| `5e-4` to `1e-3` | short tests or trainer-specific recommendations |
-| above `1e-3` | use only when the tool or model guide asks for it |
+Think of the ranges as temperature, not truth. Values around `1e-5` to `5e-5` suit fragile subjects, text encoder tuning, and runs that overfit fast. Values around `5e-5` to `1e-4` make conservative first SD LoRA experiments. Values around `1e-4` to `5e-4` push harder when samples stay generic. Higher values, such as `5e-4` to `1e-3`, belong to short tests or trainer-specific recommendations. Above `1e-3`, you should have a tool guide or a very specific reason.
 
 If loss explodes, samples degrade fast, or the LoRA becomes rigid early, lower the learning rate or test an earlier checkpoint. If samples remain generic after enough exposure, check captions and trigger usage before raising it.
 
@@ -60,14 +48,7 @@ Gradient accumulation can imitate a larger batch without loading all images at o
 
 Rank is LoRA capacity. Low rank stores less. High rank stores more, including things you may not want: noise, repeated background, one facial angle, one lighting setup.
 
-Useful first ranges:
-
-| Rank | Good For |
-|---|---|
-| 8-16 | simple style or small concept tests |
-| 16-32 | many character/product first runs |
-| 32-64 | more detail, stronger identity, larger datasets |
-| 64+ | complex concepts, advanced runs, higher overfit risk |
+Useful first ranges are easier to remember as rough neighborhoods. Rank 8-16 fits simple style or small concept tests. Rank 16-32 fits many first character and product runs. Rank 32-64 gives more capacity for detail, stronger identity, or larger datasets. Rank 64 and above belongs to complex concepts and advanced runs where you accept higher overfit risk.
 
 More rank is not more quality by default. If a high-rank LoRA copies training images, lower rank may help, but better dataset variety usually helps more.
 
@@ -77,8 +58,7 @@ Alpha changes how the trained rank is scaled inside the LoRA. Many workflows set
 
 You will also choose LoRA strength during inference. Do not confuse the two:
 
-- **alpha** affects how the LoRA is trained and stored
-- **LoRA strength** affects how hard the LoRA pushes during generation
+Alpha affects how the LoRA is trained and stored. LoRA strength affects how hard the LoRA pushes during generation.
 
 For first runs, leave alpha at the trainer default unless you are comparing controlled experiments. After training, test LoRA strength at `0.5`, `0.7`, `0.9`, and `1.0` before rerunning training.
 
@@ -92,13 +72,7 @@ Use 8-bit optimizers when the trainer recommends them for memory savings. If you
 
 ## Samples and Saves
 
-Sample prompts are tests. Include:
-
-- the trigger word
-- one easy prompt
-- one prompt close to the dataset
-- one new pose or angle
-- one new context
+Sample prompts are tests. Include the trigger word, one easy prompt, one prompt close to the dataset, one new pose or angle, and one new context. You are checking whether the LoRA can leave the training folder without losing its shoes.
 
 Align `sample_every` and `save_every` when the tool allows it. If a sample at step 1200 looks best, you want the checkpoint from that neighborhood, not only the final file from step 3000.
 
@@ -106,35 +80,15 @@ Align `sample_every` and `save_every` when the tool allows it. If a sample at st
 
 **Underfit** looks generic. The trigger barely works, identity is weak, style disappears, or the product looks like the base model's default guess.
 
-First checks:
-
-- trigger appears in captions and prompts
-- base model family matches the LoRA
-- enough steps or exposure
-- rank not too low
-- captions describe the right concept
+For underfit runs, first confirm that the trigger appears in captions and prompts, the base model family matches the LoRA, the run had enough steps or exposure, rank is not too low, and captions describe the right concept.
 
 **Overfit** looks rigid. The LoRA copies poses, backgrounds, lighting, faces, or compositions from the dataset and resists new prompts.
 
-First checks:
-
-- test earlier checkpoints
-- reduce steps
-- lower learning rate
-- remove duplicate images
-- add pose, crop, angle, or lighting variety
-- lower rank if the dataset is small
+For overfit runs, test earlier checkpoints before rerunning. Then reduce steps, lower learning rate, remove duplicate images, add pose, crop, angle, or lighting variety, and lower rank if the dataset is small.
 
 ## What to Touch First
 
-Use this order:
-
-1. Fix dataset and captions.
-2. Test intermediate checkpoints.
-3. Adjust steps.
-4. Adjust learning rate.
-5. Adjust rank.
-6. Change method or advanced settings.
+Touch settings in the order that gives you the most evidence for the least wasted compute. Fix dataset and captions first. Test intermediate checkpoints. Adjust steps, then learning rate, then rank. Change method or advanced settings only after the ordinary knobs fail.
 
 That order is not glamorous. It is cheaper than rerunning training because the seventh advanced setting looked lonely.
 

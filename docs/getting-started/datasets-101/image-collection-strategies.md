@@ -12,12 +12,7 @@ Write one sentence before collecting:
 
 > I want this LoRA to generate `____` across `____`.
 
-Examples:
-
-- I want this character LoRA to generate the same woman across new outfits, poses, and lighting.
-- I want this product LoRA to generate the same backpack across studio shots and outdoor scenes.
-- I want this style LoRA to generate many subjects in the same ink-and-watercolor look.
-- I want this video LoRA to keep a motion pattern consistent across short clips.
+For a character LoRA, that might mean: "I want this LoRA to generate the same woman across new outfits, poses, and lighting." For a product LoRA, it might be the same backpack across studio shots and outdoor scenes. A style LoRA needs the same ink-and-watercolor treatment across many subjects. A video LoRA may need a motion pattern to survive across short clips.
 
 That sentence tells you what to vary and what to protect. For a character, identity stays stable while pose, crop, expression, outfit, and background vary. For a style, the style stays stable while subject matter varies. For a product, the product stays readable while angle, context, and lighting vary.
 
@@ -25,13 +20,7 @@ That sentence tells you what to vary and what to protect. For a character, ident
 
 ## Build a Candidate Pile, Then Cut It
 
-Start with more images than you need, then remove the weak ones before captioning. A useful first pass is:
-
-1. Collect 30 to 60 candidates.
-2. Open them in TagPilot or a file browser with large thumbnails.
-3. Sort into `strong`, `usable`, and `cut`.
-4. Delete the obvious `cut` group before you write captions.
-5. Train the first small run from the strongest set.
+Start with more images than you need, then remove the weak ones before captioning. For a first run, collect 30 to 60 candidates and open them in TagPilot or a file browser with large thumbnails. Sort them into `strong`, `usable`, and `cut`. Delete the obvious `cut` group before you write captions, then train the first small run from the strongest set.
 
 Twenty sharp, varied images often beat a hundred mediocre ones. The mediocre images are not harmless. Blur, bad crops, harsh lighting, watermarks, odd hands, wrong objects, duplicate poses, and compression artifacts all become part of the lesson.
 
@@ -41,14 +30,7 @@ Twenty sharp, varied images often beat a hundred mediocre ones. The mediocre ima
 
 For a character or real person, collect images that prove identity from several angles. Use front, three-quarter, side, closer crop, wider crop, different expressions, and different lighting. Avoid ten near-identical selfies unless you want a LoRA that knows one camera angle and panics outside it.
 
-Good character datasets usually include:
-
-- face visible in most images
-- varied crops and poses
-- clean lighting
-- a few different backgrounds
-- enough outfit variety if clothing should change later
-- consistent identity across the whole set
+Good character datasets keep the face visible in most images, vary crops and poses, use clean lighting, and show a few backgrounds. Add outfit variety if clothing should change later. Keep identity consistent across the whole set, because the trainer will not know that two similar-looking people are not supposed to merge into one cursed average.
 
 Cut images where the face is obscured, the subject is tiny, the crop removes important identity features, or another person looks too similar. If you train on photos of real people, read [Data Rights and Consent](data-rights-and-consent.md) before you start. Consent is not an optional metadata field.
 
@@ -82,18 +64,11 @@ Keep a `SOURCES.md` or `sources.csv` next to the dataset. Record source URL, cre
 
 Read [Data Rights and Consent](data-rights-and-consent.md) for the longer version.
 
-## The Collection Checklist
+## Before Captioning
 
-Before captioning, answer these:
+Before captioning, look at the folder once more and ask whether every image earns its place. The repeated pattern should match the thing you want to train, and the variation should match the prompts you want later. Remove duplicates and near-duplicates. Record rights and sources. Make sure TagPilot can load the folder cleanly.
 
-- Does every image earn its place?
-- Does the repeated pattern match the thing I want to train?
-- Do I have enough variation for the prompts I want later?
-- Did I remove duplicates and near-duplicates?
-- Are rights and sources recorded?
-- Can TagPilot load the folder cleanly?
-
-If the answer is no, fix the folder before training. GPU time is a bad place to discover a lazy dataset.
+If any of that sounds shaky, fix the folder before training. GPU time is a bad place to discover a lazy dataset.
 
 ## Next
 

@@ -8,14 +8,7 @@ In LoRA Pilot, collect first, review in TagPilot, then process only what needs p
 
 ## The Rule: Fix Problems, Do Not Invent a New Style
 
-Processing should remove barriers to learning:
-
-- crop away dead space
-- resize to a model-appropriate range
-- correct obvious rotation or exposure issues
-- remove duplicates
-- reject blur, artifacts, and unusable frames
-- keep color and texture faithful to the concept
+Processing should remove barriers to learning. Crop away dead space, resize to a model-appropriate range, correct obvious rotation or exposure issues, remove duplicates, reject blur and artifacts, and keep color and texture faithful to the concept.
 
 Processing should not create a second style on top of the data. Heavy filters, aggressive sharpening, face enhancement, denoise plugins, AI upscalers, and automatic beautification can become part of what the LoRA learns. If every image gets the same plastic-skin enhancement, the model may treat plastic skin as part of the subject.
 
@@ -23,14 +16,7 @@ Processing should not create a second style on top of the data. Heavy filters, a
 
 ## Resolution Without Ritual
 
-Use the model family as your starting point:
-
-| Family | Practical Starting Size | Notes |
-|---|---|---|
-| SD1.5 | 512-class images | Works well for older LoRA workflows and low VRAM |
-| SDXL | 1024-class images | Strong default for modern image LoRAs |
-| Flux/newer image families | 1024-class or model-card guidance | Follow the trainer and workflow notes |
-| Video frames | Workflow-specific | Preserve motion consistency before chasing resolution |
+Use the model family as your starting point. SD1.5 workflows often expect 512-class images and remain useful for older LoRA workflows or low VRAM. SDXL usually belongs around 1024-class images and makes a strong default for modern image LoRAs. Flux and newer image families often start around 1024 too, but you should follow the model card, trainer notes, and workflow template before inventing your own size. Video frames are more workflow-specific, because motion consistency matters before resolution.
 
 Square images are not mandatory for every modern workflow, but they are easier for a first training run. If your subject needs a portrait or landscape frame, keep the aspect ratio consistent enough that the trainer does not learn random cropping as part of the concept.
 
@@ -40,13 +26,7 @@ Do not upscale tiny images just to hit a number. A blurry 400px face upscaled to
 
 Crop for the thing you want the model to learn. A character LoRA needs identity features visible. A product LoRA needs the product readable. A style LoRA needs enough composition to show the style, not only tiny texture samples.
 
-Bad crops teach bad priorities:
-
-- face cut off in character datasets
-- product too small in a large scene
-- style examples reduced to isolated fragments
-- inconsistent framing that makes scale unpredictable
-- important details hidden behind borders, text, or watermarks
+Bad crops teach bad priorities. A character dataset with cut-off faces trains around missing identity. A product dataset where the object is tiny teaches the trainer to treat the product as background noise. A style dataset made of isolated texture fragments may lose composition, which is often half the style. Borders, text, and watermarks add their own unwanted lesson.
 
 > **Try this variation:** In TagPilot, scan the dataset as thumbnails. If the important subject disappears at thumbnail size, crop tighter or cut the image. Thumbnail review catches weak composition fast.
 
@@ -70,13 +50,7 @@ Noise reduction and sharpening are last resorts. If a source image needs heavy r
 
 Duplicates overvote a pose, expression, background, or lighting setup. Near-duplicates are worse because they look like variety while teaching the same thing again.
 
-Remove:
-
-- same frame exported twice
-- burst photos with tiny changes
-- video frames too close together
-- generated variants with the same composition
-- cropped copies of the same source unless the crop teaches something new
+Remove the same frame exported twice, burst photos with tiny changes, video frames too close together, generated variants with the same composition, and cropped copies of the same source unless the crop teaches something new.
 
 For video datasets, sample frames far enough apart to show motion without flooding training with the same frame wearing a different timestamp.
 
@@ -107,15 +81,7 @@ TagPilot should work from the processed training folder. Keep the source folder 
 
 ## Processing Order
 
-Use this order for most image LoRA datasets:
-
-1. Review and cut weak images.
-2. Fix rotation and obvious exposure issues.
-3. Crop for the subject or style.
-4. Resize only as much as needed.
-5. Check for blur, compression, watermarks, and duplicates.
-6. Load into TagPilot and caption.
-7. Run one final thumbnail review before training.
+For most image LoRA datasets, review and cut weak images before touching pixels. Then fix rotation and obvious exposure issues, crop for the subject or style, and resize only as much as needed. After that, check for blur, compression, watermarks, and duplicates. Load the result into TagPilot, caption it, and run one final thumbnail review before training.
 
 Caption after major crops. A caption written before cropping may describe objects that no longer appear in the training image. The model will still try to learn that mismatch, because apparently it has not learned sarcasm.
 

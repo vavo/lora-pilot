@@ -8,14 +8,7 @@ In LoRA Pilot, the current source of truth for exact model names, Hugging Face r
 
 ## The First Question
 
-Ask what job you are doing:
-
-- **Fast image experiments**: SD1.5 or SDXL Lightning/Turbo-style models.
-- **General high-quality images**: SDXL, Flux, HunyuanImage, Qwen/Image, or Z-Image style families.
-- **Photoreal product or portrait work**: SDXL realism checkpoints, Flux-family models, or newer image families with strong prompt following.
-- **Character/style LoRA work**: choose the base family your LoRA was trained against.
-- **Image editing**: use edit-specific families such as Qwen Image Edit or Flux Kontext-style workflows.
-- **Text-to-video or image-to-video**: Wan, LTX, HunyuanVideo, or other video-specific workflows.
+Ask what job you are doing. Fast image experiments usually belong to SD1.5 or SDXL Lightning/Turbo-style models. General high-quality images fit SDXL, Flux, HunyuanImage, Qwen/Image, Z-Image style families, or whatever current family the manifest supports. Photoreal product and portrait work usually needs SDXL realism checkpoints, Flux-family models, or newer image families with strong prompt following. Character and style LoRA work must use the base family the LoRA was trained against. Image editing needs edit-specific families such as Qwen Image Edit or Flux Kontext-style workflows. Text-to-video and image-to-video belong to video-specific families such as Wan, LTX, and HunyuanVideo.
 
 The wrong model family can make every other setting look broken. A Flux LoRA will not become an SDXL LoRA because you typed harder. A video model will not behave like a fast SD1.5 checkpoint because you are impatient. Annoying, but at least physics is consistent.
 
@@ -53,9 +46,7 @@ LoRA Pilot's manifest may include families such as HunyuanImage, Qwen Image/Edit
 
 These models can bring their own text encoders, VAEs, diffusion model files, quantized variants, and special nodes. Use the manifest and the model card together:
 
-- The manifest tells you which files LoRA Pilot knows how to download.
-- The model card tells you expected settings, license terms, and limitations.
-- The workflow template tells you how those files connect.
+The manifest tells you which files LoRA Pilot knows how to download. The model card explains expected settings, license terms, and limitations. The workflow template shows how those files connect.
 
 ## Video Model Families
 
@@ -81,26 +72,13 @@ For any video family, start with a tiny test: low resolution, short frame count,
 
 ## Compatibility Rules
 
-The model stack has layers:
-
-1. **Base family**: SD1.5, SDXL, Flux, Wan, LTX, Hunyuan, Qwen, or another family.
-2. **Model files**: checkpoint, diffusion model, text encoder, VAE, and sometimes extra encoders.
-3. **LoRAs and adapters**: trained for one family, sometimes one checkpoint style.
-4. **Workflow**: ComfyUI graph, InvokeAI setup, ControlPilot action, or API call.
+The model stack has layers. Start with the base family: SD1.5, SDXL, Flux, Wan, LTX, Hunyuan, Qwen, or another family. Then check the files: checkpoint, diffusion model, text encoder, VAE, and sometimes extra encoders. Then check LoRAs and adapters, because they were trained for one family and sometimes one checkpoint style. Then check the workflow, whether that is a ComfyUI graph, InvokeAI setup, ControlPilot action, or API call.
 
 Keep the layers compatible before tuning anything else. If a LoRA does nothing, check the base family and trigger word before changing CFG. If a workflow cannot find a model, check the file category in `/workspace/models`. A checkpoint in a LoRA folder is just a large mistake with a file extension.
 
 ## VRAM and Speed Expectations
 
-Use these as rough planning ranges, not promises:
-
-| Family | First Guess | Notes |
-|---|---|---|
-| SD1.5 | 4-8 GB VRAM | Fast, forgiving, older ecosystem |
-| SDXL | 8-12 GB VRAM | Strong default for images and LoRAs |
-| Flux / newer image families | 12-24+ GB VRAM | Better quality, heavier text encoders and workflows |
-| Small video models | 12-24+ GB VRAM | Start with short clips |
-| Large video models | 24-48+ GB VRAM | Expect slower runs and larger files |
+Use VRAM ranges as rough planning guesses, not promises. SD1.5 can often run in 4-8 GB and remains fast and forgiving. SDXL usually wants 8-12 GB for comfortable image work. Flux and newer image families often move into 12-24 GB because their text encoders and workflows are heavier. Small video models may also sit in that 12-24 GB range if you start with short clips. Large video models can push into 24-48 GB or more, along with slower runs and larger files.
 
 Quantized or FP8 variants can reduce memory pressure, but they can also change quality, compatibility, and workflow requirements. Use them because they solve a hardware problem, not because the filename looks futuristic.
 
@@ -108,13 +86,7 @@ Quantized or FP8 variants can reduce memory pressure, but they can also change q
 
 Some models are open. Some require accepting a gated license on Hugging Face. Some allow research use but restrict commercial use. Some community checkpoints inherit obligations from their base model and add their own terms.
 
-Before training a LoRA or shipping outputs, check:
-
-- model card license
-- gated access requirements
-- commercial-use language
-- attribution requirements
-- whether the model family supports your intended content
+Before training a LoRA or shipping outputs, read the model card license, gated access requirements, commercial-use language, attribution requirements, and any content restrictions. If the base model and community checkpoint disagree, assume you have more reading to do.
 
 ControlPilot can help download files. It cannot decide your legal risk for you. Very rude, but fair.
 

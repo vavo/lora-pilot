@@ -20,14 +20,7 @@ For a product or object LoRA, captions should name context and view: front view,
 
 ## Start in TagPilot
 
-Use this loop for a first dataset:
-
-1. Load the processed images in TagPilot.
-2. Generate draft tags or captions.
-3. Edit the first 10 by hand until the wording is consistent.
-4. Apply the same vocabulary to the rest.
-5. Scan for missing trigger words, wrong subjects, and repeated mistakes.
-6. Save the captions beside the images.
+For a first dataset, load the processed images in TagPilot and generate draft tags or captions. Edit the first 10 by hand until the wording feels consistent, then apply the same vocabulary to the rest. Before saving, scan for missing trigger words, wrong subjects, and repeated mistakes. Save captions beside the images so trainers can keep each pair together.
 
 Do not accept auto-captions in bulk without review. Auto-captioners miss details, invent details, and vary wording for the same feature. The model will not know which synonym you meant.
 
@@ -90,16 +83,7 @@ The useful pattern is subject, trigger, visible attributes, context, and style o
 
 ## What to Caption and What to Leave Alone
 
-Caption features that should change later:
-
-- clothing
-- pose
-- expression
-- background
-- lighting
-- camera angle
-- medium or style
-- product context
+Caption features that should change later: clothing, pose, expression, background, lighting, camera angle, medium, style, and product context. If you want the prompt to control a detail later, give the trainer a word for that detail now.
 
 Treat identity-defining features with intent. For a character LoRA, you may leave some stable identity traits unnamed so they bind to the trigger. For a product LoRA, you may leave the exact product shape bound to the trigger but caption the color if you want color changes later.
 
@@ -107,14 +91,7 @@ The mistake is not "captioning too much" or "captioning too little." The mistake
 
 ## Bad Caption Smells
 
-Fix these before training:
-
-- One image says `young woman`, another says `girl`, another says `person` for the same subject.
-- Captions mention objects cropped out of the image.
-- Captions omit the trigger word.
-- Captions describe desired quality instead of visible content.
-- Auto-tags include wrong hair color, wrong gender, wrong style, or impossible objects.
-- Every caption uses the same vague phrase: `high quality, masterpiece, detailed`.
+Fix captions before training when one image says `young woman`, another says `girl`, and another says `person` for the same subject. Fix them when captions mention objects cropped out of the image, omit the trigger word, describe desired quality instead of visible content, or repeat a vague phrase like `high quality, masterpiece, detailed` across the whole folder. Auto-tags also need review when they invent the wrong hair color, gender, style, or impossible object.
 
 Quality words can help some generation prompts. In training captions, they often become clutter unless they describe the actual dataset.
 

@@ -27,8 +27,7 @@ The names should match. If TagPilot saves captions beside the images, keep the p
 
 A caption is the text that tells the trainer what appears in the image. Captions do two jobs:
 
-- they name the concept you want the LoRA to learn
-- they name details you want to control later
+They name the concept you want the LoRA to learn, and they name details you want to control later.
 
 For example:
 
@@ -78,9 +77,7 @@ Use buckets when the trainer supports them and your dataset has useful aspect-ra
 
 These terms describe training exposure.
 
-- **Repeats**: how many times each image is reused in one epoch.
-- **Epoch**: one pass over the repeated dataset.
-- **Steps**: actual training updates.
+Repeats say how many times each image is reused in one epoch. An epoch is one pass over the repeated dataset. Steps are the actual training updates. If that sounds like three ways to ask "how long did the trainer stare at my images?", yes. Welcome to training UI vocabulary.
 
 Different trainers expose these differently. TrainPilot may hide some details behind a profile. Kohya may ask for repeats and epochs. AI Toolkit may expose total steps more directly.
 
@@ -108,18 +105,7 @@ Use [Is My LoRA Good?](../loRA-training-101/is-my-lora-good.md) to test both.
 
 ## The Terms You Need First
 
-Start with these:
-
-| Term | Plain Meaning |
-|---|---|
-| dataset | folder of training examples |
-| sample | one image or clip plus caption |
-| caption | text lesson for one sample |
-| trigger word | prompt handle for the trained concept |
-| bucket | aspect-ratio grouping |
-| steps | training updates |
-| rank | LoRA capacity |
-| checkpoint | saved training state or saved LoRA file |
+Start with the terms that show up before your first run. A dataset is the folder of training examples. A sample is one image or clip plus its caption. A caption is the text lesson for that sample. A trigger word is the prompt handle for the trained concept. A bucket groups images by aspect ratio. Steps are training updates. Rank is LoRA capacity. A checkpoint is a saved training state or saved LoRA file.
 
 If you understand those, you can start building a dataset. The rest becomes clearer after the first failed run. Convenient? No. Educational? Unfortunately.
 
