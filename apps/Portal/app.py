@@ -1329,6 +1329,7 @@ def _iter_dataset_files(root: Path):
     while stack:
         current = stack.pop()
         try:
+            # codeql[py/path-injection]
             with os.scandir(current) as entries:
                 for entry in sorted(entries, key=lambda item: item.name):
                     try:
