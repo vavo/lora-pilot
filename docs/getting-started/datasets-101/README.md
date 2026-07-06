@@ -17,13 +17,14 @@ This chapter is structured to help you master dataset creation and management:
 ###  Learning Path
 1. **[Dataset Terminology](dataset-terminology.md)** - Basic terms and concepts
 2. **[What Makes a Good Dataset](what-makes-a-good-dataset.md)** - Quality standards and principles
-3. **[Image Collection Strategies](image-collection-strategies.md)** - How to gather effective images
-4. **[Captioning and Tagging](captioning-and-tagging.md)** - Writing effective descriptions
-5. **[Image Processing and Preparation](image-processing-preparation.md)** - Technical preparation
-6. **[Dataset Organization](dataset-organization.md)** - Structuring and management
-7. **[Image LoRA Datasets](image-lora-datasets.md)** - Specific guidance for image LoRA
-8. **[Video LoRA Datasets](video-lora-datasets.md)** - Specific guidance for video LoRA
-9. **[Dataset Validation and Testing](dataset-validation-and-testing.md)** - Quality assurance
+3. **[Data Rights and Consent](data-rights-and-consent.md)** - What you are allowed to train on
+4. **[Image Collection Strategies](image-collection-strategies.md)** - How to gather effective images
+5. **[Captioning and Tagging](captioning-and-tagging.md)** - Writing effective descriptions
+6. **[Image Processing and Preparation](image-processing-preparation.md)** - Technical preparation
+7. **[Dataset Organization](dataset-organization.md)** - Structuring and management
+8. **[Image LoRA Datasets](image-lora-datasets.md)** - Specific guidance for image LoRA
+9. **[Video LoRA Datasets](video-lora-datasets.md)** - Specific guidance for video LoRA
+10. **[Dataset Validation and Testing](dataset-validation-and-testing.md)** - Quality assurance
 
 ###  Learning Goals
 
@@ -44,8 +45,9 @@ If you're eager to start creating datasets, here's the fastest path:
 
 1. **[Dataset Terminology](dataset-terminology.md)** - 5 minute read
 2. **[What Makes a Good Dataset](what-makes-a-good-dataset.md)** - 10 minute read
-3. **[Image Collection Strategies](image-collection-strategies.md)** - Start collecting images
-4. **[Captioning and Tagging](captioning-and-tagging.md)** - Start writing descriptions
+3. **[Data Rights and Consent](data-rights-and-consent.md)** - Avoid building the dataset you later have to delete
+4. **[Image Collection Strategies](image-collection-strategies.md)** - Start collecting images
+5. **[Captioning and Tagging](captioning-and-tagging.md)** - Start writing descriptions
 
 ###  Prerequisites
 
@@ -72,24 +74,25 @@ Let's begin your journey into creating amazing datasets!
 
 ##  Chapter Structure
 
-### 🌅 Fundamentals Section (Documents 1-3)
+### 🌅 Fundamentals Section (Documents 1-4)
 **Focus**: Understanding the basics
 - **Dataset Terminology**: Core concepts and vocabulary
 - **What Makes a Good Dataset**: Quality standards and principles
+- **Data Rights and Consent**: Source tracking and permission basics
 - **Image Collection Strategies**: How to gather effective images
 
-###  Preparation Section (Documents 4-6)
+###  Preparation Section (Documents 5-7)
 **Focus**: Creating your dataset
 - **Captioning and Tagging**: Writing effective descriptions
 - **Image Processing and Preparation**: Technical preparation
 - **Dataset Organization**: Structuring and management
 
-###  Specialized Section (Documents 7-8)
+###  Specialized Section (Documents 8-9)
 **Focus**: Specific training types
 - **Image LoRA Datasets**: Specific guidance for image LoRA
 - **Video LoRA Datasets**: Specific guidance for video LoRA
 
-###  Quality Assurance Section (Document 9)
+###  Quality Assurance Section (Document 10)
 **Focus**: Ensuring dataset quality
 - **Dataset Validation and Testing**: Quality assurance methods
 

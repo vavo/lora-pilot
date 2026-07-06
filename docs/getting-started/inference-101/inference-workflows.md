@@ -1,6 +1,6 @@
 # Inference Workflows
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 A workflow is not only a graph or a preset. It is the way you move from idea to output without losing the trail. The graph generates the image. The workflow helps you understand why that image happened.
 
@@ -22,7 +22,7 @@ The fixed seed is your friend during this phase. It keeps the composition simila
 
 ## Compare Outputs Side by Side
 
-Your eyes are unreliable when images arrive one at a time. Compare candidates side by side with the prompt, model, seed, sampler, scheduler, CFG, steps, denoise, resolution, VAE, and LoRA weights nearby.
+Your eyes are unreliable when images arrive one at a time. Compare candidates side by side with the prompt, model, seed, sampler, scheduler, CFG, steps, denoise, resolution, VAE, and LoRA weights nearby. MediaPilot exists for this job: use it to review outputs, keep winners, and avoid turning your downloads folder into a landfill with thumbnails.
 
 In ComfyUI, keep generated PNGs while testing. Dragging a ComfyUI-generated PNG back onto the canvas can recover the embedded workflow metadata. In InvokeAI, keep boards and metadata organized so good outputs do not become folklore.
 
@@ -30,7 +30,7 @@ In ComfyUI, keep generated PNGs while testing. Dragging a ComfyUI-generated PNG 
 
 Community workflows are useful because someone else already built the graph. They are also fragile because the graph assumes specific checkpoints, LoRAs, VAEs, upscalers, custom nodes, model families, and sometimes old node versions.
 
-When importing a workflow, read the notes first. Install missing custom nodes through ComfyUI Manager, restart ComfyUI, then reload the workflow. Replace missing models with the same family, not the first file that appears in a dropdown. Run a small resolution test before sending a heavy render. If the small test fails, the large render was not going to become wise through suffering.
+When importing a workflow, read the notes first. Install missing custom nodes through ComfyUI Manager, restart ComfyUI from ControlPilot, then reload the workflow. Replace missing models with the same family, not the first file that appears in a dropdown. Run a small resolution test before sending a heavy render. If the small test fails, the large render was not going to become wise through suffering.
 
 Remember that the JSON is not the whole workflow. A ComfyUI graph may depend on source images, masks, video files, audio files, model weights, custom nodes, and Python packages. If any of those are missing, the graph can be perfectly valid and still fail.
 

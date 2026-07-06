@@ -82,6 +82,8 @@ Safer sources are your own photos, commissioned work with training rights, image
 
 Keep records. Save the source URL, license, creator, download date, and any usage notes beside the dataset. Future you will not remember where `image_047_final_final2.png` came from. Future you is optimistic and unreliable.
 
+For the longer checklist, read [Data Rights and Consent](data-rights-and-consent.md) before you start collecting.
+
 ### Collection Tips
 
 #### Consistency is Key

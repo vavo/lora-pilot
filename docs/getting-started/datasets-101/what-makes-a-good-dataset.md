@@ -1,27 +1,34 @@
 # What Makes a Good Dataset
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-A good dataset is the foundation of a great AI model. This guide covers the essential qualities and standards that separate mediocre datasets from exceptional ones.
+A good dataset gives the trainer a clean lesson. A bad dataset gives it a noisy argument and then expects genius.
 
-##  The Big Picture
+The model does not know which examples are "almost right", which photos are blurry accidents, which crop cut off the important detail, or which image came from the wrong style reference. It treats the folder as evidence. If the evidence is messy, the LoRA learns the mess.
 
-### The 80/20 Rule
-Think of model training as:
-- **80% Dataset Quality**: Determines model quality
-- **20% Training Process**: Determines training efficiency
+![Datasets 101 overview](../../assets/images/learning-101/datasets-101-overview.svg)
 
-```
-Great Dataset + Poor Training = Poor Model
-Poor Dataset + Great Training = Poor Model
-Great Dataset + Great Training = Excellent Model
-```
+## Why 20 Great Images Beat 100 Mediocre Ones
 
-### Quality vs. Quantity
-- **Quality First**: 20 excellent images > 100 mediocre images
-- **Consistency Over Volume**: Uniform quality beats sheer numbers
-- **Diversity Matters**: Varied examples prevent overfitting
-- **Curated Selection**: Every image should earn its place
+The instinct is to throw everything you have at the trainer. More data feels safer. It can also make the lesson worse.
+
+Every mediocre image casts a vote: bad lighting, weird crop, motion blur, compression blocks, random background clutter, wrong outfit, wrong face angle. The model does not mark those as mistakes. It learns statistical patterns from them. If half your dataset shows the subject from the same angle in the same lighting, the LoRA may decide that angle and lighting are part of the identity.
+
+Start smaller. Pull up 30 candidate images in TagPilot, sort them into "strong", "usable", and "cut", then delete the bottom third before training. You can add more later. Beginners need a sharper dataset, not a larger one.
+
+> **Why does this work?** The trainer learns correlations. It cannot tell "bad photo of the right subject" from "correct example of how this subject should look". Curation increases signal before GPU time gets involved.
+
+> **Try this variation:** Open the dataset in TagPilot and scan only thumbnails first. Any image that looks confusing at thumbnail size probably teaches a weak lesson. Remove it or fix it before captioning.
+
+## The Basic Test
+
+Ask three questions before training:
+
+- Can I recognize the subject, style, or concept without reading the filename?
+- Do the images vary in the ways I want prompts to vary later?
+- Do the captions name the things I want to control?
+
+If you are training a character, vary pose, expression, crop, angle, and background while keeping identity clear. If you are training a style, vary subjects so the model learns the style instead of one repeated scene. If you are training a product or object, vary angle and context while keeping the product readable.
 
 ---
 
@@ -472,5 +479,3 @@ Now that you understand what makes a good dataset, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

@@ -20,11 +20,13 @@ In ComfyUI, most of these live on `KSampler`. Width, height, and batch size usua
 
 Generation parameters control **how** the AI creates your image, not **what** it creates. Your prompt determines the content, but parameters determine the style, quality, and characteristics.
 
+![Generation settings map](../../assets/images/learning-101/generation-settings-map.svg)
+
 ## Learn These First
 
 Most beginners do not need every setting yet. Start with four.
 
-Use a fixed **seed** while testing. That keeps the starting noise stable, so you can see what your change did.
+Use a fixed **seed** while testing. That keeps the starting noise stable, so you can see what your change did. In ControlPilot's inference controls, InvokeAI, and ComfyUI's `KSampler`, seed is the first setting to lock when you want a fair comparison.
 
 Change **CFG or guidance** when the model is either ignoring the prompt or following it so hard that the image looks brittle. For classic SD1.5 and SDXL workflows, moderate CFG often beats heroic CFG. Newer model families may use different guidance ranges, so model notes win over internet folklore.
 
@@ -33,6 +35,10 @@ Adjust **steps** when the image looks unfinished or when you are wasting time on
 Keep **resolution and batch size** conservative until the workflow works. Giant first passes are a quick way to learn your VRAM limit and not much else.
 
 Once those four make sense, the sampler, scheduler, denoise, upscaling, and model-specific controls become easier to reason about.
+
+> **Why does this work?** A fixed seed keeps the starting noise pattern stable. When you change CFG, steps, sampler, or prompt wording with the same seed, the output changes for a reason you can inspect instead of because you rolled a new starting point.
+
+> **Try this variation:** Generate one image, save it to MediaPilot, then keep the seed and prompt fixed while changing only CFG or guidance. Compare the results side by side. If the image gets harsher without getting more accurate, lower guidance and fix the prompt or model choice instead.
 
 ---
 

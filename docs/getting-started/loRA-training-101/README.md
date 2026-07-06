@@ -28,10 +28,11 @@ This chapter is structured to help you master LoRA training progressively:
 3. **[Dataset Preparation](dataset-preparation.md)** - Creating effective training data
 4. **[Training Parameters Explained](training-parameters-explained.md)** - The few settings that matter first
 5. **[Training Workflows](training-workflows.md)** - Step-by-step training processes
-6. **[Troubleshooting Training](troubleshooting-training.md)** - Common issues and solutions
-7. **[Practical Training Projects](practical-training-projects.md)** - Real-world training projects
-8. **[Advanced Training Techniques](advanced-training-techniques.md)** - Professional-level training methods
-9. **[Precision Formats Explained](precision-formats.md)** - Optional technical appendix for memory, speed, and hardware choices
+6. **[Is My LoRA Good?](is-my-lora-good.md)** - Checkpoints, overfitting, underfitting, and strength tests
+7. **[Troubleshooting Training](troubleshooting-training.md)** - Common issues and solutions
+8. **[Practical Training Projects](practical-training-projects.md)** - Real-world training projects
+9. **[Advanced Training Techniques](advanced-training-techniques.md)** - Professional-level training methods
+10. **[Precision Formats Explained](precision-formats.md)** - Optional technical appendix for memory, speed, and hardware choices
 
 ###  Learning Goals
 
@@ -86,12 +87,13 @@ Let's begin your journey into LoRA training!
 - **Dataset Preparation**: Creating effective training data
 - **Training Parameters Explained**: Starter settings before the advanced knobs
 
-###  Application Section (Documents 6-7)
+###  Application Section (Documents 6-8)
 **Focus**: Practical application
 - **Training Workflows**: Step-by-step training processes
+- **Is My LoRA Good?**: Checkpoint and strength testing
 - **Troubleshooting Training**: Common issues and solutions
 
-###  Advanced Section (Documents 8-9)
+###  Advanced Section (Documents 9-10)
 **Focus**: Mastery and troubleshooting
 - **Practical Training Projects**: Real-world training projects
 - **Advanced Training Techniques**: Professional-level methods
@@ -106,7 +108,7 @@ Let's begin your journey into LoRA training!
 
 #### Week 2: Application
 - **Day 8-10**: Training Workflows
-- **Day 11-12**: Troubleshooting Training + checkpoint comparison
+- **Day 11-12**: Is My LoRA Good? + checkpoint comparison
 - **Day 13-14**: Complete first training project
 
 #### Week 3: Mastery

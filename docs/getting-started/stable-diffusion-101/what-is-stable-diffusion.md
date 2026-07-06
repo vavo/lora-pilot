@@ -2,61 +2,55 @@
 
 _Last updated: 2026-07-06_
 
-Stable Diffusion turns a written prompt into an image. That sentence sounds like magic because the useful version of the idea is magic-shaped: you describe a cat on a windowsill, press Generate, and a new image appears.
+Picture a sculptor working in reverse. Instead of starting with marble and carving away everything that is not the statue, Stable Diffusion starts with visual noise, something like TV static, and refines it pass by pass until an image matching your prompt appears.
 
-The real mechanism is more interesting. Stable Diffusion starts with noise, the kind of visual chaos that looks like TV static. Then it removes a little noise at a time while your prompt pulls the image toward "cat", "windowsill", "soft morning light", or whatever else you asked for. It is a sculptor in reverse: it starts with a block of chaos and chips away everything that does not belong.
+The noise is the raw material. The prompt gives direction. The model supplies visual memory from training. The sampler removes noise in small steps until the image has enough structure and detail to decode into pixels.
 
-```mermaid
-flowchart LR
-  A["Prompt"] --> B["Text encoder"]
-  B --> C["Denoising steps"]
-  D["Random noise"] --> C
-  C --> E["Latent image"]
-  E --> F["VAE decoder"]
-  F --> G["Finished image"]
-```
+![Stable Diffusion 101 overview](../../assets/images/learning-101/stable-diffusion-101-overview.svg)
 
-You do not need to memorize those parts on day one. You only need the shape of the process: prompt plus noise, repeated denoising, decoded into pixels.
+## The Canvas You Never See
 
-## The Three Things Happening
+Stable Diffusion does most of its work in a compressed image space called a **latent**. Think of it as a rough working sketch that carries the important structure without storing every final pixel. The **VAE** decodes that latent into the image you can save, inspect, or send to MediaPilot.
 
-First, the model reads your prompt as conditioning. It does not understand language like a person does, but it has learned patterns between words and images. "Cat" points toward feline shapes. "Sitting" points toward posture. "Windowsill" points toward a setting.
+This compressed canvas is the practical trick behind Stable Diffusion. Working on full-size pixels would cost far more memory and time. Working in latent space lets a single GPU handle the job.
 
-Second, the sampler walks through a series of denoising steps. Early steps decide the rough composition. Middle steps find the subject and large forms. Later steps refine texture, lighting, small details, and all the little ways a model can still make hands weird. Progress, yes. Perfection, no.
+Your prompt goes through a text encoder first. The encoder turns words into conditioning the image model can use. It does not "understand" like a person, but it has learned useful relationships between words and images: cats have feline shapes, windowsills sit near windows, morning light tends to be soft, and "top hat on a cat" probably means the hat belongs on the cat rather than on the windowsill. Probably. The model still has opinions.
 
-Third, the VAE decoder turns the model's internal latent image into pixels you can save. That is why model components matter later: the checkpoint, text encoder, sampler, and VAE each affect the final result.
+## The Denoising Loop
+
+Each generation step compares two things: the current noisy latent and your prompt conditioning. The model predicts which part of the noise does not belong, removes a little of it, then hands the cleaner latent to the next step.
+
+Many beginner explanations imply the image appears in a smooth sequence: step 10 looks like a blurry cat, step 25 looks like a better cat, step 40 adds whiskers. That is too tidy. Early steps often look like structured fog. The rough composition tends to settle before the fine detail, and recognizable forms can appear late enough to feel sudden.
+
+> **Why does this work?** Early in sampling, the latent is too noisy for the model to place fine details with confidence. It can estimate broad structure first: subject position, rough shapes, major color regions. As noise drops, smaller details become predictable. Structure comes first, detail comes later.
+
+> **Try this variation:** In ControlPilot or ComfyUI, generate the same prompt with three different seeds. Keep the model, resolution, sampler, steps, and guidance fixed. You should get different compositions that still obey the same prompt. The seed changes the starting noise; the prompt decides what counts as a valid landing zone.
 
 ## Why the Name Is a Little Misleading
 
-"Diffusion" is the important technical word. Diffusion models learn how to reverse a noising process: they start from noise and recover an image step by step. Stable Diffusion is also a latent diffusion model, which means most of that work happens in a compressed image space instead of full-size pixels. That is one reason it became practical to run on consumer GPUs.
+**Diffusion** describes the step-by-step noise process. Researchers train diffusion models by adding noise to real images and teaching the model to reverse each step.
 
-"Stable" does not mean the model always gives stable or reliable output. The name is tied to Stability AI's release of Stable Diffusion and the latent diffusion research behind it. If you want repeatable output, use the same seed, model, prompt, and settings. The word "stable" will not do that job for you. Nice try, branding department.
+**Stable** is part of the product name released by Stability AI. It does not mean the model always behaves reliably. The technical lineage comes from latent diffusion; the paper [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752) is the foundation, and Stability AI's public release gave the model family the name [Stable Diffusion](https://stability.ai/news-updates/stable-diffusion-public-release).
 
-For the curious, the technical foundation is the paper [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752), and Stability AI's launch context is in their [Stable Diffusion public release](https://stability.ai/news-updates/stable-diffusion-public-release).
+If you want repeatable output, use the same model, prompt, seed, sampler, resolution, VAE, LoRA stack, and settings. The word "stable" will not do that job for you. Branding remains undefeated.
 
-## What You Can Make With It
+## Where LoRA Fits
 
-Stable Diffusion can create photorealistic portraits, painted landscapes, product mockups, concept art, game assets, fashion sketches, storyboards, and strange little accidents you will pretend were intentional. It can also edit images, fill missing regions, upscale results, follow rough composition guides, and use LoRAs to repeat a character, product, or style.
+The base model already knows a broad range of subjects, styles, lighting, materials, and compositions. A **LoRA** adds a small trained adjustment for one narrower idea: your character, product, outfit, visual style, logo treatment, or subject the base model does not handle well.
 
-The catch is that the model is not a mind reader. A short prompt like "beautiful landscape" gives it room to improvise. A more directed prompt like "wide photo of a misty pine forest at sunrise, lake reflection, soft orange light, natural colors" gives it a cleaner target. Settings then decide how hard the model follows that target, how long it refines, and whether you can reproduce the result.
+LoRAs do not replace the base model. They steer it. That is why model compatibility matters: an SDXL LoRA, a Flux LoRA, and a video LoRA may expect different model families and workflow shapes. [LoRA Training 101](../loRA-training-101/README.md) explains how to create one; [Inference 101](../inference-101/README.md) explains how to use it without turning every setting into soup.
 
-## What Beginners Usually Get Wrong
+## What This Means in LoRA Pilot
 
-The first mistake is changing everything at once. If an image looks bad, keep the same seed and change one thing: the prompt, CFG or guidance, steps, sampler, resolution, or model. If you change five things and the next image improves, you learned almost nothing. Maybe it was the prompt. Maybe it was Tuesday.
+Every image you generate in LoRA Pilot, whether through ControlPilot, InvokeAI, or a raw ComfyUI workflow, follows the same broad loop: encode the prompt, denoise a latent, decode the image, save the result. ControlPilot gives you the product surface, ComfyUI exposes the graph, InvokeAI gives you a focused generation UI, and MediaPilot helps you inspect and curate outputs.
 
-The second mistake is treating every model as interchangeable. SD1.5, SDXL, Flux, video models, and specialized checkpoints have different strengths, resolutions, workflows, and settings. A prompt or LoRA that works well in one family may do nothing useful in another.
-
-The third mistake is expecting prompt text to overpower bad inputs. A model can ignore vague words, fight impossible compositions, or hallucinate details. Better inputs often beat louder prompts.
-
-## A Simple First Exercise
-
-Pick one image idea and write it as a normal sentence. Add the subject, setting, style, and lighting. Generate with a fixed seed. Then change only one phrase and generate again.
-
-Example: start with "photo of a tabby cat sitting on a wooden windowsill, morning light, cozy apartment". Keep the seed. Change "morning light" to "blue evening light". The subject should stay similar while the mood changes. That is the first useful lesson: control comes from small, visible changes.
+Once you understand that loop, the settings stop looking like a wall of random knobs. Seed controls the starting noise. Steps control how long denoising runs. Guidance controls how hard the prompt pulls. The model family decides what kind of visual knowledge you start from.
 
 ## What's Next?
 
 Continue with [Model Components](model-components.md) to learn what checkpoints, VAEs, LoRAs, and text encoders do. Then read [Prompting Fundamentals](prompting-fundamentals.md) before you start collecting other people's 400-word prompt soups from the internet.
+
+Your first experiment: pick one prompt and generate it with SD1.5, SDXL, and Flux if you have them installed. Keep the prompt fixed. The differences in detail, prompt obedience, speed, and composition will teach you more about model personality than another paragraph here can.
 
 ---
 

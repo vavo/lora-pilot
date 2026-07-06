@@ -209,6 +209,8 @@ Then run a small strength sweep on the best candidates: `0.5`, `0.7`, `0.9`, and
 
 Save the checkpoint you can reuse, not the one that copied the training images. Hugging Face's [Diffusers LoRA training guide](https://huggingface.co/docs/diffusers/en/training/lora) uses validation prompts and checkpoints for the same reason: training quality needs repeatable evidence, not vibes with a filename.
 
+For a focused evaluation loop, use [Is My LoRA Good?](is-my-lora-good.md) after the first run finishes.
+
 ### AI Toolkit Tips
 
 #### Best Practices
@@ -458,10 +460,11 @@ For advanced users who want complete control over the training process.
 
 Now that you understand training workflows, you're ready to:
 
-1. **[Practical Training Projects](practical-training-projects.md)** - Start your first training project
-2. **[Advanced Training Techniques](advanced-training-techniques.md)** - Master professional methods
-3. **[Troubleshooting Training](troubleshooting-training.md)** - Handle common training issues
-4. **[Model Management](../../user-guide/model-management.md)** - Organize your trained models
+1. **[Is My LoRA Good?](is-my-lora-good.md)** - Evaluate checkpoints before training again
+2. **[Practical Training Projects](practical-training-projects.md)** - Start your first training project
+3. **[Advanced Training Techniques](advanced-training-techniques.md)** - Master professional methods
+4. **[Troubleshooting Training](troubleshooting-training.md)** - Handle common training issues
+5. **[Model Management](../../user-guide/model-management.md)** - Organize your trained models
 
 ---
 

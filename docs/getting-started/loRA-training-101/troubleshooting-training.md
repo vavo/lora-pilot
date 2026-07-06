@@ -1,6 +1,6 @@
 # Troubleshooting Training
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Training problems can be frustrating, but most issues have clear solutions. This guide covers common training problems and their fixes.
 
@@ -179,6 +179,8 @@ steps: 3000-4000  # High quality training
 - **Too Similar Data**: Training images too similar
 
 #### Solutions
+
+Use [Is My LoRA Good?](is-my-lora-good.md) to compare checkpoints before changing the dataset or rerunning training. A middle checkpoint can solve what looks like a settings problem.
 
 **Reduce Training Steps**
 - Stop training when validation loss starts increasing
@@ -588,5 +590,4 @@ Now that you can troubleshoot training issues, you're ready to:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

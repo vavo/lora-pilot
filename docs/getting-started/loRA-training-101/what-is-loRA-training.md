@@ -2,11 +2,11 @@
 
 _Last updated: 2026-07-06_
 
-Welcome to your first step into custom model training! LoRA training is one of the most powerful and accessible ways to teach AI your specific characters, styles, or concepts. Let's break it down in simple terms.
+LoRA training teaches a base model one reusable visual idea without retraining the whole model. That idea might be a person, product, outfit, style, creature, vehicle, or logo treatment you want to use across many prompts.
 
-##  The Big Picture
+![LoRA Training 101 overview](../../assets/images/learning-101/lora-training-101-overview.svg)
 
-### What LoRA Training Does
+## The New Trick
 
 Think of LoRA training like teaching a talented artist a new trick:
 
@@ -15,6 +15,8 @@ Base Model: Knows how to draw "a person"
 LoRA Training: Teaches it how to draw "YOUR specific person"
 Result: Base model can now draw YOUR specific person
 ```
+
+In LoRA Pilot, the practical loop is: collect images, clean and caption them in TagPilot, launch a run through TrainPilot or another training tool, then test the saved LoRA in ControlPilot, ComfyUI, or InvokeAI. MediaPilot helps you compare the samples and final outputs without losing track of the evidence.
 
 ### Why It's Called "LoRA"
 
@@ -25,6 +27,10 @@ Result: Base model can now draw YOUR specific person
 The best beginner analogy is a removable vinyl decal, not a new paint job. Full fine-tuning repaints the wall. LoRA keeps the wall and adds a thin, precise layer that changes how the model behaves when you load it. Remove the LoRA, and the base model is still there.
 
 The math version is compact: instead of changing a huge weight matrix, LoRA freezes the original model weights and trains two much smaller matrices. When those two small matrices are multiplied together, they approximate the change the model needs. That is the "low-rank" part. The original [LoRA paper](https://arxiv.org/abs/2106.09685) introduced this trick for language models, and image trainers adapted the same idea for diffusion models.
+
+> **Why does this work?** Most custom concepts do not need a full copy of the base model. The base model already knows faces, jackets, cameras, brush strokes, metal, light, and perspective. The LoRA only has to store the adjustment that makes your subject or style different from the base model's default idea.
+
+> **Try this variation:** Before training, choose five dataset images in TagPilot and write the prompt you wish each image would answer later. A vague prompt points to weak dataset selection or captions. Fix that before you spend GPU time.
 
 ### The Magic Formula
 

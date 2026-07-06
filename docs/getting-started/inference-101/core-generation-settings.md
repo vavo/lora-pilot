@@ -1,6 +1,6 @@
 # Core Generation Settings
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Generation settings are easier to learn when you stop treating them like a list of magic numbers. Each control answers a specific question. If you know the question, you know when to move the control and when to leave it alone.
 
@@ -11,6 +11,8 @@ Generation settings are easier to learn when you stop treating them like a list 
 The seed controls the starting noise pattern. With the same model, prompt, and settings, the same seed should give you a similar result. That makes seed the anchor for learning.
 
 Fix the seed while testing prompt wording, LoRA weight, CFG, sampler, steps, denoise, or resolution. Randomize the seed when you want new compositions. Save the winning seed with the image metadata, because "I had a good one earlier" is not a recovery plan.
+
+> **Try this variation:** In ControlPilot, InvokeAI, or a small ComfyUI graph, generate one image with seed locked. Save it to MediaPilot. Change only the LoRA strength or guidance value, then compare the two outputs side by side. The visual difference should map to the one control you moved.
 
 ## Steps: Enough Refinement Yet?
 
@@ -25,6 +27,8 @@ CFG, or guidance scale, controls how strongly the model is pushed toward the pro
 For many classic image workflows, starting around `4` to `7` is safer than cranking the value upward. If the output looks harsh, overcooked, or distorted, lower guidance before rewriting the entire prompt. If the output ignores important prompt details, raise guidance slowly.
 
 Some model families do not use classic CFG in the same way. Flux workflows, for example, often use different guidance behavior than SDXL. Again, the model notes matter.
+
+> **Why does this work?** Guidance pushes the denoising process toward the prompt conditioning. Too little pressure lets the model drift. Too much pressure can make the model over-literal, brittle, or noisy. The useful range depends on the model family and workflow.
 
 ## Sampler and Scheduler: How Should Noise Resolve?
 
