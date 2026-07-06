@@ -19,14 +19,16 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertIn("0o600", writer)
         self.assertIn("os.replace", writer)
 
-    def test_dataset_file_iterator_uses_non_following_walk(self):
+    def test_dataset_file_iterator_avoids_explicit_directory_scan_sink(self):
         text = PORTAL_APP.read_text(encoding="utf-8")
         match = re.search(r"def _iter_dataset_files\(.*?^def _write_dataset_zip", text, re.S | re.M)
         self.assertIsNotNone(match)
         iterator = match.group(0)
 
         self.assertIn("dataset_root = _safe_dataset_path(root)", iterator)
-        self.assertIn("os.walk(dataset_root, followlinks=False)", iterator)
+        self.assertIn('dataset_root.glob("**/*")', iterator)
+        self.assertIn("stat.S_ISREG", iterator)
+        self.assertNotIn("os.walk", iterator)
         self.assertNotIn("os.scandir", iterator)
 
 

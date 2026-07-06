@@ -1325,13 +1325,14 @@ def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int
 
 def _iter_dataset_files(root: Path):
     dataset_root = _safe_dataset_path(root)
-    for dirpath, _, filenames in os.walk(dataset_root, followlinks=False):
-        current = _safe_dataset_path(Path(dirpath))
-        for name in sorted(filenames):
-            try:
-                yield _safe_dataset_path(current / name)
-            except HTTPException:
-                continue
+    for candidate in sorted(dataset_root.glob("**/*")):
+        try:
+            file_path = _safe_dataset_path(candidate)
+            mode = candidate.stat(follow_symlinks=False).st_mode
+        except (HTTPException, OSError):
+            continue
+        if stat.S_ISREG(mode):
+            yield file_path
 
 
 def _write_dataset_zip(dataset_dir: Path, zip_path: Path) -> None:
