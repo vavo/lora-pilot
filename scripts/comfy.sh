@@ -11,6 +11,62 @@ MODELS_ROOT="$WORKSPACE_ROOT/models"
 ensure_model_dirs() {
   mkdir -p "$MODELS_ROOT"/{audio_encoders,checkpoints,clip,clip_vision,configs,controlnet,diffusers,diffusion_models,embeddings,gligen,hypernetworks,latent_upscale_models,loras,model_patches,photomaker,style_models,text_encoders,unet,upscale_models,vae,vae_approx}
 }
+configure_comfy_manager() {
+  local config_path="${USER_DIR}/__manager/config.ini"
+  COMFY_MANAGER_CONFIG_PATH="${config_path}" \
+  COMFY_MANAGER_NETWORK_MODE="${COMFY_MANAGER_NETWORK_MODE:-personal_cloud}" \
+  COMFY_MANAGER_SECURITY_LEVEL="${COMFY_MANAGER_SECURITY_LEVEL:-normal}" \
+  COMFY_MANAGER_ALLOW_GIT_URL_INSTALL="${COMFY_MANAGER_ALLOW_GIT_URL_INSTALL:-}" \
+  COMFY_MANAGER_ALLOW_PIP_INSTALL="${COMFY_MANAGER_ALLOW_PIP_INSTALL:-}" \
+  python - <<'PY'
+import configparser
+import os
+from pathlib import Path
+
+config_path = Path(os.environ["COMFY_MANAGER_CONFIG_PATH"])
+config_path.parent.mkdir(parents=True, exist_ok=True)
+
+config = configparser.ConfigParser(strict=False)
+config.read(config_path)
+if not config.has_section("default"):
+    config["default"] = {}
+
+default = config["default"]
+choices = {
+    "network_mode": ("COMFY_MANAGER_NETWORK_MODE", {"public", "private", "offline", "personal_cloud"}),
+    "security_level": ("COMFY_MANAGER_SECURITY_LEVEL", {"strong", "normal", "normal-", "weak"}),
+}
+for key, (env_name, allowed) in choices.items():
+    value = os.environ[env_name].strip().lower()
+    if value not in allowed:
+        raise SystemExit(f"{env_name} must be one of: {', '.join(sorted(allowed))}")
+    default[key] = value
+
+bool_aliases = {
+    "true": "true",
+    "1": "true",
+    "yes": "true",
+    "on": "true",
+    "false": "false",
+    "0": "false",
+    "no": "false",
+    "off": "false",
+}
+for key, env_name in (
+    ("allow_git_url_install", "COMFY_MANAGER_ALLOW_GIT_URL_INSTALL"),
+    ("allow_pip_install", "COMFY_MANAGER_ALLOW_PIP_INSTALL"),
+):
+    raw = os.environ.get(env_name, "").strip().lower()
+    if not raw:
+        continue
+    if raw not in bool_aliases:
+        raise SystemExit(f"{env_name} must be true or false")
+    default[key] = bool_aliases[raw]
+
+with config_path.open("w") as config_file:
+    config.write(config_file)
+PY
+}
 link_optional_asset_dir() {
   local target_dir="$1"
   [ -d "$target_dir" ] || return 0
@@ -56,6 +112,7 @@ fi
 if [ ! -f "$TEMPLATES" ]; then
   printf '[]\n' > "$TEMPLATES"
 fi
+configure_comfy_manager
 
 CPU_FLAG=""
 if ! python - <<'PY'
@@ -102,7 +159,7 @@ if [[ -n "${FRONTEND_STATIC_DIRS}" ]]; then
     link_optional_asset_dir "${frontend_dir}"
   done <<< "${FRONTEND_STATIC_DIRS}"
 fi
-# Manager is enabled through ComfyUI's built-in comfyui_manager package.
+# Manager is enabled through ComfyUI's built-in comfyui_manager package with its legacy UI.
 for stale_manager_dir in "${CUSTOM_NODES_DIR}/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/comfyui-manager"; do
   if [ -d "${stale_manager_dir}" ]; then
     rm -rf "${stale_manager_dir}"
@@ -124,6 +181,6 @@ cd "$COMFY_DIR"
 exec python main.py \
   --listen 0.0.0.0 \
   --port "$PORT" \
-  --enable-manager \
+  --enable-manager-legacy-ui \
   --output-directory "$OUT_DIR" \
   $CPU_FLAG

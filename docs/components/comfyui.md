@@ -196,6 +196,8 @@ LoadImage → VAEEncode ↗
 3. Browse or search for nodes
 4. Click "Install" and restart ComfyUI
 
+LoRA Pilot starts Manager with `network_mode=personal_cloud` and `security_level=normal` so registry-listed node installs work from RunPod-style non-local pod URLs. Direct arbitrary Git URL installs and standalone pip installs remain opt-in through `COMFY_MANAGER_ALLOW_GIT_URL_INSTALL=true` and `COMFY_MANAGER_ALLOW_PIP_INSTALL=true`.
+
 For red missing-node blocks in an imported workflow, use Manager's missing-node install flow, restart ComfyUI, then reload the workflow. If the workflow also references missing checkpoints, LoRAs, VAEs, or upscalers, install those models separately.
 
 Imported workflows have more dependencies than their JSON file. A workflow may also need source images, masks, video/audio inputs, model files, custom nodes, and Python packages. Treat the workflow file as the recipe, not the whole meal.

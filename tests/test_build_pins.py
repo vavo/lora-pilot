@@ -91,7 +91,11 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("comfyui_manager==${COMFYUI_MANAGER_REF}", install_text)
         self.assertIn("manager_requirements.txt", install_text)
         self.assertIn("${COMFYUI_DOWNLOADER_REF}", install_text)
-        self.assertIn("--enable-manager", comfy_script)
+        self.assertIn("--enable-manager-legacy-ui", comfy_script)
+        self.assertIn('COMFY_MANAGER_NETWORK_MODE="${COMFY_MANAGER_NETWORK_MODE:-personal_cloud}"', comfy_script)
+        self.assertIn('COMFY_MANAGER_SECURITY_LEVEL="${COMFY_MANAGER_SECURITY_LEVEL:-normal}"', comfy_script)
+        self.assertIn('"allow_git_url_install", "COMFY_MANAGER_ALLOW_GIT_URL_INSTALL"', comfy_script)
+        self.assertIn('"allow_pip_install", "COMFY_MANAGER_ALLOW_PIP_INSTALL"', comfy_script)
         self.assertNotIn("custom_nodes/ComfyUI-Manager", install_text)
         self.assertNotIn("/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Manager", comfy_script)
         self.assertNotIn("git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git", install_text)
@@ -102,11 +106,11 @@ class BuildPinTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(read_pin(path, "DIFFPIPE_REF"), expected)
 
-    def test_core_stack_uses_cu130_torch_pair_with_optional_torchaudio(self):
+    def test_core_stack_uses_cu130_torch_triplet(self):
         expected = {
-            "TORCH_VERSION": "2.12.1",
-            "TORCHVISION_VERSION": "0.27.1",
-            "TORCHAUDIO_VERSION": "",
+            "TORCH_VERSION": "2.11.0",
+            "TORCHVISION_VERSION": "0.26.0",
+            "TORCHAUDIO_VERSION": "2.11.0",
             "XFORMERS_VERSION": "0.0.35",
             "TRANSFORMERS_VERSION": "5.11.0",
             "UV_VERSION": "0.11.26",
@@ -122,9 +126,7 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("TORCH_VERSION ?= 2.11.0", make_text)
         self.assertIn("TORCHVISION_VERSION ?= 0.26.0", make_text)
         self.assertIn("TORCHAUDIO_VERSION ?= 2.11.0", make_text)
-        self.assertIn("TORCH_VERSION ?= 2.12.1", make_text)
-        self.assertIn("TORCHVISION_VERSION ?= 0.27.1", make_text)
-        self.assertRegex(make_text, r"TORCHVISION_VERSION \?= 0\.27\.1\nTORCHAUDIO_VERSION \?=\nTORCH_INDEX_URL \?= https://download\.pytorch\.org/whl/cu130")
+        self.assertRegex(make_text, r"TORCHVISION_VERSION \?= 0\.26\.0\nTORCHAUDIO_VERSION \?= 2\.11\.0\nTORCH_INDEX_URL \?= https://download\.pytorch\.org/whl/cu130")
 
         core_stack = (ROOT / "scripts/build/install-core-stack.sh").read_text()
         self.assertIn('"torchaudio==${TORCHAUDIO_VERSION}"', core_stack)
@@ -168,9 +170,9 @@ class BuildPinTests(unittest.TestCase):
         env = os.environ.copy()
         env.update(
             {
-                "TORCH_VERSION": "2.12.1",
-                "TORCHVISION_VERSION": "0.27.1",
-                "TORCHAUDIO_VERSION": "",
+                "TORCH_VERSION": "2.11.0",
+                "TORCHVISION_VERSION": "0.26.0",
+                "TORCHAUDIO_VERSION": "2.11.0",
                 "XFORMERS_VERSION": "0.0.35",
                 "BITSANDBYTES_VERSION": "0.49.2",
                 "CORE_DIFFUSERS_VERSION": "0.38.0",
@@ -220,9 +222,10 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("xformers==0.0.31.post1\n", constraints)
         self.assertIn("diffusers==0.37.0\n", constraints)
         self.assertIn("transformers==5.5.4\n", constraints)
-        self.assertNotIn("torch==2.12.1\n", constraints)
-        self.assertNotIn("torchaudio==", core_constraints)
-        self.assertNotIn("torchaudio==", diffpipe_constraints)
+        self.assertNotIn("torch==2.11.0\n", constraints)
+        self.assertNotIn("torchaudio==", constraints)
+        self.assertIn("torchaudio==2.11.0\n", core_constraints)
+        self.assertIn("torchaudio==2.11.0\n", diffpipe_constraints)
         self.assertIn("deepdiff==9.1.0\n", core_constraints)
         self.assertIn("gguf==0.19.0\n", core_constraints)
 

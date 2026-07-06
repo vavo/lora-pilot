@@ -79,9 +79,9 @@ ARG DIFFPIPE_REF=a7e7decf4325c1f03e4b88b7de93640029abd011
 ARG AI_TOOLKIT_REF=6c0d1c4679cf8fe153ef56bdc779c93239e1cf0f
 ARG CUDA_PROFILE=cu130
 ARG CUDA_BASE_IMAGE=nvidia/cuda:13.0.2-runtime-ubuntu22.04
-ARG TORCH_VERSION=2.12.1
-ARG TORCHVISION_VERSION=0.27.1
-ARG TORCHAUDIO_VERSION=
+ARG TORCH_VERSION=2.11.0
+ARG TORCHVISION_VERSION=0.26.0
+ARG TORCHAUDIO_VERSION=2.11.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 ARG CORE_DIFFUSERS_VERSION=0.38.0
 ARG TRANSFORMERS_VERSION=5.11.0
@@ -226,13 +226,13 @@ ARG INSTALL_AI_TOOLKIT=0
 #### PyTorch Versions
 ```dockerfile
 # Custom PyTorch versions
-ARG TORCH_VERSION=2.12.1
-ARG TORCHVISION_VERSION=0.27.1
-ARG TORCHAUDIO_VERSION=
+ARG TORCH_VERSION=2.11.0
+ARG TORCHVISION_VERSION=0.26.0
+ARG TORCHAUDIO_VERSION=2.11.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 ```
 
-For the default `cu130` profile, `TORCHAUDIO_VERSION` is intentionally empty because the official cu130 index currently has matching `torch==2.12.1` and `torchvision==0.27.1` wheels but no matching `torchaudio==2.12.x` wheel. The installer skips torchaudio when the value is empty; do not set it unless it matches the selected torch version.
+For the default `cu130` profile, keep the PyTorch, torchvision, and torchaudio versions matched. The installer skips torchaudio only when `TORCHAUDIO_VERSION` is empty for a custom profile.
 
 #### Library Versions
 ```dockerfile
@@ -551,9 +551,9 @@ build-multi:
 # .env.build
 CUDA_PROFILE=cu130
 CUDA_BASE_IMAGE=nvidia/cuda:13.0.2-runtime-ubuntu22.04
-TORCH_VERSION=2.12.1
-TORCHVISION_VERSION=0.27.1
-TORCHAUDIO_VERSION=
+TORCH_VERSION=2.11.0
+TORCHVISION_VERSION=0.26.0
+TORCHAUDIO_VERSION=2.11.0
 TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 CORE_DIFFUSERS_VERSION=0.38.0
 TRANSFORMERS_VERSION=5.11.0

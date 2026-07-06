@@ -1,8 +1,8 @@
 v2.5.4 (July 5th 2026)
 
 - Refreshed the Docker build stack and bundled app pins, including ComfyUI, AI Toolkit, InvokeAI, Diffusion Pipe, Node, TensorBoard, and runtime web dependencies.
-- Cleaned up CUDA profile handling for the core GPU stack and kept CUDA 13.0 torchaudio optional until a matching wheel is available.
-- Fixed ComfyUI Manager startup and core runtime dependency checks for `uv`, `deepdiff`, `gguf`, and `xformers`.
+- Cleaned up CUDA profile handling for the core GPU stack and pinned a complete CUDA 13.0 PyTorch, torchvision, and torchaudio wheel set.
+- Fixed ComfyUI Manager startup, legacy UI enablement, RunPod-style node install policy, and core runtime dependency checks for `uv`, `deepdiff`, `gguf`, and `xformers`.
 - Closed the latest GitHub code-scanning alerts and brought open code-scanning vulnerabilities to 0.
 - Fixed recent training and workflow issues across Kohya, TrainPilot, TagPilot dataset loading, TensorBoard visibility, model manifest links, and Docker rebuild reliability.
 - Updated build and configuration docs to match the current image behavior.
