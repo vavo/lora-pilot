@@ -28,8 +28,10 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertIsNotNone(resolver)
 
         self.assertIn("entries = sorted(os.listdir(dataset_root))", resolver.group(0))
-        self.assertIn("dataset_dir = _resolve_existing_dataset_dir(root)", iterator)
-        self.assertIn("os.walk(dataset_dir, followlinks=False)", iterator)
+        self.assertIn("dataset_root = _safe_dataset_path(_DATASET_ROOT)", iterator)
+        self.assertIn("target_name = _resolve_existing_dataset_dir(root).name", iterator)
+        self.assertIn("os.walk(dataset_root, followlinks=False)", iterator)
+        self.assertNotIn("os.walk(dataset_dir", iterator)
         self.assertNotIn("os.scandir", iterator)
 
 

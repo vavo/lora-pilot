@@ -1337,9 +1337,21 @@ def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int
 
 
 def _iter_dataset_files(root: Path):
-    dataset_dir = _resolve_existing_dataset_dir(root)
-    for dirpath, _, filenames in os.walk(dataset_dir, followlinks=False):
+    dataset_root = _safe_dataset_path(_DATASET_ROOT)
+    target_name = _resolve_existing_dataset_dir(root).name
+    for dirpath, dirnames, filenames in os.walk(dataset_root, followlinks=False):
         current = _safe_dataset_path(Path(dirpath))
+        try:
+            relative = current.relative_to(dataset_root)
+        except ValueError:
+            dirnames[:] = []
+            continue
+        if not relative.parts:
+            dirnames[:] = sorted(name for name in dirnames if name == target_name)
+            continue
+        if relative.parts[0] != target_name:
+            dirnames[:] = []
+            continue
         for name in sorted(filenames):
             try:
                 yield _safe_dataset_path(current / name)
