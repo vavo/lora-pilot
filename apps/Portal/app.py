@@ -1236,6 +1236,19 @@ def _safe_output_path(candidate: Path) -> Path:
     return _resolve_under_root(_OUTPUT_ROOT, candidate)
 
 
+def _resolve_existing_dataset_dir(root: Path) -> Path:
+    dataset_root = _safe_dataset_path(_DATASET_ROOT)
+    requested_name = _safe_dataset_path(root).name
+    try:
+        entries = sorted(os.listdir(dataset_root))
+    except OSError:
+        return _safe_dataset_path(root)
+    for entry_name in entries:
+        if entry_name == requested_name:
+            return _safe_dataset_path(dataset_root / entry_name)
+    raise HTTPException(status_code=404, detail="Dataset not found")
+
+
 def _iter_tensorboard_events(base: Path, *, max_depth: int = 8):
     try:
         root = base.resolve()
@@ -1324,15 +1337,14 @@ def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int
 
 
 def _iter_dataset_files(root: Path):
-    dataset_root = _safe_dataset_path(root)
-    for candidate in sorted(dataset_root.glob("**/*")):
-        try:
-            file_path = _safe_dataset_path(candidate)
-            mode = candidate.stat(follow_symlinks=False).st_mode
-        except (HTTPException, OSError):
-            continue
-        if stat.S_ISREG(mode):
-            yield file_path
+    dataset_dir = _resolve_existing_dataset_dir(root)
+    for dirpath, _, filenames in os.walk(dataset_dir, followlinks=False):
+        current = _safe_dataset_path(Path(dirpath))
+        for name in sorted(filenames):
+            try:
+                yield _safe_dataset_path(current / name)
+            except HTTPException:
+                continue
 
 
 def _write_dataset_zip(dataset_dir: Path, zip_path: Path) -> None:
