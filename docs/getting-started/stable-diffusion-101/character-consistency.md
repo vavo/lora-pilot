@@ -1,319 +1,95 @@
 # Character Consistency with LoRA
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Creating consistent characters across multiple images is one of the biggest challenges in AI art. LoRA (Low-Rank Adaptation) is the perfect solution - let's learn how to use it effectively.
+A prompt can describe a character. A LoRA can make the model remember one.
 
-##  The Character Consistency Problem
+That memory comes with responsibility. Do not train a LoRA of a real person unless you have clear consent and a legitimate use. Do not publish face LoRAs, datasets, or generated examples without permission. A model that can reproduce someone's likeness can also put that likeness into scenes they never agreed to. If the sentence feels heavy, good. It should.
 
-### Why Characters Change
+## Why Characters Drift
 
-Without special training, AI treats each prompt as completely new:
-- Same prompt = different person each time
-- Different poses = completely different character
-- No memory of previous images
-- Random variations in features
+Without training or a reference workflow, the model treats each generation as a new attempt. "Woman with red hair" describes a category, not a person. Change the seed, pose, camera angle, clothing, or lighting, and the model may choose a new face that still satisfies the words.
 
-### What We Want
-- Same character in different poses
-- Consistent facial features
-- Same clothing and accessories
-- Recognizable personality across images
+LoRA training gives the model a trigger word tied to a specific character design or identity. Before training, a prompt like `woman with red hair` may produce anyone. After training, `mychar_anna` can point to the same character across new scenes.
 
-##  LoRA Solution
+## When Not to Train
 
-### How LoRA Solves Consistency
+Do not train a character LoRA when prompt consistency is good enough for a one-off image set. Use fixed seeds, reference images, image-to-image, or ControlNet first if you only need a few related frames.
 
-LoRA teaches the AI about your specific character:
+Do not train when you lack rights to the character or consent from the person. Do not train when the dataset is weak, full of screenshots, watermarks, cropped faces, or mixed identities. Do not train when the project needs exact product or costume continuity more than face identity; a reference workflow or ControlNet may solve that with less risk.
 
-```
-Before LoRA:
-"woman with red hair" → Random woman with red hair
+Training makes sense when you need the same approved character across many prompts, outfits, poses, environments, or sessions. A comic character, brand mascot, original game character, licensed product mascot, or consented model can justify the extra work.
 
-After LoRA:
-"photo of my_character" → YOUR specific character with red hair
+## Building the Dataset
+
+Use 15 to 30 strong images for a first character LoRA. The face should be readable in most images, with a mix of front, three-quarter, side, close-up, wider crop, expression, and lighting. Include outfit variety if the character should change clothes later. Keep the same person or character design throughout.
+
+Cut images where the face is hidden, the subject is tiny, the crop removes identity features, another person looks too similar, or the lighting changes the face beyond recognition. The trainer will learn the folder you give it, not the character you imagined while making the folder.
+
+Caption with a rare trigger word:
+
+```text
+photo of mychar_anna, woman with short red hair, black jacket, standing in a city street, evening light
 ```
 
-### The Magic Process
+Name details you want to control later, such as clothing, pose, background, expression, and lighting. Leave some stable identity traits bound to the trigger if you want the character to keep them. Captioning is a steering wheel, not a confession booth.
 
-1. **Collect Reference Images**: 15-30 photos of your character
-2. **Train LoRA**: AI learns your character's features
-3. **Use Trigger Word**: Special word activates your character
-4. **Generate Consistently**: Same character in any situation
+## Training the First Version
 
-##  Creating Character LoRA
+Start with a normal LoRA run in TrainPilot, Kohya, or the trainer that matches your model family. Use the same base family you plan to generate with. SDXL LoRAs belong to SDXL workflows. Flux LoRAs belong to Flux workflows. This is the part where many problems pretend to be mysterious.
 
-### Step 1: Collect Reference Images
+Use conservative first settings: batch size `1`, rank around `32`, a modest step count, and saved checkpoints. Generate samples during training with fixed prompts that include the trigger word.
 
-#### Image Requirements
-- **Quantity**: 15-30 images minimum
-- **Quality**: Clear, well-lit photos
-- **Variety**: Different poses, angles, expressions
-- **Consistency**: Same person throughout
+Your first useful checkpoint may not be the final one. Character LoRAs often look good before they become rigid. Keep the checkpoint that preserves identity while still allowing new poses, clothing, and backgrounds.
 
-#### Ideal Image Collection
-```
-Your Character Reference Set:
-├── Front view (3-5 images)
-├── Side views (2-3 images each side)
-├── Different expressions (3-5 images)
-├── Various poses (5-8 images)
-├── Different lighting (2-3 images)
-└── Full body + close-ups (mixed)
-```
+## Using LoRA Strength
 
-#### Photo Tips
-- **Good Lighting**: Even, natural lighting works best
-- **Clear Background**: Simple backgrounds help AI focus
-- **High Resolution**: 512x512 or higher
-- **Consistent Appearance**: Same hair, clothes, makeup
+LoRA strength controls how hard the trained adapter pushes during generation. It is not a moral ranking of how much you believe in the character.
 
-### Step 2: Prepare Dataset
+At `0.4`, you may get a faint resemblance while the base model keeps more freedom. At `0.7`, many character LoRAs start to feel balanced: recognizable identity, less stiffness. At `1.0`, identity pressure is stronger, but dataset habits may show up. At `1.2` or higher, some LoRAs become artificial, over-sharpened, same-faced, or stuck in training poses.
 
-#### Image Processing
-- **Crop to Square**: 512x512 for SD1.5, 1024x1024 for SDXL
-- **Consistent Size**: All images same resolution
-- **Quality Check**: Remove blurry or poor images
-- **File Naming**: Sequential names help organization
+Make a small strength grid before judging the LoRA:
 
-#### Caption Writing
-- **Simple Descriptions**: "photo of person", "portrait"
-- **Character Name**: Use consistent trigger word
-- **Avoid Complex Details**: Let AI focus on character features
+| 0.4 | 0.7 | 1.0 | 1.2 |
+|---|---|---|---|
+| subtle resemblance | balanced test | strong identity | overfit warning |
 
-### Step 3: Train LoRA
+Use the same prompt and seed for the grid. If identity only appears at high strength, the LoRA may be undertrained, badly captioned, or trained against the wrong base family. If high strength copies the dataset, test an earlier checkpoint or improve dataset variety.
 
-#### Training Settings
-```
-Beginner Settings:
-- Steps: 1000-1500
-- Learning Rate: 1e-4
-- Batch Size: 1
-- Network Dim: 32-64
+## Testing Consistency
 
-Advanced Settings:
-- Steps: 2000-3000
-- Learning Rate: 5e-5
-- Network Dim: 64-128
-- Regularization: Add diverse images
+Test the character with prompts that leave the dataset. A portrait prompt proves little if every training image was a portrait. Ask for a different outfit, a new environment, a side view, a full-body shot, and a lighting setup the dataset did not overrepresent.
+
+Example test set:
+
+```text
+photo of mychar_anna, studio portrait, soft window light
+photo of mychar_anna, hiking jacket, standing on a mountain trail
+photo of mychar_anna, side view, reading in a cafe
+photo of mychar_anna, full body, simple white background
+photo of mychar_anna, cinematic night street, neon signs
 ```
 
-#### Training Process
-1. **Use TagPilot**: Upload and tag your images
-2. **Select Training Profile**: Choose character training
-3. **Set Trigger Word**: Unique word like "my_character"
-4. **Start Training**: Monitor progress
-5. **Test Results**: Check sample images during training
+Keep the seed fixed for one pass and varied for another. Fixed seed shows how prompts change one composition. Varied seeds show whether identity survives normal generation.
 
-##  Using Character LoRA
+## Common Failure Patterns
 
-### Basic Usage
+If the character is not recognizable, check trigger spelling, base model family, LoRA file path, and whether the dataset had enough clear identity signal. If the character copies training images, test earlier checkpoints, reduce steps, remove duplicates, and add pose or outfit variety. If features drift between prompts, improve captions and add more angles. If outputs look distorted, inspect the source images before blaming the sampler.
 
-#### Trigger Word System
-```
-Standard Prompt: "photo of a woman"
-Character Prompt: "photo of my_character"
+For close-up face artifacts, test lower LoRA strength before retraining. A strong face LoRA can overpower the base model's normal anatomy. For outfit lock-in, caption clothing more clearly and add outfit variety. For background lock-in, cut repeated backgrounds or caption them as background.
 
-With Style: "photo of my_character, anime style"
-With Pose: "photo of my_character sitting on bench"
-```
+## Combining Character Controls
 
-#### LoRA Weight Control
-```
-Weight 0.3: Subtle character influence
-Weight 0.7: Balanced character presence
-Weight 1.0: Strong character identity
-Weight 1.5: Very strong character (can look artificial)
-```
+A character LoRA handles identity. ControlNet can handle pose. Inpainting can fix a face or hand. A reference adapter can borrow a specific look for one session. You do not need one LoRA to solve every problem.
 
-### Advanced Techniques
+For a story sequence, build the scene in layers. Use the character LoRA at a moderate strength, ControlNet for pose, and inpainting for repair. Save the workflow and metadata for each approved frame. Consistency comes from repeatable process, not one heroic prompt.
 
-#### Multiple Character LoRA
-```
-Two Characters:
-"photo of character_A and character_B together"
+## Next
 
-Character + Style:
-"photo of my_character, oil painting style"
-
-Character + Concept:
-"photo of my_character as a superhero"
-```
-
-#### Consistency Tips
-- **Same Seed**: Use same seed for similar poses
-- **Consistent Prompts**: Similar structure across images
-- **Weight Experimentation**: Find optimal LoRA weight
-- **Style LoRA**: Combine with style LoRA for consistent look
-
-##  Practical Examples
-
-### Example 1: Portrait Series
-```
-Goal: Professional portrait series
-Base Model: SDXL
-Character LoRA: "professional_model" (weight: 0.8)
-Prompts:
-- "professional portrait of professional_model, studio lighting"
-- "professional_model in business attire, office setting"
-- "professional_model casual, outdoor lighting"
-```
-
-### Example 2: Story Character
-```
-Goal: Character for visual story
-Base Model: SD1.5
-Character LoRA: "story_protagonist" (weight: 1.0)
-Prompts:
-- "story_protagonist in fantasy forest, adventurous"
-- "story_protagonist reading book, cozy library"
-- "story_protagonist facing dragon, brave expression"
-```
-
-### Example 3: Brand Character
-```
-Goal: Consistent brand mascot
-Base Model: FLUX.1 Schnell
-Character LoRA: "brand_mascot" (weight: 0.7)
-Prompts:
-- "brand_mascot with product, happy expression"
-- "brand_mascot in different seasonal settings"
-- "brand_mascot interacting with customers"
-```
-
-##  Troubleshooting Character LoRA
-
-### Common Issues
-
-#### Character Not Recognizable
-- **Problem**: Generated images don't look like your character
-- **Solutions**:
-  - Check training images quality
-  - Increase training steps
-  - Adjust LoRA weight
-  - Verify trigger word spelling
-
-#### Overfitting
-- **Problem**: AI only reproduces training images
-- **Solutions**:
-  - Add more diverse training images
-  - Reduce learning rate
-  - Add regularization images
-  - Use lower LoRA weight
-
-#### Inconsistent Features
-- **Problem**: Some features change between images
-- **Solutions**:
-  - Ensure consistent appearance in training images
-  - Use same seed for similar poses
-  - Adjust CFG scale (try 7-10)
-  - Check image resolution consistency
-
-#### Artifacts or Distortion
-- **Problem**: Strange artifacts or distorted features
-- **Solutions**:
-  - Reduce training steps if overtrained
-  - Check image preprocessing
-  - Try different sampler
-  - Lower CFG scale
-
-### Quality Improvement Tips
-
-#### Better Training Data
-- **High Quality Images**: Use clear, well-lit photos
-- **Variety**: Different poses, expressions, lighting
-- **Consistency**: Same person throughout
-- **Background**: Simple backgrounds help AI focus
-
-#### Training Optimization
-- **Right Steps**: 1000-2000 steps usually optimal
-- **Learning Rate**: Start with 1e-4, adjust if needed
-- **Network Dim**: 32-64 for most cases
-- **Regularization**: Add diverse images to prevent overfitting
-
-#### Generation Techniques
-- **Optimal Weight**: Usually 0.7-1.0 for characters
-- **CFG Scale**: 7-10 works well for character consistency
-- **Sampler Choice**: DPM++ or DDIM for consistency
-- **Seed Control**: Use same seed for similar compositions
-
-##  Advanced Character Techniques
-
-### Multi-Character Scenes
-```
-Technique: Multiple Character LoRAs
-Setup:
-- Character A LoRA: "hero_character" (weight: 0.8)
-- Character B LoRA: "villain_character" (weight: 0.8)
-- Prompt: "hero_character and villain_character facing each other"
-
-Benefits:
-- Consistent character appearances
-- Interactive scenes
-- Story progression possible
-```
-
-### Character + Environment
-```
-Technique: Character with specific environments
-Setup:
-- Character LoRA: "sci_fi_character" (weight: 0.9)
-- Environment LoRA: "space_station" (weight: 0.6)
-- Prompt: "sci_fi_character in space_station, futuristic"
-
-Benefits:
-- Character stays consistent
-- Environment adds context
-- Professional-looking results
-```
-
-### Character Evolution
-```
-Technique: Show character development
-Setup:
-- Young version: "young_character" (weight: 0.8)
-- Current version: "character" (weight: 0.8)
-- Older version: "old_character" (weight: 0.8)
-- Prompts: Show character at different life stages
-
-Benefits:
-- Character development storytelling
-- Consistent aging progression
-- Emotional narrative possible
-```
-
-##  Best Practices
-
-### Training Best Practices
-- **Start Simple**: 15-20 good images better than 50 poor ones
-- **Quality Over Quantity**: Clear, well-lit images essential
-- **Consistent Appearance**: Same hair, clothes, features
-- **Varied Poses**: Different angles and expressions
-
-### Usage Best Practices
-- **Test Weights**: Find optimal LoRA weight (usually 0.7-1.0)
-- **Consistent Prompts**: Similar structure across images
-- **Document Settings**: Save successful prompt combinations
-- **Experiment**: Try different styles and situations
-
-### Organization Best Practices
-- **Clear Naming**: Use descriptive LoRA names
-- **Version Control**: Keep different training versions
-- **Backup Models**: Save successful LoRA files
-- **Documentation**: Record training settings and results
-
-##  What's Next?
-
-Now that you can create consistent characters, you're ready to:
-
-1. **[Advanced Techniques](advanced-techniques.md)** - Learn inpainting and outpainting
-2. **[Practical Examples](practical-examples.md)** - Try real-world projects
-3. **[Prompting Fundamentals](prompting-fundamentals.md)** - Master prompt writing
+Continue with [Practical Examples](practical-examples.md), [Advanced Techniques](advanced-techniques.md), or [Practical Training Projects](../loRA-training-101/practical-training-projects.md).
 
 ---
 
-## 📝 Feedback
+## Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
