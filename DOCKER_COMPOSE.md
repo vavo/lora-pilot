@@ -134,7 +134,7 @@ docker-compose ps
 ./docker-compose-helper.sh shell
 
 # Check GPU access
-docker run --rm --gpus all nvidia/cuda:12.4.1-runtime-ubuntu22.04 nvidia-smi
+docker run --rm --gpus all nvidia/cuda:13.0.2-runtime-ubuntu22.04 nvidia-smi
 ```
 
 ## 📚 Documentation

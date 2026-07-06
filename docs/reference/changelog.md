@@ -1,6 +1,6 @@
 # Changelog
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
 Canonical release history lives in the repository root file: `CHANGELOG`.
 
@@ -11,7 +11,7 @@ ControlPilot exposes the same content at:
 
 | Header in file | High-level highlights |
 |---|---|
-| `v2.5.4` | July 5 build/runtime refresh, CUDA profile cleanup, model manifest refresh, and training workflow fixes |
+| `v2.5.4` | July 5 build/runtime refresh, CUDA profile cleanup, ComfyUI Manager/runtime fixes, and code-scanning vulnerabilities reduced to 0 |
 | `v2.5.3` | July 3 TagPilot frontend refresh, TensorBoard integration, and JupyterLab/code-server update |
 | `v2.5.0` | CUDA 13.0 default profile, shared core Python stack, refreshed bundled tools, and manifest/build updates |
 | `v2.4.3` | TagPilot provider compatibility, persisted provider keys, dark-mode/crop fixes, and Docker layer cleanup |
