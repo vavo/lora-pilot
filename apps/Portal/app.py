@@ -1325,23 +1325,13 @@ def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int
 
 def _iter_dataset_files(root: Path):
     dataset_root = _safe_dataset_path(root)
-    stack = [dataset_root]
-    while stack:
-        current = stack.pop()
-        try:
-            # codeql[py/path-injection]
-            with os.scandir(current) as entries:
-                for entry in sorted(entries, key=lambda item: item.name):
-                    try:
-                        if entry.is_dir(follow_symlinks=False):
-                            stack.append(_safe_dataset_path(Path(entry.path)))
-                            continue
-                        if entry.is_file(follow_symlinks=False):
-                            yield _safe_dataset_path(Path(entry.path))
-                    except OSError:
-                        continue
-        except OSError:
-            continue
+    for dirpath, _, filenames in os.walk(dataset_root, followlinks=False):
+        current = _safe_dataset_path(Path(dirpath))
+        for name in sorted(filenames):
+            try:
+                yield _safe_dataset_path(current / name)
+            except HTTPException:
+                continue
 
 
 def _write_dataset_zip(dataset_dir: Path, zip_path: Path) -> None:
