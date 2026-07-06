@@ -1,400 +1,134 @@
 # Dataset Terminology
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-06_
 
-Welcome to Dataset Terminology! This guide covers all the essential terms and concepts you need to understand when working with AI training datasets. Think of this as learning the language of dataset creation.
+You do not need a dictionary before you build a dataset. You need enough vocabulary to understand what TagPilot, TrainPilot, Kohya, AI Toolkit, and other guides are asking you to do.
 
-##  The Big Picture
+This page explains the words you will see while preparing a LoRA dataset. Read it once, then come back when a setting name starts pretending to be obvious.
 
-### Why Terminology Matters
+## Dataset
 
-Understanding dataset terminology is like learning the vocabulary of a new language. When you understand the terms, you can:
-- **Read Documentation**: Understand training guides and tutorials
-- **Communicate Effectively**: Discuss datasets with other creators
-- **Follow Instructions**: Understand dataset requirements
-- **Troubleshoot Problems**: Identify and fix dataset issues
+A dataset is the folder of examples the trainer studies. For image LoRAs, that usually means image files plus matching caption files. For video work, it may mean clips, extracted frames, metadata, and captions.
 
----
+The trainer treats the dataset as evidence. If the evidence repeats a background, that background gets a vote. If captions omit the outfit, the outfit may become part of the identity. If half the images are blurry, blur becomes part of the lesson. The dataset is not a storage folder. It is the lesson plan.
 
-##  Core Dataset Concepts
+## Sample
 
-### Dataset
+A sample is one training item. In a simple image LoRA dataset, one sample is one image and its caption:
 
-#### What It Is
-A collection of data used to train an AI model. Think of it as the "textbook" the AI studies from.
-
-#### Components
-- **Images**: The visual examples (photos, drawings, etc.)
-- **Captions**: Text descriptions of each image
-- **Metadata**: Additional information about the dataset
-- **Labels**: Categories or classifications for organization
-
-#### Types of Datasets
-- **Training Dataset**: Used to train a model
-- **Validation Dataset**: Used to test model performance
-- **Test Dataset**: Used for final model evaluation
-- **Reference Dataset**: Used for comparison or inspiration
-
-### Sample
-
-#### What It Is
-One individual item in your dataset (usually one image with its caption).
-
-#### Sample Components
-- **Image File**: The actual image data
-- **Caption File**: Text description of the image
-- **Metadata**: Additional information about the sample
-- **Filename**: Unique identifier for the sample
-
-#### Sample Example
-```
-my_dataset/
-├── 001.jpg (image file)
-├── 001.txt (caption file)
-├── 001.json (metadata file)
+```text
+anna_front_001.png
+anna_front_001.txt
 ```
 
----
+The names should match. If TagPilot saves captions beside the images, keep the pair together when you move or archive the dataset.
 
-## 🏷️ Image Terminology
+## Caption
 
-### Image Characteristics
+A caption is the text that tells the trainer what appears in the image. Captions do two jobs:
 
-#### Resolution
-- **Definition**: Number of pixels in width and height
-- **Format**: Usually expressed as width×height (e.g., 1024×1024)
-- **Importance**: Higher resolution = more detail but more memory
+- they name the concept you want the LoRA to learn
+- they name details you want to control later
 
-#### Aspect Ratio
-- **Definition**: Proportional relationship of width to height
-- **Common Ratios**: 1:1 (square), 16:9 (widescreen), 9:16 (portrait)
-- **Training Impact**: Affects how model learns composition
+For example:
 
-#### Quality
-- **Resolution**: Sharpness and clarity of the image
-- **Compression**: Amount of compression artifacts
-- **Noise**: Random visual interference
-- **Lighting**: Quality and direction of light
-
-### Image Formats
-
-#### Common Formats
-- **JPEG**: Compressed format, good for photos
-- **PNG**: Lossless format, good for graphics
-- **WEBP**: Modern web format, good balance
-- **TIFF**: Professional format, highest quality
-
-#### Format Considerations
-- **Training**: PNG or TIFF recommended for best quality
-- **Storage**: JPEG for space efficiency
-- **Compatibility**: Ensure format compatibility with training tools
-
----
-
-##  Caption Terminology
-
-### Caption Types
-
-#### Descriptive Caption
-- **Purpose**: Detailed description of what's in the image
-- **Content**: Subject, action, setting, style
-- **Length**: Usually 1-3 sentences for basic descriptions
-
-#### Trigger Word
-- **Purpose**: Special word that activates a trained concept
-- **Usage**: Used in prompts to trigger specific LoRA or model
-- **Example**: "photo of my_character" where "my_character" is the trigger
-
-#### Tag-Based Caption
-- **Purpose**: Structured tags describing image elements
-- **Format**: Usually comma-separated or JSON format
-- **Example**: "person, woman, brown hair, outdoor, smiling"
-
-#### Weighted Caption
-- **Purpose**: Emphasizes or de-emphasizes certain elements
-- **Syntax**: Uses special syntax to indicate importance
-- **Example**: "((beautiful woman))" or "[blurry background]"
-
----
-
-## 🏷️ Organization Terminology
-
-### Folder Structure
-
-#### Hierarchical Structure
-```
-dataset/
-├── images/          # Image files
-├── captions/        # Caption files
-├── metadata/         # Metadata files
-└── splits/           # Data divisions
+```text
+photo of mychar_anna, woman with short red hair, black jacket, sitting at a cafe, warm indoor light
 ```
 
-#### Naming Conventions
-- **Sequential**: 001, 002, 003...
-- **Descriptive**: woman_park_001, character_front_002
-- **Date-Based**: 2025-02-11_001, 2025-02-11_002
-- **Content-Based**: portrait_001, landscape_002
+The trigger word is `mychar_anna`. The rest of the caption names visible details. Later, the model has a better chance of changing jacket, setting, and lighting because those details were named during training.
 
-### File Naming
+## Trigger Word
 
-#### Image Files
-- **Consistent Extension**: All images same format
-- **Matching Names**: Image and caption files share base name
-- **No Spaces**: Use underscores or hyphens
-- **Lowercase**: Usually lowercase for consistency
+A trigger word is the prompt handle for the trained concept. Use a rare token such as `mychar_anna`, `brandpack_v1`, or `inkwash_style`.
 
-#### Caption Files
-- **Matching Names**: Same base name as image
-- **Text Format**: Plain text (.txt)
-- **Encoding**: UTF-8 for special characters
-- **No BOM**: No byte order mark
+Put the trigger word in every caption where the concept appears. Use the same spelling everywhere. A typo creates a second useless trigger. Computers have no sympathy here.
 
----
+## Tag
 
-##  Processing Terminology
+A tag is a short caption unit, often comma-separated:
 
-### Preprocessing
+```text
+mychar_anna, woman, short red hair, black jacket, cafe, warm light
+```
 
-#### Definition
-Operations performed on images before training to prepare them.
+Tags work well for anime, illustration, booru-style datasets, and workflows that expect tag vocabulary. Sentence captions work better for many photo and product datasets. TagPilot can help generate both, but you still need to edit them.
 
-#### Common Preprocessing Steps
-- **Resizing**: Changing image dimensions
-- **Cropping**: Selecting portions of images
-- **Normalization**: Adjusting pixel values
-- **Augmentation**: Creating variations of images
+## Metadata
 
-### Augmentation
+Metadata is information about the dataset or individual samples: source, license, creator, resolution, split, notes, or intended use. It may live in JSON, CSV, Markdown, or tool-specific files.
 
-#### Definition
-Creating modified versions of images to increase dataset diversity.
+For LoRA Pilot, a simple `SOURCES.md` or `sources.csv` is often enough. Record where images came from and what rights you have. Read [Data Rights and Consent](data-rights-and-consent.md) before building a dataset from anything you did not create.
 
-#### Common Augmentation Types
-- **Rotation**: Rotating images at different angles
-- **Flipping**: Mirroring images horizontally or vertically
-- **Color Jittering**: Adjusting brightness, contrast, saturation
-- **Noise Addition**: Adding random noise to images
+## Resolution and Aspect Ratio
 
-### Standardization
+Resolution is pixel size. Aspect ratio is image shape.
 
-#### Definition
-Applying consistent processing to all images in dataset.
+SD1.5 workflows often start around 512-class sizes. SDXL and newer image families often start around 1024-class sizes. The exact training size depends on model family, trainer, bucket settings, and VRAM.
 
-#### Standardization Goals
-- **Consistent Resolution**: All images same dimensions
-- **Consistent Format**: All images same format
-- **Consistent Quality**: Uniform quality across dataset
-- **Consistent Color Space**: Same color space for all images
+Aspect ratio matters because the model learns framing. If every product image is square but you later prompt for a wide outdoor scene, the LoRA may struggle. If every character crop is a headshot, full-body prompts may get weird.
 
----
+## Buckets
 
-##  Quality Terminology
+Buckets let a trainer group images by similar aspect ratio or size instead of forcing every image into one square crop. This preserves more natural framing.
 
-### Dataset Quality
+Use buckets when the trainer supports them and your dataset has useful aspect-ratio variety. Do not use random aspect ratios because "buckets exist." The dataset still needs a plan.
 
-#### Definition
-Overall effectiveness of dataset for training a model.
+## Repeats, Epochs, and Steps
 
-#### Quality Dimensions
-- **Image Quality**: Clarity, resolution, lighting
-- **Label Quality**: Accuracy and consistency of captions
-- **Consistency**: Uniformity across samples
-- **Diversity**: Variety of poses, lighting, contexts
+These terms describe training exposure.
 
-### Overfitting
+- **Repeats**: how many times each image is reused in one epoch.
+- **Epoch**: one pass over the repeated dataset.
+- **Steps**: actual training updates.
 
-#### Definition
-When a model learns training data too well and can't generalize to new data.
+Different trainers expose these differently. TrainPilot may hide some details behind a profile. Kohya may ask for repeats and epochs. AI Toolkit may expose total steps more directly.
 
-#### Overfitting Indicators
-- **Perfect Reproduction**: Model only reproduces training images
-- **Poor Generalization**: Fails on new prompts
-- **Loss Plateaus**: Training loss stops improving
-- **Artifacts**: Strange visual artifacts in outputs
+The practical question stays the same: how many chances does the trainer get to study each sample?
 
-### Underfitting
+## Batch Size
 
-#### Definition
-When a model doesn't learn enough from training data.
+Batch size is how many samples the trainer processes before one update. Batch size `1` is common for LoRA training because it saves VRAM and makes failures easier to diagnose.
 
-#### Underfitting Indicators
-- **Poor Training Loss**: Loss remains high
-- **Weak Results**: Model doesn't learn training concepts
-- **Inconsistent Output**: Variable quality across samples
-- **Rapid Learning**: Model changes too quickly
+If training crashes with CUDA out-of-memory, lower batch size before changing stranger settings.
+
+## Validation Set
+
+A validation set is a small group of examples or prompts used to check whether training is working. For beginner LoRA training, validation often means fixed sample prompts and saved checkpoints rather than a formal machine-learning split.
+
+Use the same prompts across checkpoints. If one checkpoint can handle a new pose and a later checkpoint only copies the dataset, the earlier checkpoint may be better.
+
+## Overfitting and Underfitting
+
+Overfitting means the LoRA memorized the dataset instead of learning a flexible concept. You see repeated poses, backgrounds, faces, or compositions.
+
+Underfitting means the LoRA did not learn enough. The trigger barely changes the output, identity is weak, or the style disappears.
+
+Use [Is My LoRA Good?](../loRA-training-101/is-my-lora-good.md) to test both.
+
+## The Terms You Need First
+
+Start with these:
+
+| Term | Plain Meaning |
+|---|---|
+| dataset | folder of training examples |
+| sample | one image or clip plus caption |
+| caption | text lesson for one sample |
+| trigger word | prompt handle for the trained concept |
+| bucket | aspect-ratio grouping |
+| steps | training updates |
+| rank | LoRA capacity |
+| checkpoint | saved training state or saved LoRA file |
+
+If you understand those, you can start building a dataset. The rest becomes clearer after the first failed run. Convenient? No. Educational? Unfortunately.
+
+## Next
+
+Continue with [What Makes a Good Dataset](what-makes-a-good-dataset.md).
 
 ---
 
-##  Training-Specific Terminology
-
-### Training Splits
-
-#### Definition
-Dividing dataset into different subsets for different purposes.
-
-#### Common Splits
-- **Training Set**: Data used to train the model (usually 80-90%)
-- **Validation Set**: Data used to tune hyperparameters (5-10%)
-- **Test Set**: Data used for final evaluation (5-10%)
-- **Holdout Set**: Data kept separate for final testing
-
-### Batch Size
-
-#### Definition
-Number of samples processed together in one training iteration.
-
-#### Batch Size Impact
-- **Small Batch**: Stable but slower training
-- **Large Batch**: Faster but less stable training
-- **Memory Usage**: Larger batches require more VRAM
-- **Generalization**: Batch size affects learning behavior
-
-### Epoch
-
-#### Definition
-One complete pass through the entire training dataset.
-
-#### Epoch Considerations
-- **Number of Epochs**: How many times to see all data
-- **Learning Rate Schedule**: Often decreases over epochs
-- **Early Stopping**: Stop training when validation performance degrades
-- **Overfitting Risk**: Too many epochs can cause overfitting
-
----
-
-## 📈 Metadata Terminology
-
-### Metadata Types
-
-#### File Metadata
-- **EXIF Data**: Camera settings, GPS location, date/time
-- **File Properties**: Resolution, color space, compression
-- **Creation Date**: When file was created or modified
-- **File Size**: Storage size of the file
-
-#### Dataset Metadata
-- **Dataset Name**: Descriptive name for the dataset
-- **Creation Date**: When dataset was created
-- **Version**: Version number or identifier
-- **Author**: Creator of the dataset
-- **License**: Usage terms and restrictions
-
-#### Annotation Metadata
-- **Annotator**: Person who created the annotations
-- **Date**: When annotations were created
-- **Version**: Version of annotation schema
-- **Guidelines**: Rules followed during annotation
-- **Quality Metrics**: Inter-annotator agreement scores
-
----
-
-##  Validation Terminology
-
-### Validation
-
-#### Definition
-Process of checking dataset quality and correctness.
-
-#### Validation Types
-- **File Validation**: Checking file existence and format
-- **Content Validation**: Checking image and caption quality
-- **Consistency Validation**: Checking uniformity across dataset
-- **Quality Validation**: Assessing overall dataset quality
-
-### Quality Metrics
-
-#### Accuracy
-- **Label Accuracy**: How well captions match images
-- **Completeness**: How much required information is present
-- **Consistency**: How uniform annotations are across dataset
-- **Correctness**: How accurate annotations are
-
-#### Inter-Annotator Agreement
-- **Cohen's Kappa**: Statistical measure of agreement
-- **Fleiss' Kappa**: Agreement accounting for chance
-- **Krippendorff's Alpha**: Reliability measure
-- **Inter-Rater Reliability**: Consistency across raters
-
----
-
-##  Common Acronyms and Abbreviations
-
-### Dataset Formats
-
-#### COCO (Common Objects in Context)
-- **Format**: Standard dataset format for object detection
-- **Components**: Images, annotations, categories
-- **Usage**: Computer vision tasks
-- **Relevance**: Often referenced in dataset discussions
-
-#### YOLO (You Only Look Once)
-- **Format**: Object detection dataset format
-- **Components**: Images, bounding boxes, class labels
-- **Usage**: Object detection and classification
-- **Relevance**: Popular for object detection tasks
-
-#### LVIS (Large Vocabulary Instance Segmentation)
-- **Format**: Semantic segmentation dataset format
-- **Components**: Images, segmentation masks, class labels
-- **Usage**: Semantic segmentation tasks
-- **Relevance**: Advanced computer vision tasks
-
-### File Formats
-
-#### JSON (JavaScript Object Notation)
-- **Format**: Data interchange format
-- **Usage**: Metadata and structured data
-- **Characteristics**: Human-readable, machine-readable
-- **Relevance**: Common for dataset metadata
-
-#### YAML (YAML Ain't Markup Language)
-- **Format**: Configuration and metadata format
-- **Usage**: Configuration files, dataset descriptions
-- **Characteristics**: Human-readable, comments supported
-- **Relevance**: Common for dataset configuration
-
----
-
-## 💡 Practical Tips
-
-### Learning Terminology
-
-#### Start with Basics
-- **Focus on Core Concepts**: Master fundamental terms first
-- **Use Examples**: Look at real dataset examples
-- **Practice Usage**: Use terminology in your own work
-- **Build Vocabulary**: Gradually expand your understanding
-
-#### Context Matters
-- **Training Context**: Terms may have different meanings in different contexts
-- **Tool-Specific**: Some tools may use terms differently
-- **Community Standards**: Follow community conventions when possible
-- **Clarify When Unsure**: Ask for clarification when terms are unclear
-
-### Documentation
-
-#### Create Glossary
-- **Personal Glossary**: Keep track of terms you learn
-- **Team Glossary**: Shared vocabulary for team projects
-- **Project Glossary**: Terms specific to your projects
-- **Update Regularly**: Add new terms as you learn them
-
----
-
-##  What's Next?
-
-Now that you understand dataset terminology, you're ready to:
-
-1. **[What Makes a Good Dataset](what-makes-a-good-dataset.md)** - Learn quality standards
-2. **[Image Collection Strategies](image-collection-strategies.md)** - Start collecting images
-3. **[Captioning and Tagging](captioning-and-tagging.md)** - Start writing descriptions
-4. **[Image Processing and Preparation](image-processing-preparation.md)** - Prepare your images
-
----
-
-## 📝 Feedback
+## Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
