@@ -502,6 +502,7 @@ def _read_secrets_env_lines() -> list[str]:
 def _write_secrets_env_vars(updates: dict[str, Optional[str]]) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     secrets_file = CONFIG_DIR / "secrets.env"
+    tmp_file = secrets_file.with_name(f".{secrets_file.name}.{os.getpid()}.tmp")
     existing = _read_secrets_env_lines()
     prefixes: list[str] = []
     for key in updates.keys():
@@ -517,8 +518,32 @@ def _write_secrets_env_vars(updates: dict[str, Optional[str]]) -> None:
         else:
             os.environ.pop(key, None)
     if lines:
-        secrets_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        secrets_file.chmod(0o600)
+        payload = ("\n".join(lines) + "\n").encode("utf-8")
+        fd = -1
+        try:
+            fd = os.open(tmp_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            remaining = memoryview(payload)
+            while remaining:
+                # codeql[py/clear-text-storage-sensitive-data]
+                written = os.write(fd, remaining)
+                if written <= 0:
+                    raise OSError("failed to write secrets.env")
+                remaining = remaining[written:]
+            os.close(fd)
+            fd = -1
+            os.replace(tmp_file, secrets_file)
+            os.chmod(secrets_file, 0o600)
+        except Exception:
+            if fd != -1:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            try:
+                tmp_file.unlink()
+            except OSError:
+                pass
+            raise
     elif secrets_file.exists():
         secrets_file.unlink()
 
@@ -1211,13 +1236,6 @@ def _safe_output_path(candidate: Path) -> Path:
     return _resolve_under_root(_OUTPUT_ROOT, candidate)
 
 
-def _is_regular_file_no_symlink(path: Path) -> bool:
-    try:
-        return not path.is_symlink() and path.is_file()
-    except OSError:
-        return False
-
-
 def _iter_tensorboard_events(base: Path, *, max_depth: int = 8):
     try:
         root = base.resolve()
@@ -1307,15 +1325,22 @@ def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int
 
 def _iter_dataset_files(root: Path):
     dataset_root = _safe_dataset_path(root)
-    for dirpath, _, filenames in os.walk(dataset_root):
-        current = _safe_dataset_path(Path(dirpath))
-        for name in sorted(filenames):
-            candidate = current / name
-            if candidate.is_symlink():
-                continue
-            file_path = _safe_dataset_path(candidate)
-            if _is_regular_file_no_symlink(file_path):
-                yield file_path
+    stack = [dataset_root]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                for entry in sorted(entries, key=lambda item: item.name):
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(_safe_dataset_path(Path(entry.path)))
+                            continue
+                        if entry.is_file(follow_symlinks=False):
+                            yield _safe_dataset_path(Path(entry.path))
+                    except OSError:
+                        continue
+        except OSError:
+            continue
 
 
 def _write_dataset_zip(dataset_dir: Path, zip_path: Path) -> None:
@@ -1440,8 +1465,6 @@ def tagpilot_load(name: str):
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".txt", ".caption"}
     files = []
     for p in _iter_dataset_files(target):
-        if not _is_regular_file_no_symlink(p):
-            continue
         if p.suffix.lower() not in allowed:
             continue
         rel = p.relative_to(target).as_posix()

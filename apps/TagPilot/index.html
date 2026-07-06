@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TagPilot ✈️</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" integrity="sha384-AMJcAgMUmNt1Zo4ranquGLeT5m7yOrVbtNsNk0oZohvxqKk6RRzXHqlEaS9gFXR7" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" integrity="sha384-jzwsV9ieM/KUDMeo+d8dc+jm0GEl7ywPNwg10alB5BodVuC/Kx9RpEnyrl2Om9zH" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <style>
         :root { color-scheme: dark; }
         :root[data-theme="light"] { color-scheme: light; }
@@ -526,6 +526,15 @@ Expected outcome is a human-readable continuous text consisting of several sente
             vllm: document.getElementById('api-key-vllm'),
             wd14: document.getElementById('api-key-wd14')
         };
+        const apiKeys = Object.fromEntries(API_KEY_MODEL_IDS.map(model => [model, '']));
+        const legacyApiKeyStorageNames = ['geminiApiKey', 'grokApiKey', 'openaiApiKey', 'claudeApiKey', 'vllmApiKey', 'wd14ApiKey'];
+        legacyApiKeyStorageNames.forEach(name => {
+            try {
+                localStorage.removeItem(name);
+            } catch (e) {
+                // Browser storage can be disabled.
+            }
+        });
         const vllmEndpointInput = document.getElementById('vllm-endpoint');
         const vllmModelPresetSelect = document.getElementById('vllm-model-preset');
         const vllmModelTypeInput = document.getElementById('vllm-model-type');
@@ -670,16 +679,12 @@ Expected outcome is a human-readable continuous text consisting of several sente
             return saved === 'freeform' || Object.prototype.hasOwnProperty.call(CROP_ASPECT_RATIOS, saved) ? saved : 'freeform';
         }
 
-        function getProviderKeyStorageName(model) {
-            return model === 'wd14' ? 'wd14ApiKey' : `${model}ApiKey`;
-        }
-
         function updateSettingsFields() {
             API_KEY_MODEL_IDS.forEach(model => {
                 const status = document.querySelector(`[data-key-status='${model}']`);
                 if (!status) return;
-                const hasKey = Boolean(apiKeyInputs[model]?.value.trim());
-                status.textContent = hasKey ? 'Saved' : 'Not saved';
+                const hasKey = Boolean(apiKeys[model] || apiKeyInputs[model]?.value.trim());
+                status.textContent = hasKey ? 'Loaded' : 'Not loaded';
                 status.classList.toggle('text-teal-400', hasKey);
                 status.classList.toggle('text-gray-500', !hasKey);
             });
@@ -700,9 +705,6 @@ Expected outcome is a human-readable continuous text consisting of several sente
             ddThreshold.value = localStorage.getItem('ddThreshold') || '0.5';
             wdGeneralThresh.value = localStorage.getItem('wdGeneralThresh') || '0.35';
             wdCharThresh.value = localStorage.getItem('wdCharThresh') || '0.85';
-            API_KEY_MODEL_IDS.forEach(model => {
-                apiKeyInputs[model].value = localStorage.getItem(getProviderKeyStorageName(model)) || '';
-            });
             updateSettingsFields();
         }
 
@@ -731,7 +733,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
             localStorage.setItem('captionModel', captionDefaultModel.value);
             localStorage.setItem('selectedModel', tagDefaultModel.value);
             API_KEY_MODEL_IDS.forEach(model => {
-                localStorage.setItem(getProviderKeyStorageName(model), apiKeyInputs[model].value.trim());
+                apiKeys[model] = apiKeyInputs[model].value.trim();
             });
             localStorage.setItem('settingMaxTags', settingMaxTags.value);
             localStorage.setItem('settingMaxCaptionLen', settingMaxCaptionLen.value);
@@ -752,7 +754,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         function getTagModel() { return isTagModel(tagDefaultModel.value) ? tagDefaultModel.value : getSavedTagModel(); }
         function getCaptionModel() { return isCaptionModel(captionDefaultModel.value) ? captionDefaultModel.value : getSavedCaptionModel(); }
         function getModel() { return getTagModel(); }
-        function getApiKey(model = getModel()) { return localStorage.getItem(getProviderKeyStorageName(model)) || ''; }
+        function getApiKey(model = getModel()) { return apiKeys[model] || apiKeyInputs[model]?.value.trim() || ''; }
         function getWDKey() { return getApiKey('wd14'); }
         function getVllmModelType() { return localStorage.getItem('vllmModelType') || VLLM_DEFAULT_MODEL; }
 

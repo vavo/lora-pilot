@@ -11,6 +11,8 @@ set -euo pipefail
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
 : "${UV_VERSION:?UV_VERSION is required}"
+: "${DEEPDIFF_VERSION:?DEEPDIFF_VERSION is required}"
+: "${GGUF_VERSION:?GGUF_VERSION is required}"
 : "${TOMLKIT_VERSION:?TOMLKIT_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
@@ -45,6 +47,10 @@ if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
   pip_install_in_venv /opt/venvs/core \
     -c /opt/pilot/config/core-constraints.txt \
     "xformers==${XFORMERS_VERSION}" \
+    --index-url "${TORCH_INDEX_URL}"
+
+  pip_install_in_venv /opt/venvs/core \
+    -c /opt/pilot/config/core-constraints.txt \
     "bitsandbytes==${BITSANDBYTES_VERSION}" \
     toml \
     "tomlkit==${TOMLKIT_VERSION}" \
@@ -52,6 +58,8 @@ if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
     "diffusers==${CORE_DIFFUSERS_VERSION}" \
     "transformers==${TRANSFORMERS_VERSION}" \
     "uv==${UV_VERSION}" \
+    "deepdiff==${DEEPDIFF_VERSION}" \
+    "gguf==${GGUF_VERSION}" \
     "peft==${PEFT_VERSION}" \
     safetensors \
     torchsde \
@@ -64,7 +72,7 @@ else
 fi
 
 if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
-  core_import_modules="tomlkit uv transformers xformers"
+  core_import_modules="deepdiff gguf tomlkit uv transformers xformers"
   if [[ -n "${TORCHAUDIO_VERSION:-}" ]]; then
     core_import_modules="torchaudio ${core_import_modules}"
   fi

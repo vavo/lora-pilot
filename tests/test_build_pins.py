@@ -86,8 +86,14 @@ class BuildPinTests(unittest.TestCase):
                     self.assertEqual(read_pin(path, name), value)
 
         install_text = (ROOT / "scripts/build/install-comfy.sh").read_text()
+        comfy_script = (ROOT / "scripts/comfy.sh").read_text()
         self.assertIn(": \"${COMFYUI_DOWNLOADER_REF:?COMFYUI_DOWNLOADER_REF is required}\"", install_text)
+        self.assertIn("comfyui_manager==${COMFYUI_MANAGER_REF}", install_text)
+        self.assertIn("manager_requirements.txt", install_text)
         self.assertIn("${COMFYUI_DOWNLOADER_REF}", install_text)
+        self.assertIn("--enable-manager", comfy_script)
+        self.assertNotIn("custom_nodes/ComfyUI-Manager", install_text)
+        self.assertNotIn("/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Manager", comfy_script)
         self.assertNotIn("git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git", install_text)
 
     def test_diffpipe_uses_latest_verified_ref(self):
@@ -104,6 +110,8 @@ class BuildPinTests(unittest.TestCase):
             "XFORMERS_VERSION": "0.0.35",
             "TRANSFORMERS_VERSION": "5.11.0",
             "UV_VERSION": "0.11.26",
+            "DEEPDIFF_VERSION": "9.1.0",
+            "GGUF_VERSION": "0.19.0",
         }
         for path in ("Dockerfile", "build.env.example"):
             with self.subTest(path=path):
@@ -120,7 +128,10 @@ class BuildPinTests(unittest.TestCase):
 
         core_stack = (ROOT / "scripts/build/install-core-stack.sh").read_text()
         self.assertIn('"torchaudio==${TORCHAUDIO_VERSION}"', core_stack)
+        self.assertRegex(core_stack, r'"xformers==\$\{XFORMERS_VERSION\}" \\\n\s+--index-url "\$\{TORCH_INDEX_URL\}"')
         self.assertIn('"uv==${UV_VERSION}"', core_stack)
+        self.assertIn('"deepdiff==${DEEPDIFF_VERSION}"', core_stack)
+        self.assertIn('"gguf==${GGUF_VERSION}"', core_stack)
         self.assertIn('core_import_modules="torchaudio ${core_import_modules}"', core_stack)
         self.assertIn('CORE_IMPORT_MODULES="${core_import_modules}"', core_stack)
 
@@ -165,6 +176,9 @@ class BuildPinTests(unittest.TestCase):
                 "CORE_DIFFUSERS_VERSION": "0.38.0",
                 "TRANSFORMERS_VERSION": "5.11.0",
                 "UV_VERSION": "0.11.26",
+                "DEEPDIFF_VERSION": "9.1.0",
+                "GGUF_VERSION": "0.19.0",
+                "TOMLKIT_VERSION": "0.15.0",
                 "PEFT_VERSION": "0.19.1",
                 "ACCELERATE_VERSION": "1.14.0",
                 "HF_HUB_VERSION": "1.19.0",
@@ -209,6 +223,8 @@ class BuildPinTests(unittest.TestCase):
         self.assertNotIn("torch==2.12.1\n", constraints)
         self.assertNotIn("torchaudio==", core_constraints)
         self.assertNotIn("torchaudio==", diffpipe_constraints)
+        self.assertIn("deepdiff==9.1.0\n", core_constraints)
+        self.assertIn("gguf==0.19.0\n", core_constraints)
 
     def test_makefile_passes_service_install_flags_to_docker(self):
         text = (ROOT / "Makefile").read_text()
@@ -264,6 +280,8 @@ class BuildPinTests(unittest.TestCase):
                 "BITSANDBYTES_VERSION",
                 "CORE_DIFFUSERS_VERSION",
                 "TRANSFORMERS_VERSION",
+                "DEEPDIFF_VERSION",
+                "GGUF_VERSION",
                 "HF_HUB_VERSION",
                 "FASTAPI_VERSION",
                 "PYDANTIC_VERSION",
@@ -325,6 +343,15 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/", docker_text)
         self.assertIn("def _require_torchaudio()", patch_text)
         self.assertIn("except ModuleNotFoundError:", patch_text)
+        for path in (
+            "comfy_extras/nodes_audio.py",
+            "comfy_extras/nodes_lt.py",
+            "comfy_extras/nodes_lt_audio.py",
+            "comfy_extras/nodes_audio_encoder.py",
+            "comfy_extras/nodes_wandancer.py",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(path, patch_text)
 
     def test_invoke_installs_local_xformers_to_shadow_core(self):
         text = (ROOT / "scripts/build/install-invoke.sh").read_text()

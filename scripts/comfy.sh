@@ -102,15 +102,12 @@ if [[ -n "${FRONTEND_STATIC_DIRS}" ]]; then
     link_optional_asset_dir "${frontend_dir}"
   done <<< "${FRONTEND_STATIC_DIRS}"
 fi
-# Remove newer normalized Manager dir if present; this Comfy image expects the classic layout.
-if [ -d "${CUSTOM_NODES_DIR}/comfyui-manager" ]; then
-  rm -rf "${CUSTOM_NODES_DIR}/comfyui-manager"
-fi
-# Ensure ComfyUI-Manager is present in workspace custom_nodes before rewiring
-if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Manager" ] && [ -d "/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Manager" ]; then
-  mkdir -p "${CUSTOM_NODES_DIR}"
-  cp -a "/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/"
-fi
+# Manager is enabled through ComfyUI's built-in comfyui_manager package.
+for stale_manager_dir in "${CUSTOM_NODES_DIR}/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/comfyui-manager"; do
+  if [ -d "${stale_manager_dir}" ]; then
+    rm -rf "${stale_manager_dir}"
+  fi
+done
 # Ensure ComfyUI-Downloader is present in workspace custom_nodes before rewiring
 if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Downloader" ] && [ -d "/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Downloader" ]; then
   mkdir -p "${CUSTOM_NODES_DIR}"
@@ -127,5 +124,6 @@ cd "$COMFY_DIR"
 exec python main.py \
   --listen 0.0.0.0 \
   --port "$PORT" \
+  --enable-manager \
   --output-directory "$OUT_DIR" \
   $CPU_FLAG

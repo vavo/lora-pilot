@@ -27,26 +27,27 @@ pip_install_in_venv /opt/venvs/core \
   -r /tmp/comfy-req.txt
 rm -f /tmp/comfy-req.txt
 
-mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes /opt/pilot/bundled/comfy-custom-nodes
-/opt/pilot/build/lib/git_checkout.sh \
-  https://github.com/ltdrdata/ComfyUI-Manager.git \
-  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager \
-  "${COMFYUI_MANAGER_REF}"
-
-grep -v -E '^(torch|torchvision|torchaudio|xformers|triton|bitsandbytes|numpy|pillow|Pillow|diffusers|transformers|peft|huggingface-hub|accelerate)' \
-  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager/requirements.txt > /tmp/comfy-manager-req.txt
-
+manager_requirement="comfyui_manager==${COMFYUI_MANAGER_REF}"
+manager_requirements_file="/opt/pilot/repos/ComfyUI/manager_requirements.txt"
+if [[ ! -f "${manager_requirements_file}" ]]; then
+  echo "ComfyUI manager requirements file not found: ${manager_requirements_file}" >&2
+  exit 1
+fi
+if ! grep -Fxq "${manager_requirement}" "${manager_requirements_file}"; then
+  echo "ComfyUI manager requirement mismatch; expected ${manager_requirement}" >&2
+  cat "${manager_requirements_file}" >&2
+  exit 1
+fi
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \
-  -r /tmp/comfy-manager-req.txt
-rm -f /tmp/comfy-manager-req.txt
+  -r "${manager_requirements_file}"
 
+mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes /opt/pilot/bundled/comfy-custom-nodes
 /opt/pilot/build/lib/git_checkout.sh \
   https://github.com/romandev-codex/ComfyUI-Downloader.git \
   /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader \
   "${COMFYUI_DOWNLOADER_REF}"
 
-cp -a /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Manager /opt/pilot/bundled/comfy-custom-nodes/
 cp -a /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader /opt/pilot/bundled/comfy-custom-nodes/
 
 mkdir -p /workspace/apps/comfy/user

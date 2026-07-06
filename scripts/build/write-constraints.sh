@@ -11,6 +11,8 @@ mkdir -p "${config_dir}"
 : "${CORE_DIFFUSERS_VERSION:?CORE_DIFFUSERS_VERSION is required}"
 : "${TRANSFORMERS_VERSION:?TRANSFORMERS_VERSION is required}"
 : "${UV_VERSION:?UV_VERSION is required}"
+: "${DEEPDIFF_VERSION:?DEEPDIFF_VERSION is required}"
+: "${GGUF_VERSION:?GGUF_VERSION is required}"
 : "${TOMLKIT_VERSION:?TOMLKIT_VERSION is required}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
@@ -55,6 +57,8 @@ huggingface-hub==${HF_HUB_VERSION}
 diffusers==${CORE_DIFFUSERS_VERSION}
 transformers==${TRANSFORMERS_VERSION}
 uv==${UV_VERSION}
+deepdiff==${DEEPDIFF_VERSION}
+gguf==${GGUF_VERSION}
 tomlkit==${TOMLKIT_VERSION}
 peft==${PEFT_VERSION}
 accelerate==${ACCELERATE_VERSION}

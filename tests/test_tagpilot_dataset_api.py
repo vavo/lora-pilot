@@ -66,6 +66,22 @@ class TagPilotDatasetApiTests(unittest.TestCase):
 
         self.assertEqual(files, ["photo.jpg"])
 
+    def test_dataset_file_iteration_skips_symlinked_directories(self):
+        dataset_dir = portal_app._DATASET_ROOT / "1_sample"
+        dataset_dir.mkdir(parents=True)
+        outside = Path(self.tmp.name) / "outside"
+        outside.mkdir()
+        (outside / "secret.jpg").write_bytes(b"outside")
+
+        try:
+            (dataset_dir / "linked").symlink_to(outside, target_is_directory=True)
+        except OSError:
+            self.skipTest("symlink creation is not available")
+
+        files = list(portal_app._iter_dataset_files(dataset_dir))
+
+        self.assertEqual(files, [])
+
 
 if __name__ == "__main__":
     unittest.main()
