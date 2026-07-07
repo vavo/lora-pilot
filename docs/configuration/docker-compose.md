@@ -83,6 +83,7 @@ Set these in `.env` before `docker compose up`:
 | `SUPERVISOR_ADMIN_PASSWORD` | empty | Supervisor HTTP auth password seed |
 | `PORTAL_PORT` | `7878` | ControlPilot port |
 | `COMFY_PORT` | `5555` | ComfyUI port |
+| `COMFY_MANAGER_LEGACY_UI` | `0` | Set to `1` only to force the old ComfyUI Manager UI |
 | `KOHYA_PORT` | `6666` | Kohya port |
 | `INVOKE_PORT` | `9090` | InvokeAI port |
 | `DIFFPIPE_PORT` | `4444` | Diffusion Pipe / TensorBoard port |
@@ -146,5 +147,4 @@ docker compose exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

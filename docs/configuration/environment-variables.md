@@ -12,7 +12,7 @@ If you only care about the knobs that usually matter:
 |---|---|
 | Container image/runtime | `LORA_PILOT_IMAGE`, `TZ`, `NVIDIA_VISIBLE_DEVICES`, `NVIDIA_DRIVER_CAPABILITIES` |
 | Core ports | `PORTAL_PORT`, `COMFY_PORT`, `KOHYA_PORT`, `INVOKE_PORT`, `DIFFPIPE_PORT`, `AI_TOOLKIT_PORT` |
-| ComfyUI Manager policy | `COMFY_MANAGER_NETWORK_MODE`, `COMFY_MANAGER_SECURITY_LEVEL`, `COMFY_MANAGER_ALLOW_GIT_URL_INSTALL`, `COMFY_MANAGER_ALLOW_PIP_INSTALL` |
+| ComfyUI Manager policy | `COMFY_MANAGER_LEGACY_UI`, `COMFY_MANAGER_NETWORK_MODE`, `COMFY_MANAGER_SECURITY_LEVEL`, `COMFY_MANAGER_ALLOW_GIT_URL_INSTALL`, `COMFY_MANAGER_ALLOW_PIP_INSTALL` |
 | Auth/secrets | `HF_TOKEN`, `SUPERVISOR_ADMIN_PASSWORD`, `JUPYTER_TOKEN`, `CODE_SERVER_PASSWORD` |
 | Service update controls | `SERVICE_UPDATES_BOOT_RECONCILE`, `SERVICE_UPDATES_CONFIG_PATH`, `SERVICE_UPDATES_ROLLBACK_LOG_PATH` |
 | Diffusion Pipe behavior | `DIFFPIPE_CONFIG`, `DIFFPIPE_NUM_GPUS`, `DIFFPIPE_LOGDIR`, `DIFFPIPE_TENSORBOARD` |
@@ -102,6 +102,7 @@ Note:
 
 | Variable | Default | Notes |
 |---|---|---|
+| `COMFY_MANAGER_LEGACY_UI` | `0` | Set to `1` to force the old Manager UI instead of the current ComfyUI Extensions manager |
 | `COMFY_MANAGER_NETWORK_MODE` | `personal_cloud` | Written to Manager `config.ini` so registry node installs are allowed from non-local pod URLs |
 | `COMFY_MANAGER_SECURITY_LEVEL` | `normal` | Allows normal registry install/update actions without enabling high-risk Manager actions |
 | `COMFY_MANAGER_ALLOW_GIT_URL_INSTALL` | unset | Optional `true`/`false` override for direct arbitrary Git URL installs |
@@ -232,7 +233,7 @@ These only affect image build, not runtime container env unless baked into image
 Current defaults worth calling out:
 
 - `NODE_MAJOR=24` and `NPM_VERSION=11.18.0` are used only when `INSTALL_AI_TOOLKIT_UI=1`.
-- `COMFYUI_MANAGER_REF` pins the `comfyui_manager` package used by ComfyUI's `--enable-manager-legacy-ui` startup path.
+- `COMFYUI_MANAGER_REF` pins the `comfyui_manager` package used by ComfyUI's `--enable-manager` startup path.
 - `COMFYUI_DOWNLOADER_REF` is pinned to a commit, just like the other bundled service refs.
 - `DIFFPIPE_REF` tracks the pinned Diffusion Pipe commit used at image build time.
 - `TENSORBOARD_VERSION` pins the TensorBoard package used by the training integrations.

@@ -159,7 +159,13 @@ if [[ -n "${FRONTEND_STATIC_DIRS}" ]]; then
     link_optional_asset_dir "${frontend_dir}"
   done <<< "${FRONTEND_STATIC_DIRS}"
 fi
-# Manager is enabled through ComfyUI's built-in comfyui_manager package with its legacy UI.
+# Manager defaults to ComfyUI's supported frontend integration. The old Manager UI is kept as an opt-in fallback.
+MANAGER_FLAGS=(--enable-manager)
+case "${COMFY_MANAGER_LEGACY_UI:-0}" in
+  1|true|TRUE|yes|YES|on|ON)
+    MANAGER_FLAGS=(--enable-manager-legacy-ui)
+    ;;
+esac
 for stale_manager_dir in "${CUSTOM_NODES_DIR}/ComfyUI-Manager" "${CUSTOM_NODES_DIR}/comfyui-manager"; do
   if [ -d "${stale_manager_dir}" ]; then
     rm -rf "${stale_manager_dir}"
@@ -173,6 +179,7 @@ fi
 # Point Comfy models to the shared workspace tree
 rm -rf "${COMFY_DIR}/models"
 ln -s "${WORKSPACE_ROOT}/models" "${COMFY_DIR}/models"
+ensure_model_dirs
 # Point Comfy custom nodes to workspace apps/comfy/custom_nodes
 rm -rf "${COMFY_DIR}/custom_nodes"
 ln -s "${CUSTOM_NODES_DIR}" "${COMFY_DIR}/custom_nodes"
@@ -181,6 +188,6 @@ cd "$COMFY_DIR"
 exec python main.py \
   --listen 0.0.0.0 \
   --port "$PORT" \
-  --enable-manager-legacy-ui \
+  "${MANAGER_FLAGS[@]}" \
   --output-directory "$OUT_DIR" \
   $CPU_FLAG

@@ -7,6 +7,9 @@ Canonical release history lives in the repository root file: `CHANGELOG`.
 ControlPilot exposes the same content at:
 - `GET /api/changelog`
 
+Detailed GitHub release notes:
+- [LoRA Pilot v2.5.4](../releases/v2.5.4.md)
+
 ## Current Release Entries (from `CHANGELOG`)
 
 | Header in file | High-level highlights |

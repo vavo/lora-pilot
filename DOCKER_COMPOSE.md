@@ -77,6 +77,7 @@ HF_TOKEN=your_token_here
 # Custom ports
 JUPYTER_PORT=8888
 COMFY_PORT=5555
+COMFY_MANAGER_LEGACY_UI=0
 AI_TOOLKIT_PORT=8675
 # ... etc
 ```
