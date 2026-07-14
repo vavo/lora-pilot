@@ -9,29 +9,6 @@ if [[ ! -d "${repo_dir}" ]]; then
   exit 1
 fi
 
-diffusion_models_dir="${repo_dir}/extensions_built_in/diffusion_models"
-init_file="${diffusion_models_dir}/__init__.py"
-
-if [[ ! -d "${diffusion_models_dir}" ]]; then
-  echo "AI Toolkit diffusion models dir not found: ${diffusion_models_dir}" >&2
-  exit 1
-fi
-
-if [[ ! -f "${init_file}" ]]; then
-  echo "AI Toolkit init file not found: ${init_file}" >&2
-  exit 1
-fi
-
-rm -rf "${diffusion_models_dir}/ltx2"
-python3 - "${init_file}" <<'PY'
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-lines = path.read_text().splitlines()
-path.write_text("\n".join(line for line in lines if ".ltx2" not in line and "LTX2Model" not in line) + "\n")
-PY
-
 if [[ "${ui_enabled}" != "1" ]]; then
   exit 0
 fi

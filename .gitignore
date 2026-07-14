@@ -113,6 +113,7 @@ local_settings.py
 WINDOWS_WSL_INSTALLER_PLAN.md
 docs/development/dockerfile-refactor-plan.md
 docs/development/2026-07-05-lora-pilot-value-suggestions.md
+aidocs/
 
 # Local build service config
 depot.json

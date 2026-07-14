@@ -51,6 +51,26 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("devIndicators", patch_text)
         self.assertIn("buildActivity", patch_text)
 
+    def test_ai_toolkit_patch_preserves_ltx23_model_support(self):
+        patch = ROOT / "scripts/build/patches/patch-ai-toolkit.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "ai-toolkit"
+            ltx2_dir = repo / "extensions_built_in/diffusion_models/ltx2"
+            ltx2_dir.mkdir(parents=True)
+            init_file = repo / "extensions_built_in/diffusion_models/__init__.py"
+            init_file.write_text(
+                "from .ltx2 import LTX2Model, LTX23Model\n"
+                "AI_TOOLKIT_MODELS = [LTX2Model, LTX23Model]\n"
+            )
+            (ltx2_dir / "__init__.py").write_text(
+                "from .ltx2 import LTX2Model, LTX23Model\n"
+            )
+
+            subprocess.run(["bash", str(patch), str(repo), "0"], check=True)
+
+            self.assertTrue(ltx2_dir.is_dir())
+            self.assertIn("LTX23Model", init_file.read_text())
+
     def test_invokeai_6135_uses_required_dependency_pins(self):
         expected = {
             "INVOKEAI_VERSION": "6.13.5",
