@@ -1318,6 +1318,19 @@ Limit the caption to ${maxWords} words or fewer.`;
             return new File([blob], filename, { type: mimeType });
         }
 
+        function base64ToText(base64) {
+            const byteCharacters = atob(String(base64 || ''));
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            if (typeof TextDecoder !== 'undefined') {
+                return new TextDecoder('utf-8').decode(byteArray);
+            }
+            return byteCharacters;
+        }
+
         async function loadDatasetFromServer(dsName) {
             if (!dsName) return;
 
@@ -1339,8 +1352,8 @@ Limit the caption to ${maxWords} words or fewer.`;
                     const name = String(file?.name || '').trim();
                     const baseName = name.replace(/\.[^/.]+$/, '');
                     const lower = name.toLowerCase();
-                    if (lower.endsWith('.txt')) {
-                        textFiles.set(baseName, String(file?.b64 || '').trim());
+                    if (lower.endsWith('.txt') || lower.endsWith('.caption')) {
+                        textFiles.set(baseName, base64ToText(file?.b64).trim());
                         return;
                     }
                     if (imageExtensions.some(ext => lower.endsWith(ext))) {

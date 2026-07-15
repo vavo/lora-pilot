@@ -15,6 +15,15 @@ class TagPilotFrontendSecurityTests(unittest.TestCase):
         self.assertNotRegex(text, re.compile(r"localStorage\.(?:getItem|setItem)\([^)]*ApiKey"))
         self.assertNotRegex(text, re.compile(r"localStorage\.setItem\([^,]+,\s*apiKeyInputs"))
 
+    def test_loaded_dataset_text_files_are_decoded_from_base64(self):
+        text = TAGPILOT_HTML.read_text(encoding="utf-8")
+
+        self.assertIn("function base64ToText(base64)", text)
+        self.assertIn("new TextDecoder('utf-8').decode(byteArray)", text)
+        self.assertIn("lower.endsWith('.txt') || lower.endsWith('.caption')", text)
+        self.assertIn("textFiles.set(baseName, base64ToText(file?.b64).trim())", text)
+        self.assertNotIn("textFiles.set(baseName, String(file?.b64 || '').trim())", text)
+
 
 if __name__ == "__main__":
     unittest.main()
