@@ -12,6 +12,7 @@ apt-get install -y --no-install-recommends \
   curl \
   git \
   wget \
+  zip \
   unzip \
   openssl \
   tini \

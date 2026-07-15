@@ -44,6 +44,11 @@ class BuildPinTests(unittest.TestCase):
         self.assertNotIn("| bash", system_tools)
         self.assertIn('npm install -g "npm@${NPM_VERSION}"', system_tools)
 
+    def test_system_tools_include_zip_cli(self):
+        system_tools = (ROOT / "scripts/build/install-system-tools.sh").read_text()
+        self.assertIn("  zip \\\n", system_tools)
+        self.assertIn("  unzip \\\n", system_tools)
+
     def test_ai_toolkit_patch_removes_deprecated_next_dev_indicator(self):
         patch_text = (ROOT / "scripts/build/patches/patch-ai-toolkit.sh").read_text()
 
