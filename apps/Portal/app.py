@@ -422,6 +422,37 @@ def _read_controlpilot_settings() -> dict:
     return settings
 
 
+def _write_private_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    payload = text.encode("utf-8")
+    fd = -1
+    try:
+        fd = os.open(tmp_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        remaining = memoryview(payload)
+        while remaining:
+            # codeql[py/clear-text-storage-sensitive-data]
+            written = os.write(fd, remaining)
+            if written <= 0:
+                raise OSError(f"failed to write {path.name}")
+            remaining = remaining[written:]
+        os.close(fd)
+        fd = -1
+        os.replace(tmp_file, path)
+        os.chmod(path, 0o600)
+    except Exception:
+        if fd != -1:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            tmp_file.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def _write_controlpilot_settings(settings: dict) -> None:
     payload = _default_controlpilot_settings()
     payload["password_enabled"] = bool(settings.get("password_enabled", False))
@@ -434,8 +465,7 @@ def _write_controlpilot_settings(settings: dict) -> None:
     payload["shutdown_default_mins"] = max(0, int(settings.get("shutdown_default_mins", 1) or 0))
     payload["shutdown_default_secs"] = max(0, int(settings.get("shutdown_default_secs", 0) or 0))
     payload["copilot_allow_all_urls"] = bool(settings.get("copilot_allow_all_urls", False))
-    CONTROLPILOT_SETTINGS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONTROLPILOT_SETTINGS_PATH.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    _write_private_text(CONTROLPILOT_SETTINGS_PATH, json.dumps(payload, indent=2) + "\n")
 
 
 def _merge_controlpilot_settings(updates: dict) -> dict:

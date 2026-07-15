@@ -53,9 +53,39 @@ def _config_json_path() -> Path:
     return home / ".copilot" / "config.json"
 
 
+def _write_private_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    payload = text.encode("utf-8")
+    fd = -1
+    try:
+        fd = os.open(tmp_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        remaining = memoryview(payload)
+        while remaining:
+            # codeql[py/clear-text-storage-sensitive-data]
+            written = os.write(fd, remaining)
+            if written <= 0:
+                raise OSError(f"failed to write {path.name}")
+            remaining = remaining[written:]
+        os.close(fd)
+        fd = -1
+        os.replace(tmp_file, path)
+        os.chmod(path, 0o600)
+    except Exception:
+        if fd != -1:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            tmp_file.unlink()
+        except OSError:
+            pass
+        raise
+
+
 def _ensure_trusted_folder(folder: Path) -> None:
     cfg_path = _config_json_path()
-    cfg_path.parent.mkdir(parents=True, exist_ok=True)
     cfg: Dict[str, Any] = {}
     if cfg_path.exists():
         try:
@@ -71,7 +101,7 @@ def _ensure_trusted_folder(folder: Path) -> None:
     if folder_str not in trusted:
         trusted.append(folder_str)
     cfg["trusted_folders"] = trusted
-    cfg_path.write_text(json.dumps(cfg, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _write_private_text(cfg_path, json.dumps(cfg, indent=2, sort_keys=True) + "\n")
 
 
 def _resolve_workspace_cwd(raw_cwd: Optional[str]) -> Path:
