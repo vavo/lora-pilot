@@ -21,16 +21,27 @@ async function loadDatasets() {
       const tr = document.createElement("tr");
       const size = d.size_bytes ? formatBytes(d.size_bytes) : "—";
       const link = tagpilotUrl(d.name);
-      const nameCell = link ? `<a href="${link}" class="ds-link" data-ds="${d.name}">${d.display || d.name}</a>` : (d.display || d.name);
-      tr.innerHTML = `
-        <td>${nameCell}</td>
-        <td>${d.images || 0}</td>
-        <td>${size}</td>
-        <td>${d.has_tags ? "Yes" : "No"}</td>
-        <td class="text-right">
-          <button class="btn secondary" data-rename="${d.name}">Rename</button>
-          <button class="btn danger" data-del="${d.name}">Delete</button>
-        </td>`;
+      const nameTd = document.createElement("td");
+      if (link) {
+        const anchor = document.createElement("a");
+        anchor.href = link;
+        anchor.className = "ds-link";
+        anchor.dataset.ds = d.name;
+        anchor.textContent = d.display || d.name;
+        nameTd.appendChild(anchor);
+      } else {
+        nameTd.textContent = d.display || d.name;
+      }
+      tr.appendChild(nameTd);
+      appendTextCell(tr, d.images || 0);
+      appendTextCell(tr, size);
+      appendTextCell(tr, d.has_tags ? "Yes" : "No");
+      const actionsTd = document.createElement("td");
+      actionsTd.className = "text-right";
+      actionsTd.appendChild(datasetActionButton("Rename", "secondary", "rename", d.name));
+      actionsTd.appendChild(document.createTextNode(" "));
+      actionsTd.appendChild(datasetActionButton("Delete", "danger", "del", d.name));
+      tr.appendChild(actionsTd);
       list.appendChild(tr);
     });
     // wire inline navigation
@@ -85,6 +96,20 @@ async function loadDatasets() {
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
   }
+}
+
+function appendTextCell(row, value) {
+  const td = document.createElement("td");
+  td.textContent = String(value);
+  row.appendChild(td);
+}
+
+function datasetActionButton(label, variant, action, datasetName) {
+  const button = document.createElement("button");
+  button.className = `btn ${variant}`;
+  button.textContent = label;
+  button.dataset[action] = datasetName;
+  return button;
 }
 
 window.createDatasetPrompt = async function () {

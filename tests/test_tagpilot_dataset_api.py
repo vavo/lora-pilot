@@ -1,4 +1,5 @@
 import base64
+import io
 import tempfile
 import unittest
 from pathlib import Path
@@ -49,6 +50,35 @@ class TagPilotDatasetApiTests(unittest.TestCase):
         self.assertEqual(set(files), {"photo.jpg", "photo.txt"})
         self.assertEqual(files["photo.jpg"]["b64"], base64.b64encode(image_bytes).decode("utf-8"))
         self.assertEqual(base64.b64decode(files["photo.txt"]["b64"]).decode("utf-8"), "sample, tag")
+
+    def test_tagpilot_load_resolves_exact_listed_dataset_name(self):
+        dataset_dir = portal_app._DATASET_ROOT / "1_my dataset"
+        dataset_dir.mkdir(parents=True)
+        (dataset_dir / "photo.jpg").write_bytes(b"image")
+        (dataset_dir / "photo.txt").write_text("exact folder", encoding="utf-8")
+
+        payload = portal_app.tagpilot_load("1_my dataset")
+
+        self.assertEqual(payload["name"], "1_my dataset")
+        self.assertFalse((portal_app._DATASET_ROOT / "1_my_dataset").exists())
+
+    def test_tagpilot_save_item_does_not_double_prefix_loaded_dataset(self):
+        dataset_dir = portal_app._DATASET_ROOT / "1_sample"
+        dataset_dir.mkdir(parents=True)
+        upload = portal_app.UploadFile(file=io.BytesIO(b"image"), filename="photo.jpg")
+
+        payload = portal_app.tagpilot_save_item(
+            name="1_sample",
+            file=upload,
+            tags="saved, tag",
+            reset=True,
+            done=True,
+        )
+
+        self.assertEqual(Path(payload["path"]).name, "1_sample")
+        self.assertTrue((dataset_dir / "photo.jpg").exists())
+        self.assertEqual((dataset_dir / "photo.txt").read_text(encoding="utf-8"), "saved, tag")
+        self.assertFalse((portal_app._DATASET_ROOT / "1_1_sample").exists())
 
     def test_dataset_file_iteration_skips_symlinks(self):
         dataset_dir = portal_app._DATASET_ROOT / "1_sample"

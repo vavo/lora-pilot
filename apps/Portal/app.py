@@ -1186,13 +1186,27 @@ def _resolve_under_root(root: Path, candidate: Path) -> Path:
     return Path(resolved)
 
 
+def _dataset_name_leaf(name: str) -> str:
+    leaf = PurePosixPath((name or "").replace("\\", "/")).name.strip()
+    if not leaf or leaf in {".", ".."}:
+        raise HTTPException(status_code=400, detail="Invalid dataset name")
+    return leaf
+
+
 def _dataset_dir(name: str) -> Path:
-    base = WORKSPACE_ROOT / "datasets"
+    base = _DATASET_ROOT
     base.mkdir(parents=True, exist_ok=True)
-    leaf = PurePosixPath((name or "").replace("\\", "/")).name
+    leaf = _dataset_name_leaf(name)
     normalized = leaf[2:] if leaf.startswith("1_") else leaf
     safe_name = f"1_{_clean_name(normalized)}"
     return _resolve_under_root(base, base / safe_name)
+
+
+def _dataset_zip_stems(name: str) -> list[str]:
+    leaf = _dataset_name_leaf(name)
+    unprefixed = leaf[2:] if leaf.startswith("1_") else leaf
+    stems = [_clean_name(unprefixed), _clean_name(leaf)]
+    return list(dict.fromkeys(stem for stem in stems if stem))
 
 
 def _zipinfo_is_symlink(info: zipfile.ZipInfo) -> bool:
@@ -1266,16 +1280,25 @@ def _safe_output_path(candidate: Path) -> Path:
     return _resolve_under_root(_OUTPUT_ROOT, candidate)
 
 
-def _resolve_existing_dataset_dir(root: Path) -> Path:
+def _resolve_existing_dataset_dir(root) -> Path:
     dataset_root = _safe_dataset_path(_DATASET_ROOT)
-    requested_name = _safe_dataset_path(root).name
+    if isinstance(root, Path):
+        requested_name = _safe_dataset_path(root).name
+    else:
+        requested_name = _dataset_name_leaf(str(root))
+    candidates = [requested_name]
+    canonical_name = _dataset_dir(requested_name).name
+    if canonical_name not in candidates:
+        candidates.append(canonical_name)
     try:
         entries = sorted(os.listdir(dataset_root))
     except OSError:
-        return _safe_dataset_path(root)
+        raise HTTPException(status_code=404, detail="Dataset not found")
     for entry_name in entries:
-        if entry_name == requested_name:
-            return _safe_dataset_path(dataset_root / entry_name)
+        if entry_name in candidates:
+            resolved = _safe_dataset_path(dataset_root / entry_name)
+            if resolved.is_dir():
+                return resolved
     raise HTTPException(status_code=404, detail="Dataset not found")
 
 
@@ -1439,8 +1462,7 @@ def upload_dataset(file: UploadFile = File(...)):
 
 @app.delete("/api/datasets/{name}")
 def delete_dataset(name: str):
-    target = _dataset_dir(name)
-    target = _safe_dataset_path(target)
+    target = _resolve_existing_dataset_dir(name)
     if not target.exists():
         raise HTTPException(status_code=404, detail="Dataset not found")
     try:
@@ -1449,8 +1471,8 @@ def delete_dataset(name: str):
         raise HTTPException(status_code=500, detail="Failed to delete dataset")
     # Best-effort cleanup of any corresponding ZIP
     zip_dir = _safe_dataset_zip_path(WORKSPACE_ROOT / "datasets" / "ZIPs")
-    stem = _clean_name(name)
-    for candidate in [zip_dir / f"{stem}.zip", zip_dir / f"1_{stem}.zip"]:
+    for stem in _dataset_zip_stems(name):
+        candidate = zip_dir / f"{stem}.zip"
         safe_candidate = _safe_dataset_zip_path(candidate)
         if safe_candidate.exists():
             try:
@@ -1468,9 +1490,8 @@ def rename_dataset(name: str, payload: dict):
     if not new_name:
         raise HTTPException(status_code=400, detail="new name is required")
 
-    source = _dataset_dir(name)
+    source = _resolve_existing_dataset_dir(name)
     target = _dataset_dir(new_name)
-    source = _safe_dataset_path(source)
     target = _safe_dataset_path(target)
 
     if not source.exists():
@@ -1485,10 +1506,10 @@ def rename_dataset(name: str, payload: dict):
 
         # Update any corresponding ZIP files
         zip_dir = _safe_dataset_zip_path(WORKSPACE_ROOT / "datasets" / "ZIPs")
-        old_stem = _clean_name(name)
-        new_stem = _clean_name(new_name)
+        new_stem = _dataset_zip_stems(new_name)[0]
 
-        for old_zip in [zip_dir / f"{old_stem}.zip", zip_dir / f"1_{old_stem}.zip"]:
+        for old_stem in _dataset_zip_stems(name):
+            old_zip = zip_dir / f"{old_stem}.zip"
             safe_old = _safe_dataset_zip_path(old_zip)
             if safe_old.exists():
                 safe_new = _safe_dataset_zip_path(zip_dir / f"{new_stem}.zip")
@@ -1504,8 +1525,7 @@ def rename_dataset(name: str, payload: dict):
 
 @app.get("/api/tagpilot/load")
 def tagpilot_load(name: str):
-    target = _dataset_dir(name)
-    target = _safe_dataset_path(target)
+    target = _resolve_existing_dataset_dir(name)
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail="Dataset not found")
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".txt", ".caption"}
@@ -1586,7 +1606,7 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
     if target.exists():
         shutil.rmtree(target, ignore_errors=True)
     target.mkdir(parents=True, exist_ok=True)
-    fname = _clean_name(name) + ".zip"
+    fname = _dataset_zip_stems(name)[0] + ".zip"
     dest = _safe_dataset_zip_path(zip_dir / fname)
     try:
         with dest.open("wb") as f:
@@ -1606,15 +1626,12 @@ def tagpilot_save_item(
     reset: bool = Form(False),
     done: bool = Form(False),
 ):
-    dataset_name = (name or "").strip()
-    if not dataset_name or not re.fullmatch(r"[A-Za-z0-9_-]+", dataset_name):
-        raise HTTPException(status_code=400, detail="Invalid dataset name")
-    dataset_root = os.path.realpath(str(_DATASET_ROOT))
-    candidate = os.path.realpath(str(_DATASET_ROOT / f"1_{dataset_name}"))
-    if candidate != dataset_root and not candidate.startswith(dataset_root + os.path.sep):
-        raise HTTPException(status_code=400, detail="Invalid dataset name")
-    target = Path(candidate)
-    target = _safe_dataset_path(target)
+    try:
+        target = _resolve_existing_dataset_dir(name)
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+        target = _dataset_dir(name)
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     zip_dir = _safe_dataset_zip_path(zip_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
@@ -1630,7 +1647,7 @@ def tagpilot_save_item(
     dst_img = _unique_child_path(target, safe_name)
     dst_txt = _safe_dataset_path(dst_img.with_suffix(".txt"))
     dst_img = _safe_dataset_path(dst_img)
-    zip_path = _safe_dataset_zip_path(zip_dir / f"{_clean_name(name)}.zip")
+    zip_path = _safe_dataset_zip_path(zip_dir / f"{_dataset_zip_stems(name)[0]}.zip")
 
     try:
         with dst_img.open("wb") as f:
