@@ -1,3 +1,10 @@
+v2.5.5 (July 15th 2026)
+
+- Restored AI Toolkit support for LTX 2.3 model workflows.
+- Fixed the remaining GitHub code-scanning clear-text secret storage alerts by writing ControlPilot and Copilot config files through private atomic `0600` writes.
+- Added the missing `zip` CLI to the image system tools so core runtime workflows can create ZIP archives as well as extract them.
+- Fixed TagPilot dataset loading from ControlPilot so existing `.txt` and `.caption` files are decoded from the API payload and shown as real tags instead of base64 gibberish.
+
 v2.5.4 (July 5th 2026)
 
 - Refreshed the Docker build stack and bundled app pins, including ComfyUI, AI Toolkit, InvokeAI, Diffusion Pipe, Node, TensorBoard, and runtime web dependencies.

@@ -1,6 +1,6 @@
 # Changelog
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-15_
 
 Canonical release history lives in the repository root file: `CHANGELOG`.
 
@@ -14,6 +14,7 @@ Detailed GitHub release notes:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.5` | July 15 LTX 2.3 support restore, CodeQL secret-storage fixes, missing `zip` CLI, and TagPilot decoded tag loading |
 | `v2.5.4` | July 5 build/runtime refresh, CUDA profile cleanup, ComfyUI Manager/runtime fixes, and code-scanning vulnerabilities reduced to 0 |
 | `v2.5.3` | July 3 TagPilot frontend refresh, TensorBoard integration, and JupyterLab/code-server update |
 | `v2.5.0` | CUDA 13.0 default profile, shared core Python stack, refreshed bundled tools, and manifest/build updates |
