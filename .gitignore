@@ -52,9 +52,6 @@ __pypackages__/
 pip-log.txt
 pip-delete-this-directory.txt
 workspace/
-models/
-datasets/
-outputs/
 .rcs/
 instance/
 .webassets-cache

@@ -51,9 +51,6 @@ logs/
 
 # Runtime/work dir (local volume contents)
 workspace/
-models/
-datasets/
-outputs/
 .rcs/
 
 # Test/lint caches
