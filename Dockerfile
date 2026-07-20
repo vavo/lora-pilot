@@ -131,9 +131,8 @@ ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}-${COMFYUI_DOWNLOADER
 RUN echo "COMFY_CACHE_BUST=${COMFY_CACHE_BUST}" >/dev/null && \
     if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
 
-COPY scripts/build/patches/patch-kohya.sh /opt/pilot/build/patches/
 COPY scripts/build/install-kohya.sh /opt/pilot/build/
-RUN chmod +x /opt/pilot/build/patches/patch-kohya.sh /opt/pilot/build/install-kohya.sh
+RUN chmod +x /opt/pilot/build/install-kohya.sh
 ARG KOHYA_CACHE_BUST="${KOHYA_REF}"
 RUN echo "KOHYA_CACHE_BUST=${KOHYA_CACHE_BUST}" >/dev/null && \
     if [ "${INSTALL_KOHYA:-1}" = "1" ]; then /opt/pilot/build/install-kohya.sh; fi

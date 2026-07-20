@@ -15,9 +15,6 @@ fi
   /opt/pilot/repos/kohya_ss \
   "${KOHYA_REF}"
 
-cd /opt/pilot/repos/kohya_ss
-/opt/pilot/build/patches/patch-kohya.sh /opt/pilot/repos/kohya_ss
-
 ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt
 
 req="requirements_runpod.txt"
