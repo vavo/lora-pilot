@@ -36,6 +36,7 @@ docs/_build/
 .envrc
 .venv
 .venv/
+.venv*/
 env/
 venv/
 ENV/
@@ -51,6 +52,10 @@ __pypackages__/
 pip-log.txt
 pip-delete-this-directory.txt
 workspace/
+models/
+datasets/
+outputs/
+.rcs/
 instance/
 .webassets-cache
 .scrapy
