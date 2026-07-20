@@ -51,6 +51,28 @@ class TagPilotDatasetApiTests(unittest.TestCase):
         self.assertEqual(files["photo.jpg"]["b64"], base64.b64encode(image_bytes).decode("utf-8"))
         self.assertEqual(base64.b64decode(files["photo.txt"]["b64"]).decode("utf-8"), "sample, tag")
 
+    def test_tagpilot_load_pagination(self):
+        dataset_dir = portal_app._DATASET_ROOT / "1_sample"
+        dataset_dir.mkdir(parents=True)
+        (dataset_dir / "a.jpg").write_bytes(b"1")
+        (dataset_dir / "b.jpg").write_bytes(b"2")
+        (dataset_dir / "c.txt").write_text("tag", encoding="utf-8")
+        (dataset_dir / "d.txt").write_text("meta", encoding="utf-8")
+
+        payload = portal_app.tagpilot_load("sample", offset=1, limit=2)
+        payload_all = portal_app.tagpilot_load("sample", offset=0, limit=0)
+
+        self.assertEqual(payload["name"], "1_sample")
+        self.assertEqual([item["name"] for item in payload["files"]], ["b.jpg", "c.txt"])
+        self.assertEqual(payload["offset"], 1)
+        self.assertEqual(payload["limit"], 2)
+        self.assertEqual(payload["returned"], 2)
+        self.assertEqual(payload["total"], 4)
+
+        self.assertEqual(payload_all["returned"], 4)
+        self.assertEqual(payload_all["total"], 4)
+        self.assertEqual(len(payload_all["files"]), 4)
+
     def test_tagpilot_load_resolves_exact_listed_dataset_name(self):
         dataset_dir = portal_app._DATASET_ROOT / "1_my dataset"
         dataset_dir.mkdir(parents=True)
@@ -95,6 +117,18 @@ class TagPilotDatasetApiTests(unittest.TestCase):
         files = [p.name for p in portal_app._iter_dataset_files(dataset_dir)]
 
         self.assertEqual(files, ["photo.jpg"])
+
+    def test_upload_dataset_rejects_oversized_archive(self):
+        original_limit = portal_app.DATASET_UPLOAD_MAX_BYTES
+        try:
+            portal_app.DATASET_UPLOAD_MAX_BYTES = 8
+            payload = portal_app.UploadFile(file=io.BytesIO(b"x" * 16), filename="oversized.zip")
+            with self.assertRaises(portal_app.HTTPException) as cm:
+                portal_app.upload_dataset(payload)
+            self.assertEqual(cm.exception.status_code, 413)
+            self.assertIn("upload exceeds limit", cm.exception.detail)
+        finally:
+            portal_app.DATASET_UPLOAD_MAX_BYTES = original_limit
 
     def test_dataset_file_iteration_skips_symlinked_directories(self):
         dataset_dir = portal_app._DATASET_ROOT / "1_sample"

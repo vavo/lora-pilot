@@ -57,6 +57,60 @@ CONFIG_DIR = WORKSPACE_ROOT / "config"
 MANIFEST = Path(os.environ.get("MODELS_MANIFEST", CONFIG_DIR / "models.manifest"))
 DEFAULT_MANIFEST = Path(os.environ.get("DEFAULT_MODELS_MANIFEST", "/opt/pilot/config/models.manifest.default"))
 SUPERVISORCTL = shutil.which("supervisorctl") or "/usr/bin/supervisorctl"
+ 
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
+    if origin.strip()
+]
+if not CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS = ["*"]
+
+def _parse_bool_env(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    raw = raw.strip().lower()
+    if not raw:
+        return default
+    return raw in {"1", "true", "yes", "on", "y"}
+
+
+def _parse_int_env(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, "").strip())
+    except Exception:
+        return default
+
+
+def _parse_float_env(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, "").strip())
+    except Exception:
+        return default
+
+
+def _parse_cookie_samesite(value: str) -> str:
+    lowered = (value or "").strip().lower()
+    return lowered if lowered in {"lax", "strict", "none"} else "lax"
+
+
+CORS_ALLOW_CREDENTIALS = _parse_bool_env(
+    "CORS_ALLOW_CREDENTIALS",
+    default=not (len(CORS_ALLOWED_ORIGINS) == 1 and CORS_ALLOWED_ORIGINS[0] == "*"),
+)
+CONTROLPILOT_COOKIE_SECURE = _parse_bool_env("CONTROLPILOT_COOKIE_SECURE", default=False)
+CONTROLPILOT_COOKIE_SAMESITE = _parse_cookie_samesite(os.environ.get("CONTROLPILOT_COOKIE_SAMESITE", "lax"))
+MODEL_PULL_TIMEOUT_SECONDS = max(1, _parse_int_env("MODEL_PULL_TIMEOUT_SECONDS", 1200))
+SERVICE_UPDATE_COMMAND_TIMEOUT_SECONDS = max(1, _parse_int_env("SERVICE_UPDATE_COMMAND_TIMEOUT_SECONDS", 1200))
+COPILOT_SIDECAR_TIMEOUT_SECONDS = max(1, _parse_int_env("COPILOT_SIDECAR_TIMEOUT_SECONDS", 60))
+DATASET_UPLOAD_MAX_BYTES = _parse_int_env("DATASET_UPLOAD_MAX_BYTES", 700 * 1024 * 1024)
+DATASET_ZIP_MAX_ENTRIES = max(1, _parse_int_env("DATASET_ZIP_MAX_ENTRIES", 10000))
+DATASET_ZIP_MAX_TOTAL_BYTES = max(1, _parse_int_env("DATASET_ZIP_MAX_TOTAL_BYTES", 4 * 1024 * 1024 * 1024))
+DATASET_ZIP_MAX_ENTRY_BYTES = max(1, _parse_int_env("DATASET_ZIP_MAX_ENTRY_BYTES", 2 * 1024 * 1024 * 1024))
+DATASET_ZIP_MAX_COMPRESSION_RATIO = _parse_float_env("DATASET_ZIP_MAX_COMPRESSION_RATIO", 100.0)
+_TAGPILOT_LOAD_DEFAULT_LIMIT = max(0, _parse_int_env("TAGPILOT_LOAD_DEFAULT_LIMIT", 0))
+_TAGPILOT_LOAD_MAX_LIMIT = max(1, _parse_int_env("TAGPILOT_LOAD_MAX_LIMIT", 1000))
 SERVICE_LOGS = {
     "jupyter": ("/workspace/logs/jupyter.out.log", "/workspace/logs/jupyter.err.log"),
     "code-server": ("/workspace/logs/code-server.out.log", "/workspace/logs/code-server.err.log"),
@@ -149,6 +203,25 @@ def _cleanup_model_pull_jobs(now: Optional[float] = None) -> None:
                 to_delete.append(name)
         for name in to_delete:
             _model_pull_jobs.pop(name, None)
+
+
+def _run_model_pull_command(cmd: list[str], timeout: int = MODEL_PULL_TIMEOUT_SECONDS) -> str:
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Timeout running model pull: {' '.join(cmd)}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Command not found: {cmd[0]}") from e
+    output = result.stdout or ""
+    if result.returncode != 0:
+        raise RuntimeError(output.strip() or f"Command failed ({result.returncode}): {' '.join(cmd)}")
+    return output
 
 
 def _model_pull_job_to_dict(job: ModelPullJob) -> dict:
@@ -346,6 +419,10 @@ class ControlPilotJupyterSettingsRequest(BaseModel):
 
 class TagPilotProviderKeyRequest(BaseModel):
     api_key: str = ""
+
+
+class HfTokenRequest(BaseModel):
+    token: Optional[str] = None
 
 
 class DiskUsage(BaseModel):
@@ -652,6 +729,20 @@ class DatasetEntry(BaseModel):
 
 class TrainPilotModelCheckRequest(BaseModel):
     toml_path: str = ""
+
+
+def _controlpilot_cookie_kwargs() -> dict[str, object]:
+    same_site = CONTROLPILOT_COOKIE_SAMESITE
+    secure = bool(CONTROLPILOT_COOKIE_SECURE)
+    if same_site == "none" and not secure:
+        # Browsers reject SameSite=None without Secure.
+        secure = True
+    return {
+        "httponly": True,
+        "secure": secure,
+        "samesite": same_site,
+        "path": "/",
+    }
 
 
 def _toml_find_first_str(data, key: str) -> Optional[str]:
@@ -983,8 +1074,8 @@ MEDIAPILOT_APP = _load_mediapilot_app()
 app = FastAPI(title="LoRA Pilot Portal", docs_url=None, redoc_url=None)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -1118,17 +1209,26 @@ def list_datasets():
 async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[dict] = None):
     url = COPILOT_SIDECAR_URL.rstrip("/") + path
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=float(COPILOT_SIDECAR_TIMEOUT_SECONDS)) as client:
             res = await client.request(method, url, json=json_body)
         ct = res.headers.get("content-type", "")
         if "application/json" in ct:
             try:
-                return JSONResponse(status_code=res.status_code, content=res.json())
+                payload = res.json()
             except Exception:
-                return JSONResponse(status_code=500, content={"detail": "invalid JSON from copilot sidecar"})
-        return JSONResponse(status_code=res.status_code, content={"detail": res.text})
-    except httpx.ConnectError:
-        raise HTTPException(status_code=503, detail="copilot sidecar not reachable")
+                return JSONResponse(status_code=502, content={"detail": "Invalid JSON response from copilot sidecar"})
+            return JSONResponse(status_code=res.status_code, content=payload)
+        if res.status_code >= 400:
+            body = (res.text or "").strip()
+            if not body:
+                body = f"copilot sidecar returned {res.status_code}"
+            return JSONResponse(status_code=res.status_code, content={"detail": body})
+        return JSONResponse(
+            status_code=res.status_code,
+            content={"detail": res.text if res.text else None},
+        )
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="copilot sidecar request failed")
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="copilot sidecar timed out")
 
@@ -1226,10 +1326,38 @@ def _safe_zip_member_path(name: str) -> PurePosixPath:
     return path
 
 
-def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
+def _stream_upload_to_path(upload: UploadFile, destination: Path, *, max_bytes: int) -> int:
+    total = 0
+    with destination.open("wb") as out:
+        while True:
+            chunk = upload.file.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > max_bytes:
+                raise HTTPException(status_code=413, detail=f"upload exceeds limit ({max_bytes} bytes)")
+            out.write(chunk)
+    return total
+
+
+def _safe_extract_zip(
+    zip_path: Path,
+    dest_dir: Path,
+    *,
+    max_entries: int = DATASET_ZIP_MAX_ENTRIES,
+    max_total_bytes: int = DATASET_ZIP_MAX_TOTAL_BYTES,
+    max_entry_bytes: int = DATASET_ZIP_MAX_ENTRY_BYTES,
+    max_ratio: float = DATASET_ZIP_MAX_COMPRESSION_RATIO,
+) -> None:
     dest_dir = _resolve_under_root(dest_dir, dest_dir)
+    total_uncompressed = 0
+    entries_seen = 0
     with zipfile.ZipFile(zip_path) as zf:
         for info in zf.infolist():
+            entries_seen += 1
+            if entries_seen > max_entries:
+                raise ValueError(f"zip has too many entries (max {max_entries})")
+
             if not info.filename:
                 continue
             if _zipinfo_is_symlink(info):
@@ -1237,6 +1365,17 @@ def _safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
             rel_path = _safe_zip_member_path(info.filename)
             if not rel_path.parts:
                 continue
+            if not info.is_dir():
+                if info.file_size <= 0:
+                    # Keep directory and explicit zero-byte entries out of ratio math.
+                    pass
+                elif info.file_size > max_entry_bytes:
+                    raise ValueError(f"zip entry too large: {info.filename}")
+                elif info.compress_size > 0 and (info.file_size / max(1, info.compress_size)) > max_ratio:
+                    raise ValueError(f"zip entry compression ratio too high: {info.filename}")
+                total_uncompressed += info.file_size
+                if total_uncompressed > max_total_bytes:
+                    raise ValueError(f"extracted zip would exceed {max_total_bytes} bytes")
             target = _resolve_under_root(dest_dir, dest_dir / Path(*rel_path.parts))
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
@@ -1446,14 +1585,15 @@ def upload_dataset(file: UploadFile = File(...)):
     fname = fname_stem + ".zip"
     dest = _safe_dataset_zip_path(zip_dir / fname)
     try:
-        with dest.open("wb") as f:
-            shutil.copyfileobj(file.file, f)
+        _stream_upload_to_path(file, dest, max_bytes=DATASET_UPLOAD_MAX_BYTES)
         # Extract into /workspace/datasets/<cleaned_name>
         extract_dir = _safe_dataset_path(target_dir / f"1_{fname_stem}")
         if extract_dir.exists():
             shutil.rmtree(extract_dir, ignore_errors=True)
         extract_dir.mkdir(parents=True, exist_ok=True)
         _safe_extract_zip(dest, extract_dir)
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to upload dataset")
     _invalidate_dataset_list_cache()
@@ -1524,14 +1664,28 @@ def rename_dataset(name: str, payload: dict):
 
 
 @app.get("/api/tagpilot/load")
-def tagpilot_load(name: str):
+def tagpilot_load(name: str, offset: int = 0, limit: int = _TAGPILOT_LOAD_DEFAULT_LIMIT):
     target = _resolve_existing_dataset_dir(name)
     if not target.exists() or not target.is_dir():
         raise HTTPException(status_code=404, detail="Dataset not found")
     allowed = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".txt", ".caption"}
+    if offset < 0:
+        raise HTTPException(status_code=400, detail="offset must be >= 0")
+    if limit < 0:
+        raise HTTPException(status_code=400, detail="limit must be >= 0")
+    if limit > 0:
+        limit = min(limit, _TAGPILOT_LOAD_MAX_LIMIT)
     files = []
+    total = 0
+    selected = 0
     for p in _iter_dataset_files(target):
         if p.suffix.lower() not in allowed:
+            continue
+        if total < offset:
+            total += 1
+            continue
+        if limit > 0 and selected >= limit:
+            total += 1
             continue
         rel = p.relative_to(target).as_posix()
         mime = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
@@ -1541,7 +1695,16 @@ def tagpilot_load(name: str):
         except Exception:
             continue
         files.append({"name": rel, "mime": mime, "b64": b64})
-    return {"name": target.name, "files": files}
+        selected += 1
+        total += 1
+    return {
+        "name": target.name,
+        "files": files,
+        "offset": offset,
+        "limit": limit,
+        "total": total,
+        "returned": len(files),
+    }
 
 
 @app.get("/api/tagpilot/providers")
@@ -1609,9 +1772,10 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
     fname = _dataset_zip_stems(name)[0] + ".zip"
     dest = _safe_dataset_zip_path(zip_dir / fname)
     try:
-        with dest.open("wb") as f:
-            shutil.copyfileobj(file.file, f)
+        _stream_upload_to_path(file, dest, max_bytes=DATASET_UPLOAD_MAX_BYTES)
         _safe_extract_zip(dest, target)
+    except HTTPException:
+        raise
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to save dataset archive")
     _invalidate_dataset_list_cache()
@@ -1677,21 +1841,13 @@ def pull_model(name: str):
     model_name = _resolve_model_name(name, entries)
     cmd = ["/opt/pilot/get-models.sh", "pull", model_name]
     print(f"[models] pull start name={model_name} cmd={' '.join(cmd)}", file=sys.stderr)
-    # Use existing CLI for consistency
     try:
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            check=True,
-        )
-        output = result.stdout or ""
+        output = _run_model_pull_command(cmd)
         tail = output[-4000:] if len(output) > 4000 else output
         print(f"[models] pull ok name={name} output_tail={tail!r}", file=sys.stderr)
         return {"status": "ok", "output": output}
-    except subprocess.CalledProcessError as e:
-        output = e.stdout or str(e)
+    except Exception as e:
+        output = str(e)
         tail = output[-4000:] if len(output) > 4000 else output
         print(f"[models] pull failed name={name} output_tail={tail!r}", file=sys.stderr)
         raise HTTPException(status_code=500, detail="Model pull failed")
@@ -1748,17 +1904,15 @@ def delete_model(name: str):
 
 
 @app.post("/api/hf-token")
-async def set_hf_token(request: Request, token: Optional[str] = None):
-    # Accept token either as query param or JSON body {token:"..."}
-    if token is None:
-        try:
-            payload = await request.json()
-            token = payload.get("token") if isinstance(payload, dict) else None
-        except Exception:
-            token = None
-    token = "" if token is None else str(token).strip()
-    _write_secrets_env_vars({"HF_TOKEN": token or None})
-    return {"status": "ok", "set": bool(token)}
+async def set_hf_token(payload: Optional[HfTokenRequest] = None, token: Optional[str] = None):
+    # Keep both request-body and legacy query-param support for callers.
+    token_from_payload = payload.token if payload is not None else None
+    value = token if token is not None else token_from_payload
+    if value is None:
+        value = ""
+    token_value = str(value).strip()
+    _write_secrets_env_vars({"HF_TOKEN": token_value or None})
+    return {"status": "ok", "set": bool(token_value)}
 
 
 @app.get("/api/hf-token")
@@ -1816,10 +1970,7 @@ def controlpilot_login(payload: ControlPilotLoginRequest):
     response.set_cookie(
         CONTROLPILOT_SESSION_COOKIE,
         _controlpilot_session_value(settings),
-        httponly=True,
-        samesite="lax",
-        secure=False,
-        path="/",
+        **_controlpilot_cookie_kwargs(),
     )
     return response
 
@@ -1850,10 +2001,7 @@ def set_controlpilot_password(request: Request, payload: ControlPilotPasswordReq
         response.set_cookie(
             CONTROLPILOT_SESSION_COOKIE,
             _controlpilot_session_value(settings),
-            httponly=True,
-            samesite="lax",
-            secure=False,
-            path="/",
+            **_controlpilot_cookie_kwargs(),
         )
     else:
         response.delete_cookie(CONTROLPILOT_SESSION_COOKIE, path="/")
@@ -1907,11 +2055,11 @@ def set_controlpilot_jupyter_settings(payload: ControlPilotJupyterSettingsReques
     if token is not None:
         updates["JUPYTER_TOKEN"] = token or None
     _write_secrets_env_vars(updates)
-    if not SUPERVISORCTL:
-        raise HTTPException(status_code=500, detail="supervisorctl not found")
     try:
-        subprocess.check_output([SUPERVISORCTL, "restart", "jupyter"], text=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
+        _run_supervisorctl("restart", "jupyter", timeout=30)
+    except HTTPException:
+        raise
+    except Exception:
         logger.exception("Failed to restart jupyter via supervisorctl")
         raise HTTPException(status_code=500, detail="Failed to restart Jupyter")
     return {
@@ -1935,11 +2083,11 @@ def set_copilot_token(payload: dict):
 
 @app.post("/api/settings/copilot/restart")
 def restart_copilot_sidecar():
-    if not SUPERVISORCTL:
-        raise HTTPException(status_code=500, detail="supervisorctl not found")
     try:
-        subprocess.check_output([SUPERVISORCTL, "restart", "copilot"], text=True, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError:
+        _run_supervisorctl("restart", "copilot", timeout=30)
+    except HTTPException:
+        raise
+    except Exception:
         logger.exception("Failed to restart copilot via supervisorctl")
         raise HTTPException(status_code=500, detail="Failed to restart Copilot sidecar")
     return {"status": "ok"}
@@ -1971,6 +2119,15 @@ def _run_cmd_capture(cmd: list[str], timeout: int = 30) -> str:
     if result.returncode != 0:
         raise RuntimeError(out or f"Command failed ({result.returncode}): {' '.join(cmd)}")
     return out
+
+
+def _run_supervisorctl(action: str, name: Optional[str] = None, *, timeout: int = 20) -> str:
+    if not SUPERVISORCTL:
+        raise HTTPException(status_code=500, detail="supervisorctl not found")
+    cmd = [SUPERVISORCTL, action]
+    if name:
+        cmd.append(name)
+    return _run_cmd_capture(cmd, timeout=timeout)
 
 
 def _default_service_updates_config() -> dict:
@@ -2282,38 +2439,24 @@ def _service_update_commands(name: str, target_version: Optional[str]) -> tuple[
 def _run_service_update_cmd(job: ServiceUpdateJob, cmd: list[str]) -> None:
     _update_service_update_job(job, f"$ {' '.join(cmd)}")
     try:
-        proc = subprocess.Popen(
+        result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            bufsize=0,
+            text=True,
+            timeout=SERVICE_UPDATE_COMMAND_TIMEOUT_SECONDS,
         )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Update command timed out ({SERVICE_UPDATE_COMMAND_TIMEOUT_SECONDS}s): {' '.join(cmd)}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Command not found: {cmd[0]}") from e
     except Exception as e:
-        raise RuntimeError(f"Failed to start command {' '.join(cmd)}: {str(e)}") from e
-
-    job.pid = proc.pid
+        raise RuntimeError(f"Failed to run command {' '.join(cmd)}: {str(e)}") from e
     job.updated_at = time.time()
-    assert proc.stdout is not None
-    buf = ""
-    for chunk in iter(lambda: proc.stdout.read(4096), b""):
-        text = chunk.decode("utf-8", errors="replace")
-        buf += text
-        while True:
-            idx_n = buf.find("\n")
-            idx_r = buf.find("\r")
-            idxs = [idx for idx in (idx_n, idx_r) if idx != -1]
-            if not idxs:
-                break
-            idx = min(idxs)
-            seg = buf[:idx]
-            buf = buf[idx + 1 :]
-            _update_service_update_job(job, seg)
-    if buf.strip():
-        _update_service_update_job(job, buf)
-    proc.stdout.close()
-    rc = proc.wait()
-    if rc != 0:
-        raise RuntimeError(f"Command failed ({rc}): {' '.join(cmd)}")
+    for line in (result.stdout or "").splitlines():
+        _update_service_update_job(job, line)
+    if result.returncode != 0:
+        raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}")
 
 
 def _run_service_update_job(job: ServiceUpdateJob) -> None:
@@ -2516,7 +2659,7 @@ def _set_service_autostart(name: str, enabled: bool) -> Optional[bool]:
 
     # Best effort: ask supervisor to re-read changed config.
     try:
-        subprocess.check_output([SUPERVISORCTL, "reread"], text=True, stderr=subprocess.STDOUT)
+        _run_supervisorctl("reread", timeout=20)
     except Exception:
         # Autostart flag is primarily for next boot; ignore reread failures.
         pass
@@ -2545,12 +2688,12 @@ def control_service(name: str, action: str):
         raise HTTPException(status_code=404, detail="Unknown service")
     if action not in ("start", "stop", "restart"):
         raise HTTPException(status_code=400, detail="Bad action")
-    if not SUPERVISORCTL:
-        raise HTTPException(status_code=500, detail="supervisorctl not found")
     try:
-        subprocess.check_output([SUPERVISORCTL, action, name], text=True, stderr=subprocess.STDOUT)
+        _run_supervisorctl(action, name, timeout=30)
         return {"status": "ok"}
-    except subprocess.CalledProcessError:
+    except HTTPException:
+        raise
+    except Exception:
         logger.exception("Failed to %s service %s via supervisorctl", action, name)
         raise HTTPException(status_code=500, detail=f"Failed to {action} service")
 

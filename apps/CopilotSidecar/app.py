@@ -16,7 +16,19 @@ DEFAULT_XDG_CONFIG_HOME = Path(os.environ.get("COPILOT_XDG_CONFIG_HOME", "/works
 DEFAULT_CWD = Path(os.environ.get("COPILOT_CWD", "/workspace"))
 WORKSPACE_ROOT = Path("/workspace").resolve()
 DEFAULT_PORT = int(os.environ.get("COPILOT_SIDECAR_PORT", "7879"))
-DEFAULT_TIMEOUT_SECONDS = int(os.environ.get("COPILOT_TIMEOUT_SECONDS", "1800"))
+
+
+def _parse_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except Exception:
+        return default
+
+
+DEFAULT_TIMEOUT_SECONDS = _parse_int_env("COPILOT_TIMEOUT_SECONDS", 1800)
 
 
 def _workspace_rooted_path(raw: Optional[str], *, default: Path) -> Path:
@@ -224,6 +236,8 @@ def chat(req: ChatRequest):
             check=False,
             timeout=timeout,
         )
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="copilot CLI not found in PATH")
     except subprocess.TimeoutExpired as e:
         dt = time.time() - t0
         return ChatResponse(
@@ -234,7 +248,6 @@ def chat(req: ChatRequest):
             stderr=(e.stderr or "") + f"\nTimed out after {timeout}s\n",
             command=cmd,
         )
-
     dt = time.time() - t0
     return ChatResponse(
         ok=p.returncode == 0,

@@ -75,11 +75,14 @@ def shutdown_worker():
                 cmd, _mode, _pod_id = _runpod_shutdown_command()
                 if cmd:
                     try:
-                        subprocess.run(cmd, check=False)
+                        subprocess.run(cmd, check=False, timeout=60)
                     except FileNotFoundError:
-                        os.system("shutdown -h now")
+                        subprocess.run(["shutdown", "-h", "now"], check=False, timeout=10)
                 else:
-                    os.system("shutdown -h now")
+                    try:
+                        subprocess.run(["shutdown", "-h", "now"], check=False, timeout=10)
+                    except Exception:
+                        pass
                 break
 
             # Sleep for a short time, then check again

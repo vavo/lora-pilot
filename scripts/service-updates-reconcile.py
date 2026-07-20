@@ -12,31 +12,52 @@ SERVICE_UPDATE_SPECS: dict[str, dict[str, str]] = {
     "invoke": {"kind": "pip", "python_bin": "/opt/venvs/invoke/bin/python", "package": "invokeai"},
 }
 IMAGE_MANAGED_SERVICES = {"comfy", "kohya", "diffpipe", "ai-toolkit"}
+RUN_CMD_TIMEOUT_SECONDS = 45
+STREAM_CMD_TIMEOUT_SECONDS = 180
 
 
-def run_cmd_capture(cmd: list[str], timeout: int = 45) -> str:
-    result = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        timeout=timeout,
-    )
+def run_cmd_capture(cmd: list[str], timeout: int = RUN_CMD_TIMEOUT_SECONDS) -> str:
+    try:
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"Command timed out ({timeout}s): {' '.join(cmd)}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Command not found: {cmd[0]}") from e
     out = (result.stdout or "").strip()
     if result.returncode != 0:
         raise RuntimeError(out or f"Command failed ({result.returncode}): {' '.join(cmd)}")
     return out
 
 
-def run_cmd_stream(cmd: list[str]) -> None:
+def run_cmd_stream(cmd: list[str], timeout: int = STREAM_CMD_TIMEOUT_SECONDS) -> None:
     print(f"$ {' '.join(cmd)}", flush=True)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    assert proc.stdout is not None
-    for line in proc.stdout:
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Command not found: {cmd[0]}") from e
+    except Exception as e:
+        raise RuntimeError(f"Failed to start command {' '.join(cmd)}: {e}") from e
+
+    try:
+        stdout, _ = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        raise RuntimeError(f"Command timed out ({timeout}s): {' '.join(cmd)}")
+    except Exception:
+        proc.kill()
+        raise
+
+    for line in (stdout or "").splitlines():
         line = line.rstrip("\n")
         if line:
             print(line, flush=True)
-    proc.stdout.close()
     rc = proc.wait()
     if rc != 0:
         raise RuntimeError(f"Command failed ({rc}): {' '.join(cmd)}")
