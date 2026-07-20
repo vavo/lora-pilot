@@ -76,9 +76,42 @@ supervisorctl status copilot
 # Sidecar status endpoint
 curl -s http://127.0.0.1:7879/status
 
+# Sidecar health check
+curl -s http://127.0.0.1:7879/health
+
+# Send a quick chat probe
+curl -s -X POST http://127.0.0.1:7879/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt":"What tools are available?","allow_all_urls":false,"timeout_seconds":30}'
+
 # ControlPilot bridge status
 curl -s http://127.0.0.1:7878/api/copilot/status
 ```
+
+## API Surface Details
+
+`POST /chat` accepts this payload:
+
+```json
+{
+  "prompt": "string",
+  "cwd": "/workspace/path/for/file-access",
+  "allow_all_tools": true,
+  "allow_all_paths": true,
+  "allow_all_urls": false,
+  "timeout_seconds": 1800
+}
+```
+
+Behavior notes:
+
+- `cwd` is validated to stay under `/workspace` before command execution.
+- If `copilot` is missing, requests return HTTP `503`.
+- If a command exceeds `timeout_seconds`, the sidecar returns timeout response with `returncode: 124`.
+- `GET /status` includes auth-availability indicators:
+  - `env_has_token`
+  - `config_has_token_like_field`
+- `GET /health` is a simple availability probe.
 
 ## Related
 
@@ -95,5 +128,4 @@ curl -s http://127.0.0.1:7878/api/copilot/status
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

@@ -52,10 +52,13 @@ Notes:
 | `DIFFPIPE_PORT` | TensorBoard port | `4444` |
 | `DIFFPIPE_CONFIG` | Training config path for service script | empty |
 | `DIFFPIPE_LOGDIR` | TensorBoard log directory | `/workspace/logs/diffusion-pipe` |
+| `DIFFPIPE_APP_DIR` | Workspace override `train.py` root used by API | `/workspace/apps/diffusion-pipe` |
+| `DIFFPIPE_REPO_DIR` | Fallback `train.py` root used by API | `/opt/pilot/repos/diffusion-pipe` |
 | `KOHYA_TENSORBOARD_LOGDIR` | Kohya symlink source for shared TensorBoard mount | `/workspace/outputs` |
 | `AI_TOOLKIT_TENSORBOARD_LOGDIR` | AI Toolkit symlink source for shared TensorBoard mount | `/workspace/outputs/ai-toolkit` |
 | `TENSORBOARD_ROOT_LOGDIR` | Shared TensorBoard mount root | `/workspace/logs/tensorboard` |
 | `DIFFPIPE_NUM_GPUS` | Passed to `deepspeed --num_gpus` | `1` |
+| `NUM_GPUS` | Deepspeed helper used by API flow (same purpose) | `1` |
 | `DIFFPIPE_EXTRA_ARGS` | Extra CLI args appended to train command | empty |
 | `DIFFPIPE_TENSORBOARD` | Start TensorBoard sidecar in train mode | `1` |
 | `NCCL_P2P_DISABLE` | NCCL setting | `1` |
@@ -77,6 +80,22 @@ Notes:
 - `vae_path`
 - `llm_path`
 - `clip_path`
+
+`DIFFPIPE_CONFIG` and model file resolution are path-validated:
+- `train.py` resolves to `${DIFFPIPE_APP_DIR}` first (if `train.py` exists), then `${DIFFPIPE_REPO_DIR}`.
+- Model/config paths must stay in approved workspace boundaries.
+- API is intentionally single-run; only one training process is allowed at a time.
+
+### ControlPilot API sanity checks
+
+```bash
+curl -s http://127.0.0.1:7878/dpipe/train/validate \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"transformer_path":"/workspace/models/transformer.safetensors","vae_path":"/workspace/models/vae.safetensors","llm_path":"/workspace/models/llm.safetensors","clip_path":"/workspace/models/clip.safetensors","dataset_config_path":"/workspace/configs/dataset_config.toml","output_dir":"/workspace/outputs"}'
+
+curl -s http://127.0.0.1:7878/dpipe/train/logs?limit=50
+```
 
 ## 🧰 Operational Commands
 
@@ -106,6 +125,12 @@ curl -s "http://localhost:7878/dpipe/train/logs?limit=200"
 - Stop current run first:
 ```bash
 curl -s -X POST http://localhost:7878/dpipe/train/stop
+```
+
+### Diffusion Pipe exits right after startup
+- Confirm startup logs for training script or TensorBoard init errors:
+```bash
+docker exec lora-pilot tail -n 260 /workspace/logs/diffpipe.err.log
 ```
 
 ### TensorBoard starts but shows empty runs

@@ -43,9 +43,14 @@ Startup behavior in `scripts/invoke.sh`:
 | Variable | Purpose | Default |
 |---|---|---|
 | `INVOKE_PORT` | Service port | `9090` |
+| `WORKSPACE_ROOT` | Shared root for app/models/outputs paths | `/workspace` |
 | `INVOKEAI_HOST` | Bind host for Invoke runtime | `0.0.0.0` |
 | `INVOKEAI_PORT` | Runtime port passed to Invoke | value of `INVOKE_PORT` |
-| `WORKSPACE_ROOT` | Root for app/models/outputs paths | `/workspace` |
+
+`scripts/invoke.sh` also sets:
+- `INVOKEAI_ROOT` as `${WORKSPACE_ROOT}/apps/invoke`
+- `MODELS_ROOT` as `${WORKSPACE_ROOT}/models`
+- `OUT_DIR` as `${WORKSPACE_ROOT}/outputs/invoke`
 
 ## 🧰 Typical Workflow
 
@@ -78,6 +83,10 @@ docker exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
 docker exec lora-pilot supervisorctl status invoke
 ```
 - Check port mapping in `docker-compose.yml` (`${INVOKE_PORT}:${INVOKE_PORT}`).
+- Confirm startup logs for webserver bind/runtime startup:
+```bash
+docker exec lora-pilot tail -n 120 /workspace/logs/invoke.out.log
+```
 
 ### Models do not show up in InvokeAI
 - Confirm shared path exists:
@@ -86,12 +95,13 @@ ls -la /workspace/models
 ls -la /workspace/apps/invoke/models
 ```
 - `apps/invoke/models` should resolve to `/workspace/models` (config or symlink).
+  - If path does not exist, restart service once after first model import attempt.
 
 ### Generated images are missing in MediaPilot
 - Verify MediaPilot env points to Invoke outputs:
 ```bash
 grep MEDIAPILOT_INVOKEAI_DIR /workspace/apps/MediaPilot/.env
-```
+``` 
 - Expected default: `/workspace/outputs/invoke`.
 
 ### Startup errors after version updates
@@ -117,4 +127,3 @@ docker exec lora-pilot tail -n 300 /workspace/logs/invoke.err.log
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
