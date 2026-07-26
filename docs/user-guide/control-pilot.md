@@ -225,10 +225,16 @@ GET /api/models               # List models
 POST /api/models/pull         # Download model
 DELETE /api/models/{name}     # Remove model
 
-# Training management
-GET /api/training/jobs        # List training jobs
-POST /api/training/start      # Start training
-GET /api/training/status      # Training status
+# TrainPilot management
+POST /api/trainpilot/start    # Start guided Kohya training
+POST /api/trainpilot/stop     # Stop guided Kohya training
+GET  /api/trainpilot/logs     # Read guided training logs
+
+# Diffusion Pipe management
+POST /dpipe/train/validate    # Validate a Diffusion Pipe request
+POST /dpipe/train/start       # Start Diffusion Pipe training
+POST /dpipe/train/stop        # Stop Diffusion Pipe training
+GET  /dpipe/train/logs        # Read Diffusion Pipe logs
 ```
 
 #### API Authentication

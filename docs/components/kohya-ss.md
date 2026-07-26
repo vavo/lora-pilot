@@ -1,6 +1,9 @@
 # Kohya SS
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
+
+On RunPod, run the operational commands directly in the pod. Docker commands
+apply only when LoRA Pilot is running under Docker Compose on another host.
 
 Kohya SS is a battle-tested LoRA training interface that provides extensive configuration options and broad model support. It's one of the most popular tools for training custom Stable Diffusion models.
 
@@ -18,7 +21,7 @@ Kohya SS offers:
 
 1. **Via ControlPilot**: Services tab → Click "Open" next to Kohya SS
 2. **Direct URL**: http://localhost:6666
-3. **CLI**: `docker exec lora-pilot supervisorctl status kohya`
+3. **CLI**: `supervisorctl status kohya`
 
 ### First Training
 
@@ -290,7 +293,7 @@ cache_latents_to_disk: true
 2. Enable gradient checkpointing
 3. Use mixed precision (fp16)
 4. Reduce network dim
-5. Clear GPU cache: docker exec lora-pilot python -c "import torch; torch.cuda.empty_cache()"
+5. Clear GPU cache: python -c "import torch; torch.cuda.empty_cache()"
 ```
 
 #### Training Not Progressing
@@ -307,7 +310,7 @@ cache_latents_to_disk: true
 Kohya SDXL training still imports `CLIPFeatureExtractor`. If a running pod has the shared core venv on Transformers 5.x, repair it and restart Kohya:
 
 ```bash
-docker exec lora-pilot bash -lc '/opt/venvs/core/bin/pip install --quiet --no-cache-dir "transformers==4.57.6" && supervisorctl restart kohya'
+/bin/bash -lc '/opt/venvs/core/bin/pip install --quiet --no-cache-dir "transformers==4.57.6" && supervisorctl restart kohya'
 ```
 
 #### Poor Quality Results
@@ -332,25 +335,25 @@ Kohya SS writes TensorBoard events under `/workspace/outputs` (recursive scan). 
 #### Check Training Status
 ```bash
 # Check if Kohya is running
-docker exec lora-pilot supervisorctl status kohya
+supervisorctl status kohya
 
 # View training logs
-docker exec lora-pilot tail -f /workspace/outputs/my_lora/_logs/train.log
+tail -f /workspace/outputs/my_lora/_logs/train.log
 
 # Check GPU usage
-docker exec lora-pilot nvidia-smi
+nvidia-smi
 ```
 
 #### Validate Dataset
 ```bash
 # Check dataset structure
-docker exec lora-pilot ls -la /workspace/datasets/images/1_my_dataset
+ls -la /workspace/datasets/images/1_my_dataset
 
 # Check image count
-docker exec lora-pilot find /workspace/datasets/images/1_my_dataset -name "*.jpg" | wc -l
+find /workspace/datasets/images/1_my_dataset -name "*.jpg" | wc -l
 
 # Check captions
-docker exec lora-pilot find /workspace/datasets/images/1_my_dataset -name "*.txt" | wc -l
+find /workspace/datasets/images/1_my_dataset -name "*.txt" | wc -l
 ```
 
 ##  Advanced Features

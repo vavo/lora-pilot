@@ -1,6 +1,11 @@
 # Components
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
+
+RunPod pods already contain the LoRA Pilot runtime. Run `supervisorctl`,
+`tail`, and other operational commands directly in the pod; Docker is only
+available on a separate Docker Compose host. For Compose, use
+`docker compose exec lora-pilot ...`.
 
 This section is the map of LoRA Pilot components. Keep this page as an index; use component pages for actual workflows and settings.
 
@@ -38,12 +43,12 @@ All components are wired to the same workspace:
 
 ```bash
 # Service state
-docker exec lora-pilot supervisorctl status
+supervisorctl status
 
 # Logs
-docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.out.log
-docker exec lora-pilot tail -n 200 /workspace/logs/comfy.out.log
-docker exec lora-pilot tail -n 200 /workspace/logs/invoke.out.log
+tail -n 200 /workspace/logs/controlpilot.out.log
+tail -n 200 /workspace/logs/comfy.out.log
+tail -n 200 /workspace/logs/invoke.out.log
 ```
 
 ## Related
@@ -59,5 +64,3 @@ docker exec lora-pilot tail -n 200 /workspace/logs/invoke.out.log
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

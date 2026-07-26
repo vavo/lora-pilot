@@ -1,6 +1,9 @@
 # Diffusion Pipe
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
+
+On RunPod, run the operational commands directly in the pod. Docker commands
+apply only when LoRA Pilot is running under Docker Compose on another host.
 
 Diffusion Pipe in LoRA Pilot is an experimental DeepSpeed-based training path with TensorBoard baked in. It is exposed as the `diffpipe` supervisor service and as the `Dpipe` training tab in ControlPilot.
 
@@ -101,11 +104,11 @@ curl -s http://127.0.0.1:7878/dpipe/train/logs?limit=50
 
 ```bash
 # Service status
-docker exec lora-pilot supervisorctl status diffpipe
+supervisorctl status diffpipe
 
 # Follow service logs (TensorBoard/service bootstrap)
-docker exec lora-pilot tail -n 200 /workspace/logs/diffpipe.out.log
-docker exec lora-pilot tail -n 200 /workspace/logs/diffpipe.err.log
+tail -n 200 /workspace/logs/diffpipe.out.log
+tail -n 200 /workspace/logs/diffpipe.err.log
 
 # Hit training logs from API
 curl -s "http://localhost:7878/dpipe/train/logs?limit=200"
@@ -130,7 +133,7 @@ curl -s -X POST http://localhost:7878/dpipe/train/stop
 ### Diffusion Pipe exits right after startup
 - Confirm startup logs for training script or TensorBoard init errors:
 ```bash
-docker exec lora-pilot tail -n 260 /workspace/logs/diffpipe.err.log
+tail -n 260 /workspace/logs/diffpipe.err.log
 ```
 
 ### TensorBoard starts but shows empty runs

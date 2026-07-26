@@ -1,6 +1,9 @@
 # AI Toolkit
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-26_
+
+On RunPod, run the operational commands directly in the pod. Docker commands
+apply only when LoRA Pilot is running under Docker Compose on another host.
 
 AI Toolkit is a modern training stack for diffusion models, specifically designed for training FLUX.1 and other latest models. It provides a Next.js interface with Gradio backend and integrates seamlessly with the LoRA Pilot workspace.
 
@@ -20,7 +23,7 @@ AI Toolkit offers:
 
 1. **Via ControlPilot**: Services tab → Click "Open" next to AI Toolkit
 2. **Direct URL**: http://localhost:8675
-3. **CLI**: `docker exec lora-pilot supervisorctl status ai-toolkit`
+3. **CLI**: `supervisorctl status ai-toolkit`
 
 ### First Training
 
@@ -327,7 +330,7 @@ AI Toolkit also provides CLI access:
 
 ```bash
 # Access container shell
-docker exec -it lora-pilot bash
+bash
 
 # Run training with config file
 cd /opt/pilot/repos/ai-toolkit
@@ -401,10 +404,10 @@ AI Toolkit writes TensorBoard outputs under `/workspace/outputs/ai-toolkit`.
 #### Check Service Status
 ```bash
 # Check AI Toolkit service
-docker exec lora-pilot supervisorctl status ai-toolkit
+supervisorctl status ai-toolkit
 
 # View logs
-docker exec lora-pilot supervisorctl tail -100 ai-toolkit
+supervisorctl tail -100 ai-toolkit
 ```
 
 #### Validate Configuration

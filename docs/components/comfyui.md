@@ -1,6 +1,10 @@
 # ComfyUI
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
+
+On RunPod, run the shell commands below directly in the pod. Docker commands
+are for a separate Docker Compose host; the Supervisor service name is
+`comfy`, not `comfyui`.
 
 ComfyUI is the node-based inference workbench in LoRA Pilot. It shows the generation pipeline directly: models load on the left, prompts and conditioning feed the middle, samplers turn latent noise into structure, and output nodes decode and save the result.
 
@@ -18,7 +22,7 @@ The practical path is to learn one small graph first, save it, then add complexi
 
 1. **Via ControlPilot**: Services tab → Click "Open" next to ComfyUI
 2. **Direct URL**: http://localhost:5555
-3. **CLI**: `docker exec lora-pilot supervisorctl status comfyui`
+3. **CLI**: `supervisorctl status comfy`
 
 ![ComfyUI Embedded in ControlPilot](../assets/images/controlpilot/controlpilot-comfyui.png)
 
@@ -207,12 +211,12 @@ Imported workflows have more dependencies than their JSON file. A workflow may a
 #### Manual Installation
 ```bash
 # Access container shell
-docker exec -it lora-pilot bash
+bash
 
 # Install custom node
 cd /workspace/apps/comfy/custom_nodes
 git clone <custom-node-repo-url>
-docker-compose restart comfyui
+supervisorctl restart comfy
 ```
 
 ##  Performance Optimization
@@ -413,7 +417,7 @@ LoadImage → VAEEncode → KSampler ↗
 ls /workspace/models/stable-diffusion/
 
 # Download missing model
-docker exec lora-pilot models pull sdxl-base
+models pull sdxl-base
 ```
 
 #### Out of Memory
@@ -465,10 +469,10 @@ If the workflow came from an official template and the template is missing, upda
 #### Check Service Status
 ```bash
 # Check ComfyUI status
-docker exec lora-pilot supervisorctl status comfyui
+supervisorctl status comfy
 
 # View logs
-docker exec lora-pilot supervisorctl tail -100 comfyui
+supervisorctl tail -100 comfy
 ```
 
 #### Test Model Loading
@@ -490,7 +494,7 @@ print('✅ Model loads successfully')
 - **Version Control**: Track model versions
 
 ### Workspace Integration
-- **Output Directory**: `/workspace/outputs/comfyui/`
+- **Output Directory**: `/workspace/outputs/comfy/`
 - **Input Directory**: `/workspace/datasets/`
 - **Custom Nodes**: Stored in `/workspace/apps/comfy/custom_nodes/`
 

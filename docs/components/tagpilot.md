@@ -1,6 +1,9 @@
 # TagPilot
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
+
+On RunPod, run the operational commands directly in the pod. Docker commands
+apply only when LoRA Pilot is running under Docker Compose on another host.
 
 TagPilot is the dataset preparation UI for LoRA Pilot. It is a browser-first tool for loading images, generating tags/captions, editing labels, and saving datasets into `/workspace/datasets`.
 
@@ -137,8 +140,8 @@ The script loads provider keys from `/workspace/config/secrets.env`, sends a tin
 - Confirm ControlPilot API is reachable at `http://localhost:7878`.
 - Check `controlpilot` logs:
 ```bash
-docker exec lora-pilot supervisorctl status controlpilot
-docker exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
+supervisorctl status controlpilot
+tail -n 200 /workspace/logs/controlpilot.err.log
 ```
 
 ### Save to workspace fails mid-run

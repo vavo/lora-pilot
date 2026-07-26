@@ -5,6 +5,8 @@ v2.5.6 (July 26th 2026)
 - Added first-run backups and stale-file cleanup for refreshed workspace copies.
 - Extended ControlPilot password protection to Diffusion Pipe, the ComfyUI proxy, and the ComfyUI preview WebSocket.
 - Removed unreachable Copilot and legacy Diffusion Pipe UI files and updated RunPod/direct-shell documentation.
+- Corrected model CLI/API documentation, removed unsupported model commands, and clarified direct RunPod versus Docker Compose command usage across component guides.
+- Corrected ComfyUI documentation to use the `comfy` Supervisor service and `/workspace/outputs/comfy` path.
 
 v2.5.5 (July 15th 2026)
 

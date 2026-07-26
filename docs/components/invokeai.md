@@ -1,6 +1,9 @@
 # InvokeAI
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
+
+On RunPod, run the operational commands directly in the pod. Docker commands
+apply only when LoRA Pilot is running under Docker Compose on another host.
 
 InvokeAI is the second inference engine bundled in LoRA Pilot. It runs as a supervised service and is wired to the shared workspace model tree so it can reuse the same assets as ComfyUI and training tools.
 
@@ -65,14 +68,14 @@ Startup behavior in `scripts/invoke.sh`:
 
 ```bash
 # Status
-docker exec lora-pilot supervisorctl status invoke
+supervisorctl status invoke
 
 # Restart
-docker exec lora-pilot supervisorctl restart invoke
+supervisorctl restart invoke
 
 # Logs
-docker exec lora-pilot tail -n 200 /workspace/logs/invoke.out.log
-docker exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
+tail -n 200 /workspace/logs/invoke.out.log
+tail -n 200 /workspace/logs/invoke.err.log
 ```
 
 ##  Troubleshooting
@@ -80,12 +83,12 @@ docker exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
 ### InvokeAI UI does not open
 - Verify service is running:
 ```bash
-docker exec lora-pilot supervisorctl status invoke
+supervisorctl status invoke
 ```
 - Check port mapping in `docker-compose.yml` (`${INVOKE_PORT}:${INVOKE_PORT}`).
 - Confirm startup logs for webserver bind/runtime startup:
 ```bash
-docker exec lora-pilot tail -n 120 /workspace/logs/invoke.out.log
+tail -n 120 /workspace/logs/invoke.out.log
 ```
 
 ### Models do not show up in InvokeAI
@@ -107,7 +110,7 @@ grep MEDIAPILOT_INVOKEAI_DIR /workspace/apps/MediaPilot/.env
 ### Startup errors after version updates
 - Recheck logs:
 ```bash
-docker exec lora-pilot tail -n 300 /workspace/logs/invoke.err.log
+tail -n 300 /workspace/logs/invoke.err.log
 ```
 - If needed, restart service and retest.
 

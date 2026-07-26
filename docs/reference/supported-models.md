@@ -366,42 +366,40 @@ LoRA Pilot supports a comprehensive range of AI models for training and inferenc
 # Essential models
 models pull sd15-base
 models pull sdxl-base
-models pull flux1-schnell
+models pull flux1-dev
 
 # Specialized models
-models pull chroma-base
-models pull lumina2-base
-models pull wan22-base
+models pull sd3-medium-fp8-allinone
+models pull wan2.2-animate-14b
+models pull hunyuanimage-2.1-comfy-bf16
 
 # Video models
-models pull ltx-base
-models pull hunyuanvideo-base
+models pull ltx-2.3-22b-dev-fp8
+models pull hunyuan-video-720-fp8
 ```
 
 ### Batch Downloads
 
 ```bash
-# All SD models
-models pull sd15-base sdxl-base sd3-medium
+# Pull each model separately; `models pull` accepts one name at a time
+models pull sd15-base
+models pull sdxl-base
+models pull sd3-medium-fp8-allinone
 
-# All FLUX models
-models pull flux1-dev flux1-schnell
+# FLUX model
+models pull flux1-dev
 
-# All video models
-models pull ltx-base hunyuanvideo-base cosmos-base
+# Pull video models separately
+models pull ltx-2.3-22b-dev-fp8
+models pull hunyuan-video-720-fp8
 ```
 
 ### Model Information
 
 ```bash
-# Check model requirements
-models info sdxl-base --requirements
-
-# List available models
-models list --type checkpoint
-
-# Check installed models
-models list --installed
+# List the manifest and inspect the active paths
+models list
+models where
 ```
 
 ##  Model Selection Guide
@@ -449,5 +447,3 @@ models list --installed
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
