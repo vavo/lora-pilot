@@ -67,6 +67,19 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertNotIn("os.walk(dataset_dir", iterator)
         self.assertNotIn("os.scandir", iterator)
 
+    def test_controlpilot_auth_covers_non_api_control_routes(self):
+        app_text = PORTAL_APP.read_text(encoding="utf-8")
+        comfy_text = (ROOT / "apps" / "Portal" / "services" / "comfy.py").read_text(encoding="utf-8")
+        self.assertIn('path.startswith(("/api/", "/dpipe/", "/proxy/comfy/"))', app_text)
+        self.assertIn('auth_checker=_controlpilot_cookie_authenticated', app_text)
+        self.assertIn('websocket.close(code=4401', comfy_text)
+
+    def test_removed_copilot_view_is_not_a_second_ui(self):
+        index = (ROOT / "apps" / "Portal" / "static" / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn('/js/copilot.js', index)
+        self.assertFalse((ROOT / "apps" / "Portal" / "static" / "js" / "copilot.js").exists())
+        self.assertFalse((ROOT / "apps" / "Portal" / "static" / "views" / "copilot.html").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

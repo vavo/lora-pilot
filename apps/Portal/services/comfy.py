@@ -11,12 +11,15 @@ import websockets
 logger = logging.getLogger(__name__)
 
 
-def create_router(workspace_root: Path) -> APIRouter:
+def create_router(workspace_root: Path, auth_checker=None) -> APIRouter:
     router = APIRouter()
 
     @router.websocket("/ws/comfy")
     async def comfy_websocket(websocket: WebSocket):
         """WebSocket endpoint for ComfyUI live image preview."""
+        if auth_checker is not None and not auth_checker(websocket.cookies):
+            await websocket.close(code=4401, reason="ControlPilot password required")
+            return
         await websocket.accept()
 
         comfy_port = os.environ.get("COMFY_PORT", "5555")

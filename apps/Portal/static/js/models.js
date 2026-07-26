@@ -302,7 +302,7 @@ window.pullModel = async function (name, btn) {
         break;
       }
       if (st && st.state === "error") {
-        const msg = st.error || "Unknown error";
+        const msg = st.error || st.last_line || "Unknown error";
         if (card) setProgress(card, null, `Failed: ${msg}`);
         throw new Error(msg);
       }

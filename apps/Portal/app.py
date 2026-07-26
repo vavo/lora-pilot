@@ -173,7 +173,7 @@ _tp_output_dir: Optional[Path] = None
 _model_pull_lock = threading.Lock()
 _model_pull_jobs: dict[str, "ModelPullJob"] = {}
 _MODEL_PULL_TTL_SECONDS = 10 * 60
-_MODEL_PULL_PROGRESS_RE = re.compile(r"(?P<pct>\\d{1,3})%")
+_MODEL_PULL_PROGRESS_RE = re.compile(r"(?P<pct>\d{1,3})%")
 
 _service_update_lock = threading.Lock()
 _service_update_jobs: dict[str, "ServiceUpdateJob"] = {}
@@ -293,7 +293,8 @@ def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
             job.progress_pct = 100
         else:
             job.state = "error"
-            job.error = f"exit code {rc}"
+            output = "\n".join(job.output_tail).strip()
+            job.error = output[-2000:] if output else f"exit code {rc}"
         job.updated_at = time.time()
     except Exception as e:
         job.state = "error"
@@ -587,10 +588,14 @@ def _controlpilot_auth_enabled(settings: Optional[dict] = None) -> bool:
 
 
 def _controlpilot_request_authenticated(request: Request) -> bool:
+    return _controlpilot_cookie_authenticated(request.cookies)
+
+
+def _controlpilot_cookie_authenticated(cookies) -> bool:
     settings = _read_controlpilot_settings()
     if not _controlpilot_auth_enabled(settings):
         return True
-    cookie = (request.cookies.get(CONTROLPILOT_SESSION_COOKIE) or "").strip()
+    cookie = (cookies.get(CONTROLPILOT_SESSION_COOKIE) or "").strip()
     if not cookie:
         return False
     return hmac.compare_digest(cookie, _controlpilot_session_value(settings))
@@ -1080,7 +1085,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(dpipe_router)
-app.include_router(create_comfy_router(WORKSPACE_ROOT))
+app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilot_cookie_authenticated))
 
 # Copilot sidecar config
 COPILOT_SIDECAR_URL = os.environ.get("COPILOT_SIDECAR_URL", "http://127.0.0.1:7879")
@@ -1102,12 +1107,15 @@ async def add_no_cache_headers(request: Request, call_next):
 @app.middleware("http")
 async def controlpilot_auth_middleware(request: Request, call_next):
     path = request.url.path
-    if path.startswith("/api/"):
+    protected_path = path.startswith(("/api/", "/dpipe/", "/proxy/comfy/"))
+    if protected_path:
         public_api_paths = {
             "/api/settings/auth/status",
             "/api/settings/auth/login",
         }
-        if path not in public_api_paths and not _controlpilot_request_authenticated(request):
+        if path.startswith("/api/") and path in public_api_paths:
+            return await call_next(request)
+        if not _controlpilot_request_authenticated(request):
             return JSONResponse(status_code=401, content={"detail": "ControlPilot password required"})
     return await call_next(request)
 
@@ -2316,26 +2324,6 @@ def _git_local_sha(repo: Path) -> Optional[str]:
         return _run_cmd_capture(["git", "-C", str(repo), "rev-parse", "HEAD"], timeout=10)
     except Exception:
         return None
-
-
-def _git_remote_sha(repo: Path, branch: str) -> Optional[str]:
-    try:
-        out = _run_cmd_capture(["git", "-C", str(repo), "ls-remote", "--heads", "origin", branch], timeout=25)
-        for line in out.splitlines():
-            parts = line.split()
-            if len(parts) >= 1 and re.fullmatch(r"[0-9a-fA-F]{40}", parts[0]):
-                return parts[0]
-    except Exception:
-        pass
-    try:
-        out = _run_cmd_capture(["git", "-C", str(repo), "ls-remote", "origin", "HEAD"], timeout=25)
-        for line in out.splitlines():
-            parts = line.split()
-            if len(parts) >= 1 and re.fullmatch(r"[0-9a-fA-F]{40}", parts[0]):
-                return parts[0]
-    except Exception:
-        pass
-    return None
 
 
 def _service_version_entry(name: str) -> ServiceVersionEntry:

@@ -33,6 +33,73 @@ ensure_env_var() {
   fi
 }
 
+bundle_tree_hash() {
+  local dir="$1"
+  (
+    cd "$dir" || exit 1
+    find . \
+      -path './.env' -prune -o \
+      -path './data' -prune -o \
+      -path './__pycache__' -prune -o \
+      -path './.bundle-sync-sha' -prune -o \
+      -type f -print0 \
+      | LC_ALL=C sort -z \
+      | xargs -0 sha256sum
+  ) | sha256sum | awk '{print $1}'
+}
+
+remove_stale_bundle_files() {
+  local source_dir="$1"
+  local target_dir="$2"
+  (
+    cd "$target_dir" || exit 1
+    find . -type f -print0
+  ) | while IFS= read -r -d '' relative_file; do
+    case "$relative_file" in
+      ./.env|./data/*|./__pycache__/*|*/__pycache__/*|./.bundle-sync-sha)
+        continue
+        ;;
+    esac
+    if [ ! -f "$source_dir/${relative_file#./}" ]; then
+      rm -f "$target_dir/${relative_file#./}"
+    fi
+  done
+}
+
+sync_bundled_tree() {
+  local source_dir="$1"
+  local target_dir="$2"
+  local marker_file="$target_dir/.bundle-sync-sha"
+  local source_hash
+  local target_hash
+  local recorded_hash
+
+  source_hash="$(bundle_tree_hash "$source_dir")"
+  recorded_hash="$(tr -d '\r\n' < "$marker_file" 2>/dev/null || true)"
+  if [ -n "$recorded_hash" ] && [ "$recorded_hash" = "$source_hash" ]; then
+    return 0
+  fi
+
+  if [ ! -f "$marker_file" ] && [ -d "$target_dir" ]; then
+    target_hash="$(bundle_tree_hash "$target_dir" 2>/dev/null || true)"
+    if [ -n "$target_hash" ] && [ "$target_hash" != "$source_hash" ]; then
+      cp -a "$target_dir" "${target_dir}.pre-refresh.$(date +%s)"
+    fi
+  fi
+
+  mkdir -p "$target_dir"
+  remove_stale_bundle_files "$source_dir" "$target_dir"
+  (
+    cd "$source_dir" || exit 1
+    tar cf - --exclude='.env' --exclude='data' --exclude='__pycache__' --exclude='.bundle-sync-sha' .
+  ) | (
+    cd "$target_dir" || exit 1
+    tar xf -
+  )
+  printf '%s\n' "$source_hash" > "${marker_file}.tmp.$$"
+  mv -f "${marker_file}.tmp.$$" "$marker_file"
+}
+
 # Workspace layout (avoid chmod/chown loops on mounted volumes)
 mkdir -p \
   "$WORKSPACE_ROOT"/{apps,models,datasets,outputs,logs,cache,config,home} \
@@ -42,6 +109,40 @@ mkdir -p "$WORKSPACE_ROOT/config/ai-toolkit"
 mkdir -p "$WORKSPACE_ROOT/outputs"/{comfy,invoke,ai-toolkit}
 mkdir -p "$WORKSPACE_ROOT/datasets"/{images,ZIPs}
 mkdir -p "$WORKSPACE_ROOT/apps"/{comfy,diffusion-pipe,invoke,kohya,codeserver}
+
+# Refresh the persistent model catalogue when a new image bundles a newer
+# manifest. Preserve an explicitly customized runtime manifest.
+MODEL_MANIFEST_SOURCE="${DEFAULT_MODELS_MANIFEST:-/opt/pilot/config/models.manifest.default}"
+MODEL_MANIFEST_TARGET="${MODELS_MANIFEST:-$WORKSPACE_ROOT/config/models.manifest}"
+MODEL_MANIFEST_HASH_FILE="$WORKSPACE_ROOT/config/.models.manifest.bundle.sha256"
+if [ -f "$MODEL_MANIFEST_SOURCE" ]; then
+  model_manifest_source_hash="$(sha256sum "$MODEL_MANIFEST_SOURCE" | awk '{print $1}')"
+  model_manifest_refresh=0
+  if [ ! -f "$MODEL_MANIFEST_TARGET" ]; then
+    model_manifest_refresh=1
+  elif [ ! -f "$MODEL_MANIFEST_HASH_FILE" ]; then
+    # First boot after this migration: replace the legacy seeded file once.
+    model_manifest_refresh=1
+    if ! cmp -s "$MODEL_MANIFEST_TARGET" "$MODEL_MANIFEST_SOURCE"; then
+      cp -p "$MODEL_MANIFEST_TARGET" "$MODEL_MANIFEST_TARGET.pre-refresh.$(date +%s)"
+    fi
+  else
+    model_manifest_recorded_hash="$(head -n 1 "$MODEL_MANIFEST_HASH_FILE" 2>/dev/null || true)"
+    model_manifest_active_hash="$(sha256sum "$MODEL_MANIFEST_TARGET" | awk '{print $1}')"
+    if [ "$model_manifest_active_hash" = "$model_manifest_recorded_hash" ]; then
+      model_manifest_refresh=1
+    else
+      echo "Preserving customized model manifest: $MODEL_MANIFEST_TARGET" >&2
+    fi
+  fi
+
+  if [ "$model_manifest_refresh" = "1" ]; then
+    cp -f "$MODEL_MANIFEST_SOURCE" "$MODEL_MANIFEST_TARGET"
+    echo "Refreshed model manifest from bundled image version"
+  fi
+  printf '%s\n' "$model_manifest_source_hash" > "${MODEL_MANIFEST_HASH_FILE}.tmp.$$"
+  mv -f "${MODEL_MANIFEST_HASH_FILE}.tmp.$$" "$MODEL_MANIFEST_HASH_FILE"
+fi
 
 SERVICE_UPDATES_CONFIG_FILE="${SERVICE_UPDATES_CONFIG_PATH:-$WORKSPACE_ROOT/config/service-updates.toml}"
 SERVICE_UPDATES_ROLLBACK_LOG="${SERVICE_UPDATES_ROLLBACK_LOG_PATH:-$WORKSPACE_ROOT/config/service-updates-rollback.jsonl}"
@@ -88,22 +189,24 @@ if [ -d /opt/pilot/repos/ai-toolkit ]; then
   ensure_link /opt/pilot/repos/ai-toolkit/aitk_db.db "$AI_TOOLKIT_DB_PATH"
 fi
 
-# Seed bundled apps into workspace (without clobbering existing)
+# Refresh bundled apps into workspace while preserving runtime state.
 if [ -d /opt/pilot/apps ]; then
   for src in /opt/pilot/apps/*; do
     [ -d "$src" ] || continue
     name="$(basename "$src")"
     dest="$WORKSPACE_ROOT/apps/$name"
     if [ ! -e "$dest" ]; then
-      cp -a "$src" "$dest"
+      mkdir -p "$dest"
     fi
+    sync_bundled_tree "$src" "$dest"
   done
   find "$WORKSPACE_ROOT/apps" -type f -name '*.sh' -print0 | xargs -0 -r chmod +x || true
 fi
 
-# Seed bundled docs into workspace (without clobbering existing)
-if [ -d /opt/pilot/docs ] && [ ! -e "$WORKSPACE_ROOT/docs" ]; then
-  cp -a /opt/pilot/docs "$WORKSPACE_ROOT/docs"
+# Refresh bundled docs into workspace while preserving a customized copy.
+if [ -d /opt/pilot/docs ]; then
+  mkdir -p "$WORKSPACE_ROOT/docs"
+  sync_bundled_tree /opt/pilot/docs "$WORKSPACE_ROOT/docs"
 fi
 
 # MediaPilot defaults (single-port embed under ControlPilot)
@@ -112,21 +215,6 @@ if [ -d "$MEDIAPILOT_APP_DIR" ]; then
   MEDIAPILOT_SOURCE_DIR="/opt/pilot/apps/MediaPilot"
   MEDIAPILOT_SYNC_ON_BOOT="${MEDIAPILOT_SYNC_ON_BOOT:-1}"
   if [ "$MEDIAPILOT_SYNC_ON_BOOT" = "1" ] && [ -d "$MEDIAPILOT_SOURCE_DIR" ]; then
-    mediapilot_bundle_hash() {
-      local dir="$1"
-      (
-        cd "$dir" || exit 1
-        find . \
-          -path './.env' -prune -o \
-          -path './data' -prune -o \
-          -path './__pycache__' -prune -o \
-          -path './.bundle-sync-sha' -prune -o \
-          -type f -print0 \
-          | LC_ALL=C sort -z \
-          | xargs -0 sha256sum
-      ) | sha256sum | awk '{print $1}'
-    }
-
     mediapilot_sync_bundle() {
       local src_commit_file="$MEDIAPILOT_SOURCE_DIR/.upstream-commit"
       local dst_commit_file="$MEDIAPILOT_APP_DIR/.upstream-commit"
@@ -140,9 +228,9 @@ if [ -d "$MEDIAPILOT_APP_DIR" ]; then
       src_commit="$(tr -d '\r\n' < "$src_commit_file" 2>/dev/null || true)"
       dst_commit="$(tr -d '\r\n' < "$dst_commit_file" 2>/dev/null || true)"
       dst_hash="$(tr -d '\r\n' < "$dst_hash_file" 2>/dev/null || true)"
-      src_hash="$(mediapilot_bundle_hash "$MEDIAPILOT_SOURCE_DIR" 2>/dev/null || true)"
+      src_hash="$(bundle_tree_hash "$MEDIAPILOT_SOURCE_DIR" 2>/dev/null || true)"
       if [ -n "$src_hash" ] && [ -z "$dst_hash" ]; then
-        dst_hash="$(mediapilot_bundle_hash "$MEDIAPILOT_APP_DIR" 2>/dev/null || true)"
+        dst_hash="$(bundle_tree_hash "$MEDIAPILOT_APP_DIR" 2>/dev/null || true)"
       fi
 
       if [ -n "$src_commit" ] && [ "$src_commit" != "$dst_commit" ]; then
@@ -164,6 +252,8 @@ if [ -d "$MEDIAPILOT_APP_DIR" ]; then
         cd "$MEDIAPILOT_APP_DIR" || exit 1
         tar xf -
       )
+
+      remove_stale_bundle_files "$MEDIAPILOT_SOURCE_DIR" "$MEDIAPILOT_APP_DIR"
 
       if [ -n "$src_hash" ]; then
         printf '%s\n' "$src_hash" > "$dst_hash_file"
@@ -209,16 +299,8 @@ TAGPILOT_APP_DIR="$WORKSPACE_ROOT/apps/TagPilot"
 TAGPILOT_SOURCE_DIR="/opt/pilot/apps/TagPilot"
 TAGPILOT_SYNC_ON_BOOT="${TAGPILOT_SYNC_ON_BOOT:-1}"
 if [ "$TAGPILOT_SYNC_ON_BOOT" = "1" ] && [ -d "$TAGPILOT_SOURCE_DIR" ]; then
-  mkdir -p "$TAGPILOT_APP_DIR"
-  if [ ! -f "$TAGPILOT_APP_DIR/index.html" ] || ! cmp -s "$TAGPILOT_SOURCE_DIR/index.html" "$TAGPILOT_APP_DIR/index.html"; then
-    echo "Syncing TagPilot workspace copy from bundled source"
-    (
-      cd "$TAGPILOT_SOURCE_DIR"
-      tar cf - --exclude='__pycache__' .
-    ) | (
-      cd "$TAGPILOT_APP_DIR"
-      tar xf -
-    )
+  if ! sync_bundled_tree "$TAGPILOT_SOURCE_DIR" "$TAGPILOT_APP_DIR"; then
+    echo "TagPilot sync failed; continuing with existing workspace copy." >&2
   fi
 fi
 

@@ -228,11 +228,12 @@ GET /api/training/status      # Training status
 
 #### API Authentication
 ```bash
-# Set admin password in .env
-SUPERVISOR_ADMIN_PASSWORD=your_secure_password
+# Enable ControlPilot password authentication in Settings, or persist it in
+# /workspace/config/controlpilot-settings.json.
+# The browser login creates the controlpilot_session cookie used by the API.
 
-# Use in API calls
-curl -u admin:password http://localhost:7878/api/services
+# For scripted API calls, send that cookie after logging in through the UI.
+curl --cookie 'controlpilot_session=<session-cookie>' http://localhost:7878/api/services
 ```
 
 ### Custom Configuration
@@ -242,6 +243,7 @@ curl -u admin:password http://localhost:7878/api/services
 # ControlPilot configuration
 CONTROLPILOT_PORT=7878
 CONTROLPILOT_HOST=0.0.0.0
+# Supervisor web UI password (separate from ControlPilot login)
 SUPERVISOR_ADMIN_PASSWORD=secure_password
 CONTROLPILOT_LOG_LEVEL=INFO
 ```
@@ -318,7 +320,7 @@ docker exec lora-pilot supervisorctl restart controlpilot
 docker exec lora-pilot ls -la /workspace/models/
 
 # Check model manifest
-docker exec lora-pilot cat /opt/pilot/config/models.manifest
+cat /opt/pilot/config/models.manifest.default
 
 # Refresh model list
 curl http://localhost:7878/api/models/refresh
@@ -394,5 +396,3 @@ docker exec lora-pilot top -bn1 | head -20
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-

@@ -16,15 +16,16 @@ Repository sources:
 - `config/models.manifest` (copied into the image as `/opt/pilot/config/models.manifest.default`)
 - `config/models.manifest.default` (kept aligned as the repo reference list)
 
-## Seeding Behavior
+## Bootstrap Refresh Behavior
 
-Both the CLI downloader and ControlPilot manifest parser call `ensure_manifest(...)`:
+At container bootstrap, the bundled manifest is checked against the persistent runtime manifest:
 
-- If `/workspace/config/models.manifest` is missing
-- And `/opt/pilot/config/models.manifest.default` exists
-- It copies the default into `/workspace/config/models.manifest`
+- A missing runtime manifest is created from `/opt/pilot/config/models.manifest.default`.
+- When a new image contains a different bundled manifest, the managed runtime manifest is refreshed.
+- The first migration backs up the previous file as `/workspace/config/models.manifest.pre-refresh.<timestamp>`.
+- If the runtime manifest was edited, bootstrap preserves it and logs that it is customized.
 
-That means first run creates an editable workspace-local manifest automatically.
+The bundle hash is stored at `/workspace/config/.models.manifest.bundle.sha256`. This lets persistent RunPod volumes receive catalogue updates without requiring Docker access inside the Pod.
 
 ## Line Format
 
@@ -144,4 +145,3 @@ For shared top-level model folders, repo-file selection has an extra guard to av
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-

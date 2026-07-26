@@ -42,10 +42,18 @@ python -c "import huggingface_hub" >/dev/null 2>&1 || die "python package missin
 
 # For hf_file we can use hf/huggingface-cli if available, else python
 FILE_DL="python"
-if have_cmd hf; then
+if [[ -x "/opt/venvs/core/bin/hf" ]]; then
   FILE_DL="hf"
+  HF_BIN="/opt/venvs/core/bin/hf"
+elif [[ -x "/opt/venvs/core/bin/huggingface-cli" ]]; then
+  FILE_DL="huggingface-cli"
+  HF_BIN="/opt/venvs/core/bin/huggingface-cli"
+elif have_cmd hf; then
+  FILE_DL="hf"
+  HF_BIN="$(command -v hf)"
 elif have_cmd huggingface-cli; then
   FILE_DL="huggingface-cli"
+  HF_BIN="$(command -v huggingface-cli)"
 fi
 
 if [[ ! -f "$MANIFEST" ]]; then
@@ -264,9 +272,9 @@ hf_download_file() {
   mkdir -p "$outdir"
 
   if [[ "$FILE_DL" == "hf" ]]; then
-    hf download "$repo" "$file" --local-dir "$outdir"
+    "$HF_BIN" download "$repo" "$file" --local-dir "$outdir"
   elif [[ "$FILE_DL" == "huggingface-cli" ]]; then
-    huggingface-cli download "$repo" "$file" --local-dir "$outdir" --local-dir-use-symlinks False
+    "$HF_BIN" download "$repo" "$file" --local-dir "$outdir" --local-dir-use-symlinks False
   else
     python - "$repo" "$file" "$outdir" <<'PY'
 import sys, os

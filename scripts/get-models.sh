@@ -11,19 +11,20 @@ DEFAULT_MANIFEST="${DEFAULT_MODELS_MANIFEST:-/opt/pilot/config/models.manifest.d
 VENV_PY="${VENV_PY:-/opt/venvs/core/bin/python}"
 HF_BIN="${HF_BIN:-}"
 
-# Prefer the newer `hf` CLI, fall back to huggingface-cli
+# Prefer the image's pinned core-venv CLI so an ambient host binary cannot
+# silently change the model-download behavior.
 resolve_hf_bin() {
   if [[ -n "${HF_BIN:-}" ]]; then
     return
   fi
-  if command -v hf >/dev/null 2>&1; then
-    HF_BIN="$(command -v hf)"
-  elif command -v huggingface-cli >/dev/null 2>&1; then
-    HF_BIN="$(command -v huggingface-cli)"
-  elif [[ -x "/opt/venvs/core/bin/hf" ]]; then
+  if [[ -x "/opt/venvs/core/bin/hf" ]]; then
     HF_BIN="/opt/venvs/core/bin/hf"
   elif [[ -x "/opt/venvs/core/bin/huggingface-cli" ]]; then
     HF_BIN="/opt/venvs/core/bin/huggingface-cli"
+  elif command -v hf >/dev/null 2>&1; then
+    HF_BIN="$(command -v hf)"
+  elif command -v huggingface-cli >/dev/null 2>&1; then
+    HF_BIN="$(command -v huggingface-cli)"
   else
     echo "ERROR: hf (Hugging Face CLI) not found. Install huggingface_hub." >&2
     exit 1
