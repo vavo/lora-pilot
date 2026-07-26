@@ -1,6 +1,6 @@
 # Troubleshooting (Reference)
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
 
 This page is a quick reference for runtime issues tied to concrete LoRA Pilot behavior in repo code/scripts.
 
@@ -13,6 +13,36 @@ tail -n 200 /workspace/logs/controlpilot.err.log
 ```
 
 ## Common Issues
+
+### `docker: command not found` in a RunPod pod
+
+This is expected when the pod does not include a Docker client. The pod is
+already running the LoRA Pilot container, so run commands directly:
+
+```bash
+supervisorctl status
+models list
+tail -n 200 /workspace/logs/controlpilot.err.log
+```
+
+Remove the `docker exec lora-pilot` prefix from local Compose examples.
+
+### ControlPilot model pull fails
+
+Check the Models tab error text first; failed pulls now include the downloader
+output instead of only reporting an exit code. From the pod terminal:
+
+```bash
+models list
+models where
+cat /workspace/config/models.manifest
+test -n "${HF_TOKEN:-}" && echo "HF token is set" || echo "HF token is not set"
+```
+
+If the model entry is stale or customized, compare it with
+`/opt/pilot/config/models.manifest.default`. Bootstrap refreshes the persistent
+manifest when it is still image-managed and preserves it when it has been
+customized.
 
 ### ControlPilot API not reachable on `7878`
 
@@ -118,5 +148,4 @@ If still broken, inspect:
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

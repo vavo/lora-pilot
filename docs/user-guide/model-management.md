@@ -1,8 +1,12 @@
 # Model Management
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
 
 Comprehensive guide to managing AI models in LoRA Pilot, including downloading, organizing, validating, and maintaining your model library.
+
+On RunPod, the pod terminal is already inside the LoRA Pilot runtime. Run
+`models`, `supervisorctl`, and other commands directly; `docker exec
+lora-pilot ...` is only for a separate Docker Compose host.
 
 ##  Overview
 
@@ -553,5 +557,4 @@ docker exec lora-pilot models report --output /workspace/models-report.txt
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
 

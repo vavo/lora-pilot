@@ -1,6 +1,6 @@
 # Changelog
 
-_Last updated: 2026-07-15_
+_Last updated: 2026-07-26_
 
 Canonical release history lives in the repository root file: `CHANGELOG`.
 
@@ -14,6 +14,7 @@ Detailed GitHub release notes:
 
 | Header in file | High-level highlights |
 |---|---|
+| `v2.5.6` | RunPod model-pull fixes, build-time workspace refreshes, expanded ControlPilot auth coverage, and legacy UI cleanup |
 | `v2.5.5` | July 15 LTX 2.3 support restore, CodeQL secret-storage fixes, missing `zip` CLI, and TagPilot decoded tag loading |
 | `v2.5.4` | July 5 build/runtime refresh, CUDA profile cleanup, ComfyUI Manager/runtime fixes, and code-scanning vulnerabilities reduced to 0 |
 | `v2.5.3` | July 3 TagPilot frontend refresh, TensorBoard integration, and JupyterLab/code-server update |

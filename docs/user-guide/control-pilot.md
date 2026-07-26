@@ -1,6 +1,6 @@
 # ControlPilot
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
 
 ControlPilot is the central web interface for LoRA Pilot, providing a unified dashboard for managing all services, models, datasets, and training workflows. It's your command center for the entire AI workspace.
 
@@ -19,8 +19,13 @@ ControlPilot offers:
 ### Accessing ControlPilot
 
 1. **Primary URL**: http://localhost:7878
-2. **Via Docker**: `docker exec lora-pilot supervisorctl status controlpilot`
-3. **From Container**: `curl http://localhost:7878/api/health`
+2. **From a RunPod terminal**: `supervisorctl status controlpilot`
+3. **From a Docker Compose host**: `docker exec lora-pilot supervisorctl status controlpilot`
+4. **Health check**: `curl http://localhost:7878/api/health`
+
+RunPod pods already run the LoRA Pilot container. If `docker` is not installed
+inside the pod, run commands directly in the pod terminal and omit the
+`docker exec lora-pilot` prefix used by local Compose examples.
 
 ### Navigation Structure
 
@@ -236,6 +241,11 @@ GET /api/training/status      # Training status
 curl --cookie 'controlpilot_session=<session-cookie>' http://localhost:7878/api/services
 ```
 
+When password protection is enabled, the same session is required for
+Diffusion Pipe, the ComfyUI proxy, and the ComfyUI preview WebSocket. Login
+and auth-status endpoints remain public so the browser can establish a
+session.
+
 ### Custom Configuration
 
 #### Environment Variables
@@ -305,13 +315,13 @@ CONTROLPILOT_LOG_LEVEL=INFO
 #### Service Won't Start
 ```bash
 # Check service logs
-docker exec lora-pilot supervisorctl tail -100 controlpilot
+tail -n 100 /workspace/logs/controlpilot.out.log
 
 # Check port availability
 netstat -tulpn | grep :7878
 
 # Restart service
-docker exec lora-pilot supervisorctl restart controlpilot
+supervisorctl restart controlpilot
 ```
 
 #### Models Not Showing

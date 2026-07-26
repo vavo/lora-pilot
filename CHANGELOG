@@ -1,3 +1,11 @@
+v2.5.6 (July 26th 2026)
+
+- Fixed ControlPilot model pulls on RunPod by preferring the bundled core Hugging Face CLI and showing downloader output when a pull fails.
+- Refresh bundled app, documentation, and model-manifest files on every build while preserving user configuration, datasets, model storage, caches, and customized manifests.
+- Added first-run backups and stale-file cleanup for refreshed workspace copies.
+- Extended ControlPilot password protection to Diffusion Pipe, the ComfyUI proxy, and the ComfyUI preview WebSocket.
+- Removed unreachable Copilot and legacy Diffusion Pipe UI files and updated RunPod/direct-shell documentation.
+
 v2.5.5 (July 15th 2026)
 
 - Restored AI Toolkit support for LTX 2.3 model workflows.

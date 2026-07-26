@@ -1,6 +1,6 @@
 # Models Manifest
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-07-26_
 
 LoRA Pilot model downloads are driven by a pipe-delimited manifest file.
 
@@ -53,7 +53,7 @@ Comments (`# ...`) and empty lines are ignored.
 
 - `hf_file`: primary mechanism
 - `hf_repo`: used for selected repos
-- `url`: supported by downloader/parser, but no current entries in `config/models.manifest` or `config/models.manifest.default`
+- `url`: direct download URLs for non-Hugging Face assets, including the current Real-ESRGAN and GFPGAN entries
 
 ## Real Examples
 
@@ -130,6 +130,9 @@ For shared top-level model folders, repo-file selection has an extra guard to av
 4. Pull one entry:
    - `models pull <name>`
 5. Refresh ControlPilot Models tab.
+
+On RunPod, run the commands directly in the pod terminal. Do not use
+`docker exec lora-pilot`; that prefix is only for a Docker Compose host.
 
 ## Related
 
