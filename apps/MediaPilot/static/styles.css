@@ -299,6 +299,8 @@ header.control-bar {
 main {
   display: block;
   padding: 62px 0 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 768px) {
@@ -323,6 +325,7 @@ main {
 
   main {
     padding: 16px 0 calc(120px + env(safe-area-inset-bottom));
+    width: 100%;
   }
 
   .toast-container {
@@ -1092,6 +1095,8 @@ header.control-bar {
 
 .gallery {
   padding: 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .card {
