@@ -17,6 +17,7 @@ set -euo pipefail
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
+: "${HF_TRANSFER_VERSION:?HF_TRANSFER_VERSION is required}"
 : "${FASTAPI_VERSION:?FASTAPI_VERSION is required}"
 : "${UVICORN_VERSION:?UVICORN_VERSION is required}"
 : "${PYDANTIC_VERSION:?PYDANTIC_VERSION is required}"
@@ -87,7 +88,10 @@ fi
 
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \
-  "huggingface_hub[hf_transfer,hf_xet]==${HF_HUB_VERSION}"
+  "huggingface_hub[hf_xet]==${HF_HUB_VERSION}" \
+  "hf-transfer==${HF_TRANSFER_VERSION}"
+
+/opt/venvs/core/bin/python -c 'import hf_transfer'
 
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \

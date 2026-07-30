@@ -24,6 +24,12 @@ def read_pin(path, name):
 
 
 class BuildPinTests(unittest.TestCase):
+    def test_kohya_installer_resolves_requirements_from_checkout(self):
+        install_text = (ROOT / "scripts/build/install-kohya.sh").read_text()
+        self.assertIn("cd /opt/pilot/repos/kohya_ss", install_text)
+        self.assertIn('req="requirements_runpod.txt"', install_text)
+        self.assertIn("-r /opt/pilot/repos/kohya_ss/requirements.txt", install_text)
+
     def test_node_tooling_uses_pinned_npm_version(self):
         expected_node = "24"
         expected_npm = "11.18.0"
@@ -211,6 +217,7 @@ class BuildPinTests(unittest.TestCase):
                 "PEFT_VERSION": "0.19.1",
                 "ACCELERATE_VERSION": "1.14.0",
                 "HF_HUB_VERSION": "1.19.0",
+                "HF_TRANSFER_VERSION": "0.1.9",
                 "FASTAPI_VERSION": "0.139.0",
                 "UVICORN_VERSION": "0.50.0",
                 "PYDANTIC_VERSION": "2.13.4",
@@ -313,6 +320,7 @@ class BuildPinTests(unittest.TestCase):
                 "DEEPDIFF_VERSION",
                 "GGUF_VERSION",
                 "HF_HUB_VERSION",
+                "HF_TRANSFER_VERSION",
                 "FASTAPI_VERSION",
                 "PYDANTIC_VERSION",
             ),

@@ -17,6 +17,7 @@ mkdir -p "${config_dir}"
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 : "${ACCELERATE_VERSION:?ACCELERATE_VERSION is required}"
 : "${HF_HUB_VERSION:?HF_HUB_VERSION is required}"
+: "${HF_TRANSFER_VERSION:?HF_TRANSFER_VERSION is required}"
 : "${FASTAPI_VERSION:?FASTAPI_VERSION is required}"
 : "${UVICORN_VERSION:?UVICORN_VERSION is required}"
 : "${PYDANTIC_VERSION:?PYDANTIC_VERSION is required}"
@@ -54,6 +55,7 @@ bitsandbytes==${BITSANDBYTES_VERSION}
 numpy<2
 pillow<12
 huggingface-hub==${HF_HUB_VERSION}
+hf-transfer==${HF_TRANSFER_VERSION}
 diffusers==${CORE_DIFFUSERS_VERSION}
 transformers==${TRANSFORMERS_VERSION}
 uv==${UV_VERSION}

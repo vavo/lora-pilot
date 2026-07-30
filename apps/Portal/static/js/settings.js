@@ -55,26 +55,41 @@ window.initSettings = async function () {
       els.passwordInput.placeholder = settings && settings.password_enabled
         ? "Enter new password to change it"
         : "Set ControlPilot password";
+      if (els.passwordStatus) els.passwordStatus.textContent = settings && settings.password_enabled
+        ? "Password saved. Enter a new value only to replace it."
+        : "Not configured.";
     }
     if (els.hfInput) {
       els.hfInput.value = "";
       els.hfInput.placeholder = hf && hf.set ? "HF_TOKEN saved" : "HF_TOKEN";
+      if (els.hfStatus) els.hfStatus.textContent = hf && hf.set
+        ? "•••••••• saved. Enter a new token to replace it."
+        : "Not configured.";
     }
     if (els.copilotInput) {
       els.copilotInput.value = "";
       els.copilotInput.placeholder = copilot && copilot.set ? "Copilot token saved" : "COPILOT_GITHUB_TOKEN";
+      if (els.copilotStatus) els.copilotStatus.textContent = copilot && copilot.set
+        ? "•••••••• saved. Enter a new token to replace it."
+        : "Not configured.";
     }
     if (els.mediapilotInput) {
       els.mediapilotInput.value = "";
       els.mediapilotInput.placeholder = settings && settings.mediapilot_password_set
         ? "Password set. Enter new value or leave empty to remove it"
         : "Empty = no password";
+      if (els.mediapilotStatus) els.mediapilotStatus.textContent = settings && settings.mediapilot_password_set
+        ? "•••••••• saved. Enter a new password to replace it."
+        : "Not configured.";
     }
     if (els.jupyterToken) {
       els.jupyterToken.value = "";
       els.jupyterToken.placeholder = settings && settings.jupyter_token_set
         ? "Token set. Enter new value or leave empty to regenerate"
         : "Leave empty to regenerate on restart";
+      if (els.jupyterStatus) els.jupyterStatus.textContent = settings && settings.jupyter_token_set
+        ? "•••••••• saved. Enter a new token to replace it."
+        : "Not configured; Jupyter will generate one on restart.";
     }
   }
 

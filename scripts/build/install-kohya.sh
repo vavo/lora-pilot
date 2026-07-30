@@ -15,14 +15,14 @@ fi
   /opt/pilot/repos/kohya_ss \
   "${KOHYA_REF}"
 
-ln -sf /opt/pilot/repos/kohya_ss/requirements.txt /tmp/requirements.txt
+cd /opt/pilot/repos/kohya_ss
 
 req="requirements_runpod.txt"
 [[ -f "${req}" ]] || req="requirements_linux.txt"
 [[ -f "${req}" ]] || req="requirements.txt"
 
 grep -v -E '^(tensorrt|torch|torchvision|torchaudio|xformers|triton|bitsandbytes|diffusers|transformers|peft|huggingface-hub|accelerate|tensorflow|tensorboard)' \
-  "${req}" > /tmp/kohya-req.txt
+  "${req}" | sed 's|^-r requirements\.txt$|-r /opt/pilot/repos/kohya_ss/requirements.txt|' > /tmp/kohya-req.txt
 
 printf '%s\n' 'numpy<2' > /tmp/kohya-constraints.txt
 pip_install_in_venv /opt/venvs/core -c /tmp/kohya-constraints.txt -r /tmp/kohya-req.txt

@@ -453,6 +453,7 @@ class Telemetry(BaseModel):
     mem_free: int
     disks: List[DiskUsage]
     gpus: List[GPUInfo]
+    workspace_data_used_bytes: Optional[int] = None
 
 
 def _default_controlpilot_settings() -> dict:
@@ -719,10 +720,6 @@ def _write_mediapilot_password(password: str) -> None:
         os.environ["MEDIAPILOT_ACCESS_PASSWORD"] = ""
     if lines != existing:
         env_file.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
-    workspace_data_used_bytes: Optional[int] = None
-    docs: Optional[str] = None  # unused in telemetry, kept for future
-
-
 class DatasetEntry(BaseModel):
     name: str        # raw directory name
     display: str     # friendly name
@@ -2889,33 +2886,17 @@ def workspace_data_used_bytes(path: str) -> int:
         return 0
 
 def disk_usage(path: str) -> DiskUsage:
-    # Prefer df with the actual mountpoint to honor container quotas/overlays
-    def resolve_mountpoint(p: str) -> str:
-        target = os.path.realpath(p)
-        best = "/"
-        try:
-            with open("/proc/self/mountinfo") as f:
-                for line in f:
-                    parts = line.split()
-                    if len(parts) < 5:
-                        continue
-                    mnt = parts[4]
-                    if target == mnt or (target.startswith(mnt.rstrip("/") + "/") and len(mnt) > len(best)):
-                        best = mnt
-        except Exception:
-            pass
-        return best
-
-    mountpoint = resolve_mountpoint(path)
+    # Ask df about the path itself. This preserves a distinct /workspace
+    # network/volume mount instead of resolving it to the container root.
     try:
-        out = subprocess.check_output(["df", "-kP", mountpoint], text=True).strip().splitlines()
+        out = subprocess.check_output(["df", "-kP", path], text=True).strip().splitlines()
         if len(out) >= 2:
             parts = out[1].split()
             size = int(parts[1]) * 1024
             used = int(parts[2]) * 1024
             free = int(parts[3]) * 1024
             pct = int((used / size) * 100) if size else 0
-            return DiskUsage(mount=mountpoint, total=size, used=used, free=free, pct=pct, alert=pct >= 80)
+            return DiskUsage(mount=path, total=size, used=used, free=free, pct=pct, alert=pct >= 80)
     except Exception:
         pass
     st = shutil.disk_usage(path)

@@ -59,6 +59,23 @@ if [[ "${NO_CONFIRM}" != "1" ]]; then
 fi
 prepare_env
 
+ensure_sdxl_tokenizer() {
+  if HF_HOME="${HF_HOME}" TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}" \
+    "${PYTHON_BIN}" -c 'from transformers import CLIPTokenizer; CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14", local_files_only=True)' \
+    >/dev/null 2>&1; then
+    return 0
+  fi
+
+  local hf_bin="/opt/venvs/core/bin/hf"
+  [[ -x "${hf_bin}" ]] || die "Hugging Face CLI missing from core venv: ${hf_bin}"
+  echo "CLIP tokenizer missing; downloading tokenizer files to the Hugging Face cache."
+  HF_HOME="${HF_HOME}" TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}" HF_TOKEN="${HF_TOKEN:-}" \
+    "${hf_bin}" download openai/clip-vit-large-patch14 \
+      config.json merges.txt special_tokens_map.json tokenizer.json tokenizer_config.json vocab.json
+}
+
+ensure_sdxl_tokenizer
+
 # In headless mode, avoid any whiptail calls (fail fast if they slip through).
 if [[ "${NO_CONFIRM}" == "1" ]]; then
   info_box(){ echo "INFO: $1 - $2"; }
