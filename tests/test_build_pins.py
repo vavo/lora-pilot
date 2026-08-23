@@ -82,9 +82,9 @@ class BuildPinTests(unittest.TestCase):
             self.assertTrue(ltx2_dir.is_dir())
             self.assertIn("LTX23Model", init_file.read_text())
 
-    def test_invokeai_6135_uses_required_dependency_pins(self):
+    def test_invokeai_6138_uses_required_dependency_pins(self):
         expected = {
-            "INVOKEAI_VERSION": "6.13.5",
+            "INVOKEAI_VERSION": "6.13.8",
             "INVOKE_DIFFUSERS_VERSION": "0.37.0",
             "INVOKE_TRANSFORMERS_VERSION": "5.5.4",
         }
@@ -107,7 +107,7 @@ class BuildPinTests(unittest.TestCase):
 
     def test_comfy_uses_latest_verified_refs(self):
         expected = {
-            "COMFYUI_REF": "v0.27.0",
+            "COMFYUI_REF": "v0.33.3",
             "COMFYUI_MANAGER_REF": "4.2.2",
             "COMFYUI_DOWNLOADER_REF": "03146df738191004a8aad8264dca5c3530907f56",
         }
@@ -134,7 +134,7 @@ class BuildPinTests(unittest.TestCase):
         self.assertNotIn("git clone --depth 1 https://github.com/romandev-codex/ComfyUI-Downloader.git", install_text)
 
     def test_diffpipe_uses_latest_verified_ref(self):
-        expected = "a7e7decf4325c1f03e4b88b7de93640029abd011"
+        expected = "8f83dbf25d03219df705570ec03e62be04bc402f"
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
                 self.assertEqual(read_pin(path, "DIFFPIPE_REF"), expected)

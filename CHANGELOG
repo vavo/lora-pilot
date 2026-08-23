@@ -1,8 +1,13 @@
+v2.5.7 (August 23rd 2026)
+
+- Refreshed bundled component versions: ComfyUI `v0.33.3`, Kohya SS `v25.2.1`, AI Toolkit `27a03a9`, Diffusion Pipe `8f83dbf`, InvokeAI `6.13.8`, JupyterLab `4.6.3`, code-server/VS Code `4.133.0`, and TensorBoard `2.21.0`.
+- Stopped bootstrap migrations from creating `.pre-refresh` backup files or directories on legacy pods while preserving customized runtime files.
+
 v2.5.6 (July 26th 2026)
 
 - Fixed ControlPilot model pulls on RunPod by preferring the bundled core Hugging Face CLI and showing downloader output when a pull fails.
 - Refresh bundled app, documentation, and model-manifest files on every build while preserving user configuration, datasets, model storage, caches, and customized manifests.
-- Added first-run backups and stale-file cleanup for refreshed workspace copies.
+- Added stale-file cleanup for refreshed workspace copies without creating legacy backup copies.
 - Extended ControlPilot password protection to Diffusion Pipe, the ComfyUI proxy, and the ComfyUI preview WebSocket.
 - Removed unreachable Copilot and legacy Diffusion Pipe UI files and updated RunPod/direct-shell documentation.
 - Corrected model CLI/API documentation, removed unsupported model commands, and clarified direct RunPod versus Docker Compose command usage across component guides.
