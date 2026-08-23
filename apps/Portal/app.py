@@ -133,6 +133,23 @@ DISPLAY_NAMES = {
     "controlpilot": "ControlPilot",
     "copilot": "Copilot Sidecar",
 }
+_SUPERVISOR_ACTIONS = {
+    "start": "start",
+    "stop": "stop",
+    "restart": "restart",
+    "reread": "reread",
+}
+_SUPERVISOR_SERVICE_NAMES = {
+    "jupyter": "jupyter",
+    "code-server": "code-server",
+    "comfy": "comfy",
+    "kohya": "kohya",
+    "diffpipe": "diffpipe",
+    "invoke": "invoke",
+    "ai-toolkit": "ai-toolkit",
+    "controlpilot": "controlpilot",
+    "copilot": "copilot",
+}
 SERVICES = list(SERVICE_LOGS.keys())
 SERVICE_UPDATE_SPECS: dict[str, dict[str, str]] = {
     "invoke": {"kind": "pip", "python_bin": "/opt/venvs/invoke/bin/python", "package": "invokeai"},
@@ -1767,7 +1784,11 @@ async def tagpilot_generate(
 @app.post("/api/tagpilot/save")
 def tagpilot_save(name: str, file: UploadFile = File(...)):
     target = _dataset_dir(name)
-    target = _safe_dataset_path(target)
+    dataset_root = os.path.realpath(str(_DATASET_ROOT))
+    target = os.path.realpath(str(target))
+    if target != dataset_root and not target.startswith(os.path.join(dataset_root, "")):
+        raise HTTPException(status_code=400, detail="Invalid dataset path")
+    target = Path(target)
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     zip_dir = _safe_dataset_zip_path(zip_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
@@ -2129,9 +2150,15 @@ def _run_cmd_capture(cmd: list[str], timeout: int = 30) -> str:
 def _run_supervisorctl(action: str, name: Optional[str] = None, *, timeout: int = 20) -> str:
     if not SUPERVISORCTL:
         raise HTTPException(status_code=500, detail="supervisorctl not found")
-    cmd = [SUPERVISORCTL, action]
+    safe_action = _SUPERVISOR_ACTIONS.get(action)
+    if safe_action is None:
+        raise HTTPException(status_code=400, detail="Invalid supervisor action")
+    cmd = [SUPERVISORCTL, safe_action]
     if name:
-        cmd.append(name)
+        safe_name = _SUPERVISOR_SERVICE_NAMES.get(name)
+        if safe_name is None:
+            raise HTTPException(status_code=400, detail="Invalid supervisor service")
+        cmd.append(safe_name)
     return _run_cmd_capture(cmd, timeout=timeout)
 
 

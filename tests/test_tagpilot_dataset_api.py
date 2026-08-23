@@ -146,6 +146,21 @@ class TagPilotDatasetApiTests(unittest.TestCase):
 
         self.assertEqual(files, [])
 
+    def test_tagpilot_save_rejects_symlinked_dataset_directory(self):
+        outside = Path(self.tmp.name) / "outside"
+        outside.mkdir()
+        try:
+            (portal_app._DATASET_ROOT / "1_escape").symlink_to(outside, target_is_directory=True)
+        except OSError:
+            self.skipTest("symlink creation is not available")
+
+        upload = portal_app.UploadFile(file=io.BytesIO(b"not a zip"), filename="dataset.zip")
+        with self.assertRaises(portal_app.HTTPException) as cm:
+            portal_app.tagpilot_save("escape", upload)
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertFalse((outside / "dataset.zip").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -71,20 +71,12 @@ sync_bundled_tree() {
   local target_dir="$2"
   local marker_file="$target_dir/.bundle-sync-sha"
   local source_hash
-  local target_hash
   local recorded_hash
 
   source_hash="$(bundle_tree_hash "$source_dir")"
   recorded_hash="$(tr -d '\r\n' < "$marker_file" 2>/dev/null || true)"
   if [ -n "$recorded_hash" ] && [ "$recorded_hash" = "$source_hash" ]; then
     return 0
-  fi
-
-  if [ ! -f "$marker_file" ] && [ -d "$target_dir" ]; then
-    target_hash="$(bundle_tree_hash "$target_dir" 2>/dev/null || true)"
-    if [ -n "$target_hash" ] && [ "$target_hash" != "$source_hash" ]; then
-      cp -a "$target_dir" "${target_dir}.pre-refresh.$(date +%s)"
-    fi
   fi
 
   mkdir -p "$target_dir"
@@ -123,9 +115,6 @@ if [ -f "$MODEL_MANIFEST_SOURCE" ]; then
   elif [ ! -f "$MODEL_MANIFEST_HASH_FILE" ]; then
     # First boot after this migration: replace the legacy seeded file once.
     model_manifest_refresh=1
-    if ! cmp -s "$MODEL_MANIFEST_TARGET" "$MODEL_MANIFEST_SOURCE"; then
-      cp -p "$MODEL_MANIFEST_TARGET" "$MODEL_MANIFEST_TARGET.pre-refresh.$(date +%s)"
-    fi
   else
     model_manifest_recorded_hash="$(head -n 1 "$MODEL_MANIFEST_HASH_FILE" 2>/dev/null || true)"
     model_manifest_active_hash="$(sha256sum "$MODEL_MANIFEST_TARGET" | awk '{print $1}')"

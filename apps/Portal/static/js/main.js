@@ -138,6 +138,7 @@ async function loadSection(section) {
   if (!controlPilotUnlocked) return;
   if (!contentEl) return;
   if (!viewMap[section]) section = "dashboard";
+  setCopilotSectionVisibility(section);
   // cleanup timers when switching away
   if (currentSection && currentSection !== section) {
     if (currentSection === "dashboard" && window.stopDashboard) window.stopDashboard();
@@ -162,6 +163,19 @@ async function loadSection(section) {
   viewMap[section].init();
   currentSection = section;
 }
+
+function setCopilotSectionVisibility(section) {
+  const disabled = section === "mediapilot";
+  const fab = document.getElementById("copilot-fab");
+  const drawer = document.getElementById("copilot-drawer");
+
+  if (fab) fab.classList.toggle("is-hidden", disabled);
+  if (drawer) {
+    if (disabled) drawer.classList.remove("open");
+    drawer.classList.toggle("is-hidden", disabled);
+  }
+}
+
 // expose for other modules
 window.loadSection = loadSection;
 

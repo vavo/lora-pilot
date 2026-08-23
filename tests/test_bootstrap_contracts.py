@@ -16,7 +16,8 @@ class BootstrapManifestTests(unittest.TestCase):
     def test_bootstrap_preserves_custom_manifest_after_initial_migration(self):
         source = (ROOT / "scripts/bootstrap.sh").read_text()
         self.assertIn('Preserving customized model manifest:', source)
-        self.assertIn('cp -p "$MODEL_MANIFEST_TARGET" "$MODEL_MANIFEST_TARGET.pre-refresh.$(date +%s)"', source)
+        self.assertNotIn(".pre-refresh.", source)
+        self.assertNotIn('cp -a "$target_dir"', source)
 
     def test_bundled_trees_use_hashes_and_remove_deleted_files(self):
         source = (ROOT / "scripts/bootstrap.sh").read_text()

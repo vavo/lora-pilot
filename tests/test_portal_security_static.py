@@ -67,6 +67,26 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertNotIn("os.walk(dataset_dir", iterator)
         self.assertNotIn("os.scandir", iterator)
 
+    def test_tagpilot_save_checks_canonical_dataset_root_at_file_sinks(self):
+        text = PORTAL_APP.read_text(encoding="utf-8")
+        route = re.search(r"def tagpilot_save\(.*?^def tagpilot_save_item", text, re.S | re.M)
+        self.assertIsNotNone(route)
+        route_text = route.group(0)
+
+        self.assertIn('dataset_root = os.path.realpath(str(_DATASET_ROOT))', route_text)
+        self.assertIn('target = os.path.realpath(str(target))', route_text)
+        self.assertIn('target.startswith(os.path.join(dataset_root, ""))', route_text)
+
+    def test_supervisor_commands_use_literal_allowlists(self):
+        text = PORTAL_APP.read_text(encoding="utf-8")
+        helper = re.search(r"def _run_supervisorctl\(.*?^def _default_service_updates_config", text, re.S | re.M)
+        self.assertIsNotNone(helper)
+        helper_text = helper.group(0)
+
+        self.assertIn('safe_action = _SUPERVISOR_ACTIONS.get(action)', helper_text)
+        self.assertIn('safe_name = _SUPERVISOR_SERVICE_NAMES.get(name)', helper_text)
+        self.assertIn('cmd = [SUPERVISORCTL, safe_action]', helper_text)
+
     def test_controlpilot_auth_covers_non_api_control_routes(self):
         app_text = PORTAL_APP.read_text(encoding="utf-8")
         comfy_text = (ROOT / "apps" / "Portal" / "services" / "comfy.py").read_text(encoding="utf-8")

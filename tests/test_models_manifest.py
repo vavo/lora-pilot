@@ -62,6 +62,27 @@ class ModelsManifestTests(unittest.TestCase):
                 self.assertEqual(entries[name]["source"], source)
                 self.assertEqual(entries[name]["subdir"], subdir)
 
+    def test_manifest_contains_minimax_h3_and_ltx_25_entries(self):
+        entries = manifest_entries(MANIFEST)
+        expected = {
+            "minimax-h3-fl2va-bf16": ("hf_file", "Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_bf16.safetensors", "diffusion_models"),
+            "minimax-h3-qwen3vl-32b-nvfp4": ("hf_file", "Comfy-Org/MiniMax-H3:text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors", "text_encoders"),
+            "minimax-h3-audio-vae": ("hf_file", "Comfy-Org/MiniMax-H3:vae/minimax_h3_audio_vae_fp32.safetensors", "vae"),
+            "minimax-h3-video-vae": ("hf_file", "Comfy-Org/MiniMax-H3:vae/minimax_h3_video_vae_fp16.safetensors", "vae"),
+            "ltx-2.5-22b-distilled-transformer-bf16": ("hf_file", "Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors", "diffusion_models"),
+            "ltx-2.5-gemma4-12b-bf16": ("hf_file", "Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors", "text_encoders"),
+            "ltx-2.5-gemma4-e2b-bf16": ("hf_file", "Comfy-Org/gemma-4:text_encoders/gemma4_e2b_it_bf16.safetensors", "text_encoders"),
+            "ltx-2.5-video-vae-bf16": ("hf_file", "Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors", "vae"),
+            "ltx-2.5-audio-vae-bf16": ("hf_file", "Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors", "vae"),
+        }
+
+        for name, (kind, source, subdir) in expected.items():
+            with self.subTest(name=name):
+                self.assertIn(name, entries)
+                self.assertEqual(entries[name]["kind"], kind)
+                self.assertEqual(entries[name]["source"], source)
+                self.assertEqual(entries[name]["subdir"], subdir)
+
     def test_manifest_repairs_known_broken_links(self):
         entries = manifest_entries(MANIFEST)
         expected_sources = {
