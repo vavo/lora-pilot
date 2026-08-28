@@ -7,7 +7,57 @@ from collections import deque
 from pathlib import Path
 from typing import List, Optional, Union
 
-import toml
+try:
+    import toml
+except ImportError:
+    try:
+        import tomlkit as toml
+    except ImportError:
+        class _SimpleTomlDumper:
+            @staticmethod
+            def _format_value(v):
+                if isinstance(v, bool):
+                    return "true" if v else "false"
+                if isinstance(v, (int, float)):
+                    return str(v)
+                if isinstance(v, str):
+                    escaped = v.replace("\\", "\\\\").replace('"', '\\"')
+                    return f'"{escaped}"'
+                if isinstance(v, list):
+                    items = ", ".join(_SimpleTomlDumper._format_value(x) for x in v)
+                    return f"[{items}]"
+                if v is None:
+                    return '""'
+                return f'"{str(v)}"'
+
+            @staticmethod
+            def dumps(obj, prefix=""):
+                lines = []
+                tables = []
+                table_arrays = []
+                for k, v in obj.items():
+                    if isinstance(v, dict):
+                        tables.append((k, v))
+                    elif isinstance(v, list) and v and isinstance(v[0], dict):
+                        table_arrays.append((k, v))
+                    else:
+                        lines.append(f"{k} = {_SimpleTomlDumper._format_value(v)}")
+                for k, v in tables:
+                    sub_prefix = f"{prefix}.{k}" if prefix else k
+                    lines.append(f"\n[{sub_prefix}]")
+                    lines.append(_SimpleTomlDumper.dumps(v, prefix=sub_prefix))
+                for k, v in table_arrays:
+                    sub_prefix = f"{prefix}.{k}" if prefix else k
+                    for item in v:
+                        lines.append(f"\n[[{sub_prefix}]]")
+                        lines.append(_SimpleTomlDumper.dumps(item, prefix=sub_prefix))
+                return "\n".join(lines).strip() + "\n"
+
+            @classmethod
+            def dump(cls, obj, f):
+                f.write(cls.dumps(obj))
+
+        toml = _SimpleTomlDumper()
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, validator
 

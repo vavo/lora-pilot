@@ -4,7 +4,7 @@ import json
 import subprocess
 import sys
 import tomllib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -100,7 +100,7 @@ def append_rollback(
     error: Optional[str] = None,
 ) -> None:
     payload: dict[str, object] = {
-        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
         "service": service,
         "kind": kind,
         "reason": "boot_reconcile",

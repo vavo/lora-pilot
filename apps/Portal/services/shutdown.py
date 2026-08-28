@@ -24,6 +24,7 @@ shutdown_scheduled = False
 shutdown_time = None
 shutdown_thread = None
 shutdown_lock = threading.Lock()
+_shutdown_wake_event = threading.Event()
 
 
 def _runpod_shutdown_command() -> Tuple[Optional[List[str]], Optional[str], str]:
@@ -55,23 +56,23 @@ def _runpod_shutdown_command() -> Tuple[Optional[List[str]], Optional[str], str]
     if os.environ.get("RUNPOD_NETWORK_VOLUME_ID"):
         return ["runpodctl", "remove", "pod", pod_id], "remove", pod_id
 
-    # Default to stop to avoid deleting pods with local storage.
     return ["runpodctl", "stop", "pod", pod_id], "stop", pod_id
 
 
 def shutdown_worker():
-    """Worker function that waits for shutdown time and executes shutdown."""
-    global shutdown_scheduled, shutdown_time
+    global shutdown_scheduled, shutdown_time, shutdown_thread
 
     while True:
         with shutdown_lock:
             if not shutdown_scheduled or shutdown_time is None:
+                shutdown_thread = None
                 break
 
             time_remaining = shutdown_time - time.time()
 
             if time_remaining <= 0:
-                # Time to shutdown
+                shutdown_scheduled = False
+                shutdown_thread = None
                 cmd, _mode, _pod_id = _runpod_shutdown_command()
                 if cmd:
                     try:
@@ -85,14 +86,13 @@ def shutdown_worker():
                         pass
                 break
 
-            # Sleep for a short time, then check again
-            shutdown_lock.release()
-            time.sleep(min(10, time_remaining))
-            shutdown_lock.acquire()
+            sleep_duration = min(5.0, max(0.1, time_remaining))
+
+        _shutdown_wake_event.wait(timeout=sleep_duration)
+        _shutdown_wake_event.clear()
 
 
 def schedule_shutdown(request: ShutdownRequest) -> None:
-    """Schedule a shutdown for the specified time."""
     global shutdown_scheduled, shutdown_time, shutdown_thread
 
     multipliers = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
@@ -107,19 +107,20 @@ def schedule_shutdown(request: ShutdownRequest) -> None:
     with shutdown_lock:
         shutdown_scheduled = True
         shutdown_time = time.time() + delay_seconds
+        _shutdown_wake_event.set()
 
-        shutdown_thread = threading.Thread(target=shutdown_worker, daemon=True)
-        shutdown_thread.start()
+        if shutdown_thread is None or not shutdown_thread.is_alive():
+            shutdown_thread = threading.Thread(target=shutdown_worker, daemon=True)
+            shutdown_thread.start()
 
 
 def cancel_shutdown() -> None:
-    """Cancel the scheduled shutdown."""
     global shutdown_scheduled, shutdown_time, shutdown_thread
 
     with shutdown_lock:
         shutdown_scheduled = False
         shutdown_time = None
-        shutdown_thread = None
+        _shutdown_wake_event.set()
 
 
 def get_shutdown_status() -> ShutdownStatus:
