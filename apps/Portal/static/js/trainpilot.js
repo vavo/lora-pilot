@@ -381,13 +381,17 @@ function startTpLogPoll() {
           `Training completed. Move the new LoRA file(s) to /workspace/models/loras?\n\n${fileList}`
         );
         if (shouldMove) {
-          const moved = await fetchJson("/api/trainpilot/move-loras", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ run_id: data.run_id }),
-          });
-          const movedCount = Array.isArray(moved.files) ? moved.files.length : loraFiles.length;
-          if (status) status.textContent = `Moved ${movedCount} LoRA file(s) to models/loras.`;
+          try {
+            const moved = await fetchJson("/api/trainpilot/move-loras", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ run_id: data.run_id }),
+            });
+            const movedCount = Array.isArray(moved.files) ? moved.files.length : loraFiles.length;
+            if (status) status.textContent = `Moved ${movedCount} LoRA file(s) to models/loras.`;
+          } catch (moveError) {
+            if (status) status.textContent = `Move failed: ${moveError.message || moveError}`;
+          }
         }
       }
       

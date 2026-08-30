@@ -3475,7 +3475,7 @@ def trainpilot_move_loras(req: TrainPilotMoveRequest):
     duplicate_names = {target.name for target in targets if sum(item.name == target.name for item in targets) > 1}
     if duplicate_names:
         raise HTTPException(status_code=409, detail=f"Duplicate LoRA filename: {sorted(duplicate_names)[0]}")
-    conflicts = [target.name for target in targets if target.exists()]
+    conflicts = [target.name for target in targets if target.exists() or target.is_symlink()]
     if conflicts:
         raise HTTPException(status_code=409, detail=f"LoRA already exists in models: {conflicts[0]}")
     destination.mkdir(parents=True, exist_ok=True)
