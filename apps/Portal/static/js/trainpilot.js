@@ -1,4 +1,5 @@
 let tpLogTimer = null;
+let tpMovePromptedRunId = null;
 
 window.initTrainpilot = function () {
   bindTpControls();
@@ -371,6 +372,24 @@ function startTpLogPoll() {
       const running = data.running === true;
       const finished = lines.some(line => line.includes('=== Training finished'));
       const progress = findLatestProgress(lines);
+
+      if (data.move_available && data.run_id && data.run_id !== tpMovePromptedRunId) {
+        tpMovePromptedRunId = data.run_id;
+        const loraFiles = Array.isArray(data.lora_files) ? data.lora_files : [];
+        const fileList = loraFiles.map(name => `- ${name}`).join("\n");
+        const shouldMove = confirm(
+          `Training completed. Move the new LoRA file(s) to /workspace/models/loras?\n\n${fileList}`
+        );
+        if (shouldMove) {
+          const moved = await fetchJson("/api/trainpilot/move-loras", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ run_id: data.run_id }),
+          });
+          const movedCount = Array.isArray(moved.files) ? moved.files.length : loraFiles.length;
+          if (status) status.textContent = `Moved ${movedCount} LoRA file(s) to models/loras.`;
+        }
+      }
       
       // Always show the latest logs, even if they're just debug info
       if (lines.length === 0) {

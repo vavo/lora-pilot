@@ -2,6 +2,7 @@ import base64
 import io
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 try:
@@ -149,6 +150,7 @@ class TagPilotDatasetApiTests(unittest.TestCase):
     def test_tagpilot_save_rejects_symlinked_dataset_directory(self):
         outside = Path(self.tmp.name) / "outside"
         outside.mkdir()
+        portal_app._DATASET_ROOT.mkdir(parents=True)
         try:
             (portal_app._DATASET_ROOT / "1_escape").symlink_to(outside, target_is_directory=True)
         except OSError:
@@ -160,6 +162,145 @@ class TagPilotDatasetApiTests(unittest.TestCase):
 
         self.assertEqual(cm.exception.status_code, 400)
         self.assertFalse((outside / "dataset.zip").exists())
+
+    def test_tagpilot_save_rejects_in_root_symlink_alias(self):
+        victim = portal_app._DATASET_ROOT / "1_victim"
+        victim.mkdir(parents=True)
+        (victim / "keep.txt").write_text("keep", encoding="utf-8")
+        try:
+            (portal_app._DATASET_ROOT / "1_alias").symlink_to(victim, target_is_directory=True)
+        except OSError:
+            self.skipTest("symlink creation is not available")
+
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("replace.txt", "replace")
+        archive.seek(0)
+        with self.assertRaises(portal_app.HTTPException) as cm:
+            portal_app.tagpilot_save(
+                "alias",
+                portal_app.UploadFile(file=archive, filename="alias.zip"),
+            )
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual((victim / "keep.txt").read_text(encoding="utf-8"), "keep")
+        self.assertFalse((victim / "replace.txt").exists())
+
+    def test_tagpilot_save_does_not_select_reserved_zip_store(self):
+        zip_dir = portal_app._DATASET_ZIP_ROOT
+        zip_dir.mkdir(parents=True)
+        keep = zip_dir / "keep.zip"
+        keep.write_bytes(b"keep")
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("new.txt", "new")
+        archive.seek(0)
+
+        portal_app.tagpilot_save(
+            "ZIPs",
+            portal_app.UploadFile(file=archive, filename="new.zip"),
+        )
+
+        self.assertEqual(keep.read_bytes(), b"keep")
+        self.assertEqual((portal_app._DATASET_ROOT / "1_ZIPs" / "new.txt").read_text(), "new")
+
+    def test_tagpilot_save_prefers_exact_dataset_name_over_canonical_collision(self):
+        exact = portal_app._DATASET_ROOT / "1_a~"
+        canonical = portal_app._DATASET_ROOT / "1_a"
+        exact.mkdir(parents=True)
+        canonical.mkdir()
+        (exact / "exact.txt").write_text("exact", encoding="utf-8")
+        (canonical / "canonical.txt").write_text("canonical", encoding="utf-8")
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("replacement.txt", "replacement")
+        archive.seek(0)
+
+        portal_app.tagpilot_save(
+            "1_a~",
+            portal_app.UploadFile(file=archive, filename="replacement.zip"),
+        )
+
+        self.assertFalse((exact / "exact.txt").exists())
+        self.assertEqual((exact / "replacement.txt").read_text(), "replacement")
+        self.assertEqual((canonical / "canonical.txt").read_text(), "canonical")
+
+    def test_tagpilot_save_replaces_symlink_inserted_during_upload(self):
+        victim = portal_app._DATASET_ROOT / "1_victim"
+        victim.mkdir(parents=True)
+        (victim / "keep.txt").write_text("keep", encoding="utf-8")
+        alias = portal_app._DATASET_ROOT / "1_alias"
+        original_stream = portal_app._stream_upload_to_path
+
+        def stream_with_symlink(upload, destination, *, max_bytes):
+            alias.symlink_to(victim, target_is_directory=True)
+            return original_stream(upload, destination, max_bytes=max_bytes)
+
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("replacement.txt", "replacement")
+        archive.seek(0)
+        portal_app._stream_upload_to_path = stream_with_symlink
+        try:
+            with self.assertRaises(portal_app.HTTPException) as cm:
+                portal_app.tagpilot_save(
+                    "alias",
+                    portal_app.UploadFile(file=archive, filename="alias.zip"),
+                )
+        finally:
+            portal_app._stream_upload_to_path = original_stream
+
+        self.assertEqual(cm.exception.status_code, 400)
+        self.assertEqual((victim / "keep.txt").read_text(), "keep")
+        self.assertFalse((victim / "replacement.txt").exists())
+
+    def test_tagpilot_save_replaces_existing_dataset(self):
+        dataset_dir = portal_app._DATASET_ROOT / "1_sample"
+        dataset_dir.mkdir(parents=True)
+        (dataset_dir / "old.txt").write_text("old", encoding="utf-8")
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("new.txt", "new")
+        archive.seek(0)
+
+        payload = portal_app.tagpilot_save(
+            "sample",
+            portal_app.UploadFile(file=archive, filename="sample.zip"),
+        )
+
+        self.assertEqual(payload["status"], "saved")
+        self.assertFalse((dataset_dir / "old.txt").exists())
+        self.assertEqual((dataset_dir / "new.txt").read_text(encoding="utf-8"), "new")
+
+    def test_tagpilot_save_creates_missing_dataset(self):
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zf:
+            zf.writestr("photo.txt", "tags")
+        archive.seek(0)
+
+        payload = portal_app.tagpilot_save(
+            "new dataset",
+            portal_app.UploadFile(file=archive, filename="new.zip"),
+        )
+
+        dataset_dir = portal_app._DATASET_ROOT / "1_new_dataset"
+        self.assertEqual(payload["status"], "saved")
+        self.assertEqual((dataset_dir / "photo.txt").read_text(encoding="utf-8"), "tags")
+
+    def test_tagpilot_save_rejects_empty_archive(self):
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w"):
+            pass
+        archive.seek(0)
+
+        with self.assertRaises(portal_app.HTTPException) as cm:
+            portal_app.tagpilot_save(
+                "empty",
+                portal_app.UploadFile(file=archive, filename="empty.zip"),
+            )
+
+        self.assertEqual(cm.exception.status_code, 500)
+        self.assertFalse((portal_app._DATASET_ROOT / "1_empty").exists())
 
 
 if __name__ == "__main__":

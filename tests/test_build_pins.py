@@ -28,7 +28,11 @@ class BuildPinTests(unittest.TestCase):
         install_text = (ROOT / "scripts/build/install-kohya.sh").read_text()
         self.assertIn("cd /opt/pilot/repos/kohya_ss", install_text)
         self.assertIn('req="requirements_runpod.txt"', install_text)
-        self.assertIn("-r /opt/pilot/repos/kohya_ss/requirements.txt", install_text)
+        self.assertIn('grep -v -E "${core_dependency_pattern}" requirements.txt', install_text)
+        self.assertIn("huggingface-hub", install_text)
+        self.assertIn("-c /opt/pilot/config/core-constraints.txt", install_text)
+        self.assertNotIn("-r /opt/pilot/repos/kohya_ss/requirements.txt", install_text)
+        self.assertIn("Hugging Face CLI missing after Kohya install", install_text)
 
     def test_node_tooling_uses_pinned_npm_version(self):
         expected_node = "24"
@@ -61,6 +65,16 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("next.config.ts", patch_text)
         self.assertIn("devIndicators", patch_text)
         self.assertIn("buildActivity", patch_text)
+        self.assertIn("cpus: 1", patch_text)
+        self.assertIn("webpackMemoryOptimizations: true", patch_text)
+
+    def test_ai_toolkit_ui_is_built_into_cross_platform_images(self):
+        text = (ROOT / "scripts/build/install-ai-toolkit.sh").read_text()
+        ui_block = text[text.index('if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]'):]
+
+        self.assertIn("  npm run build\n", ui_block)
+        self.assertNotIn("runtime will build missing assets on first start", ui_block)
+        self.assertNotIn('"${BUILDPLATFORM}" == "${TARGETPLATFORM}"', ui_block)
 
     def test_ai_toolkit_patch_preserves_ltx23_model_support(self):
         patch = ROOT / "scripts/build/patches/patch-ai-toolkit.sh"
@@ -82,10 +96,16 @@ class BuildPinTests(unittest.TestCase):
             self.assertTrue(ltx2_dir.is_dir())
             self.assertIn("LTX23Model", init_file.read_text())
 
-    def test_invokeai_6138_uses_required_dependency_pins(self):
+    def test_core_install_verifies_hugging_face_cli(self):
+        text = (ROOT / "scripts/build/install-core-stack.sh").read_text()
+
+        self.assertIn("[[ -x /opt/venvs/core/bin/hf ]]", text)
+        self.assertIn("/opt/venvs/core/bin/hf version", text)
+
+    def test_invokeai_6140_uses_required_dependency_pins(self):
         expected = {
-            "INVOKEAI_VERSION": "6.13.8",
-            "INVOKE_DIFFUSERS_VERSION": "0.37.0",
+            "INVOKEAI_VERSION": "6.14.0",
+            "INVOKE_DIFFUSERS_VERSION": "0.39.0",
             "INVOKE_TRANSFORMERS_VERSION": "5.5.4",
         }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
@@ -107,7 +127,7 @@ class BuildPinTests(unittest.TestCase):
 
     def test_comfy_uses_latest_verified_refs(self):
         expected = {
-            "COMFYUI_REF": "v0.33.3",
+            "COMFYUI_REF": "v0.34.0",
             "COMFYUI_MANAGER_REF": "4.2.2",
             "COMFYUI_DOWNLOADER_REF": "03146df738191004a8aad8264dca5c3530907f56",
         }

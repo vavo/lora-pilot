@@ -92,6 +92,8 @@ pip_install_in_venv /opt/venvs/core \
   "hf-transfer==${HF_TRANSFER_VERSION}"
 
 /opt/venvs/core/bin/python -c 'import hf_transfer'
+[[ -x /opt/venvs/core/bin/hf ]] || { echo "Hugging Face CLI missing after core install" >&2; exit 1; }
+/opt/venvs/core/bin/hf version
 
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \

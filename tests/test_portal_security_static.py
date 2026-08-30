@@ -73,9 +73,15 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertIsNotNone(route)
         route_text = route.group(0)
 
-        self.assertIn('dataset_root = os.path.realpath(str(_DATASET_ROOT))', route_text)
-        self.assertIn('target = os.path.realpath(str(target))', route_text)
-        self.assertIn('target.startswith(os.path.join(dataset_root, ""))', route_text)
+        self.assertIn("dataset_root = _safe_dataset_path(_DATASET_ROOT)", route_text)
+        self.assertIn("target = _safe_dataset_path(target)", route_text)
+        self.assertIn("target.parent != dataset_root", route_text)
+        self.assertIn("existing_target = _resolve_existing_dataset_dir(name)", route_text)
+        self.assertIn("shutil.rmtree(existing_target", route_text)
+        self.assertIn("tempfile.mkdtemp", route_text)
+        self.assertIn("os.replace(staging_dir, target)", route_text)
+        self.assertNotIn("shutil.rmtree(target", route_text)
+        self.assertNotIn("target.mkdir", route_text)
 
     def test_supervisor_commands_use_literal_allowlists(self):
         text = PORTAL_APP.read_text(encoding="utf-8")

@@ -16,6 +16,7 @@ import signal
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import threading
 import tomllib
@@ -186,6 +187,10 @@ TRAINPILOT_PERSISTENT_TOML = WORKSPACE_ROOT / "config" / "trainpilot" / "newlora
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
 _tp_output_dir: Optional[Path] = None
+_tp_run_id: Optional[str] = None
+_tp_exit_code: Optional[int] = None
+_tp_output_baseline: dict[str, tuple[int, int]] = {}
+_tp_moved_run_id: Optional[str] = None
 
 _model_pull_lock = threading.Lock()
 _model_pull_jobs: dict[str, "ModelPullJob"] = {}
@@ -1315,12 +1320,16 @@ def _dataset_name_leaf(name: str) -> str:
     return leaf
 
 
+def _canonical_dataset_name(name: str) -> str:
+    leaf = _dataset_name_leaf(name)
+    normalized = leaf[2:] if leaf.startswith("1_") else leaf
+    return f"1_{_clean_name(normalized)}"
+
+
 def _dataset_dir(name: str) -> Path:
     base = _DATASET_ROOT
     base.mkdir(parents=True, exist_ok=True)
-    leaf = _dataset_name_leaf(name)
-    normalized = leaf[2:] if leaf.startswith("1_") else leaf
-    safe_name = f"1_{_clean_name(normalized)}"
+    safe_name = _canonical_dataset_name(name)
     return _resolve_under_root(base, base / safe_name)
 
 
@@ -1371,10 +1380,12 @@ def _safe_extract_zip(
     max_entry_bytes: int = DATASET_ZIP_MAX_ENTRY_BYTES,
     max_ratio: float = DATASET_ZIP_MAX_COMPRESSION_RATIO,
 ) -> None:
-    dest_dir = _resolve_under_root(dest_dir, dest_dir)
+    dest_dir = _safe_dataset_path(dest_dir)
     total_uncompressed = 0
     entries_seen = 0
     with zipfile.ZipFile(zip_path) as zf:
+        if not zf.infolist():
+            raise ValueError("zip archive is empty")
         for info in zf.infolist():
             entries_seen += 1
             if entries_seen > max_entries:
@@ -1398,7 +1409,7 @@ def _safe_extract_zip(
                 total_uncompressed += info.file_size
                 if total_uncompressed > max_total_bytes:
                     raise ValueError(f"extracted zip would exceed {max_total_bytes} bytes")
-            target = _resolve_under_root(dest_dir, dest_dir / Path(*rel_path.parts))
+            target = _safe_dataset_path(_resolve_under_root(dest_dir, dest_dir / Path(*rel_path.parts)))
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True)
                 continue
@@ -1448,18 +1459,23 @@ def _resolve_existing_dataset_dir(root) -> Path:
     else:
         requested_name = _dataset_name_leaf(str(root))
     candidates = [requested_name]
-    canonical_name = _dataset_dir(requested_name).name
+    canonical_name = _canonical_dataset_name(requested_name)
     if canonical_name not in candidates:
         candidates.append(canonical_name)
     try:
         entries = sorted(os.listdir(dataset_root))
     except OSError:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    for entry_name in entries:
-        if entry_name in candidates:
-            resolved = _safe_dataset_path(dataset_root / entry_name)
-            if resolved.is_dir():
-                return resolved
+    entries = set(entries)
+    for candidate_name in candidates:
+        if not candidate_name.startswith("1_") or candidate_name not in entries:
+            continue
+        entry = dataset_root / candidate_name
+        if entry.is_symlink():
+            raise HTTPException(status_code=400, detail="Invalid dataset path")
+        resolved = _safe_dataset_path(entry)
+        if resolved.is_dir():
+            return resolved
     raise HTTPException(status_code=404, detail="Dataset not found")
 
 
@@ -1783,27 +1799,40 @@ async def tagpilot_generate(
 
 @app.post("/api/tagpilot/save")
 def tagpilot_save(name: str, file: UploadFile = File(...)):
-    target = _dataset_dir(name)
-    dataset_root = os.path.realpath(str(_DATASET_ROOT))
-    target = os.path.realpath(str(target))
-    if target != dataset_root and not target.startswith(os.path.join(dataset_root, "")):
+    try:
+        existing_target = _resolve_existing_dataset_dir(name)
+    except HTTPException as exc:
+        if exc.status_code != 404:
+            raise
+        existing_target = None
+    target = existing_target or _dataset_dir(name)
+    dataset_root = _safe_dataset_path(_DATASET_ROOT)
+    target = _safe_dataset_path(target)
+    if target.parent != dataset_root:
         raise HTTPException(status_code=400, detail="Invalid dataset path")
-    target = Path(target)
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     zip_dir = _safe_dataset_zip_path(zip_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
-    if target.exists():
-        shutil.rmtree(target, ignore_errors=True)
-    target.mkdir(parents=True, exist_ok=True)
     fname = _dataset_zip_stems(name)[0] + ".zip"
     dest = _safe_dataset_zip_path(zip_dir / fname)
+    staging_dir = None
     try:
         _stream_upload_to_path(file, dest, max_bytes=DATASET_UPLOAD_MAX_BYTES)
-        _safe_extract_zip(dest, target)
+        staging_dir = Path(tempfile.mkdtemp(prefix=".tagpilot-", dir=dataset_root))
+        _safe_extract_zip(dest, staging_dir)
+        if existing_target is not None:
+            shutil.rmtree(existing_target)
+        if target.is_symlink():
+            raise HTTPException(status_code=400, detail="Invalid dataset path")
+        os.replace(staging_dir, target)
+        staging_dir = None
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to save dataset archive")
+    finally:
+        if staging_dir is not None:
+            shutil.rmtree(staging_dir, ignore_errors=True)
     _invalidate_dataset_list_cache()
     return {"status": "saved", "path": str(target), "zip": str(dest)}
 
@@ -3279,8 +3308,28 @@ class TrainPilotRequest(BaseModel):
     toml_path: str = ""
 
 
+class TrainPilotMoveRequest(BaseModel):
+    run_id: str
+
+
+def _tp_lora_artifacts() -> list[Path]:
+    if _tp_exit_code != 0 or not _tp_output_dir or not _tp_output_dir.is_dir():
+        return []
+    artifacts = []
+    for candidate in _tp_output_dir.glob("*.safetensors"):
+        if candidate.is_symlink() or not candidate.is_file():
+            continue
+        safe_candidate = _safe_output_path(candidate)
+        stat_result = safe_candidate.stat()
+        signature = (stat_result.st_size, stat_result.st_mtime_ns)
+        if _tp_output_baseline.get(safe_candidate.name) != signature:
+            artifacts.append(safe_candidate)
+    return sorted(artifacts, key=lambda path: path.name.lower())
+
+
 def _tp_reader(proc: subprocess.Popen):
     global _tp_proc
+    global _tp_exit_code
     for raw in iter(proc.stdout.readline, b""):
         try:
             line = raw.decode("utf-8", errors="replace")
@@ -3288,7 +3337,7 @@ def _tp_reader(proc: subprocess.Popen):
             line = str(raw)
         _tp_logs.append(line.rstrip("\n"))
     proc.stdout.close()
-    proc.wait()
+    _tp_exit_code = proc.wait()
     _tp_proc = None
 
 
@@ -3321,6 +3370,10 @@ def _resolve_trainpilot_toml_path(raw_path: str = "") -> Path:
 def trainpilot_start(req: TrainPilotRequest):
     global _tp_proc
     global _tp_output_dir
+    global _tp_run_id
+    global _tp_exit_code
+    global _tp_output_baseline
+    global _tp_moved_run_id
     if _tp_proc and _tp_proc.poll() is None:
         raise HTTPException(status_code=400, detail="TrainPilot already running")
     if not TRAINPILOT_BIN.exists():
@@ -3333,6 +3386,17 @@ def trainpilot_start(req: TrainPilotRequest):
     ds_name = _clean_name(PurePosixPath(ds_raw.replace("\\", "/")).name)
     out_name = _clean_name(req.output_name.strip() or ds_name)
     _tp_output_dir = _resolve_under_root(WORKSPACE_ROOT / "outputs", WORKSPACE_ROOT / "outputs" / out_name)
+    _tp_output_baseline = {}
+    if _tp_output_dir.is_dir():
+        for candidate in _tp_output_dir.glob("*.safetensors"):
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            safe_candidate = _safe_output_path(candidate)
+            stat_result = safe_candidate.stat()
+            _tp_output_baseline[safe_candidate.name] = (stat_result.st_size, stat_result.st_mtime_ns)
+    _tp_run_id = secrets.token_urlsafe(12)
+    _tp_exit_code = None
+    _tp_moved_run_id = None
     profile = req.profile.strip() or "regular"
     if profile not in ("quick_test", "regular", "high_quality"):
         raise HTTPException(status_code=400, detail="Invalid profile")
@@ -3376,7 +3440,7 @@ def trainpilot_start(req: TrainPilotRequest):
     _tp_logs.clear()  # Clear startup logs, start fresh for process output
     _tp_logs.append(f"=== TrainPilot process started (PID: {proc.pid}) ===")
     threading.Thread(target=_tp_reader, args=(proc,), daemon=True).start()
-    return {"status": "started", "pid": proc.pid}
+    return {"status": "started", "pid": proc.pid, "run_id": _tp_run_id}
 
 
 @app.post("/api/trainpilot/stop")
@@ -3396,6 +3460,29 @@ def trainpilot_stop():
     finally:
         _tp_proc = None
     return {"status": "stopped"}
+
+
+@app.post("/api/trainpilot/move-loras")
+def trainpilot_move_loras(req: TrainPilotMoveRequest):
+    global _tp_moved_run_id
+    if not _tp_run_id or req.run_id != _tp_run_id:
+        raise HTTPException(status_code=409, detail="Training run is no longer current")
+    artifacts = _tp_lora_artifacts()
+    if not artifacts:
+        raise HTTPException(status_code=400, detail="No new LoRA files are available to move")
+    destination = _resolve_under_root(MODELS_DIR, MODELS_DIR / "loras")
+    targets = [destination / artifact.name for artifact in artifacts]
+    duplicate_names = {target.name for target in targets if sum(item.name == target.name for item in targets) > 1}
+    if duplicate_names:
+        raise HTTPException(status_code=409, detail=f"Duplicate LoRA filename: {sorted(duplicate_names)[0]}")
+    conflicts = [target.name for target in targets if target.exists()]
+    if conflicts:
+        raise HTTPException(status_code=409, detail=f"LoRA already exists in models: {conflicts[0]}")
+    destination.mkdir(parents=True, exist_ok=True)
+    for artifact, target in zip(artifacts, targets):
+        shutil.move(str(artifact), str(target))
+    _tp_moved_run_id = _tp_run_id
+    return {"status": "moved", "files": [target.name for target in targets], "destination": str(destination)}
 
 
 @app.post("/api/trainpilot/model-check")
@@ -3552,7 +3639,15 @@ def trainpilot_logs(limit: int = 500):
         lines.append("--- Error accessing training outputs ---")
     
     # Always return a valid response, even if empty
-    return {"lines": lines[-limit:], "running": running}
+    artifacts = _tp_lora_artifacts()
+    return {
+        "lines": lines[-limit:],
+        "running": running,
+        "run_id": _tp_run_id,
+        "exit_code": _tp_exit_code,
+        "lora_files": [path.name for path in artifacts],
+        "move_available": bool(artifacts) and _tp_moved_run_id != _tp_run_id,
+    }
 
 
 @app.get("/api/trainpilot/toml")

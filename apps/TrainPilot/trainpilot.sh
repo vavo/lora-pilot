@@ -66,12 +66,26 @@ ensure_sdxl_tokenizer() {
     return 0
   fi
 
-  local hf_bin="/opt/venvs/core/bin/hf"
-  [[ -x "${hf_bin}" ]] || die "Hugging Face CLI missing from core venv: ${hf_bin}"
   echo "CLIP tokenizer missing; downloading tokenizer files to the Hugging Face cache."
   HF_HOME="${HF_HOME}" TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}" HF_TOKEN="${HF_TOKEN:-}" \
-    "${hf_bin}" download openai/clip-vit-large-patch14 \
-      config.json merges.txt special_tokens_map.json tokenizer.json tokenizer_config.json vocab.json
+    "${PYTHON_BIN}" - <<'PY'
+from huggingface_hub import hf_hub_download
+
+repo_id = "openai/clip-vit-large-patch14"
+for filename in (
+    "config.json",
+    "merges.txt",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json",
+):
+    hf_hub_download(repo_id=repo_id, filename=filename)
+PY
+
+  HF_HOME="${HF_HOME}" TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}" \
+    "${PYTHON_BIN}" -c 'from transformers import CLIPTokenizer; CLIPTokenizer.from_pretrained("openai/clip-vit-large-patch14", local_files_only=True)' \
+    >/dev/null 2>&1 || die "CLIP tokenizer download completed but validation failed"
 }
 
 ensure_sdxl_tokenizer

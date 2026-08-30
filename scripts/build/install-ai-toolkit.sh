@@ -50,10 +50,6 @@ if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]; then
   cd /opt/pilot/repos/ai-toolkit/ui
   npm install
   DATABASE_URL=file:/tmp/aitk_db.db npx prisma generate
-  if [[ -z "${BUILDPLATFORM}" || -z "${TARGETPLATFORM}" || "${BUILDPLATFORM}" == "${TARGETPLATFORM}" ]]; then
-    npm run build
-  else
-    echo "Skipping AI Toolkit UI build during cross-platform build (${BUILDPLATFORM} -> ${TARGETPLATFORM}); runtime will build missing assets on first start."
-  fi
+  npm run build
   npm cache clean --force
 fi

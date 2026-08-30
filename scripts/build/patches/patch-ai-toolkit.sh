@@ -48,6 +48,14 @@ if next_config_file.exists():
   },
 """,
     "",
+    ).replace(
+    """  experimental: {
+""",
+    """  experimental: {
+    // Keep fresh-deploy fallback builds inside constrained container memory.
+    cpus: 1,
+    webpackMemoryOptimizations: true,
+""",
     ))
 
 for path in ui_dir.rglob("*"):
