@@ -1,5 +1,6 @@
 let tpLogTimer = null;
 let tpMovePromptedRunId = null;
+let tpLastMoveMessage = "";
 
 window.initTrainpilot = function () {
   bindTpControls();
@@ -312,6 +313,7 @@ window.startTrainPilot = async function () {
   const status = document.getElementById("tp-status");
   if (outputEl) outputEl.value = output;
   updateEpochExample(output);
+  tpLastMoveMessage = "";
   if (status) status.textContent = "Starting...";
   try {
     const servicesOk = await ensureTrainpilotRuntimeServices(status);
@@ -388,7 +390,8 @@ function startTpLogPoll() {
               body: JSON.stringify({ run_id: data.run_id }),
             });
             const movedCount = Array.isArray(moved.files) ? moved.files.length : loraFiles.length;
-            if (status) status.textContent = `Moved ${movedCount} LoRA file(s) to models/loras.`;
+            tpLastMoveMessage = `Moved ${movedCount} LoRA file(s) to models/loras.`;
+            if (status) status.textContent = tpLastMoveMessage;
           } catch (moveError) {
             if (status) status.textContent = `Move failed: ${moveError.message || moveError}`;
           }
@@ -443,7 +446,9 @@ function startTpLogPoll() {
       // Show last meaningful line as status hint
       if (status && lines.length) {
         const lastLine = lines[lines.length - 1];
-        if (!running) {
+        if (tpLastMoveMessage && !running) {
+          status.textContent = tpLastMoveMessage;
+        } else if (!running) {
           status.textContent = finished ? 'Training completed!' : 'No training process active';
         } else if (progress) {
           status.textContent = 'Training running';

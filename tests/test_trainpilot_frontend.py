@@ -35,6 +35,7 @@ class TrainPilotFrontendTests(unittest.TestCase):
         self.assertIn("Move the new LoRA file(s) to /workspace/models/loras?", text)
         self.assertIn('fetchJson("/api/trainpilot/move-loras"', text)
         self.assertIn("data.run_id !== tpMovePromptedRunId", text)
+        self.assertIn("status.textContent = tpLastMoveMessage", text)
 
     def test_move_loras_moves_only_current_run_artifacts(self):
         try:
@@ -50,6 +51,9 @@ class TrainPilotFrontendTests(unittest.TestCase):
             output_dir.mkdir(parents=True)
             new_lora = output_dir / "run000001.safetensors"
             new_lora.write_bytes(b"lora")
+            existing_lora = output_dir / "previous.safetensors"
+            existing_lora.write_bytes(b"existing")
+            existing_stat = existing_lora.stat()
             old_state = (
                 portal_app.MODELS_DIR,
                 portal_app._OUTPUT_ROOT,
@@ -65,7 +69,9 @@ class TrainPilotFrontendTests(unittest.TestCase):
                 portal_app._tp_output_dir = output_dir
                 portal_app._tp_run_id = "current-run"
                 portal_app._tp_exit_code = 0
-                portal_app._tp_output_baseline = {}
+                portal_app._tp_output_baseline = {
+                    existing_lora.name: (existing_stat.st_size, existing_stat.st_mtime_ns)
+                }
                 portal_app._tp_moved_run_id = None
 
                 result = portal_app.trainpilot_move_loras(
@@ -74,6 +80,7 @@ class TrainPilotFrontendTests(unittest.TestCase):
 
                 self.assertEqual(result["files"], ["run000001.safetensors"])
                 self.assertFalse(new_lora.exists())
+                self.assertTrue(existing_lora.exists())
                 self.assertTrue((portal_app.MODELS_DIR / "loras" / new_lora.name).exists())
             finally:
                 (

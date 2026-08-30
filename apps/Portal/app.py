@@ -3335,10 +3335,13 @@ def _tp_lora_artifacts() -> list[Path]:
         return []
     artifacts = []
     for candidate in _tp_output_dir.glob("*.safetensors"):
-        if candidate.is_symlink() or not candidate.is_file():
+        try:
+            if candidate.is_symlink() or not candidate.is_file():
+                continue
+            safe_candidate = _safe_output_path(candidate)
+            stat_result = safe_candidate.stat()
+        except OSError:
             continue
-        safe_candidate = _safe_output_path(candidate)
-        stat_result = safe_candidate.stat()
         signature = (stat_result.st_size, stat_result.st_mtime_ns)
         if _tp_output_baseline.get(safe_candidate.name) != signature:
             artifacts.append(safe_candidate)
@@ -3407,10 +3410,13 @@ def trainpilot_start(req: TrainPilotRequest):
     _tp_output_baseline = {}
     if _tp_output_dir.is_dir():
         for candidate in _tp_output_dir.glob("*.safetensors"):
-            if candidate.is_symlink() or not candidate.is_file():
+            try:
+                if candidate.is_symlink() or not candidate.is_file():
+                    continue
+                safe_candidate = _safe_output_path(candidate)
+                stat_result = safe_candidate.stat()
+            except OSError:
                 continue
-            safe_candidate = _safe_output_path(candidate)
-            stat_result = safe_candidate.stat()
             _tp_output_baseline[safe_candidate.name] = (stat_result.st_size, stat_result.st_mtime_ns)
     _tp_run_id = secrets.token_urlsafe(12)
     _tp_exit_code = None
