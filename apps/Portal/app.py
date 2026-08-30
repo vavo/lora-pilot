@@ -23,7 +23,7 @@ import tomllib
 import zipfile
 from collections import deque
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import List, Optional
 
@@ -34,23 +34,30 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import httpx
 
-# Import dpipe router (handle both package and flat module execution)
 try:
     from .dpipe_api import router as dpipe_router  # type: ignore
-except ImportError:
-    from dpipe_api import router as dpipe_router  # type: ignore
+except (ImportError, ValueError):
+    try:
+        from dpipe_api import router as dpipe_router  # type: ignore
+    except ImportError:
+        from apps.Portal.dpipe_api import router as dpipe_router  # type: ignore
 
-# Import service modules (handle both package and flat module execution)
 try:
     from .services import models as models_service  # type: ignore
     from .services import shutdown as shutdown_service  # type: ignore
     from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
-except ImportError:
-    from services import models as models_service  # type: ignore
-    from services import shutdown as shutdown_service  # type: ignore
-    from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
-    from services.comfy import create_router as create_comfy_router  # type: ignore
+except (ImportError, ValueError):
+    try:
+        from services import models as models_service  # type: ignore
+        from services import shutdown as shutdown_service  # type: ignore
+        from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
+        from services.comfy import create_router as create_comfy_router  # type: ignore
+    except ImportError:
+        from apps.Portal.services import models as models_service  # type: ignore
+        from apps.Portal.services import shutdown as shutdown_service  # type: ignore
+        from apps.Portal.services import tagpilot_ai as tagpilot_ai_service  # type: ignore
+        from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -1123,16 +1130,27 @@ async def add_no_cache_headers(request: Request, call_next):
     return response
 
 
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+
 @app.middleware("http")
 async def controlpilot_auth_middleware(request: Request, call_next):
     path = request.url.path
-    protected_path = path.startswith(("/api/", "/dpipe/", "/proxy/comfy/"))
+    if path == "/healthz":
+        return await call_next(request)
+
+    protected_path = path.startswith(("/api/", "/dpipe/", "/proxy/comfy/")) or path.startswith("/mediapilot")
     if protected_path:
         public_api_paths = {
             "/api/settings/auth/status",
             "/api/settings/auth/login",
+            "/mediapilot/auth/status",
+            "/mediapilot/auth/login",
+            "/mediapilot/healthz",
         }
-        if path.startswith("/api/") and path in public_api_paths:
+        if path in public_api_paths or path.startswith("/mediapilot/static/"):
             return await call_next(request)
         if not _controlpilot_request_authenticated(request):
             return JSONResponse(status_code=401, content={"detail": "ControlPilot password required"})
@@ -2312,7 +2330,7 @@ def _append_service_rollback_entry(
 ) -> None:
     spec = SERVICE_UPDATE_SPECS.get(name, {})
     payload = {
-        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
         "service": name,
         "kind": spec.get("kind", "unknown"),
         "reason": reason,

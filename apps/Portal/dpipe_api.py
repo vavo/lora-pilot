@@ -7,7 +7,79 @@ from collections import deque
 from pathlib import Path
 from typing import List, Optional, Union
 
-import toml
+try:
+    import toml
+except ImportError:
+    try:
+        import tomlkit as toml
+    except ImportError:
+        class _SimpleTomlDumper:
+            @staticmethod
+            def _format_value(v):
+                if isinstance(v, bool):
+                    return "true" if v else "false"
+                if isinstance(v, (int, float)):
+                    return str(v)
+                if isinstance(v, str):
+                    escaped = v.replace("\\", "\\\\").replace('"', '\\"')
+                    return f'"{escaped}"'
+                if isinstance(v, list):
+                    items = ", ".join(
+                        _SimpleTomlDumper._format_value(x) for x in v if x is not None
+                    )
+                    return f"[{items}]"
+                return f'"{str(v)}"'
+
+            @staticmethod
+            def dumps(obj, prefix=""):
+                lines = []
+                tables = []
+                table_arrays = []
+                for k, v in obj.items():
+                    if v is None:
+                        continue
+                    if isinstance(v, dict):
+                        tables.append((k, v))
+                    elif isinstance(v, list) and v and isinstance(v[0], dict):
+                        table_arrays.append((k, v))
+                    else:
+                        lines.append(f"{k} = {_SimpleTomlDumper._format_value(v)}")
+                for k, v in tables:
+                    sub_prefix = f"{prefix}.{k}" if prefix else k
+                    table_content = _SimpleTomlDumper.dumps(v, prefix=sub_prefix)
+                    if table_content.strip():
+                        lines.append(f"\n[{sub_prefix}]")
+                        lines.append(table_content)
+                for k, v in table_arrays:
+                    sub_prefix = f"{prefix}.{k}" if prefix else k
+                    for item in v:
+                        lines.append(f"\n[[{sub_prefix}]]")
+                        lines.append(_SimpleTomlDumper.dumps(item, prefix=sub_prefix))
+                return "\n".join(lines).strip() + "\n"
+
+            @classmethod
+            def dump(cls, obj, f):
+                f.write(cls.dumps(obj))
+
+        toml = _SimpleTomlDumper()
+
+
+def _clean_toml_dict(d: dict) -> dict:
+    cleaned = {}
+    for k, v in d.items():
+        if v is None:
+            continue
+        if isinstance(v, dict):
+            cleaned[k] = _clean_toml_dict(v)
+        elif isinstance(v, list):
+            cleaned[k] = [
+                _clean_toml_dict(item) if isinstance(item, dict) else item
+                for item in v
+                if item is not None
+            ]
+        else:
+            cleaned[k] = v
+    return cleaned
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, validator
 
@@ -166,6 +238,7 @@ def create_dataset_config(
         "ar_buckets": ar_buckets,
         "directory": [{"path": str(dataset_path), "num_repeats": num_repeats}],
     }
+    cfg = _clean_toml_dict(cfg)
     config_dir.mkdir(parents=True, exist_ok=True)
     out = config_dir / "dataset_config.toml"
     out = _resolve_under_root(str(out), root=CONFIG_DIR, field="dataset config path")
@@ -275,6 +348,7 @@ def create_training_config(
             "wandb_api_key": wandb_api_key,
         },
     }
+    cfg = _clean_toml_dict(cfg)
     config_dir.mkdir(parents=True, exist_ok=True)
     out = config_dir / "training_config.toml"
     out = _resolve_under_root(str(out), root=CONFIG_DIR, field="training config path")

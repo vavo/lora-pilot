@@ -76,12 +76,18 @@ get_status() {
         COMPOSE_FILE="docker-compose.cpu.yml"
     fi
     
-    # Use docker compose (space) instead of docker-compose (dash) for modern Docker
+    local is_running=false
     if command -v docker &> /dev/null && docker compose version &> /dev/null; then
-        docker compose -f "$COMPOSE_FILE" ps | grep -q "Up"
+        if docker compose -f "$COMPOSE_FILE" ps | grep -q "Up"; then
+            is_running=true
+        fi
     else
-        docker-compose -f "$COMPOSE_FILE" ps | grep -q "Up"
+        if docker-compose -f "$COMPOSE_FILE" ps | grep -q "Up"; then
+            is_running=true
+        fi
     fi
+
+    if [ "$is_running" = true ]; then
         print_status "LoRA Pilot is running"
         show_services
     else

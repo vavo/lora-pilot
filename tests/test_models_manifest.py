@@ -12,7 +12,7 @@ REFERENCE_MANIFEST = ROOT / "config" / "models.manifest.default"
 
 def manifest_entries(path):
     entries = {}
-    with path.open() as handle:
+    with path.open(encoding="utf-8") as handle:
         for raw in handle:
             line = raw.strip()
             if not line or line.startswith("#"):
@@ -38,7 +38,7 @@ class ModelsManifestTests(unittest.TestCase):
         self.assertEqual(missing, [])
 
     def test_shipped_manifest_matches_reference_manifest(self):
-        self.assertEqual(MANIFEST.read_text(), REFERENCE_MANIFEST.read_text())
+        self.assertEqual(MANIFEST.read_text(encoding="utf-8"), REFERENCE_MANIFEST.read_text(encoding="utf-8"))
 
     def test_manifest_contains_ltx_23_entries(self):
         entries = manifest_entries(MANIFEST)
@@ -135,7 +135,7 @@ class ModelsManifestTests(unittest.TestCase):
 
     def test_manifest_names_are_unique(self):
         names = []
-        with MANIFEST.open() as handle:
+        with MANIFEST.open(encoding="utf-8") as handle:
             for raw in handle:
                 line = raw.strip()
                 if not line or line.startswith("#"):

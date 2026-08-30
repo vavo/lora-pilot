@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class TrainPilotFrontendTests(unittest.TestCase):
     def test_trainpilot_preflights_sdxl_tokenizer(self):
-        text = (ROOT / "apps/TrainPilot/trainpilot.sh").read_text()
+        text = (ROOT / "apps/TrainPilot/trainpilot.sh").read_text(encoding="utf-8")
         self.assertIn("ensure_sdxl_tokenizer()", text)
         self.assertIn('local_files_only=True', text)
         self.assertIn("from huggingface_hub import hf_hub_download", text)
@@ -17,7 +17,7 @@ class TrainPilotFrontendTests(unittest.TestCase):
         self.assertIn("openai/clip-vit-large-patch14", text)
 
     def test_start_warns_and_starts_required_services_before_training(self):
-        text = (ROOT / "apps/Portal/static/js/trainpilot.js").read_text()
+        text = (ROOT / "apps/Portal/static/js/trainpilot.js").read_text(encoding="utf-8")
 
         self.assertIn('{ name: "kohya", label: "Kohya" }', text)
         self.assertIn('{ name: "diffpipe", label: "TensorBoard" }', text)

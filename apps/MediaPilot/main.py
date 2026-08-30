@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import json
 import os
 import re
@@ -103,18 +104,23 @@ if not ALLOW_ORIGINS:
 
 AUTH_SESSIONS: Set[str] = set()
 
+@contextmanager
 def get_db():
-    return connect(DB_FILE)
+    conn = connect(DB_FILE)
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE IF NOT EXISTS likes (filename TEXT PRIMARY KEY)")
-    cur.execute(
-        "CREATE TABLE IF NOT EXISTS tags (filename TEXT PRIMARY KEY, folder TEXT NOT NULL)"
-    )
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("CREATE TABLE IF NOT EXISTS likes (filename TEXT PRIMARY KEY)")
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS tags (filename TEXT PRIMARY KEY, folder TEXT NOT NULL)"
+        )
+        conn.commit()
 
 init_db()
 
@@ -952,10 +958,9 @@ def get_images(
     end = start + limit
     page_files = file_entries[start:end]
 
-    conn = get_db()
-    cur = conn.cursor()
-    liked = {row[0] for row in cur.execute("SELECT filename FROM likes")}
-    conn.close()
+    with get_db() as conn:
+        cur = conn.cursor()
+        liked = {row[0] for row in cur.execute("SELECT filename FROM likes")}
 
     items = []
     for f, mtime in page_files:
@@ -1002,19 +1007,17 @@ def get_images(
 @app.post("/like/{filename}")
 def like_file(filename: str):
     filename = normalize_selected_filename(filename)
-    conn = get_db()
-    conn.execute("INSERT OR REPLACE INTO likes(filename) VALUES (?)", (filename,))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("INSERT OR REPLACE INTO likes(filename) VALUES (?)", (filename,))
+        conn.commit()
     return {"ok": True}
 
 @app.post("/unlike/{filename}")
 def unlike_file(filename: str):
     filename = normalize_selected_filename(filename)
-    conn = get_db()
-    conn.execute("DELETE FROM likes WHERE filename = ?", (filename,))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("DELETE FROM likes WHERE filename = ?", (filename,))
+        conn.commit()
     return {"ok": True}
 
 # ---------------------------------------------------
@@ -1035,12 +1038,10 @@ def delete_file(filename: str, folder: str = "_root"):
     if thumb.exists():
         thumb.unlink()
 
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM likes WHERE filename = ?", (filename,))
-    cur.execute("DELETE FROM tags WHERE filename = ?", (filename,))
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute("DELETE FROM likes WHERE filename = ?", (filename,))
+        conn.execute("DELETE FROM tags WHERE filename = ?", (filename,))
+        conn.commit()
 
     return {"deleted": True}
 
@@ -1066,13 +1067,12 @@ def tag_file(filename: str, old_folder: str, new_folder: str):
     if old_thumb.exists():
         old_thumb.unlink()
 
-    conn = get_db()
-    conn.execute(
-        "INSERT OR REPLACE INTO tags(filename, folder) VALUES (?, ?)",
-        (filename, new_folder),
-    )
-    conn.commit()
-    conn.close()
+    with get_db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO tags(filename, folder) VALUES (?, ?)",
+            (filename, new_folder),
+        )
+        conn.commit()
 
     return {"moved": True}
 
