@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import json
 import os
 import re
@@ -103,8 +104,14 @@ if not ALLOW_ORIGINS:
 
 AUTH_SESSIONS: Set[str] = set()
 
+@contextmanager
 def get_db():
-    return connect(DB_FILE)
+    conn = connect(DB_FILE)
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
 
 def init_db():
     with get_db() as conn:
