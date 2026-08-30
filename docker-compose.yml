@@ -68,7 +68,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${PORTAL_PORT:-7878}/api/services"]
+      test: ["CMD", "curl", "-f", "http://localhost:${PORTAL_PORT:-7878}/api/settings/auth/status"]
       interval: 30s
       timeout: 10s
       retries: 3

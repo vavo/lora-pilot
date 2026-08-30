@@ -142,7 +142,7 @@ def parse_manifest(
             return None
         return None
 
-    with manifest_path.open() as f:
+    with manifest_path.open(encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
@@ -211,7 +211,7 @@ def parse_manifest(
 
 def delete_model(name: str, manifest_path: Path, models_dir: Path) -> int:
     line = None
-    with manifest_path.open() as f:
+    with manifest_path.open(encoding="utf-8") as f:
         for l in f:
             if l.strip().startswith("#") or not l.strip():
                 continue
@@ -277,7 +277,7 @@ def model_name_for_expected_path(
     except Exception:
         required_resolved = required_path
 
-    with manifest_path.open() as f:
+    with manifest_path.open(encoding="utf-8") as f:
         for raw in f:
             line = raw.strip()
             if not line or line.startswith("#"):
