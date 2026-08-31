@@ -49,6 +49,7 @@ if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]; then
   export VIRTUAL_ENV=/opt/venvs/ai-toolkit
   cd /opt/pilot/repos/ai-toolkit/ui
   npm install
+  npm_config_build_from_source=true npm rebuild sqlite3
   DATABASE_URL=file:/tmp/aitk_db.db npx prisma generate
   npm run build
   npm cache clean --force

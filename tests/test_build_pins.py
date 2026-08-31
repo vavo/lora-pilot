@@ -72,6 +72,7 @@ class BuildPinTests(unittest.TestCase):
         text = (ROOT / "scripts/build/install-ai-toolkit.sh").read_text()
         ui_block = text[text.index('if [[ "${INSTALL_AI_TOOLKIT_UI:-1}" == "1" ]]'):]
 
+        self.assertIn("npm_config_build_from_source=true npm rebuild sqlite3", ui_block)
         self.assertIn("  npm run build\n", ui_block)
         self.assertNotIn("runtime will build missing assets on first start", ui_block)
         self.assertNotIn('"${BUILDPLATFORM}" == "${TARGETPLATFORM}"', ui_block)
