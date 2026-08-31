@@ -225,7 +225,7 @@ class TagPilotDatasetApiTests(unittest.TestCase):
         self.assertEqual((exact / "replacement.txt").read_text(), "replacement")
         self.assertEqual((canonical / "canonical.txt").read_text(), "canonical")
 
-    def test_tagpilot_save_replaces_symlink_inserted_during_upload(self):
+    def test_tagpilot_save_rejects_symlink_inserted_during_upload(self):
         victim = portal_app._DATASET_ROOT / "1_victim"
         victim.mkdir(parents=True)
         (victim / "keep.txt").write_text("keep", encoding="utf-8")

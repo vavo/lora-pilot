@@ -73,8 +73,9 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertIsNotNone(route)
         route_text = route.group(0)
 
-        self.assertIn("dataset_root = _safe_dataset_path(_DATASET_ROOT)", route_text)
-        self.assertIn("target = _safe_dataset_path(target)", route_text)
+        self.assertIn("dataset_root_resolved = os.path.realpath(str(_DATASET_ROOT))", route_text)
+        self.assertIn("target_resolved = os.path.realpath(str(target))", route_text)
+        self.assertIn('target_resolved.startswith(os.path.join(dataset_root_resolved, ""))', route_text)
         self.assertIn("target.parent != dataset_root", route_text)
         self.assertIn("existing_target = _resolve_existing_dataset_dir(name)", route_text)
         self.assertIn("shutil.rmtree(existing_target", route_text)
@@ -82,6 +83,16 @@ class PortalSecurityStaticTests(unittest.TestCase):
         self.assertIn("os.replace(staging_dir, target)", route_text)
         self.assertNotIn("shutil.rmtree(target", route_text)
         self.assertNotIn("target.mkdir", route_text)
+
+    def test_trainpilot_artifact_paths_come_from_output_directory_entries(self):
+        text = PORTAL_APP.read_text(encoding="utf-8")
+        helper = re.search(r"def _tp_output_artifacts\(.*?^def _tp_lora_artifacts", text, re.S | re.M)
+        self.assertIsNotNone(helper)
+        helper_text = helper.group(0)
+
+        self.assertIn("os.scandir(output_root)", helper_text)
+        self.assertIn("os.scandir(output_entry.path)", helper_text)
+        self.assertIn("Path(artifact_entry.path)", helper_text)
 
     def test_supervisor_commands_use_literal_allowlists(self):
         text = PORTAL_APP.read_text(encoding="utf-8")

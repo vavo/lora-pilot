@@ -1484,16 +1484,19 @@ def _resolve_existing_dataset_dir(root) -> Path:
         entries = sorted(os.listdir(dataset_root))
     except OSError:
         raise HTTPException(status_code=404, detail="Dataset not found")
-    entries = set(entries)
     for candidate_name in candidates:
-        if not candidate_name.startswith("1_") or candidate_name not in entries:
+        if not candidate_name.startswith("1_"):
             continue
-        entry = dataset_root / candidate_name
-        if entry.is_symlink():
-            raise HTTPException(status_code=400, detail="Invalid dataset path")
-        resolved = _safe_dataset_path(entry)
-        if resolved.is_dir():
-            return resolved
+        for entry_name in entries:
+            if entry_name != candidate_name:
+                continue
+            entry = dataset_root / entry_name
+            if entry.is_symlink():
+                raise HTTPException(status_code=400, detail="Invalid dataset path")
+            resolved = _safe_dataset_path(entry)
+            if resolved.is_dir():
+                return resolved
+            break
     raise HTTPException(status_code=404, detail="Dataset not found")
 
 
@@ -1824,8 +1827,12 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
             raise
         existing_target = None
     target = existing_target or _dataset_dir(name)
-    dataset_root = _safe_dataset_path(_DATASET_ROOT)
-    target = _safe_dataset_path(target)
+    dataset_root_resolved = os.path.realpath(str(_DATASET_ROOT))
+    target_resolved = os.path.realpath(str(target))
+    if not target_resolved.startswith(os.path.join(dataset_root_resolved, "")):
+        raise HTTPException(status_code=400, detail="Invalid dataset path")
+    dataset_root = Path(dataset_root_resolved)
+    target = Path(target_resolved)
     if target.parent != dataset_root:
         raise HTTPException(status_code=400, detail="Invalid dataset path")
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
@@ -1863,21 +1870,30 @@ def tagpilot_save_item(
     reset: bool = Form(False),
     done: bool = Form(False),
 ):
+    existing_target = None
     try:
-        target = _resolve_existing_dataset_dir(name)
+        existing_target = _resolve_existing_dataset_dir(name)
     except HTTPException as exc:
         if exc.status_code != 404:
             raise
-        target = _dataset_dir(name)
+    target = existing_target or _dataset_dir(name)
+    dataset_root_resolved = os.path.realpath(str(_DATASET_ROOT))
+    target_resolved = os.path.realpath(str(target))
+    if not target_resolved.startswith(os.path.join(dataset_root_resolved, "")):
+        raise HTTPException(status_code=400, detail="Invalid dataset path")
+    dataset_root = Path(dataset_root_resolved)
+    target = Path(target_resolved)
+    if target.parent != dataset_root:
+        raise HTTPException(status_code=400, detail="Invalid dataset path")
     zip_dir = WORKSPACE_ROOT / "datasets" / "ZIPs"
     zip_dir = _safe_dataset_zip_path(zip_dir)
     zip_dir.mkdir(parents=True, exist_ok=True)
 
     if reset:
-        if target.exists():
-            shutil.rmtree(target, ignore_errors=True)
+        if existing_target is not None:
+            shutil.rmtree(existing_target, ignore_errors=True)
         target.mkdir(parents=True, exist_ok=True)
-    elif not target.exists():
+    elif existing_target is None:
         target.mkdir(parents=True, exist_ok=True)
 
     safe_name = _safe_upload_filename(file.filename or "")
@@ -3330,15 +3346,42 @@ class TrainPilotMoveRequest(BaseModel):
     run_id: str
 
 
+def _tp_output_artifacts(output_dir: Path) -> list[Path]:
+    output_root = _safe_output_path(_OUTPUT_ROOT)
+    selected_name = output_dir.name
+    try:
+        output_entries = sorted(os.scandir(output_root), key=lambda entry: entry.name.lower())
+    except OSError:
+        return []
+    for output_entry in output_entries:
+        if output_entry.name != selected_name:
+            continue
+        if output_entry.is_symlink() or not output_entry.is_dir(follow_symlinks=False):
+            return []
+        try:
+            artifact_entries = sorted(os.scandir(output_entry.path), key=lambda entry: entry.name.lower())
+        except OSError:
+            return []
+        artifacts = []
+        for artifact_entry in artifact_entries:
+            if not artifact_entry.name.endswith(".safetensors"):
+                continue
+            if artifact_entry.is_symlink() or not artifact_entry.is_file(follow_symlinks=False):
+                continue
+            try:
+                artifacts.append(_safe_output_path(Path(artifact_entry.path)))
+            except HTTPException:
+                continue
+        return artifacts
+    return []
+
+
 def _tp_lora_artifacts() -> list[Path]:
-    if _tp_exit_code != 0 or not _tp_output_dir or not _tp_output_dir.is_dir():
+    if _tp_exit_code != 0 or not _tp_output_dir:
         return []
     artifacts = []
-    for candidate in _tp_output_dir.glob("*.safetensors"):
+    for safe_candidate in _tp_output_artifacts(_tp_output_dir):
         try:
-            if candidate.is_symlink() or not candidate.is_file():
-                continue
-            safe_candidate = _safe_output_path(candidate)
             stat_result = safe_candidate.stat()
         except OSError:
             continue
@@ -3408,16 +3451,12 @@ def trainpilot_start(req: TrainPilotRequest):
     out_name = _clean_name(req.output_name.strip() or ds_name)
     _tp_output_dir = _resolve_under_root(WORKSPACE_ROOT / "outputs", WORKSPACE_ROOT / "outputs" / out_name)
     _tp_output_baseline = {}
-    if _tp_output_dir.is_dir():
-        for candidate in _tp_output_dir.glob("*.safetensors"):
-            try:
-                if candidate.is_symlink() or not candidate.is_file():
-                    continue
-                safe_candidate = _safe_output_path(candidate)
-                stat_result = safe_candidate.stat()
-            except OSError:
-                continue
-            _tp_output_baseline[safe_candidate.name] = (stat_result.st_size, stat_result.st_mtime_ns)
+    for safe_candidate in _tp_output_artifacts(_tp_output_dir):
+        try:
+            stat_result = safe_candidate.stat()
+        except OSError:
+            continue
+        _tp_output_baseline[safe_candidate.name] = (stat_result.st_size, stat_result.st_mtime_ns)
     _tp_run_id = secrets.token_urlsafe(12)
     _tp_exit_code = None
     _tp_moved_run_id = None
