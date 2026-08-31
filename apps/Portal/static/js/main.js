@@ -8,7 +8,7 @@ const viewMap = {
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
   models: { view: "/views/models.html", init: () => window.initModels && window.initModels() },
   datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
-  mediapilot: { view: "/views/mediapilot.html", init: () => window.initMediapilot && window.initMediapilot() },
+  mediapilot: { view: "/views/mediapilot.html?v=20260831a", init: () => window.initMediapilot && window.initMediapilot() },
   comfyui: { view: "/views/comfyui.html", init: () => window.initComfyUI && window.initComfyUI() },
   tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
@@ -19,6 +19,7 @@ const viewMap = {
 };
 
 const contentEl = document.getElementById("content");
+const mainEl = document.querySelector(".main");
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("overlay");
 const burger = document.getElementById("burger");
@@ -169,9 +170,14 @@ function setCopilotSectionVisibility(section) {
   const fab = document.getElementById("copilot-fab");
   const drawer = document.getElementById("copilot-drawer");
 
-  if (fab) fab.classList.toggle("is-hidden", disabled);
+  mainEl?.classList.toggle("main--mediapilot", disabled);
+  if (fab) {
+    fab.hidden = disabled;
+    fab.classList.toggle("is-hidden", disabled);
+  }
   if (drawer) {
     if (disabled) drawer.classList.remove("open");
+    drawer.hidden = disabled;
     drawer.classList.toggle("is-hidden", disabled);
   }
 }
