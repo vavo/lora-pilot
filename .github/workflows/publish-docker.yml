@@ -8,6 +8,10 @@ on:
       - "v*"
     paths:
       - ".github/workflows/publish-docker.yml"
+      - "Dockerfile"
+      - "Makefile"
+      - "build.env.example"
+      - "scripts/build/**"
   workflow_dispatch:
 
 env:

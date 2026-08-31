@@ -233,7 +233,7 @@ class BuildPinTests(unittest.TestCase):
                 "UV_VERSION": "0.11.26",
                 "DEEPDIFF_VERSION": "9.1.0",
                 "GGUF_VERSION": "0.19.0",
-                "TOMLKIT_VERSION": "0.15.0",
+                "TOMLKIT_VERSION": "0.14.0",
                 "PEFT_VERSION": "0.19.1",
                 "ACCELERATE_VERSION": "1.14.0",
                 "HF_HUB_VERSION": "1.19.0",

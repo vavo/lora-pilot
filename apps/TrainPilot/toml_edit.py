@@ -6,7 +6,7 @@ try:
 except ImportError:
     print("Installing tomlkit into the active Python environment...", file=sys.stderr)
     import subprocess
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "tomlkit==0.15.0"], check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "tomlkit==0.14.0"], check=True)
     import tomlkit
 
 # --------- IO helpers ---------
