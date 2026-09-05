@@ -7,9 +7,9 @@ window.controlPilotSettings = window.controlPilotSettings || null;
 const viewMap = {
   dashboard: { view: "/views/dashboard.html", init: () => window.initDashboard && window.initDashboard() },
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
-  models: { view: "/views/models.html", init: () => window.initModels && window.initModels() },
+  models: { view: "/views/models.html?v=20260905b", init: () => window.initModels && window.initModels() },
   datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
-  mediapilot: { view: "/views/mediapilot.html?v=20260831a", init: () => window.initMediapilot && window.initMediapilot() },
+  mediapilot: { view: "/views/mediapilot.html?v=20260905a", init: () => window.initMediapilot && window.initMediapilot() },
   comfyui: { view: "/views/comfyui.html", init: () => window.initComfyUI && window.initComfyUI() },
   tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },

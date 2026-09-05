@@ -1,5 +1,13 @@
 Unreleased (September 5th 2026)
 
+- Fixed the mobile Models page expanding beyond the viewport after loading model names; constrained the content pane and search field, wrapped long names, and aligned the card breakpoint with the mobile navigation.
+
+- Disabled Copilot prompt, Run, and URL-permission controls across ControlPilot when the sidecar is stopped or unavailable; Start and Settings remain accessible. Service actions and background status checks keep chat availability current.
+- Reinforced MediaPilot full-width embedding on desktop and mobile, with refreshed frontend cache versions.
+
+- Updated code-server to `4.135.0` (VS Code `1.135.0`); verified JupyterLab `4.6.3` remains the latest stable release.
+- Added system FFmpeg and its shared libraries for TorchCodec video decoding and AI Toolkit build-time import checks.
+
 - Added optional ComfyUI UI/API protection in ControlPilot Settings. Off by default, preserving credential-free access; when enabled, browser sessions and revocable API tokens use a full HTTP/WebSocket gateway while ComfyUI listens only on localhost.
 - Added one-time API token display, rotation/revocation, and guarded ComfyUI restarts. Token removal keeps protection enabled; disabling protection restores the existing direct URL.
 

@@ -73,7 +73,7 @@
     .nav a.active .nav-icon { color: var(--accent); }
     .nav-icon { width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center; color: var(--muted); flex: 0 0 auto; }
     .nav-icon svg { width:18px; height:18px; display:block; }
-    .main { flex:1; padding:24px; }
+    .main { flex:1; min-width:0; align-self:stretch; padding:24px; }
     @media (min-width: 769px) {
       .main.main--mediapilot {
         min-width: 0;
@@ -368,11 +368,11 @@
         </div>
       </div>
       <div class="drawer-composer">
-        <textarea id="copilot-drawer-prompt" class="input" rows="4" placeholder="Ask Copilot…"></textarea>
+        <textarea id="copilot-drawer-prompt" disabled class="input" rows="4" placeholder="Ask Copilot…"></textarea>
         <div class="row wrap gap-8 items-center">
-          <button id="copilot-drawer-send" class="btn primary">Run</button>
+          <button id="copilot-drawer-send" disabled class="btn primary">Run</button>
           <label class="status status-check">
-            <input type="checkbox" id="copilot-drawer-allow-urls" />
+            <input type="checkbox" id="copilot-drawer-allow-urls" disabled />
             allow all URLs
           </label>
           <button id="copilot-drawer-clear" class="btn secondary">Clear</button>
@@ -415,19 +415,19 @@
   
   <script src="/js/utils.js?v=20260204d"></script>
   <script src="/js/dashboard.js?v=20260211b"></script>
-  <script src="/js/services.js?v=20260204d"></script>
+  <script src="/js/services.js?v=20260905a"></script>
   <script src="/js/models.js?v=20260204d"></script>
   <script src="/js/datasets.js?v=20260204d"></script>
   <script src="/js/comfyui.js?v=20260211b"></script>
   <script src="/js/trainpilot.js?v=20260204d"></script>
   <script src="/js/dpipe.js?v=20260204d"></script>
-  <script src="/js/copilot-global.js?v=20260204d"></script>
+  <script src="/js/copilot-global.js?v=20260905a"></script>
   <script src="/js/settings.js?v=20260326a"></script>
   <script src="/vendor/marked.min.js?v=20260211a"></script>
   <script src="/js/docs.js?v=20260211c"></script>
   <script src="/js/support.js?v=20260204d"></script>
   <script src="/js/tagpilot.js?v=20260204d"></script>
   <script src="/js/mediapilot.js?v=20260210a"></script>
-  <script src="/js/main.js?v=20260831a"></script>
+  <script src="/js/main.js?v=20260905b"></script>
 </body>
 </html>

@@ -18,6 +18,16 @@
   if (!fab || !drawer || !statusEl || !promptEl || !sendBtn || !outEl) return;
 
   let lastStatusAt = 0;
+  let available = false;
+  let busy = false;
+  let statusRequest = 0;
+
+  function updateChatControls() {
+    promptEl.disabled = !available || busy;
+    sendBtn.disabled = !available || busy;
+    if (allowUrlsEl) allowUrlsEl.disabled = !available || busy;
+    promptEl.placeholder = available ? "Ask Copilot…" : "Start Copilot to use chat.";
+  }
 
   function hasMissingAuth(text) {
     const value = String(text || "");
@@ -54,16 +64,25 @@
     const now = Date.now();
     if (!force && now - lastStatusAt < 15000) return;
     lastStatusAt = now;
+    const request = ++statusRequest;
     statusEl.textContent = "Loading…";
     try {
       const st = await fetchJson("/api/copilot/status");
+      if (request !== statusRequest) return;
+      available = st.sidecar_reachable !== false && st.copilot_in_path === true;
       const version = st.copilot_version ? ` (${st.copilot_version})` : "";
-      statusEl.textContent = st.copilot_in_path
+      statusEl.textContent = st.sidecar_reachable === false
+        ? "Copilot is stopped or unreachable. Start it to use chat."
+        : st.copilot_in_path
         ? `Ready. copilot found${version}.`
         : "Sidecar reachable but copilot not found in PATH.";
       setAuthWarningVisible(false);
     } catch (e) {
+      if (request !== statusRequest) return;
+      available = false;
       statusEl.textContent = `Sidecar not running/reachable. (${e.message || e})`;
+    } finally {
+      if (request === statusRequest) updateChatControls();
     }
   }
 
@@ -83,9 +102,11 @@
   }
 
   async function runPrompt() {
+    if (!available || busy) return;
     const prompt = (promptEl.value || "").trim();
     if (!prompt) return;
-    sendBtn.disabled = true;
+    busy = true;
+    updateChatControls();
     if (runningEl) runningEl.classList.remove("is-hidden");
     try {
       const payload = {
@@ -103,13 +124,14 @@
       outEl.textContent = combined || "(no output)";
       outEl.scrollTop = outEl.scrollHeight;
       setAuthWarningVisible(hasMissingAuth(combined));
-      await refreshStatus(true);
     } catch (e) {
       const message = `Error: ${e.message || e}`;
       outEl.textContent = message;
       setAuthWarningVisible(hasMissingAuth(message));
     } finally {
-      sendBtn.disabled = false;
+      busy = false;
+      await refreshStatus(true);
+      updateChatControls();
       if (runningEl) runningEl.classList.add("is-hidden");
     }
   }
@@ -130,8 +152,19 @@
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") runPrompt();
   });
 
-  // Lazy status refresh if drawer stays open.
+  window.addEventListener("copilot-service-action", (event) => {
+    ++statusRequest;
+    available = false;
+    updateChatControls();
+    statusEl.textContent = "Copilot is stopped or restarting.";
+    if (event.detail !== "stop") refreshStatus(true);
+  });
+  window.addEventListener("focus", () => refreshStatus(true));
+  updateChatControls();
+  refreshStatus(true);
+
+  // Keep availability current across every subpage, even with the drawer closed.
   setInterval(() => {
-    if (drawer.classList.contains("open")) refreshStatus(false);
+    refreshStatus(false);
   }, 5000);
 })();

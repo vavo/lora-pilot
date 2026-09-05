@@ -129,3 +129,7 @@ Behavior notes:
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 
+
+### Chat availability
+
+ControlPilot disables the chat prompt, Run button, and URL permission checkbox until the Copilot sidecar is reachable and the CLI is installed. Start and Settings remain available. Service actions update chat availability immediately; background checks run approximately every 15 seconds and opening the drawer refreshes status. MediaPilot continues to hide the drawer.

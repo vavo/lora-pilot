@@ -265,6 +265,7 @@ async function loadServices() {
 window.serviceAction = async function (name, action) {
   try {
     await fetchJson(`/api/services/${encodeURIComponent(name)}/${action}`, { method: "POST" });
+    if (name === "copilot") window.dispatchEvent(new CustomEvent("copilot-service-action", { detail: action }));
     await loadServices();
   } catch (e) {
     alert(`Service action failed: ${e.message || e}`);

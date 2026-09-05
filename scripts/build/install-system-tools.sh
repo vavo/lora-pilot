@@ -21,6 +21,7 @@ apt-get install -y --no-install-recommends \
   gnupg \
   build-essential \
   iproute2 \
+  ffmpeg \
   libgl1 \
   libglib2.0-0 \
   whiptail \
