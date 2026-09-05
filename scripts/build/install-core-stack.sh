@@ -30,6 +30,17 @@ set -euo pipefail
 : "${WEBSOCKETS_VERSION:?WEBSOCKETS_VERSION is required}"
 : "${HTTPX_VERSION:?HTTPX_VERSION is required}"
 
+case "${CUDA_PROFILE:-cu130}" in
+  cu128) expected_cuda=12.8 ;;
+  cu130) expected_cuda=13.0 ;;
+  *) echo "CUDA_PROFILE must be cu128 or cu130" >&2; exit 1 ;;
+esac
+if [[ "${TORCH_INDEX_URL##*/}" != "${CUDA_PROFILE:-cu130}" ||
+      "${CUDA_VERSION:-${expected_cuda}}" != "${expected_cuda}"* ]]; then
+  echo "CUDA base image, CUDA_PROFILE and TORCH_INDEX_URL must match; use make build CUDA_PROFILE=cu128 or cu130." >&2
+  exit 1
+fi
+
 if [[ "${INSTALL_GPU_STACK:-1}" == "1" ]]; then
   pip_install_in_venv /opt/venvs/core \
     "torch==${TORCH_VERSION}" \

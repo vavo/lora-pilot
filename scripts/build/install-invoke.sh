@@ -17,7 +17,6 @@ fi
 : "${PEFT_VERSION:?PEFT_VERSION is required}"
 
 create_venv /opt/venvs/invoke setuptools wheel
-add_shared_core_site_packages /opt/venvs/invoke /opt/venvs/core
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
   --extra-index-url "${INVOKE_TORCH_INDEX_URL}" \
@@ -31,7 +30,8 @@ pip_install_unconstrained_in_venv /opt/venvs/invoke \
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
   -c /opt/pilot/config/invoke-constraints.txt \
-  "huggingface_hub[hf_transfer]==${INVOKE_HF_HUB_VERSION}"
+  "huggingface_hub==${INVOKE_HF_HUB_VERSION}" \
+  "hf-transfer==${HF_TRANSFER_VERSION}"
 
 pip_install_unconstrained_in_venv /opt/venvs/invoke \
   -c /opt/pilot/config/invoke-constraints.txt \
@@ -40,3 +40,5 @@ pip_install_unconstrained_in_venv /opt/venvs/invoke \
   "peft==${PEFT_VERSION}" \
   "numpy<2" \
   "pillow<11"
+
+/opt/venvs/invoke/bin/python -m pip check

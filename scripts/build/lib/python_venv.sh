@@ -39,3 +39,12 @@ add_shared_core_site_packages() {
   target_site="$(site_packages_for_venv "${venv_path}")"
   printf '%s\n' "${core_site}" > "${target_site}/99-lora-pilot-core-site.pth"
 }
+
+# Install the selected CUDA wheel family into an isolated service environment.
+install_service_gpu_stack() {
+  local venv_path="$1"
+  pip_install_unconstrained_in_venv "${venv_path}" \
+    --index-url "${TORCH_INDEX_URL}" \
+    "torch==${TORCH_VERSION}" "torchvision==${TORCHVISION_VERSION}" \
+    "torchaudio==${TORCHAUDIO_VERSION}" "xformers==${XFORMERS_VERSION}"
+}

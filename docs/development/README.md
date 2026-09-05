@@ -8,6 +8,7 @@ This section covers LoRA Pilot internals and contributor-facing engineering docs
 
 - [Architecture](architecture.md)
 - [Building](building.md)
+- [CUDA compatibility and video workflows](cuda-compatibility.md)
 - [Contributing](contributing.md)
 - [Debugging](debugging.md)
 - [API Reference](api-reference.md)

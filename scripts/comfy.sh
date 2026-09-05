@@ -114,6 +114,14 @@ if [ ! -f "$TEMPLATES" ]; then
 fi
 configure_comfy_manager
 
+# Seed official workflows without replacing user edits on persistent volumes.
+mkdir -p "${USER_DIR}/default/workflows/LoRA Pilot"
+for workflow in /opt/pilot/bundled/comfy-workflows/video_*.json; do
+  [[ -f "${workflow}" ]] || continue
+  destination="${USER_DIR}/default/workflows/LoRA Pilot/$(basename "${workflow}")"
+  [[ -e "${destination}" ]] || cp "${workflow}" "${destination}"
+done
+
 CPU_FLAG=""
 if ! python - <<'PY'
 import torch, sys

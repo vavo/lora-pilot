@@ -106,3 +106,13 @@ peft==${PEFT_VERSION}
 tensorboard==${TENSORBOARD_VERSION}
 setuptools<81.0
 EOF
+
+# Service dependencies may differ from core; only the CUDA ABI is shared.
+cat > "${config_dir}/service-gpu-constraints.txt" <<EOF
+torch==${TORCH_VERSION}
+torchvision==${TORCHVISION_VERSION}
+${torchaudio_constraint}
+xformers==${XFORMERS_VERSION}
+numpy<2
+setuptools<81.0
+EOF

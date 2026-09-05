@@ -25,7 +25,7 @@ prepare_env() {
 
   mkdir -p "$OUTS_BASE" "$IMAGES_DIR" "$(dirname "$ACCELERATE_CONFIG_FILE")" "$HF_HOME"
 
-  PYTHON_BIN="${PYTHON_BIN:-/opt/venvs/core/bin/python}"
+  PYTHON_BIN="${PYTHON_BIN:-/opt/venvs/kohya/bin/python}"
   require "$PYTHON_BIN"
 }
 

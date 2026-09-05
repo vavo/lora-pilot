@@ -27,12 +27,12 @@ class BuildPinTests(unittest.TestCase):
     def test_kohya_installer_resolves_requirements_from_checkout(self):
         install_text = (ROOT / "scripts/build/install-kohya.sh").read_text()
         self.assertIn("cd /opt/pilot/repos/kohya_ss", install_text)
-        self.assertIn('req="requirements_runpod.txt"', install_text)
-        self.assertIn('grep -v -E "${core_dependency_pattern}" requirements.txt', install_text)
-        self.assertIn("huggingface-hub", install_text)
-        self.assertIn("-c /opt/pilot/config/core-constraints.txt", install_text)
-        self.assertNotIn("-r /opt/pilot/repos/kohya_ss/requirements.txt", install_text)
-        self.assertIn("Hugging Face CLI missing after Kohya install", install_text)
+        self.assertIn("create_venv /opt/venvs/kohya", install_text)
+        self.assertIn("install_service_gpu_stack /opt/venvs/kohya", install_text)
+        self.assertIn("-c /opt/pilot/config/service-gpu-constraints.txt", install_text)
+        self.assertIn('-r requirements.txt "gradio<6"', install_text)
+        self.assertNotIn("/opt/venvs/core", install_text)
+        self.assertNotIn("grep -v", install_text)
 
     def test_node_tooling_uses_pinned_npm_version(self):
         expected_node = "24"
@@ -424,7 +424,8 @@ class BuildPinTests(unittest.TestCase):
                 text = (ROOT / path).read_text()
                 self.assertIn(warning_filter, text)
                 self.assertIn("from transformers import CLIPFeatureExtractor, Dinov2WithRegistersConfig", text)
-                self.assertNotIn('pip install "setuptools<81.0"', text)
+                self.assertNotIn('pip install', text)
+                self.assertIn('/opt/venvs/kohya/bin/python', text)
 
     def test_diffusion_pipe_suppresses_tensorboard_pkg_resources_warning(self):
         text = (ROOT / "scripts/diffusion-pipe.sh").read_text()

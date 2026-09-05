@@ -50,3 +50,6 @@ mkdir -p \
   /workspace/home
 
 cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt || true
+
+# Later app installers must not leave the shared core environment inconsistent.
+/opt/venvs/core/bin/python -m pip check

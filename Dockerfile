@@ -44,9 +44,9 @@ ARG IPYWIDGETS_VERSION=8.1.8
 ARG COMFYUI_REF=v0.34.0
 ARG COMFYUI_MANAGER_REF=4.2.2
 ARG COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
-ARG KOHYA_REF=v25.2.1
+ARG KOHYA_REF=v26.0.0
 ARG DIFFPIPE_REF=8f83dbf25d03219df705570ec03e62be04bc402f
-ARG AI_TOOLKIT_REF=27a03a91f23eb1b757d5ec2e80ee3e129cfcc350
+ARG AI_TOOLKIT_REF=b36bb3998ae596a566d85513299696a3a78f0dcb
 ARG AI_TOOLKIT_DIFFUSERS_VERSION=git
 ARG DIFFPIPE_DIFFUSERS_VERSION=0.38.0
 ARG DIFFPIPE_TRANSFORMERS_VERSION=5.11.0
@@ -159,6 +159,7 @@ RUN echo "AI_TOOLKIT_CACHE_BUST=${AI_TOOLKIT_CACHE_BUST}" >/dev/null && \
 
 
 # ----- LAYER 10: Config + runtime setup (semi-stable) -----
+COPY config/comfy-workflows /opt/pilot/bundled/comfy-workflows
 COPY config/env.defaults /opt/pilot/config/env.defaults
 COPY config/models.manifest /opt/pilot/config/models.manifest.default
 COPY supervisor/supervisord.conf /etc/supervisor/supervisord.conf

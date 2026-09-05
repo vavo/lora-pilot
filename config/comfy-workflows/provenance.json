@@ -1,0 +1,23 @@
+{
+  "repository": "https://github.com/Comfy-Org/workflow_templates",
+  "revision": "785127914ff0f5bddb38c5fbe20c96912e564d9b",
+  "comfyui": "v0.34.0",
+  "files": [
+    {
+      "file": "video_ltx2_5_i2v.json",
+      "sha256": "0a88024394467250013ce611ee46d01cc7e73078a0899e4c80709080c5101f71"
+    },
+    {
+      "file": "video_ltx2_5_t2v.json",
+      "sha256": "0040f7d44a57bbaaddff78a2fbe6a9bc9631897f034f8c0fa179f94a4c8e6b84"
+    },
+    {
+      "file": "video_minimax_h3_i2v.json",
+      "sha256": "4dc94e9ea308c1d60409e7f55dba5e2788dab4659c2dbb90f1e9481498767540"
+    },
+    {
+      "file": "video_minimax_h3_t2v.json",
+      "sha256": "2400b01a7c8acae3fed038c0372f08bacb90d2cdf915febadbe7e3f9802506ea"
+    }
+  ]
+}

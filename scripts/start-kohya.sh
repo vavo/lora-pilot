@@ -6,25 +6,20 @@ PORT="${KOHYA_PORT:-6666}"
 ROOT="${WORKSPACE_ROOT:-/workspace}"
 APP_ROOT="${ROOT}/apps/kohya"
 
-export PATH="/opt/venvs/core/bin:$PATH"
+export PATH="/opt/venvs/kohya/bin:$PATH"
 export PYTHONUNBUFFERED=1
 export PYTHONPATH="/opt/pilot/repos/kohya_ss/sd-scripts:${PYTHONPATH:-}"
-KOHYA_TRANSFORMERS_VERSION="${KOHYA_TRANSFORMERS_VERSION:-4.57.6}"
 
 mkdir -p "$ROOT/logs" "$APP_ROOT"
 
 # Kohya imports pkg_resources through setup_common.py; keep this warning out of service logs.
 export PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}ignore:pkg_resources is deprecated as an API:UserWarning"
 
-if ! /opt/venvs/core/bin/python - <<'PY' >/dev/null 2>&1
+/opt/venvs/kohya/bin/python - <<'PYTHON'
 from transformers import CLIPFeatureExtractor, Dinov2WithRegistersConfig
-PY
-then
-  echo "Repairing core transformers for Kohya: installing ${KOHYA_TRANSFORMERS_VERSION}"
-  /opt/venvs/core/bin/pip install --quiet --no-cache-dir "transformers==${KOHYA_TRANSFORMERS_VERSION}"
-fi
+PYTHON
 
 cd /opt/pilot/repos/kohya_ss
-exec /opt/venvs/core/bin/python -u kohya_gui.py \
+exec /opt/venvs/kohya/bin/python -u kohya_gui.py \
   --listen "$HOST" \
   --server_port "$PORT"
