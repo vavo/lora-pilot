@@ -28,6 +28,37 @@
   </div>
 
   <div class="card settings-card">
+    <h3 class="settings-section-title">ComfyUI Access</h3>
+    <p class="settings-note">Off by default: existing ComfyUI URLs and API clients keep working without credentials. When enabled, browsers use your ControlPilot login and external API clients need a token.</p>
+    <label class="svc-autostart">
+      <input id="settings-comfy-enabled" class="svc-switch" type="checkbox" />
+      <span>Protect ComfyUI and its API</span>
+    </label>
+    <p class="settings-note">Set a ControlPilot password first. Applying a change restarts ComfyUI and interrupts running generations. Protected access uses the URL below; the direct ComfyUI port is closed to external connections.</p>
+    <div class="settings-row">
+      <button id="settings-comfy-save" class="btn primary" type="button">Apply protection</button>
+      <span id="settings-comfy-status" class="status settings-status" role="status"></span>
+    </div>
+    <label for="settings-comfy-url">Gateway URL</label>
+    <input id="settings-comfy-url" class="input" type="text" readonly />
+    <div class="settings-row">
+      <button id="settings-comfy-generate" class="btn secondary" type="button">Generate API token</button>
+      <button id="settings-comfy-revoke" class="btn secondary" type="button">Revoke API token</button>
+      <span id="settings-comfy-token-status" class="status settings-status" role="status"></span>
+    </div>
+    <p class="settings-note">Tokens only grant ComfyUI access. Replacing or revoking a token invalidates the previous token. Removing it does not disable protection; browser login continues to work.</p>
+    <div id="settings-comfy-token-result" hidden>
+      <label for="settings-comfy-token">Copy this token now. It will not be shown again.</label>
+      <div class="settings-row">
+        <input id="settings-comfy-token" class="input w-320" type="text" readonly autocomplete="off" spellcheck="false" />
+        <button id="settings-comfy-copy" class="btn secondary" type="button">Copy token</button>
+      </div>
+    </div>
+    <label for="settings-comfy-example">API example (use HTTPS for remote connections)</label>
+    <textarea id="settings-comfy-example" class="input" rows="3" readonly></textarea>
+  </div>
+
+  <div class="card settings-card">
     <h3 class="settings-section-title">Interface</h3>
     <div class="field">
       <label>Theme</label>

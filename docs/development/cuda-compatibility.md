@@ -59,6 +59,25 @@ and supply your own image for I2V. These are local model workflows, not paid
 partner/API nodes. Existing user-installed custom nodes remain user-managed;
 the image bundles the latest Downloader and Manager pins listed above.
 
+## Core video dependency audit
+
+The source audit traced 363 local ComfyUI modules from the LTX2.5/MiniMax H3
+nodes, VAEs, text encoders and video output paths. All 35 required external
+packages were present in the resolved core dependency sets for cu128 and cu130.
+
+| Path | Required packages covered |
+| --- | --- |
+| Sampling and tensors | Torch 2.11.0, torchvision 0.26.0, torchaudio 2.11.0, xFormers 0.0.35, Triton 3.6.0, torchsde |
+| Gemma/Qwen text encoding | Transformers 5.11.0, tokenizers, SentencePiece, safetensors |
+| LTX2.5 decoder | comfy-kitchen 0.2.31, including `na3d` and `rms_rope_`; comfy-aimdo 0.4.15 |
+| Audio/video and image processing | PyAV, TorchAudio, Pillow, NumPy, SciPy, einops |
+
+NATTEN is replaced by ComfyUI's `comfy_kitchen.na3d` implementation.
+FlashAttention and SageAttention are optional alternatives, not requirements
+for these four workflows. No additional core packages were needed after the
+audit. This is source and dependency-resolution evidence; it is not an import
+or generation test of an installed `/opt/venvs/core`.
+
 ## Validation and remaining runtime check
 
 Linux dependency resolution passed for ComfyUI/core (including Diffusion Pipe), Kohya and AI Toolkit on

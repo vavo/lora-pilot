@@ -35,12 +35,67 @@ window.initSettings = async function () {
     copilotDefaultsStatus: document.getElementById("settings-copilot-defaults-status"),
   };
 
+  const comfy = Object.fromEntries(["enabled", "save", "status", "url", "generate", "revoke", "token-status", "token-result", "token", "copy", "example"].map(name => [name, document.getElementById(`settings-comfy-${name}`)]));
+
+  function renderComfy(access, passwordEnabled) {
+    comfy.enabled.checked = !!access.enabled;
+    comfy.status.textContent = access.enabled ? "Protection enabled. Use the gateway URL." : "Protection off. Existing access is unchanged.";
+    comfy.generate.textContent = access.token_set ? "Replace API token" : "Generate API token";
+    comfy.revoke.disabled = !access.token_set;
+    comfy["token-status"].textContent = access.token_set ? "API token configured." : "No API token configured.";
+    comfy.url.value = new URL("/comfy/", location.origin).href;
+    comfy.example.value = `curl -H "Authorization: Bearer $COMFY_API_TOKEN" "${comfy.url.value}system_stats"`;
+    if (!passwordEnabled) comfy.status.textContent += " Set a ControlPilot password before enabling protection.";
+  }
+
+  function settingsError(error) {
+    try { return JSON.parse(error.message).detail || error.message; }
+    catch (_) { return error.message || String(error); }
+  }
+
+  async function updateComfy(url, method, body) {
+    for (const key of ["save", "generate", "revoke"]) comfy[key].disabled = true;
+    comfy["token-result"].hidden = true;
+    comfy.token.value = "";
+    comfy.status.textContent = "Applying…";
+    try {
+      const result = await fetchJson(url, { method, headers: { "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      await refresh();
+      if (result.token) {
+        comfy.token.value = result.token;
+        comfy["token-result"].hidden = false;
+      }
+    } catch (error) {
+      // A failed service start can still leave the protection policy applied.
+      try { await refresh(); } catch (_) { /* Preserve the original error. */ }
+      comfy.status.textContent = settingsError(error);
+    } finally {
+      comfy.save.disabled = false;
+      comfy.generate.disabled = false;
+    }
+  }
+
+  comfy.save.addEventListener("click", () => updateComfy("/api/settings/comfy/protection", "POST", { enabled: comfy.enabled.checked }));
+  comfy.generate.addEventListener("click", () => updateComfy("/api/settings/comfy/token", "POST"));
+  comfy.revoke.addEventListener("click", () => updateComfy("/api/settings/comfy/token", "DELETE"));
+  comfy.copy.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(comfy.token.value);
+      comfy["token-status"].textContent = "Token copied.";
+    } catch (_) {
+      comfy.token.select();
+      comfy["token-status"].textContent = "Token selected. Copy it manually.";
+    }
+  });
+
   async function refresh() {
     const [settings, hf, copilot] = await Promise.all([
       fetchJson("/api/settings"),
       fetchJson("/api/hf-token"),
       fetchJson("/api/copilot/token"),
     ]);
+    window.controlPilotSettings = settings || {};
+    renderComfy(settings.comfy_access || {}, settings.password_enabled);
     if (els.passwordEnabled) els.passwordEnabled.checked = !!(settings && settings.password_enabled);
     if (els.theme) els.theme.value = settings && settings.theme === "dark" ? "dark" : "light";
     if (els.sidebarCompact) els.sidebarCompact.checked = !!(settings && settings.sidebar_compact);
@@ -108,7 +163,7 @@ window.initSettings = async function () {
       }
       await refresh();
     } catch (e) {
-      if (els.passwordStatus) els.passwordStatus.textContent = e.message || String(e);
+      if (els.passwordStatus) els.passwordStatus.textContent = settingsError(e);
     }
   }
 
@@ -303,6 +358,6 @@ window.initSettings = async function () {
   try {
     await refresh();
   } catch (e) {
-    if (els.passwordStatus) els.passwordStatus.textContent = e.message || String(e);
+    if (els.passwordStatus) els.passwordStatus.textContent = settingsError(e);
   }
 };

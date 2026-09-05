@@ -1,6 +1,7 @@
 const sections = ["dashboard", "services", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
 const viewCache = {};
 let currentSection = null;
+const initialSection = new URLSearchParams(window.location.search).get("open") === "comfyui" ? "comfyui" : "dashboard";
 let controlPilotUnlocked = false;
 window.controlPilotSettings = window.controlPilotSettings || null;
 const viewMap = {
@@ -363,7 +364,7 @@ if (authLoginBtn && !authLoginBtn.dataset.bound) {
       controlPilotUnlocked = true;
       setAuthGateVisible(false);
       initShutdownNotice();
-      loadSection(currentSection || "dashboard");
+      loadSection(currentSection || initialSection);
     } catch (e) {
       if (authStatus) authStatus.textContent = e.message || String(e);
     } finally {
@@ -390,5 +391,5 @@ window.addEventListener("resize", updateSidebarNavTooltips);
   if (!unlocked) return;
   await window.refreshControlPilotSettings();
   initShutdownNotice();
-  loadSection("dashboard");
+  loadSection(initialSection);
 })();

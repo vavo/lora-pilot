@@ -1,6 +1,6 @@
 # Kohya SS
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-05_
 
 On RunPod, run the operational commands directly in the pod. Docker commands
 apply only when LoRA Pilot is running under Docker Compose on another host.
@@ -307,11 +307,17 @@ cache_latents_to_disk: true
 
 #### `CLIPFeatureExtractor` ImportError
 
-Kohya SDXL training still imports `CLIPFeatureExtractor`. If a running pod has the shared core venv on Transformers 5.x, repair it and restart Kohya:
+Kohya 26.0.0 and TrainPilot use `/opt/venvs/kohya`, with upstream Transformers
+4.54.1 and Diffusers 0.32.2. Check the interpreter in the updated image:
 
 ```bash
-/bin/bash -lc '/opt/venvs/core/bin/pip install --quiet --no-cache-dir "transformers==4.57.6" && supervisorctl restart kohya'
+/opt/venvs/kohya/bin/python -c 'from transformers import CLIPFeatureExtractor, Dinov2WithRegistersConfig'
+/opt/venvs/kohya/bin/python -m pip check
 ```
+
+If this environment is absent, rebuild or replace the older image. Do not
+downgrade core Transformers: ComfyUI and Diffusion Pipe use that environment.
+See [CUDA compatibility](../development/cuda-compatibility.md).
 
 #### Poor Quality Results
 ```bash

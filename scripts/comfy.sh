@@ -95,6 +95,9 @@ mkdir -p \
   "$XDG_DATA_HOME" \
   "$PIP_CACHE_DIR"
 
+# Read the same persisted access policy as ControlPilot before opening a listener.
+COMFY_LISTEN="$(/opt/venvs/core/bin/python /opt/pilot/apps/Portal/services/comfy_access.py "${WORKSPACE_ROOT}/config/comfy-access.json")"
+
 # Use core venv
 source /opt/venvs/core/bin/activate
 ensure_model_dirs
@@ -194,7 +197,7 @@ ln -s "${CUSTOM_NODES_DIR}" "${COMFY_DIR}/custom_nodes"
 cd "$COMFY_DIR"
 
 exec python main.py \
-  --listen 0.0.0.0 \
+  --listen "${COMFY_LISTEN}" \
   --port "$PORT" \
   "${MANAGER_FLAGS[@]}" \
   --output-directory "$OUT_DIR" \

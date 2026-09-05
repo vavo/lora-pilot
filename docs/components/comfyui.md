@@ -1,6 +1,6 @@
 # ComfyUI
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-05_
 
 On RunPod, run the shell commands below directly in the pod. Docker commands
 are for a separate Docker Compose host; the Supervisor service name is
@@ -26,6 +26,13 @@ The practical path is to learn one small graph first, save it, then add complexi
 
 ![ComfyUI Embedded in ControlPilot](../assets/images/controlpilot/controlpilot-comfyui.png)
 
+### Password and API protection
+
+Settings → ComfyUI Access can protect the UI and API using your ControlPilot
+login and a separate API token. Protection is off by default. Enabling it
+restarts ComfyUI and replaces direct public-port access with `/comfy/` on the
+ControlPilot URL. See [ComfyUI access protection](../configuration/comfy-access.md).
+
 ### First Workflow
 
 Your first graph should be plain text-to-image. Load a checkpoint, feed its `CLIP` output into positive and negative `CLIPTextEncode` nodes, create an `EmptyLatentImage`, connect everything into `KSampler`, decode the latent with `VAEDecode`, then save with `SaveImage`.
@@ -39,6 +46,26 @@ Before queueing, scan the graph from left to right. Required inputs should be co
 ComfyUI ships a Workflow Templates browser. Open it from the Templates icon in the sidebar or from `Workflow` -> `Browse Workflow Templates`. Templates cover natively supported model workflows and some custom-node examples, and they are the safest starting point when a model family uses unfamiliar loaders.
 
 When a template loads, ComfyUI checks for required model files. In Comfy Desktop it can download missing model files for you. In other LoRA Pilot or self-hosted setups, use the template prompt as a shopping list, place the model files under the matching `/workspace/models` location, then select the files in the loader nodes.
+
+### Pre-installed LTX2.5 and MiniMax H3 workflows
+
+Open **Workflows → LoRA Pilot** for four official local-generation workflows:
+
+- `video_ltx2_5_t2v.json` and `video_ltx2_5_i2v.json`
+- `video_minimax_h3_t2v.json` and `video_minimax_h3_i2v.json`
+
+All required nodes are native to the bundled ComfyUI 0.34.0. Download the model
+files listed in each workflow's metadata and notes, then select your input image
+for I2V. Weights are not included in the image, and these workflows do not use
+paid partner/API nodes.
+
+On first launch, the files are copied into
+`/workspace/apps/comfy/user/default/workflows/LoRA Pilot`. Existing files are
+preserved. The core dependency audit found no missing required packages on
+either CUDA profile, including LTX2.5's `comfy-kitchen` decoder kernels;
+NATTEN, FlashAttention and SageAttention are not required. GPU generation
+still needs validation in a built container. See the
+[compatibility report](../development/cuda-compatibility.md).
 
 ## 🖥️ Interface Guide
 

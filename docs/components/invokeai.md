@@ -1,6 +1,6 @@
 # InvokeAI
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-05_
 
 On RunPod, run the operational commands directly in the pod. Docker commands
 apply only when LoRA Pilot is running under Docker Compose on another host.
@@ -35,7 +35,7 @@ LoRA Pilot’s InvokeAI integration provides:
 
 Startup behavior in `scripts/invoke.sh`:
 - Activates `/opt/venvs/invoke`
-- Imports the shared GPU stack from `/opt/venvs/core` while keeping InvokeAI packages first on `sys.path`
+- Uses independently installed Torch 2.7.1/torchvision 0.22.1 CUDA 12.8 packages on both image profiles; core site-packages are not inherited
 - Tries `invokeai-config --root <root> set ModelsDir <shared_models>`
 - Tries `invokeai-config --root <root> set OutputDir <shared_output>`
 - Falls back to symlinks (`<root>/models` and `<root>/outputs`)

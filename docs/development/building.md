@@ -1,6 +1,6 @@
 # Building LoRA Pilot
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-05_
 
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
 
@@ -66,17 +66,17 @@ Stage 5: Final Image
 ```dockerfile
 # Version control
 ARG COPILOT_CLI_VERSION=1.0.10
-ARG CODE_SERVER_VERSION=4.127.0
+ARG CODE_SERVER_VERSION=4.133.0
 ARG NODE_MAJOR=24
 ARG NPM_VERSION=11.18.0
-ARG JUPYTERLAB_VERSION=4.6.1
+ARG JUPYTERLAB_VERSION=4.6.3
 ARG IPYWIDGETS_VERSION=8.1.8
 ARG COMFYUI_REF=v0.34.0
 ARG COMFYUI_MANAGER_REF=4.2.2
 ARG COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
-ARG KOHYA_REF=v25.2.1
-ARG DIFFPIPE_REF=a7e7decf4325c1f03e4b88b7de93640029abd011
-ARG AI_TOOLKIT_REF=6c0d1c4679cf8fe153ef56bdc779c93239e1cf0f
+ARG KOHYA_REF=v26.0.0
+ARG DIFFPIPE_REF=8f83dbf25d03219df705570ec03e62be04bc402f
+ARG AI_TOOLKIT_REF=b36bb3998ae596a566d85513299696a3a78f0dcb
 ARG CUDA_PROFILE=cu130
 ARG CUDA_BASE_IMAGE=nvidia/cuda:13.0.2-runtime-ubuntu22.04
 ARG TORCH_VERSION=2.11.0
@@ -86,7 +86,7 @@ ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 ARG CORE_DIFFUSERS_VERSION=0.38.0
 ARG TRANSFORMERS_VERSION=5.11.0
 ARG UV_VERSION=0.11.26
-ARG TOMLKIT_VERSION=0.15.0
+ARG TOMLKIT_VERSION=0.14.0
 ARG ACCELERATE_VERSION=1.14.0
 ARG HF_HUB_VERSION=1.19.0
 ARG FASTAPI_VERSION=0.139.0
@@ -168,6 +168,8 @@ docker buildx build \
 docker build \
   --build-arg CUDA_PROFILE=cu128 \
   --build-arg CUDA_BASE_IMAGE=nvidia/cuda:12.8.1-runtime-ubuntu22.04 \
+  --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu128 \
+  --build-arg CUDA_NVCC_PKG=cuda-nvcc-12-8 \
   --build-arg TORCH_VERSION=2.11.0 \
   --build-arg TRANSFORMERS_VERSION=5.11.0 \
   --build-arg UV_VERSION=0.11.26 \
@@ -232,14 +234,22 @@ ARG TORCHAUDIO_VERSION=2.11.0
 ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 ```
 
-For the default `cu130` profile, keep the PyTorch, torchvision, and torchaudio versions matched. The installer skips torchaudio only when `TORCHAUDIO_VERSION` is empty for a custom profile.
+Both supported profiles (`cu130` and `cu128`) use matched Torch 2.11.0,
+torchvision 0.26.0 and torchaudio 2.11.0 packages. TorchAudio is required by the
+bundled video workflows. Prefer `make build CUDA_PROFILE=cu128` or `cu130` so
+the base image, NVCC package and wheel index stay aligned.
+
+ComfyUI and Diffusion Pipe share core. Kohya, AI Toolkit and InvokeAI install
+independent packages; InvokeAI always uses its CUDA 12.8 stack. See
+[CUDA compatibility and video workflows](cuda-compatibility.md) for the
+version matrix, dependency audit and remaining GPU validation.
 
 #### Library Versions
 ```dockerfile
 # Custom library versions
 ARG TRANSFORMERS_VERSION=5.11.0
 ARG UV_VERSION=0.11.26
-ARG TOMLKIT_VERSION=0.15.0
+ARG TOMLKIT_VERSION=0.14.0
 ARG XFORMERS_VERSION=0.0.35
 ARG BITSANDBYTES_VERSION=0.49.2
 ARG PEFT_VERSION=0.19.1
@@ -558,21 +568,21 @@ TORCH_INDEX_URL=https://download.pytorch.org/whl/cu130
 CORE_DIFFUSERS_VERSION=0.38.0
 TRANSFORMERS_VERSION=5.11.0
 UV_VERSION=0.11.26
-TOMLKIT_VERSION=0.15.0
+TOMLKIT_VERSION=0.14.0
 ACCELERATE_VERSION=1.14.0
 HF_HUB_VERSION=1.19.0
 COPILOT_CLI_VERSION=1.0.10
-CODE_SERVER_VERSION=4.127.0
+CODE_SERVER_VERSION=4.133.0
 NODE_MAJOR=24
 NPM_VERSION=11.18.0
-JUPYTERLAB_VERSION=4.6.1
+JUPYTERLAB_VERSION=4.6.3
 IPYWIDGETS_VERSION=8.1.8
 COMFYUI_REF=v0.34.0
 COMFYUI_MANAGER_REF=4.2.2
 COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
-KOHYA_REF=v25.2.1
-DIFFPIPE_REF=a7e7decf4325c1f03e4b88b7de93640029abd011
-AI_TOOLKIT_REF=6c0d1c4679cf8fe153ef56bdc779c93239e1cf0f
+KOHYA_REF=v26.0.0
+DIFFPIPE_REF=8f83dbf25d03219df705570ec03e62be04bc402f
+AI_TOOLKIT_REF=b36bb3998ae596a566d85513299696a3a78f0dcb
 TENSORBOARD_VERSION=2.21.0
 FASTAPI_VERSION=0.139.0
 UVICORN_VERSION=0.50.0

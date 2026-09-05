@@ -144,6 +144,7 @@ window.sanitizeHttpUrl = function (rawUrl, opts = {}) {
 
 // Build service URL respecting RunPod proxy subdomain pattern <id>-<port>.proxy.runpod.net
 window.serviceUrl = function (name) {
+  if (name === "comfy" && window.controlPilotSettings?.comfy_access?.enabled) return new URL("/comfy/", location.origin).href;
   const ports = {
     "jupyter": 8888,
     "code-server": 8443,

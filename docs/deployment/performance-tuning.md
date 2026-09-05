@@ -1,6 +1,6 @@
 # Performance Tuning
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-05_
 
 This page documents performance controls that are explicitly present in this repository.
 
@@ -80,7 +80,7 @@ Practical effect:
 
 `scripts/invoke.sh`:
 
-- Uses a dedicated InvokeAI venv while importing the shared Torch/CUDA stack from `/opt/venvs/core`
+- Uses `/opt/venvs/invoke` with independently installed Torch 2.7.1 CUDA 12.8 packages on both image profiles; it does not inherit core packages
 - Forces shared model/output directories to workspace paths
 
 ### Diffusion Pipe

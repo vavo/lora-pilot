@@ -25,6 +25,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
@@ -47,17 +48,20 @@ try:
     from .services import shutdown as shutdown_service  # type: ignore
     from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
+    from .services.comfy_access import read_policy, token_matches  # type: ignore
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
         from services import shutdown as shutdown_service  # type: ignore
         from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from services.comfy import create_router as create_comfy_router  # type: ignore
+        from services.comfy_access import read_policy, token_matches  # type: ignore
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
         from apps.Portal.services import shutdown as shutdown_service  # type: ignore
         from apps.Portal.services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
+        from apps.Portal.services.comfy_access import read_policy, token_matches  # type: ignore
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -422,6 +426,10 @@ class ControlPilotPasswordRequest(BaseModel):
     password: str = ""
 
 
+class ComfyProtectionRequest(BaseModel):
+    enabled: bool
+
+
 class ControlPilotLoginRequest(BaseModel):
     password: str
 
@@ -629,6 +637,57 @@ def _controlpilot_cookie_authenticated(cookies) -> bool:
     if not cookie:
         return False
     return hmac.compare_digest(cookie, _controlpilot_session_value(settings))
+
+
+_comfy_access_lock = threading.Lock()
+
+
+def _comfy_policy() -> dict:
+    try:
+        return read_policy(CONFIG_DIR / "comfy-access.json")
+    except (OSError, ValueError):
+        raise HTTPException(status_code=503, detail="Comfy access policy is unreadable; protection remains closed")
+
+
+def _same_origin(request) -> bool:
+    try:
+        origin = urlsplit(request.headers.get("origin", ""))
+    except ValueError:
+        return False
+    # Match the public Host even when HTTPS terminates at the RunPod proxy.
+    return origin.scheme in {"http", "https"} and origin.netloc == request.headers.get("host", "")
+
+
+def _comfy_gateway_authenticated(request) -> bool:
+    try:
+        policy = _comfy_policy()
+    except HTTPException:
+        return False
+    if not policy["enabled"]:
+        return True
+    if token_matches(request.headers.get("authorization", ""), policy):
+        return True
+    if not _controlpilot_auth_enabled() or not _controlpilot_cookie_authenticated(request.cookies):
+        return False
+    if request.scope["type"] == "websocket" or request.method not in {"GET", "HEAD", "OPTIONS"}:
+        return _same_origin(request)
+    return request.headers.get("sec-fetch-site") != "cross-site"
+
+
+def _comfy_access_status() -> dict:
+    policy = _comfy_policy()
+    return {"enabled": policy["enabled"], "token_set": bool(policy["token_hash"]), "gateway_path": "/comfy/"}
+
+
+def _require_comfy_settings_access(request: Request) -> None:
+    if not _controlpilot_auth_enabled():
+        raise HTTPException(status_code=422, detail="Set a ControlPilot password first")
+    if not _controlpilot_request_authenticated(request) or not _same_origin(request):
+        raise HTTPException(status_code=403, detail="Use the signed-in ControlPilot Settings page")
+
+
+def _save_comfy_policy(policy: dict) -> None:
+    _write_private_text(CONFIG_DIR / "comfy-access.json", json.dumps(policy) + "\n")
 
 
 def _read_secrets_env_lines() -> list[str]:
@@ -1111,7 +1170,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(dpipe_router)
-app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilot_cookie_authenticated))
+app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilot_cookie_authenticated,
+                                       gateway_checker=_comfy_gateway_authenticated, policy_reader=_comfy_policy))
 
 # Copilot sidecar config
 COPILOT_SIDECAR_URL = os.environ.get("COPILOT_SIDECAR_URL", "http://127.0.0.1:7879")
@@ -2025,6 +2085,7 @@ def get_controlpilot_settings(request: Request):
     return {
         "password_enabled": _controlpilot_auth_enabled(),
         "authenticated": _controlpilot_request_authenticated(request),
+        "comfy_access": _comfy_access_status(),
         "hf_token_set": bool(_read_secret_env_var("HF_TOKEN")),
         "copilot_token_set": bool(_read_secret_env_var("COPILOT_GITHUB_TOKEN")),
         "mediapilot_password_set": bool(_read_mediapilot_password()),
@@ -2073,28 +2134,77 @@ def controlpilot_logout():
 
 @app.post("/api/settings/password")
 def set_controlpilot_password(request: Request, payload: ControlPilotPasswordRequest):
-    settings = _read_controlpilot_settings()
-    enabled = bool(payload.enabled)
-    raw_password = (payload.password or "").strip()
-    settings["password_enabled"] = enabled
-    if enabled:
-        if not raw_password:
-            raise HTTPException(status_code=422, detail="Password is required when protection is enabled")
-        settings["password_hash"] = _hash_controlpilot_password(raw_password)
-    else:
-        settings["password_hash"] = ""
-    settings["session_secret"] = settings.get("session_secret") or secrets.token_hex(32)
-    _write_controlpilot_settings(settings)
-    response = JSONResponse({"status": "ok", "password_enabled": enabled})
-    if enabled:
-        response.set_cookie(
-            CONTROLPILOT_SESSION_COOKIE,
-            _controlpilot_session_value(settings),
-            **_controlpilot_cookie_kwargs(),
-        )
-    else:
-        response.delete_cookie(CONTROLPILOT_SESSION_COOKIE, path="/")
-    return response
+    with _comfy_access_lock:
+        if _comfy_policy()["enabled"]:
+            _require_comfy_settings_access(request)
+            if not payload.enabled:
+                raise HTTPException(status_code=409, detail="Disable ComfyUI protection before removing the ControlPilot password")
+        settings = _read_controlpilot_settings()
+        enabled = bool(payload.enabled)
+        raw_password = (payload.password or "").strip()
+        settings["password_enabled"] = enabled
+        if enabled:
+            if not raw_password:
+                raise HTTPException(status_code=422, detail="Password is required when protection is enabled")
+            settings["password_hash"] = _hash_controlpilot_password(raw_password)
+        else:
+            settings["password_hash"] = ""
+        settings["session_secret"] = settings.get("session_secret") or secrets.token_hex(32)
+        _write_controlpilot_settings(settings)
+        response = JSONResponse({"status": "ok", "password_enabled": enabled})
+        if enabled:
+            response.set_cookie(
+                CONTROLPILOT_SESSION_COOKIE,
+                _controlpilot_session_value(settings),
+                **_controlpilot_cookie_kwargs(),
+            )
+        else:
+            response.delete_cookie(CONTROLPILOT_SESSION_COOKIE, path="/")
+        return response
+
+
+@app.post("/api/settings/comfy/protection")
+def set_comfy_protection(request: Request, payload: ComfyProtectionRequest):
+    with _comfy_access_lock:
+        _require_comfy_settings_access(request)
+        policy = _comfy_policy()
+        if policy["enabled"] == payload.enabled:
+            return _comfy_access_status()
+        # Stop before committing the policy so a success never leaves the old public listener running.
+        state = supervisor_status("comfy").state
+        if state not in {"STOPPED", "EXITED", "FATAL"}:
+            try:
+                _run_supervisorctl("stop", "comfy", timeout=60)
+            except (RuntimeError, HTTPException) as exc:
+                raise HTTPException(status_code=503, detail="Could not stop ComfyUI; protection was not changed") from exc
+        policy["enabled"] = payload.enabled
+        _save_comfy_policy(policy)
+        try:
+            _run_supervisorctl("start", "comfy", timeout=60)
+        except (RuntimeError, HTTPException) as exc:
+            raise HTTPException(status_code=503, detail="Access policy saved, but ComfyUI did not start. Check its service logs; policy remains applied") from exc
+        return _comfy_access_status()
+
+
+@app.post("/api/settings/comfy/token")
+def generate_comfy_token(request: Request):
+    with _comfy_access_lock:
+        _require_comfy_settings_access(request)
+        policy = _comfy_policy()
+        token = secrets.token_urlsafe(32)
+        policy["token_hash"] = hashlib.sha256(token.encode()).hexdigest()
+        _save_comfy_policy(policy)
+        return JSONResponse({**_comfy_access_status(), "token": token}, headers={"Cache-Control": "no-store"})
+
+
+@app.delete("/api/settings/comfy/token")
+def revoke_comfy_token(request: Request):
+    with _comfy_access_lock:
+        _require_comfy_settings_access(request)
+        policy = _comfy_policy()
+        policy["token_hash"] = ""
+        _save_comfy_policy(policy)
+        return _comfy_access_status()
 
 
 @app.post("/api/settings/ui")

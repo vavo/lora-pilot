@@ -1,3 +1,15 @@
+Unreleased (September 5th 2026)
+
+- Added optional ComfyUI UI/API protection in ControlPilot Settings. Off by default, preserving credential-free access; when enabled, browser sessions and revocable API tokens use a full HTTP/WebSocket gateway while ComfyUI listens only on localhost.
+- Added one-time API token display, rotation/revocation, and guarded ComfyUI restarts. Token removal keeps protection enabled; disabling protection restores the existing direct URL.
+
+- Updated Kohya SS to `v26.0.0` and AI Toolkit to `b36bb399`; verified ComfyUI `v0.34.0`, InvokeAI `6.14.0`, Manager `4.2.2`, and Downloader already match current upstream versions.
+- Isolated Kohya, InvokeAI, and AI Toolkit dependencies from core; TrainPilot now uses the Kohya venv, and Kohya startup no longer changes core Transformers.
+- Aligned AI Toolkit with Torch 2.11 using TorchAO `0.17.0` and TorchCodec `0.11.1`; retained InvokeAI's separate CUDA 12.8 stack on both image profiles.
+- Bundled official LTX2.5 and MiniMax H3 text-to-video and image-to-video workflows under ComfyUI's Workflows → LoRA Pilot folder. Required nodes are native; model weights download separately and existing workflow edits are preserved.
+- Added CUDA profile consistency checks, build-time dependency checks, and GPU smoke coverage for installed venvs, cuDNN video convolutions, and xFormers attention.
+- Verified dependency resolution on CUDA 13.0 and 12.8 and checked the video workflows' core module coverage. Full image builds and GPU generation remain unverified.
+
 v2.5.7 (August 23rd 2026)
 
 - Refreshed bundled component versions: ComfyUI `v0.33.3`, Kohya SS `v25.2.1`, AI Toolkit `27a03a9`, Diffusion Pipe `8f83dbf`, InvokeAI `6.13.8`, JupyterLab `4.6.3`, code-server/VS Code `4.133.0`, and TensorBoard `2.21.0`.

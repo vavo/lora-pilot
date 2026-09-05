@@ -4,6 +4,8 @@ _Last updated: 2026-07-05_
 
 This section is the index for LoRA Pilot configuration docs.
 
+See [ComfyUI access protection](comfy-access.md) for browser login and API tokens.
+
 ## Pages
 
 - [Environment Variables](environment-variables.md)  

@@ -6,6 +6,7 @@ let previewEnabled = true;
 let imageCount = 0;
 let lastGeneratedImage = null;
 let comfyPort = "5555";
+let comfyProtected = false;
 let comfyStatusFailures = 0;
 const COMFY_STATUS_FAILURE_THRESHOLD = 3;
 const COMFY_PREVIEW_PANEL_STORAGE_KEY = "controlpilot_comfy_preview_collapsed";
@@ -135,6 +136,7 @@ async function checkComfyUIStatus() {
     if (status.status === "running") {
       comfyStatusFailures = 0;
       comfyPort = status.port || "5555";
+      comfyProtected = !!status.protected;
       if (statusEl) {
         statusEl.className = "status-indicator status-connected";
         statusEl.textContent = "Running";
@@ -167,13 +169,13 @@ async function checkComfyUIStatus() {
 }
 
 function getComfyUIUrl(port) {
-  return window.buildPortUrl(port) || "about:blank";
+  return comfyProtected ? new URL("/comfy/", location.origin).href : (window.buildPortUrl(port) || "about:blank");
 }
 
 function sanitizePreviewImageUrl(rawUrl) {
   return window.sanitizeHttpUrl(rawUrl, {
     sameOrigin: true,
-    allowedPathPrefixes: ["/proxy/comfy/", "/output/", "/thumbs/", "/invoke/"],
+    allowedPathPrefixes: ["/proxy/comfy/", "/comfy/", "/output/", "/thumbs/", "/invoke/"],
   });
 }
 

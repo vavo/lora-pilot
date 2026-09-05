@@ -1,6 +1,6 @@
 # Architecture
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-05_
 
 LoRA Pilot is built as a comprehensive, containerized AI workspace that integrates multiple diffusion model tools into a unified system. This document outlines the system architecture, component relationships, and design principles.
 
@@ -157,7 +157,7 @@ autorestart=true
 startsecs=10
 stdout_logfile=/workspace/logs/kohya.out.log
 stderr_logfile=/workspace/logs/kohya.err.log
-command=/bin/bash -lc 'source /opt/venvs/core/bin/activate && cd /workspace/apps/kohya && python gui.py --listen 0.0.0.0 --port 6666'
+command=/opt/pilot/start-kohya.sh
 
 [program:comfyui]
 directory=/workspace
