@@ -183,4 +183,4 @@ COPY docs /opt/pilot/docs
 EXPOSE 7878 8888 8443 5555 6666 9090 4444 8675
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]
-CMD ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
+CMD ["/bin/bash", "-lc", "exec /opt/pilot/start.sh"]

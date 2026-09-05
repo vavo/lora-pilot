@@ -2,6 +2,7 @@
 set -euo pipefail
 
 files=(
+  /opt/pilot/start.sh
   /opt/pilot/bootstrap.sh
   /opt/pilot/gpu-smoke-test.sh
   /opt/pilot/start-jupyter.sh

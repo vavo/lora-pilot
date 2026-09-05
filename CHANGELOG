@@ -1,5 +1,10 @@
 Unreleased (September 5th 2026)
 
+- Fixed harmless missing `.bundle-sync-sha` errors on first startup, including standalone TagPilot. Fresh workspaces now seed bundles without missing-marker warnings.
+
+- Fixed #27 startup persistence: load `SUPERVISOR_CONFIG_PATH` after persisted settings and use it for the actual Supervisor process as well as autostart updates. Missing custom configs fail explicitly.
+- Added opt-in `COMFY_VENV_PATH` for a user-managed workspace venv, preserving image-owned core dependencies by default. Documented persistent custom startup commands and dependency ownership.
+
 - Fixed the mobile Models page expanding beyond the viewport after loading model names; constrained the content pane and search field, wrapped long names, and aligned the card breakpoint with the mobile navigation.
 
 - Disabled Copilot prompt, Run, and URL-permission controls across ControlPilot when the sidecar is stopped or unavailable; Start and Settings remain accessible. Service actions and background status checks keep chat availability current.

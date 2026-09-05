@@ -7,7 +7,6 @@ if [ -f /opt/pilot/config/env.defaults ]; then
 fi
 
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-/workspace}"
-SUPERVISOR_CONF="${SUPERVISOR_CONFIG_PATH:-/etc/supervisor/supervisord.conf}"
 SERVICE_AUTOSTART_CONFIG_FILE="${SERVICE_AUTOSTART_CONFIG_PATH:-$WORKSPACE_ROOT/config/service-autostart.toml}"
 
 upsert_env_var() {
@@ -74,7 +73,10 @@ sync_bundled_tree() {
   local recorded_hash
 
   source_hash="$(bundle_tree_hash "$source_dir")"
-  recorded_hash="$(tr -d '\r\n' < "$marker_file" 2>/dev/null || true)"
+  recorded_hash=""
+  if [ -f "$marker_file" ]; then
+    recorded_hash="$(tr -d '\r\n' < "$marker_file")"
+  fi
   if [ -n "$recorded_hash" ] && [ "$recorded_hash" = "$source_hash" ]; then
     return 0
   fi
@@ -348,6 +350,15 @@ mv "$tmp_secrets" "$SECRETS_FILE"
 chmod 600 "$SECRETS_FILE"
 
 chmod 600 "$SECRETS_FILE" 2>/dev/null || true
+
+# Resolve only after persisted settings have been loaded, and use the same path
+# for autostart updates, ControlPilot, and the Supervisor process itself.
+export SUPERVISOR_CONFIG_PATH="${SUPERVISOR_CONFIG_PATH:-/etc/supervisor/supervisord.conf}"
+SUPERVISOR_CONF="$SUPERVISOR_CONFIG_PATH"
+if [ ! -f "$SUPERVISOR_CONF" ] || [ ! -r "$SUPERVISOR_CONF" ]; then
+  echo "Supervisor config is missing or unreadable: $SUPERVISOR_CONF" >&2
+  exit 1
+fi
 
 if [ -f /opt/pilot/service-autostart-apply.py ] && [ -f "$SUPERVISOR_CONF" ]; then
   /opt/venvs/core/bin/python /opt/pilot/service-autostart-apply.py \

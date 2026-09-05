@@ -8,8 +8,8 @@ LoRA Pilot uses `supervisord` as the in-container process manager.
 
 Container command (Dockerfile `CMD`):
 
-1. `scripts/bootstrap.sh`
-2. `/usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf`
+1. `/opt/pilot/start.sh` sources `bootstrap.sh`, including persisted settings.
+2. It launches `/usr/bin/supervisord -n -c "$SUPERVISOR_CONFIG_PATH"`. The default remains `/etc/supervisor/supervisord.conf`.
 
 Main config in repo: `supervisor/supervisord.conf` (copied to `/etc/supervisor/supervisord.conf` in image).
 
@@ -184,3 +184,45 @@ docker exec lora-pilot supervisorctl update
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
 
+
+## Persistent startup overrides (RunPod)
+
+To keep a custom Supervisor command across pod replacement/restart, store the configuration on the persistent workspace:
+
+```bash
+cp -n /etc/supervisor/supervisord.conf /workspace/config/supervisord.conf
+```
+
+Add this line once to `/workspace/config/secrets.env`:
+
+```bash
+export SUPERVISOR_CONFIG_PATH=/workspace/config/supervisord.conf
+```
+
+Edit the `[program:comfy]` command in the workspace config, for example:
+
+```ini
+command=/bin/bash -lc 'exec /workspace/comfy.sh'
+```
+
+Your `/workspace/comfy.sh` can set runtime options and then delegate to the bundled launcher:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+# Optional: use an already provisioned, compatible workspace Python venv.
+# export COMFY_VENV_PATH=/workspace/venvs/comfy
+exec /opt/pilot/comfy.sh
+```
+
+Restart the pod to select the new config. Bootstrap autostart updates, Supervisor and ControlPilot now use the same configured path. A missing override stops startup with an error instead of silently using the image default. Existing custom commands are preserved; ControlPilot can still change their autostart flags. Custom configurations remain user-maintained when new image services are added.
+
+Keep the bundled Comfy launcher in the execution chain to retain model/workflow setup and ControlPilot access protection. If your RunPod template overrides the image startup command, use `/opt/pilot/start.sh` rather than launching Supervisor with a hard-coded config path.
+
+### Persistent Python dependencies
+
+`/opt/venvs/core` belongs to the image. Manual pip changes there do not survive container replacement. Startup does not reinstall torchaudio; a replacement container supplies the image's pinned packages again.
+
+For an intentionally customized Comfy runtime, provision a complete compatible venv under `/workspace/venvs/comfy` and set `export COMFY_VENV_PATH=/workspace/venvs/comfy` in `secrets.env` or your wrapper. LoRA Pilot activates it without installing or repairing packages. The default remains core; invalid custom venv paths fail explicitly. You own compatibility between that venv, the bundled Comfy version, and custom nodes.
+
+Do not remove torchaudio as a general cuDNN fix: audio workflows require it. Issue #27's A40/cuDNN failure needs target-host validation with matching CUDA/Torch libraries; persistence support alone does not prove that GPU error resolved.

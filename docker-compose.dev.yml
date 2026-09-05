@@ -58,6 +58,7 @@ services:
       # Mount scripts for development without masking /opt/pilot/repos from the image
       - ./scripts:/opt/pilot/scripts
       - ./scripts/bootstrap.sh:/opt/pilot/bootstrap.sh
+      - ./scripts/start.sh:/opt/pilot/start.sh
       - ./scripts/gpu-smoke-test.sh:/opt/pilot/gpu-smoke-test.sh
       - ./scripts/start-jupyter.sh:/opt/pilot/start-jupyter.sh
       - ./scripts/start-code-server.sh:/opt/pilot/start-code-server.sh
@@ -76,7 +77,7 @@ services:
     
     # Override entrypoint for development
     entrypoint: ["/usr/bin/tini", "-s", "--"]
-    command: ["/bin/bash", "-lc", "/opt/pilot/bootstrap.sh && exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf"]
+    command: ["/bin/bash", "-lc", "exec /opt/pilot/start.sh"]
     
     # Keep container running for debugging
     stdin_open: true

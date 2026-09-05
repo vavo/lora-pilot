@@ -18,8 +18,7 @@ This page documents cloud deployment paths that are explicitly supported by repo
 
 - Use template: [RunPod template](https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n)
 - App entrypoint runs bootstrap then supervisor:
-  - `/opt/pilot/bootstrap.sh`
-  - `/usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf`
+  - `/opt/pilot/start.sh` (loads persisted settings through bootstrap and starts Supervisor with the selected config)
 
 ### 2. Persist the right storage
 

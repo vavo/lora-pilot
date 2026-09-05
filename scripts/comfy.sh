@@ -98,8 +98,13 @@ mkdir -p \
 # Read the same persisted access policy as ControlPilot before opening a listener.
 COMFY_LISTEN="$(/opt/venvs/core/bin/python /opt/pilot/apps/Portal/services/comfy_access.py "${WORKSPACE_ROOT}/config/comfy-access.json")"
 
-# Use core venv
-source /opt/venvs/core/bin/activate
+# A workspace venv is opt-in; the bundled core environment remains the default.
+COMFY_VENV_PATH="${COMFY_VENV_PATH:-/opt/venvs/core}"
+if [[ ! -f "$COMFY_VENV_PATH/bin/activate" || ! -x "$COMFY_VENV_PATH/bin/python" ]]; then
+  echo "Comfy venv is missing or incomplete: $COMFY_VENV_PATH" >&2
+  exit 1
+fi
+source "$COMFY_VENV_PATH/bin/activate"
 ensure_model_dirs
 
 # Create optional user assets so ComfyUI doesn't spam 404s in console
