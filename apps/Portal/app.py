@@ -308,8 +308,8 @@ def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
             text = chunk.decode("utf-8", errors="replace")
             buf += text
             while True:
-                idx_n = buf.find("\\n")
-                idx_r = buf.find("\\r")
+                idx_n = buf.find("\n")
+                idx_r = buf.find("\r")
                 idxs = [i for i in (idx_n, idx_r) if i != -1]
                 if not idxs:
                     break
@@ -317,6 +317,7 @@ def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
                 seg = buf[:idx]
                 buf = buf[idx + 1 :]
                 _update_model_pull_job(job, seg)
+            buf = buf[-8192:]
         if buf.strip():
             _update_model_pull_job(job, buf)
         proc.stdout.close()

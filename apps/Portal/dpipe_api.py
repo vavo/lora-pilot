@@ -105,6 +105,7 @@ router = APIRouter(prefix="/dpipe", tags=["diffusion-pipe"])
 
 # Process/bookkeeping
 _proc_lock = threading.Lock()
+_start_lock = threading.Lock()
 _procs: dict[int, subprocess.Popen] = {}
 _logs: dict[int, deque[str]] = {}
 _LOG_MAX = 2000
@@ -486,6 +487,15 @@ def _ensure_single_run():
 
 @router.post("/train/start")
 def start_training(req: TrainRequest):
+    if not _start_lock.acquire(blocking=False):
+        raise HTTPException(status_code=400, detail="A training process is already starting.")
+    try:
+        return _start_training(req)
+    finally:
+        _start_lock.release()
+
+
+def _start_training(req: TrainRequest):
     _ensure_dirs()
     _ensure_single_run()
 
@@ -591,7 +601,8 @@ def start_training(req: TrainRequest):
     pid = proc.pid
     with _proc_lock:
         _procs[pid] = proc
-        _deque_for(pid).clear()
+        _logs.pop(pid, None)
+        _deque_for(pid)
     threading.Thread(target=_read_stream, args=(proc, pid), daemon=True).start()
     return {"status": "started", "pid": pid, "config": str(training_cfg)}
 
@@ -629,6 +640,6 @@ def training_logs(pid: Optional[int] = None, limit: int = 500):
         if pid is None:
             if not _procs and not _logs:
                 return {"pid": None, "lines": []}
-            pid = next(iter(_logs)) if _logs else next(iter(_procs))
-        lines = list(_deque_for(pid))[-limit:]
+            pid = next(reversed(_procs)) if _procs else next(reversed(_logs))
+        lines = list(_logs.get(pid, ()))[-limit:]
     return {"pid": pid, "lines": lines}

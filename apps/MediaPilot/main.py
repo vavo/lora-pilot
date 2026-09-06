@@ -1060,8 +1060,16 @@ def tag_file(filename: str, old_folder: str, new_folder: str):
     src = file_path_for_folder(old_folder, filename)
     dst = file_path_for_folder(new_folder, filename)
 
-    if src.exists():
-        src.rename(dst)
+    if not src.is_file():
+        raise HTTPException(status_code=404, detail="Image not found")
+    if src == dst:
+        return {"moved": True}
+    try:
+        # Creating the destination link is atomic and never replaces a file.
+        os.link(src, dst)
+    except FileExistsError:
+        raise HTTPException(status_code=409, detail="An image with this filename already exists in the destination")
+    src.unlink()
 
     old_thumb = thumb_path_for_folder(old_folder, filename)
     if old_thumb.exists():

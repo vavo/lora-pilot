@@ -240,12 +240,18 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=503, detail="copilot CLI not found in PATH")
     except subprocess.TimeoutExpired as e:
         dt = time.time() - t0
+        stdout = e.stdout or ""
+        stderr = e.stderr or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if isinstance(stderr, bytes):
+            stderr = stderr.decode("utf-8", errors="replace")
         return ChatResponse(
             ok=False,
             returncode=124,
             duration_seconds=dt,
-            stdout=e.stdout or "",
-            stderr=(e.stderr or "") + f"\nTimed out after {timeout}s\n",
+            stdout=stdout,
+            stderr=stderr + f"\nTimed out after {timeout}s\n",
             command=cmd,
         )
     dt = time.time() - t0
