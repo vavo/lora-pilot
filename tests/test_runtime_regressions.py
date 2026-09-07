@@ -12,6 +12,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from apps.Portal.services import model_downloads
 
 try:
     from apps.Portal import app as portal
@@ -143,7 +144,8 @@ class DiffusionPipeRunTests(unittest.TestCase):
 @unittest.skipIf(portal is None, "Portal test dependencies unavailable")
 class BackgroundOutputTests(unittest.TestCase):
     def test_download_reports_progress_before_eof_across_chunks(self):
-        job = portal.ModelPullJob(name="test-download")
+        queue = model_downloads.ModelPullQueue(lambda: "")
+        job = model_downloads.ModelPullJob(name="test-download")
         chunks = iter([b"Downloading 25%\r\nDownloading 7", b"5%\n", b""])
         def read(_size):
             chunk = next(chunks)
@@ -155,16 +157,17 @@ class BackgroundOutputTests(unittest.TestCase):
         stream = MagicMock()
         stream.read.side_effect = read
         proc = SimpleNamespace(pid=123, stdout=stream, wait=lambda: 0)
-        with patch.object(portal.subprocess, "Popen", return_value=proc), patch.object(portal, "_model_pull_jobs", {}):
-            portal._run_model_pull_job(job, ["fake-download"])
+        with patch.object(model_downloads.subprocess, "Popen", return_value=proc):
+            queue.run_job(job, ["fake-download"])
         self.assertEqual(job.state, "done", job.error)
         self.assertEqual(job.progress_pct, 100)
 
     def test_download_bounds_unterminated_output_and_preserves_error(self):
-        job = portal.ModelPullJob(name="test-download")
+        queue = model_downloads.ModelPullQueue(lambda: "")
+        job = model_downloads.ModelPullJob(name="test-download")
         proc = SimpleNamespace(pid=123, stdout=io.BytesIO(b"x" * 50000 + b"failure detail"), wait=lambda: 1)
-        with patch.object(portal.subprocess, "Popen", return_value=proc), patch.object(portal, "_model_pull_jobs", {}):
-            portal._run_model_pull_job(job, ["fake-download"])
+        with patch.object(model_downloads.subprocess, "Popen", return_value=proc):
+            queue.run_job(job, ["fake-download"])
         self.assertEqual(job.state, "error")
         self.assertLessEqual(len(job.last_line), 8192)
         self.assertTrue(job.error.endswith("failure detail"))

@@ -13,12 +13,12 @@ class ModelDownloadContractTests(unittest.TestCase):
         self.assertLess(core_hf, path_hf)
 
     def test_model_pull_reports_downloader_output_on_failure(self):
-        source = (ROOT / "apps/Portal/app.py").read_text()
+        source = (ROOT / "apps/Portal/services/model_downloads.py").read_text()
         self.assertIn('output = "\\n".join(job.output_tail).strip()', source)
         self.assertIn('job.error = output[-2000:] if output else f"exit code {rc}"', source)
 
     def test_model_pull_progress_regex_matches_percentages(self):
-        source = (ROOT / "apps/Portal/app.py").read_text()
+        source = (ROOT / "apps/Portal/services/model_downloads.py").read_text()
         self.assertIn('re.compile(r"(?P<pct>\\d{1,3})%")', source)
 
 

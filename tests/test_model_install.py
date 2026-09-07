@@ -11,7 +11,9 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from apps.Portal.services import model_files, model_install, models
-from apps.Portal import app as portal
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from apps.Portal.services import model_downloads, models_api
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "config/models.manifest"
@@ -171,26 +173,31 @@ class WorkflowPlanTests(unittest.TestCase):
 
     def test_start_revalidates_and_deduplicates_queued_downloads(self):
         plan = self.plan()
-        payload = portal.WorkflowInstallRequest(plan_id=plan["plan_id"])
-        with patch.object(portal, "plan_model_workflow", return_value=plan), patch.object(portal, "_model_pull_jobs", {}), patch.object(portal.threading, "Thread") as thread:
-            first = portal.install_model_workflow("video_ltx2_5_t2v", payload)
-            second = portal.install_model_workflow("video_ltx2_5_t2v", payload)
-            self.assertEqual(len(first["jobs"]), 5)
-            self.assertEqual(first, second)
+        queue = model_downloads.ModelPullQueue(lambda: "")
+        app = FastAPI()
+        app.include_router(models_api.create_router(self.manifest, self.manifest, self.root / "models", self.root / "config", lambda: "", queue=queue))
+        client = TestClient(app)
+        self.addCleanup(client.close)
+        url = "/api/models/workflows/video_ltx2_5_t2v/install"
+        payload = {"plan_id": plan["plan_id"]}
+        with patch.object(model_install, "installation_plan", return_value=plan), patch.object(model_downloads, "Thread") as thread:
+            first = client.post(url, json=payload)
+            second = client.post(url, json=payload)
+            self.assertEqual(first.status_code, 200)
+            self.assertEqual(len(first.json()["jobs"]), 5)
+            self.assertEqual(first.json(), second.json())
             thread.assert_called_once()
-            with self.assertRaises(portal.HTTPException) as error:
-                portal.install_model_workflow("video_ltx2_5_t2v", portal.WorkflowInstallRequest(plan_id="stale"))
-            self.assertEqual(error.exception.status_code, 409)
+            self.assertEqual(client.post(url, json={"plan_id": "stale"}).status_code, 409)
             plan["can_install"] = False
-            with self.assertRaises(portal.HTTPException):
-                portal.install_model_workflow("video_ltx2_5_t2v", payload)
+            self.assertEqual(client.post(url, json=payload).status_code, 409)
 
     def test_bundle_skips_newly_installed_files_and_continues_after_failure(self):
-        jobs = [portal.ModelPullJob(name=name, state="queued") for name in ["ready", "failed", "next"]]
+        queue = model_downloads.ModelPullQueue(lambda: "")
+        jobs = [model_downloads.ModelPullJob(name=name, state="queued") for name in ["ready", "failed", "next"]]
         def run(job, cmd):
             job.state = "error" if job.name == "failed" else "done"
-        with patch.object(portal, "list_models", return_value=[SimpleNamespace(name="ready", installed=True)]), patch.object(portal, "_run_model_pull_job", side_effect=run) as pull:
-            portal._run_workflow_pulls(jobs)
+        with patch.object(queue, "run_job", side_effect=run) as pull:
+            queue.run_workflow(jobs, lambda name: name == "ready")
         self.assertEqual([job.state for job in jobs], ["done", "error", "done"])
         self.assertEqual(pull.call_count, 2)
 

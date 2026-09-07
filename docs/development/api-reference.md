@@ -39,6 +39,13 @@ Known service names:
 
 ## Models API
 
+`apps/Portal/services/models_api.py` owns the Models router and request validation.
+`services/model_downloads.py` owns subprocess execution, progress parsing and the
+process-local download queue. `app.py` supplies manifest/storage paths, the pull
+timeout and a callback that reads the current Hugging Face token. Authentication
+and cache headers remain Portal middleware. Each router has its own queue;
+restarting Portal still clears queued jobs and recent activity.
+
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/models` | Parsed manifest entries |
@@ -47,6 +54,9 @@ Known service names:
 | `GET` | `/api/models/{name}/pull/status` | Pull job status |
 | `GET` | `/api/models/pulls` | Recent pull jobs |
 | `POST` | `/api/models/{name}/delete` | Deletes mapped model files |
+| `GET` | `/api/models/workflows` | Bundled workflow requirements |
+| `POST` | `/api/models/workflows/{workflow_id}/plan` | Reviews selected files, source access and storage |
+| `POST` | `/api/models/workflows/{workflow_id}/install` | Revalidates the plan and queues missing files |
 | `POST` | `/api/hf-token` | Set HF token (query or JSON body) |
 | `GET` | `/api/hf-token` | Returns `{ "set": bool }` |
 

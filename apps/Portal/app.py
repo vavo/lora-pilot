@@ -45,7 +45,7 @@ except (ImportError, ValueError):
 
 try:
     from .services import models as models_service  # type: ignore
-    from .services import model_install  # type: ignore
+    from .services.models_api import create_router as create_models_router  # type: ignore
     from .services import shutdown as shutdown_service  # type: ignore
     from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
@@ -53,14 +53,14 @@ try:
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
-        from services import model_install  # type: ignore
+        from services.models_api import create_router as create_models_router  # type: ignore
         from services import shutdown as shutdown_service  # type: ignore
         from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from services.comfy import create_router as create_comfy_router  # type: ignore
         from services.comfy_access import read_policy, token_matches  # type: ignore
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
-        from apps.Portal.services import model_install  # type: ignore
+        from apps.Portal.services.models_api import create_router as create_models_router  # type: ignore
         from apps.Portal.services import shutdown as shutdown_service  # type: ignore
         from apps.Portal.services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
@@ -208,141 +208,10 @@ _tp_exit_code: Optional[int] = None
 _tp_output_baseline: dict[str, tuple[int, int]] = {}
 _tp_moved_run_id: Optional[str] = None
 
-_model_pull_lock = threading.Lock()
-_model_pull_jobs: dict[str, "ModelPullJob"] = {}
-_MODEL_PULL_TTL_SECONDS = 10 * 60
-_MODEL_PULL_PROGRESS_RE = re.compile(r"(?P<pct>\d{1,3})%")
-
 _service_update_lock = threading.Lock()
 _service_update_jobs: dict[str, "ServiceUpdateJob"] = {}
 _SERVICE_UPDATE_TTL_SECONDS = 30 * 60
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ModelPullJob:
-    name: str
-    state: str = "running"  # queued | running | done | error
-    pid: Optional[int] = None
-    progress_pct: Optional[int] = None
-    last_line: str = ""
-    error: Optional[str] = None
-    started_at: float = field(default_factory=time.time)
-    updated_at: float = field(default_factory=time.time)
-    output_tail: deque[str] = field(default_factory=lambda: deque(maxlen=200))
-
-
-def _cleanup_model_pull_jobs(now: Optional[float] = None) -> None:
-    ts = now if now is not None else time.time()
-    with _model_pull_lock:
-        to_delete: list[str] = []
-        for name, job in _model_pull_jobs.items():
-            if job.state in ("done", "error") and (ts - job.updated_at) > _MODEL_PULL_TTL_SECONDS:
-                to_delete.append(name)
-        for name in to_delete:
-            _model_pull_jobs.pop(name, None)
-
-
-def _run_model_pull_command(cmd: list[str], timeout: int = MODEL_PULL_TIMEOUT_SECONDS) -> str:
-    try:
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired as e:
-        raise RuntimeError(f"Timeout running model pull: {' '.join(cmd)}") from e
-    except FileNotFoundError as e:
-        raise RuntimeError(f"Command not found: {cmd[0]}") from e
-    output = result.stdout or ""
-    if result.returncode != 0:
-        raise RuntimeError(output.strip() or f"Command failed ({result.returncode}): {' '.join(cmd)}")
-    return output
-
-
-def _model_pull_job_to_dict(job: ModelPullJob) -> dict:
-    return {
-        "name": job.name,
-        "state": job.state,
-        "pid": job.pid,
-        "progress_pct": job.progress_pct,
-        "last_line": job.last_line,
-        "error": job.error,
-        "started_at": job.started_at,
-        "updated_at": job.updated_at,
-        "output_tail": list(job.output_tail),
-    }
-
-
-def _update_model_pull_job(job: ModelPullJob, line: str) -> None:
-    line = (line or "").strip()
-    if not line:
-        return
-    job.last_line = line
-    job.updated_at = time.time()
-    job.output_tail.append(line)
-    m = _MODEL_PULL_PROGRESS_RE.search(line)
-    if m:
-        try:
-            pct = int(m.group("pct"))
-            if 0 <= pct <= 100:
-                job.progress_pct = pct
-        except Exception:
-            pass
-
-
-def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
-    try:
-        env = os.environ.copy()
-        env["HF_TOKEN"] = _read_secret_env_var("HF_TOKEN")
-        env.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "0")
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            env=env,
-            bufsize=0,
-        )
-        job.pid = proc.pid
-        job.updated_at = time.time()
-
-        assert proc.stdout is not None
-        buf = ""
-        for chunk in iter(lambda: proc.stdout.read(4096), b""):
-            text = chunk.decode("utf-8", errors="replace")
-            buf += text
-            while True:
-                idx_n = buf.find("\n")
-                idx_r = buf.find("\r")
-                idxs = [i for i in (idx_n, idx_r) if i != -1]
-                if not idxs:
-                    break
-                idx = min(idxs)
-                seg = buf[:idx]
-                buf = buf[idx + 1 :]
-                _update_model_pull_job(job, seg)
-            buf = buf[-8192:]
-        if buf.strip():
-            _update_model_pull_job(job, buf)
-        proc.stdout.close()
-        rc = proc.wait()
-        if rc == 0:
-            job.state = "done"
-            job.progress_pct = 100
-        else:
-            job.state = "error"
-            output = "\n".join(job.output_tail).strip()
-            job.error = output[-2000:] if output else f"exit code {rc}"
-        job.updated_at = time.time()
-    except Exception as e:
-        job.state = "error"
-        job.error = str(e)
-        job.updated_at = time.time()
-    finally:
-        with _model_pull_lock:
-            _model_pull_jobs[job.name] = job
 
 
 @dataclass
@@ -1178,6 +1047,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(create_models_router(
+    MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR,
+    token_reader=lambda: _read_secret_env_var("HF_TOKEN"),
+    pull_timeout=MODEL_PULL_TIMEOUT_SECONDS,
+))
 app.include_router(dpipe_router)
 app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilot_cookie_authenticated,
                                        gateway_checker=_comfy_gateway_authenticated, policy_reader=_comfy_policy))
@@ -1305,78 +1179,6 @@ def _validate_docs_relative_path(raw_path: str) -> Optional[PurePosixPath]:
         return None
     return path
 
-@app.get("/api/models", response_model=List[models_service.ModelEntry])
-def list_models():
-    return models_service.parse_manifest(
-        MANIFEST,
-        DEFAULT_MANIFEST,
-        MODELS_DIR,
-        CONFIG_DIR,
-    )
-
-
-class WorkflowInstallRequest(BaseModel):
-    optional: List[str] = []
-    plan_id: Optional[str] = None
-
-
-@app.get("/api/models/workflows")
-def model_workflows():
-    return {"workflows": model_install.catalog()}
-
-
-@app.post("/api/models/workflows/{workflow_id}/plan")
-def plan_model_workflow(workflow_id: str, payload: WorkflowInstallRequest):
-    try:
-        return model_install.installation_plan(
-            workflow_id, payload.optional, list_models(), MODELS_DIR, _read_secret_env_var("HF_TOKEN"))
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
-
-
-def _run_workflow_pulls(jobs: list[ModelPullJob]) -> None:
-    for job in jobs:
-        try:
-            installed = any(m.name == job.name and m.installed for m in list_models())
-            with _model_pull_lock:
-                job.state = "done" if installed else "running"
-                job.updated_at = time.time()
-                if installed:
-                    job.progress_pct = 100
-                    job.last_line = "Reused installed component"
-            if not installed:
-                _run_model_pull_job(job, ["/opt/pilot/get-models.sh", "pull", job.name])
-        except Exception:
-            with _model_pull_lock:
-                job.state = "error"
-                job.error = "Could not prepare workflow component. Review installation again."
-                job.updated_at = time.time()
-
-
-@app.post("/api/models/workflows/{workflow_id}/install")
-def install_model_workflow(workflow_id: str, payload: WorkflowInstallRequest):
-    plan = plan_model_workflow(workflow_id, payload)
-    if not payload.plan_id or payload.plan_id != plan["plan_id"]:
-        raise HTTPException(status_code=409, detail="Installation plan changed. Review installation again.")
-    if not plan["can_install"]:
-        raise HTTPException(status_code=409, detail="Installation checks failed. Review installation again.")
-    new_jobs, selected_jobs = [], []
-    with _model_pull_lock:
-        for item in plan["files"]:
-            if item["state"] == "installed":
-                continue
-            name = item["model_name"]
-            job = _model_pull_jobs.get(name)
-            if not job or job.state not in ("running", "queued"):
-                job = ModelPullJob(name=name, state="queued")
-                _model_pull_jobs[name] = job
-                new_jobs.append(job)
-            selected_jobs.append(job)
-    if new_jobs:
-        threading.Thread(target=_run_workflow_pulls, args=(new_jobs,), daemon=True).start()
-    return {"jobs": [_model_pull_job_to_dict(job) for job in selected_jobs], "installed_count": plan["installed_count"]}
-
-
 @app.get("/api/datasets", response_model=List[DatasetEntry])
 def list_datasets():
     return _list_dataset_entries()
@@ -1442,23 +1244,6 @@ async def copilot_chat(payload: dict):
 def _clean_name(name: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_-]+", "_", name).strip("_-")
     return cleaned or "dataset"
-
-
-def _normalize_model_name(name: str) -> str:
-    raw = (name or "").strip()
-    if not raw:
-        raise HTTPException(status_code=400, detail="model name is required")
-    if not re.fullmatch(r"[A-Za-z0-9._-]+", raw):
-        raise HTTPException(status_code=400, detail="invalid model name")
-    return raw
-
-
-def _resolve_model_name(raw: str, entries: list[models_service.ModelEntry]) -> str:
-    normalized = _normalize_model_name(raw)
-    for entry in entries:
-        if entry.name == normalized:
-            return entry.name
-    raise HTTPException(status_code=404, detail="Unknown model")
 
 
 def _resolve_under_root(root: Path, candidate: Path) -> Path:
@@ -2086,79 +1871,6 @@ def tagpilot_save_item(
     if done:
         payload["zip"] = str(zip_path)
     return payload
-
-
-@app.post("/api/models/{name}/pull")
-def pull_model(name: str):
-    models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    entries = models_service.parse_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    model_name = _resolve_model_name(name, entries)
-    cmd = ["/opt/pilot/get-models.sh", "pull", model_name]
-    print(f"[models] pull start name={model_name} cmd={' '.join(cmd)}", file=sys.stderr)
-    try:
-        output = _run_model_pull_command(cmd)
-        tail = output[-4000:] if len(output) > 4000 else output
-        print(f"[models] pull ok name={name} output_tail={tail!r}", file=sys.stderr)
-        return {"status": "ok", "output": output}
-    except Exception as e:
-        output = str(e)
-        tail = output[-4000:] if len(output) > 4000 else output
-        print(f"[models] pull failed name={name} output_tail={tail!r}", file=sys.stderr)
-        raise HTTPException(status_code=500, detail="Model pull failed")
-
-
-@app.post("/api/models/{name}/pull/start")
-def pull_model_start(name: str):
-    """Start a model pull in the background (used by UI for progress updates)."""
-    _cleanup_model_pull_jobs()
-    models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    entries = models_service.parse_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    model_name = _resolve_model_name(name, entries)
-
-    with _model_pull_lock:
-        existing = _model_pull_jobs.get(name)
-        if existing and existing.state in ("running", "queued"):
-            return _model_pull_job_to_dict(existing)
-        job = ModelPullJob(name=model_name)
-        _model_pull_jobs[name] = job
-
-    cmd = ["/opt/pilot/get-models.sh", "pull", model_name]
-    threading.Thread(target=_run_model_pull_job, args=(job, cmd), daemon=True).start()
-    return _model_pull_job_to_dict(job)
-
-
-@app.get("/api/models/{name}/pull/status")
-def pull_model_status(name: str):
-    _cleanup_model_pull_jobs()
-    with _model_pull_lock:
-        job = _model_pull_jobs.get(name)
-        if not job:
-            return {"name": name, "state": "idle"}
-        return _model_pull_job_to_dict(job)
-
-
-@app.get("/api/models/pulls")
-def list_model_pulls():
-    """List recent model pull jobs (running + recently completed/failed)."""
-    _cleanup_model_pull_jobs()
-    with _model_pull_lock:
-        jobs = list(_model_pull_jobs.values())
-    jobs.sort(key=lambda j: j.updated_at, reverse=True)
-    return {"jobs": [_model_pull_job_to_dict(j) for j in jobs]}
-
-
-@app.post("/api/models/{name}/delete")
-def delete_model(name: str):
-    models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    with _model_pull_lock:
-        job = _model_pull_jobs.get(name)
-        if job and job.state in ("running", "queued"):
-            raise HTTPException(status_code=409, detail="Wait for this model download to finish before removing it.")
-        try:
-            deleted = models_service.delete_model(name, MANIFEST, MODELS_DIR)
-        except KeyError:
-            raise HTTPException(status_code=404, detail="Unknown model")
-    return {"status": "ok", "deleted": deleted}
 
 
 @app.post("/api/hf-token")
