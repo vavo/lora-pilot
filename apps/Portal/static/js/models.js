@@ -1,5 +1,7 @@
 (() => {
-  let models = [], jobs = [];
+  let models = [], jobs = [], workflows = [];
+  const selectedWorkflows = new Map();
+  let reviewPlan = null, reviewVersion = 0, reviewOptional = [], installing = false;
   let tab = "catalog", task = "all", query = "", familyFilter = "all", familyId = "ltx25";
   let timer = null, generation = 0, statusUnavailable = false;
   const starting = new Set();
@@ -12,6 +14,12 @@
     return [m.name, m.source, m.subdir, family.title, family.task, family.summary, ...family.tags].some(v => String(v).toLowerCase().includes(query));
   };
 
+  function modelBytes(bytes) {
+    if (!bytes) return "0 B";
+    const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+    const index = Math.min(4, Math.floor(Math.log(bytes) / Math.log(1024)));
+    return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+  }
   function element(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -39,15 +47,18 @@
     const detail = $("models-detail-message");
     if (detail) { detail.textContent = text; detail.className = error ? "models-error" : "models-note"; detail.hidden = !text; }
   }
+  function workflowFor(family) {
+    return workflows.find(w => w.id === (selectedWorkflows.get(family.id) || family.workflow?.replace(".json", "")));
+  }
   function requirements(family) {
-    return (window.modelWorkflowFiles[family.workflow] || []).map(file => ({
+    return (workflowFor(family)?.files || []).map(file => ({
       ...file,
-      model: models.find(m => m.kind === "hf_file" && m.source === file.url.replace("https://huggingface.co/", "").replace("/resolve/main/", ":")),
+      model: models.find(m => m.kind === "hf_file" && m.subdir === file.directory && m.source === file.url.replace("https://huggingface.co/", "").replace("/resolve/main/", ":")),
     }));
   }
   function familyStatus(family) {
     const list = members(family);
-    if (list.some(m => starting.has(m.name) || jobFor(m.name)?.state === "running")) return ["Downloading", "pending"];
+    if (list.some(m => starting.has(m.name) || ["running", "queued"].includes(jobFor(m.name)?.state))) return ["Downloading", "pending"];
     const required = requirements(family).filter(r => !r.optional);
     if (required.length) return required.every(r => r.model?.installed) ? ["Files installed", "installed"] : ["Missing components", "missing"];
     return list.some(m => m.installed) ? ["Files installed", "installed"] : ["Available", "available"];
@@ -76,7 +87,7 @@
     const info = element("div", "models-file-info");
     info.append(element("strong", "", model.name));
     const size = model.installed ? model.size_bytes : model.expected_size_bytes;
-    info.append(element("small", "", `${model.type.replaceAll("_", " ")} · ${size ? `${model.installed ? "" : "Estimated "}${formatBytes(size)}` : "Size unknown"} · ${model.installed ? "Installed" : "Not installed"}`));
+    info.append(element("small", "", `${model.type.replaceAll("_", " ")} · ${size ? `${model.installed ? "" : "Estimated "}${modelBytes(size)}` : "Size unknown"} · ${model.installed ? "Installed" : "Not installed"}`));
     const details = element("details");
     details.dataset.modelDetails = model.name;
     details.append(element("summary", "", "File details"));
@@ -86,8 +97,8 @@
     info.append(details);
     const actions = element("div", "models-file-actions");
     const job = jobFor(model.name);
-    if (starting.has(model.name) || job?.state === "running") {
-      const pending = button(starting.has(model.name) ? "Starting…" : "Downloading…", "download", model.name);
+    if (starting.has(model.name) || ["running", "queued"].includes(job?.state)) {
+      const pending = button(starting.has(model.name) ? "Starting…" : job?.state === "queued" ? "Queued…" : "Downloading…", "download", model.name);
       pending.disabled = true;
       actions.append(pending);
       if (job) info.append(progress(job));
@@ -144,7 +155,7 @@
       const row = element("div", "models-job");
       const info = element("div", "models-file-info");
       info.append(element("strong", "", job.name));
-      const labels = { running: "Downloading", done: "Download complete", error: "Download failed" };
+      const labels = { queued: "Queued", running: "Downloading", done: "Download complete", error: "Download failed" };
       info.append(element("small", "", labels[job.state] || job.state));
       if (job.state === "running") info.append(progress(job));
       if (job.state === "error") info.append(element("p", "models-error", job.error || job.last_line || "Unknown download error"));
@@ -195,6 +206,16 @@
     const changedFamily = body.dataset.family !== familyId;
     body.dataset.family = familyId;
     body.replaceChildren(element("p", "models-detail-description", family.description));
+    const choices = workflows.filter(w => w.family === family.id);
+    if (choices.length) {
+      const label = element("label", "models-workflow-choice", "Workflow");
+      const select = element("select");
+      select.setAttribute("aria-label", "Workflow variant");
+      choices.forEach(w => select.add(new Option(w.title, w.id)));
+      select.value = workflowFor(family).id;
+      select.onchange = () => { selectedWorkflows.set(family.id, select.value); render(); };
+      label.append(select); body.append(label);
+    }
     const refs = requirements(family);
     if (refs.length) {
       body.append(element("h4", "", "Required files"));
@@ -243,7 +264,7 @@
     if (refs.length) {
       body.append(button("Review installation", "review", family.id, "btn primary models-review"));
       body.append(element("p", "models-count", "Review missing files before downloading."));
-      body.append(link("Workflow instructions", `https://github.com/Comfy-Org/workflow_templates/blob/785127914ff0f5bddb38c5fbe20c96912e564d9b/templates/${family.workflow}`));
+      body.append(link("Workflow instructions", `https://github.com/Comfy-Org/workflow_templates/blob/785127914ff0f5bddb38c5fbe20c96912e564d9b/templates/${workflowFor(family).id}.json`));
     }
     body.append(element("p", "models-note", "Installed means files were found. Generation has not been verified."));
     if (changedFamily) body.scrollTop = 0;
@@ -256,11 +277,77 @@
     row.append(info, link("Get from source", ref.url));
     return row;
   }
+  async function reviewInstallation(workflowId) {
+    if (installing) return;
+    const version = ++reviewVersion;
+    reviewPlan = null;
+    const dialog = $("models-install-dialog"), body = $("models-install-body");
+    if (!dialog.open) dialog.showModal();
+    body.replaceChildren(element("p", "models-note", "Checking source access, file sizes and available storage…"));
+    try {
+      const plan = await fetchJson(`/api/models/workflows/${encodeURIComponent(workflowId)}/plan`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ optional: reviewOptional }),
+      });
+      if (version !== reviewVersion || !dialog.open) return;
+      reviewPlan = plan;
+      const workflow = workflows.find(w => w.id === workflowId);
+      body.replaceChildren(element("h4", "", `${families().find(f => f.id === workflow.family).title} · ${plan.title}`));
+      workflow.files.filter(f => f.optional).forEach(file => {
+        const label = element("label", "models-optional-choice");
+        const input = element("input"); input.type = "checkbox"; input.checked = reviewOptional.includes(file.name);
+        input.onchange = () => { reviewOptional = input.checked ? [file.name] : []; reviewInstallation(workflowId); };
+        label.append(input, document.createTextNode("Include optional prompt enhancer")); body.append(label);
+      });
+      body.append(element("p", "models-note", `${plan.installed_count} installed files reused · Up to ${modelBytes(plan.download_bytes)} to download`));
+      plan.disks.forEach(d => body.append(element("p", "models-note", `${modelBytes(d.free_bytes)} free · ${modelBytes(d.required_bytes)} additional space required on ${d.path}`)));
+      plan.files.forEach(file => {
+        const row = element("div", "models-plan-file");
+        row.append(element("strong", "", file.name), badge(file.state === "installed" ? "Installed · reuse" : file.error ? "Check failed" : "Download", file.state === "installed" ? "installed" : "missing"));
+        row.append(element("p", "models-note", `${file.optional ? "Optional" : "Required"} · ${modelBytes(file.size_bytes || 0)} · ${file.state === "installed" ? "Local file found" : file.access || "Access unverified"}`));
+        row.append(element("code", "models-path", file.path), link("View source / license", file.url.replace("/resolve/main/", "/blob/main/")));
+        if (file.legacy_path) row.append(element("p", "models-note", "An older local copy will be verified and reused if it matches. It will be preserved."));
+        if (file.error) row.append(element("p", "models-error", file.error));
+        body.append(row);
+      });
+      plan.errors.filter(error => error.startsWith("Insufficient")).forEach(error => body.append(element("p", "models-error", error)));
+      body.append(element("p", "models-note", `Hugging Face token: ${plan.token_configured ? "configured" : "not configured"}. Each missing file must pass source access checks.`), button("Access settings", "settings", "", "models-text-button"));
+      const start = button(plan.download_bytes ? "Download missing files" : plan.can_install ? "All files installed" : "Resolve installation checks", "install-workflow", workflowId, "btn primary models-review");
+      start.disabled = !plan.can_install || !plan.download_bytes;
+      body.append(start, button("Recheck installation", "recheck-workflow", workflowId, "models-text-button"));
+    } catch (error) {
+      if (version !== reviewVersion || !dialog.open) return;
+      body.replaceChildren(element("p", "models-error", `Could not review installation: ${error.message || error}`), button("Retry checks", "recheck-workflow", workflowId));
+    }
+  }
+  async function installWorkflow(control) {
+    if (!reviewPlan?.can_install || installing) return;
+    installing = true;
+    const epoch = generation;
+    const plan = reviewPlan, optional = [...reviewOptional];
+    $("models-install-body").querySelectorAll("button,input").forEach(node => { node.disabled = true; });
+    control.disabled = true; control.textContent = "Checking and starting…";
+    try {
+      const result = await fetchJson(`/api/models/workflows/${encodeURIComponent(plan.workflow_id)}/install`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ optional, plan_id: plan.plan_id }),
+      });
+      if (epoch !== generation) return;
+      jobs = jobs.filter(j => !result.jobs.some(next => next.name === j.name)).concat(result.jobs);
+      $("models-install-dialog").close();
+      tab = "downloads"; render(); message(result.jobs.length ? "Missing files queued. Existing downloads are reused." : "All workflow files are already installed.");
+    } catch (error) {
+      if (epoch !== generation) return;
+      $("models-install-body").querySelectorAll("button,input").forEach(node => { node.disabled = false; });
+      control.disabled = true;
+      control.textContent = "Review required";
+      $("models-install-body").append(element("p", "models-error", `Could not start: ${error.message || error}. Recheck installation to retry.`));
+    } finally { installing = false; }
+  }
   async function refresh(epoch) {
     try {
-      const [list, activity] = await Promise.all([fetchJson("/api/models"), fetchJson("/api/models/pulls")]);
+      const [list, activity, catalog] = await Promise.all([fetchJson("/api/models"), fetchJson("/api/models/pulls"), fetchJson("/api/models/workflows")]);
       if (epoch !== generation || !$("models-page")) return;
-      models = list; jobs = activity.jobs || [];
+      models = list; jobs = activity.jobs || []; workflows = catalog.workflows || [];
       message(""); render();
     } catch (error) { if (epoch === generation) message(`Could not load models: ${error.message || error}`, true); }
   }
@@ -283,7 +370,7 @@
     if (epoch === generation) timer = setTimeout(() => poll(epoch), 2500);
   }
   async function download(name) {
-    if (starting.has(name) || jobFor(name)?.state === "running") return;
+    if (starting.has(name) || ["running", "queued"].includes(jobFor(name)?.state)) return;
     starting.add(name); render();
     try {
       const job = await fetchJson(`/api/models/${encodeURIComponent(name)}/pull/start`, { method: "POST" });
@@ -304,11 +391,13 @@
         if (window.matchMedia("(max-width: 1000px)").matches) $("models-detail").scrollIntoView({ block: "start", behavior: "smooth" });
         break;
       case "review":
-        $("models-detail").querySelectorAll("details.models-requirement").forEach(d => { d.open = true; });
-        $("models-detail-body").scrollTop = 0;
-        $("models-detail-body").querySelector("summary")?.focus();
+        reviewOptional = [];
+        await reviewInstallation(workflowFor(families().find(f => f.id === value)).id);
         break;
-      case "settings": document.querySelector('.nav [data-section="settings"]').click(); break;
+      case "install-workflow": await installWorkflow(control); break;
+      case "close-review": $("models-install-dialog").close(); break;
+      case "recheck-workflow": await reviewInstallation(value); break;
+      case "settings": $("models-install-dialog").close(); document.querySelector('.nav [data-section="settings"]').click(); break;
       case "download": await download(value); break;
       case "copy":
         try {
@@ -327,7 +416,7 @@
         break;
     }
   }
-  window.stopModels = function () { generation++; clearTimeout(timer); timer = null; };
+  window.stopModels = function () { generation++; reviewVersion++; $("models-install-dialog")?.close(); clearTimeout(timer); timer = null; };
   window.initModels = async function () {
     window.stopModels();
     const epoch = generation;

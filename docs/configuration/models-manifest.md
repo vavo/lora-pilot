@@ -1,6 +1,6 @@
 # Models Manifest
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-07_
 
 LoRA Pilot model downloads are driven by a pipe-delimited manifest file.
 
@@ -45,7 +45,7 @@ Fields:
   - `url`: direct URL
 - `subdir`: destination under `/workspace/models`
 - `include`: optional, only relevant for `hf_repo` (comma-separated glob patterns)
-- `size`: optional expected size (`TB`, `GB`, `MB`, `KB`, or bytes)
+- `size`: optional expected size (`TB`, `GB`, `MB`, `KB`, or bytes). Bundled entries use exact bytes from upstream metadata; repository sizes sum the selected files.
 
 Comments (`# ...`) and empty lines are ignored.
 
@@ -58,12 +58,11 @@ Comments (`# ...`) and empty lines are ignored.
 ## Real Examples
 
 ```text
-sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6.94GB
-juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
-wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,model_index.json,README.md|72.40GB
-ideogram4-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors|diffusion_models||5.11GB
-lens-turbo-mxfp8|hf_file|Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors|diffusion_models||5.18GB
-pixeldit-1300m-1024px-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors|diffusion_models||1.33GB
+sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6938078334
+juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6938040706
+wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,*.safetensors,*.pth,google/umt5-xxl/*,README.md|56357501157
+minimax-h3-fl2va-int8|hf_file|Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors|diffusion_models||20970379616
+ltx-2.5-distilled-int8|hf_file|Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors|diffusion_models||21504034224
 ```
 
 The bundled manifests include Comfy-ready quantized Ideogram 4, Lens, and PixelDiT entries. They reuse the existing `flux2-vae` entry when a Flux 2 VAE is needed instead of duplicating that model under each pack.
@@ -92,24 +91,29 @@ Environment overrides:
 - `GET /api/models/{name}/pull/status`
 - `GET /api/models/pulls`
 - `POST /api/models/{name}/delete`
+- `GET /api/models/workflows`
+- `POST /api/models/workflows/{workflow_id}/plan`
+- `POST /api/models/workflows/{workflow_id}/install`
+
+Workflow plans derive their dependencies from `config/comfy-workflows/*.json`.
+The plan request accepts `optional` filenames; installation accepts the same
+selection plus the returned `plan_id` and repeats access/storage checks.
 
 ## Install Detection Rules (ControlPilot)
 
 For each entry, `apps/Portal/services/models.py` computes `installed`, `size_bytes`, and links:
 
-- `hf_file`: expects file path from `source` (with basename fallback)
-- `url`: expects URL basename in target dir
-- `hf_repo`: scans target dir (optionally filtered by `include` glob list)
+- `hf_file` and `url`: require a nonempty file at `<subdir>/<basename>` with the
+  manifest's exact byte size, when specified as integer bytes. Rounded unit
+  values in custom manifests remain estimates and use the legacy nonempty-file
+  check. Legacy nested locations are
+  reported separately and do not count as installed.
+- `hf_repo`: requires a completion receipt matching the source/include filter,
+  recorded file sizes and valid weights/shards. A pull creates or repairs it.
 
-If matching files exist:
-
-- `installed=true`
-- `size_bytes` sums matched files (prefers `.safetensors` when available)
-
-If no match but `size` exists:
-
-- `installed=false`
-- `size_bytes` uses parsed expected size
+The single-file downloader uses an isolated staging directory, an atomic final
+move, and a destination lock. Legacy HF files are reused only after hash
+verification. See [migration details](../user-guide/model-management.md#existing-downloads-and-corrected-names).
 
 ## Deletion Behavior
 

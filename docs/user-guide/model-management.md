@@ -11,25 +11,49 @@ prefix commands with `docker exec lora-pilot`.
 
 Open **Models** in ControlPilot. **Catalog** lists model families with task and
 installation status. Search the list or narrow it with the task and family
-filters. Select a row to open its details panel. **Review installation** expands
-the required components; **Other variants and components** exposes alternatives.
+filters. Select a row to open its details panel. For LTX-2.5 and MiniMax H3,
+choose **Text to video** or **Image to video**, then **Review installation**.
+The review lists exact required files, installed files to reuse, download sizes,
+destinations, free space and source access. The LTX prompt enhancer is optional.
+**Download missing files** queues only missing components and reuses active jobs.
+Failed downloads can be retried from **Downloads**; reviewing again skips files
+that have since finished. Access or disk-space failures block installation.
 
-LTX-2.5 and MiniMax H3 setup checklists follow the bundled text-to-video
-workflows. Files absent from the active manifest are marked **Not in catalog**
-with a source link. Download available components individually; variants are
-alternatives, not a bundle to install together. Installation status confirms
-files were found, not that a generation has been tested.
+These lists come directly from the four bundled workflow graphs. They describe
+the bundled versions, not user-edited copies. Other families expose individual
+models and components; choose the variants your workflow needs.
 
 **Installed** lists downloaded entries with file paths and removal controls.
-**Downloads** shows recent progress, errors, and retries. The browser uses the
-same manifest and downloader as the CLI.
+**Downloads** shows recent progress, errors, and retries. Queued jobs run in the
+Portal process; restarting Portal loses the queue. Completed files remain on
+the persistent volume. Reopen the review to queue the remaining files.
+File installation does not confirm GPU compatibility or successful generation.
 
 Repository (`hf_repo`) entries appear installed only after a successful pull
-records their required files and verifies that weights and indexed shards exist.
-The record lives under `/workspace/models/.download-state`; missing or resized
-files make the entry available for repair again. Existing repository downloads
-without a record need one `models pull <name>` to verify the cached files and
-create it. Single-file entries keep their existing detection behavior.
+records required files and verifies weights and indexed shards. The record lives
+under `/workspace/models/.download-state`. Existing repository downloads without
+a record need one `models pull <name>` to verify cached files and create it.
+Single files must have the exact byte size at their canonical destination when
+the manifest specifies integer bytes. Rounded sizes in older custom manifests
+remain estimates; workflow preflight fetches exact sizes for missing files.
+
+## Existing downloads and corrected names
+
+Single Hugging Face files now land at `<subdir>/<filename>`, without repeating
+upstream directories such as `vae/vae`. A pull verifies the source hash before
+reusing a legacy nested file. Existing files remain intact until a replacement
+finishes, and legacy copies are preserved. Removing an entry deletes only its
+canonical file. Old ControlNet/VAE files named `diffusion_pytorch_model.safetensors`
+are ambiguous: the downloader preserves them and fetches into a model-specific
+subdirectory. Z-Image's `ae.safetensors` also has its own `vae/z-image` directory
+to avoid shared deletion with FLUX.
+
+The corrected names are `realistic-vision-v6-sd15` (SD1.5, formerly
+`realistic-vision-xl`), `swin2sr-4x` (a Transformers repository, formerly
+`swinir-4x`), and `gfpgan-v1.4` (face restoration, formerly `esrgan-4x`). The CLI
+accepts the old names as aliases when the active manifest uses the new names.
+Old GFPGAN and Swin2SR downloads are preserved; their corrected destinations
+need a new pull. Real-ESRGAN entries are unchanged.
 
 ## Supported CLI
 

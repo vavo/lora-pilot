@@ -45,6 +45,7 @@ except (ImportError, ValueError):
 
 try:
     from .services import models as models_service  # type: ignore
+    from .services import model_install  # type: ignore
     from .services import shutdown as shutdown_service  # type: ignore
     from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
@@ -52,12 +53,14 @@ try:
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
+        from services import model_install  # type: ignore
         from services import shutdown as shutdown_service  # type: ignore
         from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from services.comfy import create_router as create_comfy_router  # type: ignore
         from services.comfy_access import read_policy, token_matches  # type: ignore
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
+        from apps.Portal.services import model_install  # type: ignore
         from apps.Portal.services import shutdown as shutdown_service  # type: ignore
         from apps.Portal.services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
@@ -219,7 +222,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ModelPullJob:
     name: str
-    state: str = "running"  # running | done | error
+    state: str = "running"  # queued | running | done | error
     pid: Optional[int] = None
     progress_pct: Optional[int] = None
     last_line: str = ""
@@ -293,6 +296,7 @@ def _update_model_pull_job(job: ModelPullJob, line: str) -> None:
 def _run_model_pull_job(job: ModelPullJob, cmd: list[str]) -> None:
     try:
         env = os.environ.copy()
+        env["HF_TOKEN"] = _read_secret_env_var("HF_TOKEN")
         env.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "0")
         proc = subprocess.Popen(
             cmd,
@@ -1311,6 +1315,68 @@ def list_models():
     )
 
 
+class WorkflowInstallRequest(BaseModel):
+    optional: List[str] = []
+    plan_id: Optional[str] = None
+
+
+@app.get("/api/models/workflows")
+def model_workflows():
+    return {"workflows": model_install.catalog()}
+
+
+@app.post("/api/models/workflows/{workflow_id}/plan")
+def plan_model_workflow(workflow_id: str, payload: WorkflowInstallRequest):
+    try:
+        return model_install.installation_plan(
+            workflow_id, payload.optional, list_models(), MODELS_DIR, _read_secret_env_var("HF_TOKEN"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+def _run_workflow_pulls(jobs: list[ModelPullJob]) -> None:
+    for job in jobs:
+        try:
+            installed = any(m.name == job.name and m.installed for m in list_models())
+            with _model_pull_lock:
+                job.state = "done" if installed else "running"
+                job.updated_at = time.time()
+                if installed:
+                    job.progress_pct = 100
+                    job.last_line = "Reused installed component"
+            if not installed:
+                _run_model_pull_job(job, ["/opt/pilot/get-models.sh", "pull", job.name])
+        except Exception:
+            with _model_pull_lock:
+                job.state = "error"
+                job.error = "Could not prepare workflow component. Review installation again."
+                job.updated_at = time.time()
+
+
+@app.post("/api/models/workflows/{workflow_id}/install")
+def install_model_workflow(workflow_id: str, payload: WorkflowInstallRequest):
+    plan = plan_model_workflow(workflow_id, payload)
+    if not payload.plan_id or payload.plan_id != plan["plan_id"]:
+        raise HTTPException(status_code=409, detail="Installation plan changed. Review installation again.")
+    if not plan["can_install"]:
+        raise HTTPException(status_code=409, detail="Installation checks failed. Review installation again.")
+    new_jobs, selected_jobs = [], []
+    with _model_pull_lock:
+        for item in plan["files"]:
+            if item["state"] == "installed":
+                continue
+            name = item["model_name"]
+            job = _model_pull_jobs.get(name)
+            if not job or job.state not in ("running", "queued"):
+                job = ModelPullJob(name=name, state="queued")
+                _model_pull_jobs[name] = job
+                new_jobs.append(job)
+            selected_jobs.append(job)
+    if new_jobs:
+        threading.Thread(target=_run_workflow_pulls, args=(new_jobs,), daemon=True).start()
+    return {"jobs": [_model_pull_job_to_dict(job) for job in selected_jobs], "installed_count": plan["installed_count"]}
+
+
 @app.get("/api/datasets", response_model=List[DatasetEntry])
 def list_datasets():
     return _list_dataset_entries()
@@ -2051,7 +2117,7 @@ def pull_model_start(name: str):
 
     with _model_pull_lock:
         existing = _model_pull_jobs.get(name)
-        if existing and existing.state == "running":
+        if existing and existing.state in ("running", "queued"):
             return _model_pull_job_to_dict(existing)
         job = ModelPullJob(name=model_name)
         _model_pull_jobs[name] = job
@@ -2084,10 +2150,14 @@ def list_model_pulls():
 @app.post("/api/models/{name}/delete")
 def delete_model(name: str):
     models_service.ensure_manifest(MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR)
-    try:
-        deleted = models_service.delete_model(name, MANIFEST, MODELS_DIR)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Unknown model")
+    with _model_pull_lock:
+        job = _model_pull_jobs.get(name)
+        if job and job.state in ("running", "queued"):
+            raise HTTPException(status_code=409, detail="Wait for this model download to finish before removing it.")
+        try:
+            deleted = models_service.delete_model(name, MANIFEST, MODELS_DIR)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Unknown model")
     return {"status": "ok", "deleted": deleted}
 
 

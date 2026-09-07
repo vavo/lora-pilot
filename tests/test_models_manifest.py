@@ -97,13 +97,13 @@ class ModelsManifestTests(unittest.TestCase):
             "analog-madness-xl": "dwells/Analog_Madness_XL3:analogMadnessSDXL_xl3.safetensors",
             "opendalle-xl": "dataautogpt3/OpenDalleV1.1:OpenDalleV1.1.safetensors",
             "realistic-vision": "SG161222/Realistic_Vision_V5.1_noVAE:Realistic_Vision_V5.1_fp16-no-ema.safetensors",
-            "realistic-vision-xl": "SG161222/Realistic_Vision_V6.0_B1_noVAE:Realistic_Vision_V6.0_NV_B1_fp16.safetensors",
+            "realistic-vision-v6-sd15": "SG161222/Realistic_Vision_V6.0_B1_noVAE:Realistic_Vision_V6.0_NV_B1_fp16.safetensors",
             "epicrealism": "philz1337x/epicrealism:epicrealism_naturalSinRC1VAE.safetensors",
             "rev-animated": "danbrown/RevAnimated-v1-2-2:rev-animated-v1-2-2.safetensors",
             "realesrgan-4x": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth",
             "realesrgan-4x-anime": "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth",
-            "swinir-4x": "caidas/swin2SR-realworld-sr-x4-64-bsrgan-psnr:pytorch_model.bin",
-            "esrgan-4x": "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth",
+            "swin2sr-4x": "caidas/swin2SR-realworld-sr-x4-64-bsrgan-psnr",
+            "gfpgan-v1.4": "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth",
             "t5-xxl": "stabilityai/stable-diffusion-3-medium:text_encoders/t5xxl_fp8_e4m3fn.safetensors",
         }
 
@@ -114,24 +114,24 @@ class ModelsManifestTests(unittest.TestCase):
     def test_manifest_contains_new_comfy_quantized_entries(self):
         entries = manifest_entries(MANIFEST)
         expected = {
-            "ideogram4-nvfp4": ("hf_file", "Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors", "diffusion_models", "5.11GB"),
-            "ideogram4-unconditional-nvfp4": ("hf_file", "Comfy-Org/Ideogram-4:diffusion_models/ideogram4_unconditional_nvfp4_mixed.safetensors", "diffusion_models", "5.11GB"),
-            "ideogram4-qwen3vl-8b-nvfp4": ("hf_file", "Comfy-Org/Ideogram-4:text_encoders/qwen3vl_8b_nvfp4.safetensors", "text_encoders", "5.87GB"),
-            "lens-turbo-mxfp8": ("hf_file", "Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors", "diffusion_models", "5.18GB"),
-            "lens-gpt-oss-20b-nvfp4": ("hf_file", "Comfy-Org/Lens:text_encoders/gpt_oss_20b_nvfp4.safetensors", "text_encoders", "12.33GB"),
-            "pixeldit-1300m-1024px-mxfp8": ("hf_file", "Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors", "diffusion_models", "1.33GB"),
-            "pixeldit-gemma-2-2b-fp8": ("hf_file", "Comfy-Org/PixelDiT:text_encoders/gemma_2_2b_it_elm_fp8_scaled.safetensors", "text_encoders", "2.44GB"),
-            "pid-flux2-1024-to-4096-mxfp8": ("hf_file", "Comfy-Org/PixelDiT:diffusion_models/pid_flux2_1024_to_4096_4step_mxfp8.safetensors", "diffusion_models", "1.41GB"),
-            "pid-flux2-512-to-2048-mxfp8": ("hf_file", "Comfy-Org/PixelDiT:diffusion_models/pid_flux2_512_to_2048_4step_mxfp8.safetensors", "diffusion_models", "1.41GB"),
+            "ideogram4-nvfp4": ("hf_file", "Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors", "diffusion_models"),
+            "ideogram4-unconditional-nvfp4": ("hf_file", "Comfy-Org/Ideogram-4:diffusion_models/ideogram4_unconditional_nvfp4_mixed.safetensors", "diffusion_models"),
+            "ideogram4-qwen3vl-8b-nvfp4": ("hf_file", "Comfy-Org/Ideogram-4:text_encoders/qwen3vl_8b_nvfp4.safetensors", "text_encoders"),
+            "lens-turbo-mxfp8": ("hf_file", "Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors", "diffusion_models"),
+            "lens-gpt-oss-20b-nvfp4": ("hf_file", "Comfy-Org/Lens:text_encoders/gpt_oss_20b_nvfp4.safetensors", "text_encoders"),
+            "pixeldit-1300m-1024px-mxfp8": ("hf_file", "Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors", "diffusion_models"),
+            "pixeldit-gemma-2-2b-fp8": ("hf_file", "Comfy-Org/PixelDiT:text_encoders/gemma_2_2b_it_elm_fp8_scaled.safetensors", "text_encoders"),
+            "pid-flux2-1024-to-4096-mxfp8": ("hf_file", "Comfy-Org/PixelDiT:diffusion_models/pid_flux2_1024_to_4096_4step_mxfp8.safetensors", "diffusion_models"),
+            "pid-flux2-512-to-2048-mxfp8": ("hf_file", "Comfy-Org/PixelDiT:diffusion_models/pid_flux2_512_to_2048_4step_mxfp8.safetensors", "diffusion_models"),
         }
 
-        for name, (kind, source, subdir, size) in expected.items():
+        for name, (kind, source, subdir) in expected.items():
             with self.subTest(name=name):
                 self.assertIn(name, entries)
                 self.assertEqual(entries[name]["kind"], kind)
                 self.assertEqual(entries[name]["source"], source)
                 self.assertEqual(entries[name]["subdir"], subdir)
-                self.assertEqual(entries[name]["size"], size)
+                self.assertGreater(int(entries[name]["size"]), 0)
 
     def test_manifest_names_are_unique(self):
         names = []

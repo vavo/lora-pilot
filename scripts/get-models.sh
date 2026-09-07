@@ -113,6 +113,14 @@ PY
 # include (hf_repo only): comma-separated glob patterns
 read_line_for_name() {
   local name="$1"
+  if awk -F'|' -v n="${name}" '$1==n {print; found=1; exit} END {if (!found) exit 2}' "${MANIFEST}"; then
+    return 0
+  fi
+  case "$name" in
+    realistic-vision-xl) name="realistic-vision-v6-sd15" ;;
+    swinir-4x) name="swin2sr-4x" ;;
+    esrgan-4x) name="gfpgan-v1.4" ;;
+  esac
   awk -F'|' -v n="${name}" '
     /^[[:space:]]*#/ {next}
     /^[[:space:]]*$/ {next}
@@ -140,13 +148,10 @@ download_url() {
 }
 
 hf_download_file() {
-  local repo="$1" path="$2" destdir="$3"
-  resolve_hf_bin
-  mkdir -p "${destdir}"
-  echo "HF file -> ${repo}:${path} -> ${destdir}"
-  HF_TOKEN="${HF_TOKEN:-}" "${HF_BIN}" download \
-    "${repo}" "${path}" \
-    --local-dir "${destdir}"
+  local repo="$1" path="$2" subdir="$3"
+  local file_helper="${MODEL_FILE_HELPER:-/opt/pilot/apps/Portal/services/model_files.py}"
+  echo "HF file -> ${repo}:${path} -> ${MODELS_DIR}/${subdir}"
+  "${VENV_PY}" "${file_helper}" "${repo}:${path}" "${subdir}" "${MODELS_DIR}"
 }
 
 hf_download_repo() {
@@ -179,7 +184,7 @@ pull_one() {
     exit 2
   }
 
-  IFS='|' read -r _name kind source subdir include size <<< "${line}"
+  IFS='|' read -r name kind source subdir include size <<< "${line}"
 
   if [[ -n "${override_subdir}" ]]; then
     subdir="${override_subdir}"
@@ -194,7 +199,7 @@ pull_one() {
     hf_file)
       local repo="${source%%:*}"
       local path="${source#*:}"
-      hf_download_file "${repo}" "${path}" "${dest}"
+      hf_download_file "${repo}" "${path}" "${subdir}"
       ;;
     hf_repo)
       local state_helper="${MODEL_STATE_HELPER:-/opt/pilot/apps/Portal/services/models.py}"

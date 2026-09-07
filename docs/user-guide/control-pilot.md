@@ -100,29 +100,16 @@ Click on any service to see:
 
 ![ControlPilot Models](../assets/images/controlpilot/controlpilot-models.png)
 
-#### Model Library
-- **Available Models**: Browse downloadable models
-- **Installed Models**: View installed models
-- **Model Categories**: Filter by type (checkpoint, LoRA, etc.)
-- **Search**: Find specific models quickly
+Browse model families in **Catalog**, filter by task or family, and select a row
+for details. For bundled LTX-2.5 and MiniMax H3 workflows, choose a variant and
+use **Review installation** to check required files, optional components, sizes,
+source access and free storage. **Download missing files** reuses installed
+components and queues the rest.
 
-#### Model Operations
-```bash
-# Model management actions:
-- Download: Install model from repository
-- Remove: Uninstall model (with confirmation)
-- Info: View model details and requirements
-- Update: Check for model updates
-- Validate: Verify model integrity
-```
-
-#### Model Details
-For each model, you can see:
-- **Name and Description**: Model identifier and purpose
-- **Size and Requirements**: Disk space and hardware needs
-- **Tags and Categories**: Model classification
-- **Installation Status**: Download progress and health
-- **Usage Statistics**: How often used in training
+**Installed** provides paths and removal controls. **Downloads** shows progress,
+errors and retries. File presence does not prove GPU readiness. See
+[Model Management](model-management.md) for CLI commands and existing-download
+migration behavior.
 
 ### Dataset Tools
 

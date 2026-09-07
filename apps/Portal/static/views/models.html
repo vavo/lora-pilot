@@ -84,6 +84,15 @@
   .models-path { display:block; max-width:100%; font-size:12px; overflow-wrap:anywhere; margin:10px 0; }
   .models-note { font-size:12px; line-height:1.6; color:var(--muted); }
   .models-page [hidden] { display:none !important; }
+  .models-workflow-choice { display:grid; gap:8px; font-size:12px; color:var(--muted); margin:18px 0; }
+  .models-workflow-choice select { padding:10px; color:var(--text); background:var(--card); border:1px solid var(--border); border-radius:8px; font:inherit; }
+  .models-install-dialog { width:min(660px,calc(100vw - 40px)); max-height:85vh; box-sizing:border-box; padding:24px; border:1px solid var(--border); border-radius:13px; background:var(--card); color:var(--text); overflow:auto; overflow-wrap:anywhere; }
+  .models-install-dialog::backdrop { background:#0007; }
+  .models-install-header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+  .models-install-header h3 { margin:0; }
+  .models-optional-choice { display:flex; gap:10px; align-items:center; font-size:13px; margin:16px 0; }
+  .models-plan-file { border-top:1px solid var(--border); padding:16px 0; overflow-wrap:anywhere; }
+  .models-plan-file > strong { display:block; font-size:13px; margin-bottom:8px; }
   .models-page button:focus-visible, .models-page summary:focus-visible, .models-page select:focus-visible, .models-search:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
   @media(max-width:1200px) and (min-width:1001px) {
     .models-workspace--detail { grid-template-columns:minmax(0,1fr) 330px; gap:18px; }
@@ -143,4 +152,8 @@
       <div class="models-detail-body" id="models-detail-body"></div>
     </aside>
   </div>
+  <dialog id="models-install-dialog" class="models-install-dialog" aria-labelledby="models-install-title">
+    <header class="models-install-header"><h3 id="models-install-title">Review installation</h3><button type="button" class="models-text-button" data-model-action="close-review" aria-label="Close installation review">Close</button></header>
+    <div id="models-install-body" aria-live="polite"></div>
+  </dialog>
 </section>

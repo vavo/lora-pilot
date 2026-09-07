@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import unittest
 from pathlib import Path
+from apps.Portal.services import model_install
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,7 +22,6 @@ const entries = fs.readFileSync('config/models.manifest','utf8').split('\\n')
     return {name,kind,source,subdir,category:/xl/i.test(name)?'SDXL':'OTHERS'};
   });
 console.log(JSON.stringify({families:context.window.modelFamilies,
-  files:context.window.modelWorkflowFiles,
   assignments:entries.map(m=>[m.name,context.window.modelFamilyFor(m).id])}));
 """
         return json.loads(subprocess.check_output(["node", "-e", script], cwd=ROOT, text=True))
@@ -31,13 +31,14 @@ console.log(JSON.stringify({families:context.window.modelFamilies,
         known = {family["id"] for family in data["families"]}
         assignments = dict(data["assignments"])
         self.assertTrue(all(family in known for family in assignments.values()))
-        self.assertEqual(assignments["realistic-vision-xl"], "sd15")
+        self.assertEqual(assignments["realistic-vision-v6-sd15"], "sd15")
         self.assertEqual(assignments["pid-flux2-1024-to-4096-mxfp8"], "pixeldit")
         self.assertEqual(assignments["ltx-2.5-gemma4-e2b-bf16"], "ltx25")
         self.assertEqual(assignments["controlnet-canny"], "components")
 
     def test_setup_checklists_match_bundled_workflows(self):
-        for filename, catalog_files in self.catalog()["files"].items():
+        for workflow in model_install.catalog():
+            filename, catalog_files = workflow["id"] + ".json", workflow["files"]
             refs = {}
 
             def visit(value):

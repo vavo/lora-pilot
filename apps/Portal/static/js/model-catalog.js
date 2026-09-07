@@ -23,83 +23,9 @@ window.modelFamilyFor = function (model) {
   const direct = window.modelFamilies.find(f => f.match && name.startsWith(f.match));
   if (direct) return direct;
   if (name.startsWith("pid-flux2")) return window.modelFamilies.find(f => f.id === "pixeldit");
-  if (["sd15-base", "realistic-vision", "realistic-vision-xl", "epicrealism", "rev-animated", "toonyou"].includes(name)) {
+  if (["sd15-base", "realistic-vision", "realistic-vision-xl", "realistic-vision-v6-sd15", "epicrealism", "rev-animated", "toonyou"].includes(name)) {
     return window.modelFamilies.find(f => f.id === "sd15");
   }
   if (model.category === "SDXL") return window.modelFamilies.find(f => f.id === "sdxl");
   return window.modelFamilies.find(f => f.id === "components");
-};
-
-// Exact model references from the bundled workflow graphs.
-window.modelWorkflowFiles = {
-  "video_ltx2_5_t2v.json": [
-    {
-      "name": "ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors",
-      "directory": "latent_upscale_models",
-      "optional": false
-    },
-    {
-      "name": "ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors",
-      "directory": "diffusion_models",
-      "optional": false
-    },
-    {
-      "name": "ltx-2.5-video-vae-bf16.safetensors",
-      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-video-vae-bf16.safetensors",
-      "directory": "vae",
-      "optional": false
-    },
-    {
-      "name": "ltx-2.5-audio-vae-bf16.safetensors",
-      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/vae/ltx-2.5-audio-vae-bf16.safetensors",
-      "directory": "vae",
-      "optional": false
-    },
-    {
-      "name": "gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
-      "url": "https://huggingface.co/Lightricks/LTX-2.5/resolve/main/text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors",
-      "directory": "text_encoders",
-      "optional": false
-    },
-    {
-      "name": "gemma4_e2b_it_int8_convrot.safetensors",
-      "url": "https://huggingface.co/Comfy-Org/gemma-4/resolve/main/text_encoders/gemma4_e2b_it_int8_convrot.safetensors",
-      "directory": "text_encoders",
-      "optional": true
-    }
-  ],
-  "video_minimax_h3_t2v.json": [
-    {
-      "name": "minimax_h3_video_vae_fp16.safetensors",
-      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors",
-      "directory": "vae",
-      "optional": false
-    },
-    {
-      "name": "minimax_h3_audio_vae_fp32.safetensors",
-      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
-      "directory": "vae",
-      "optional": false
-    },
-    {
-      "name": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
-      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors",
-      "directory": "diffusion_models",
-      "optional": false
-    },
-    {
-      "name": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
-      "directory": "text_encoders",
-      "optional": false
-    },
-    {
-      "name": "minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
-      "url": "https://huggingface.co/lightx2v/Minimax-h3-Turbo/resolve/main/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors",
-      "directory": "loras",
-      "optional": false
-    }
-  ]
 };

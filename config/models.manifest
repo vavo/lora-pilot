@@ -1,155 +1,163 @@
 # name|kind|source|subdir|include|size
 
 # --- SDXL Base Models ---
-sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6.94GB
-sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints||6.94GB
+sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6938078334
+sdxl-base-0.9vae|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0_0.9vae.safetensors|checkpoints||6938078334
 # --- SDXL Refiners ---
-sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints||6.08GB
-sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0_0.9vae.safetensors|checkpoints||6.08GB
+sdxl-refiner|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0.safetensors|checkpoints||6075981930
+sdxl-refiner-0.9vae|hf_file|stabilityai/stable-diffusion-xl-refiner-1.0:sd_xl_refiner_1.0_0.9vae.safetensors|checkpoints||6075981930
 
 # --- SDXL Fine-tuned Models ---
-juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6.94GB
-ragnarok-xl|hf_repo|eniora/Juggernaut_XL_Ragnarok|diffusers/ragnarok-xl|*.json,*.safetensors|
-epicrealism-xl|hf_repo|John6666/epicrealism-xl-vxvii-crystal-clear-realism-sdxl|diffusers/epicrealism-xl|*.json,*.safetensors,README.md|
-realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints||6.94GB
-realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints||6.94GB
-realvisxl-v5|hf_file|SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors|checkpoints||6.94GB
-pony-xl|hf_file|LyliaEngine/Pony_Diffusion_V6_XL:ponyDiffusionV6XL_v6StartWithThisOne.safetensors|checkpoints||6.94GB
-dreamshaper-xl-v2-turbo|hf_file|Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors|checkpoints||6.94GB
-juggernaut-xl-lightning|hf_file|RunDiffusion/Juggernaut-XL-Lightning:Juggernaut_RunDiffusionPhoto2_Lightning_4Steps.safetensors|checkpoints||7.11GB
-juggernaut-xl-v9|hf_file|RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors|checkpoints||7.11GB
-cyberrealistic-xl-v10|hf_file|cyberdelia/CyberRealisticXL:CyberRealisticXLPlay_V10.0_FP16.safetensors|checkpoints||6.94GB
-analog-madness-xl|hf_file|dwells/Analog_Madness_XL3:analogMadnessSDXL_xl3.safetensors|checkpoints||6.94GB
-opendalle-xl|hf_file|dataautogpt3/OpenDalleV1.1:OpenDalleV1.1.safetensors|checkpoints||6.94GB
+juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6938040706
+ragnarok-xl|hf_repo|eniora/Juggernaut_XL_Ragnarok|diffusers/ragnarok-xl|*.json,*.safetensors,tokenizer/*,tokenizer_2/*|6941385237
+epicrealism-xl|hf_repo|John6666/epicrealism-xl-vxvii-crystal-clear-realism-sdxl|diffusers/epicrealism-xl|*.json,*.safetensors,tokenizer/*,tokenizer_2/*|6941385016
+realvisxl-v3|hf_file|SG161222/RealVisXL_V3.0:RealVisXL_V3.0.safetensors|checkpoints||6938040706
+realvisxl-v4|hf_file|SG161222/RealVisXL_V4.0:RealVisXL_V4.0.safetensors|checkpoints||6938040706
+realvisxl-v5|hf_file|SG161222/RealVisXL_V5.0:RealVisXL_V5.0_fp16.safetensors|checkpoints||6938065488
+pony-xl|hf_file|LyliaEngine/Pony_Diffusion_V6_XL:ponyDiffusionV6XL_v6StartWithThisOne.safetensors|checkpoints||6938041050
+dreamshaper-xl-v2-turbo|hf_file|Lykon/dreamshaper-xl-v2-turbo:DreamShaperXL_Turbo_v2_1.safetensors|checkpoints||6939220250
+juggernaut-xl-lightning|hf_file|RunDiffusion/Juggernaut-XL-Lightning:Juggernaut_RunDiffusionPhoto2_Lightning_4Steps.safetensors|checkpoints||7105348284
+juggernaut-xl-v9|hf_file|RunDiffusion/Juggernaut-XL-v9:Juggernaut-XL_v9_RunDiffusionPhoto_v2.safetensors|checkpoints||7105348188
+cyberrealistic-xl-v10|hf_file|cyberdelia/CyberRealisticXL:CyberRealisticXLPlay_V10.0_FP16.safetensors|checkpoints||6938041288
+analog-madness-xl|hf_file|dwells/Analog_Madness_XL3:analogMadnessSDXL_xl3.safetensors|checkpoints||6938040682
+opendalle-xl|hf_file|dataautogpt3/OpenDalleV1.1:OpenDalleV1.1.safetensors|checkpoints||6939232042
 
 # --- SD 1.5 Base Models ---
-sd15-base|hf_file|stable-diffusion-v1-5/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints||4.27GB
+sd15-base|hf_file|stable-diffusion-v1-5/stable-diffusion-v1-5:v1-5-pruned-emaonly.safetensors|checkpoints||4265146304
 
 # --- SD 1.5 Fine-tuned Models ---
-realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1_noVAE:Realistic_Vision_V5.1_fp16-no-ema.safetensors|checkpoints||4.27GB
-realistic-vision-xl|hf_file|SG161222/Realistic_Vision_V6.0_B1_noVAE:Realistic_Vision_V6.0_NV_B1_fp16.safetensors|checkpoints||4.27GB
-epicrealism|hf_file|philz1337x/epicrealism:epicrealism_naturalSinRC1VAE.safetensors|checkpoints||2.13GB
-rev-animated|hf_file|danbrown/RevAnimated-v1-2-2:rev-animated-v1-2-2.safetensors|checkpoints||4.24GB
-toonyou|hf_file|ckpt/toonyou:toonyou_alpha3.safetensors|checkpoints||2.13GB
+realistic-vision|hf_file|SG161222/Realistic_Vision_V5.1_noVAE:Realistic_Vision_V5.1_fp16-no-ema.safetensors|checkpoints||2132625894
+realistic-vision-v6-sd15|hf_file|SG161222/Realistic_Vision_V6.0_B1_noVAE:Realistic_Vision_V6.0_NV_B1_fp16.safetensors|checkpoints||2132625894
+epicrealism|hf_file|philz1337x/epicrealism:epicrealism_naturalSinRC1VAE.safetensors|checkpoints||2132625612
+rev-animated|hf_file|danbrown/RevAnimated-v1-2-2:rev-animated-v1-2-2.safetensors|checkpoints||5505437736
+toonyou|hf_file|ckpt/toonyou:toonyou_alpha3.safetensors|checkpoints||2132625644
 
 # --- SD3.x ---
 # NOTE: stabilityai/stable-diffusion-3-medium is gated on Hugging Face (you must accept the license + be logged in)
-sd3-medium-fp8-allinone|hf_file|stabilityai/stable-diffusion-3-medium:sd3_medium_incl_clips_t5xxlfp8.safetensors|checkpoints||10.90GB
+sd3-medium-fp8-allinone|hf_file|stabilityai/stable-diffusion-3-medium:sd3_medium_incl_clips_t5xxlfp8.safetensors|checkpoints||10867168284
 
 # SD3.5 (popular, Comfy-Org packaged)
-sd3.5-medium-fp8-allinone|hf_file|Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors|checkpoints||11.60GB
-sd3.5-large|hf_file|stabilityai/stable-diffusion-3.5-large:sd3.5_large.safetensors|checkpoints||16.20GB
-sd3.5-large-turbo|hf_file|stabilityai/stable-diffusion-3.5-large-turbo:sd3.5_large_turbo.safetensors|checkpoints||16.20GB
+sd3.5-medium-fp8-allinone|hf_file|Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors|checkpoints||11638004202
+sd3.5-large|hf_file|stabilityai/stable-diffusion-3.5-large:sd3.5_large.safetensors|checkpoints||16460379262
+sd3.5-large-turbo|hf_file|stabilityai/stable-diffusion-3.5-large-turbo:sd3.5_large_turbo.safetensors|checkpoints||16460374454
 
 # --- FLUX.1 Models ---
-flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|diffusion_models||23.80GB
-flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||0.34GB
-flux1-kontext-dev|hf_file|black-forest-labs/FLUX.1-Kontext-dev:flux1-kontext-dev.safetensors|diffusion_models||23.80GB
-flux1-fill-dev|hf_file|black-forest-labs/FLUX.1-Fill-dev:flux1-fill-dev.safetensors|diffusion_models||23.80GB
+flux1-dev|hf_file|black-forest-labs/FLUX.1-dev:flux1-dev.safetensors|diffusion_models||23802932552
+flux1-ae|hf_file|black-forest-labs/FLUX.1-dev:ae.safetensors|vae||335304388
+flux1-kontext-dev|hf_file|black-forest-labs/FLUX.1-Kontext-dev:flux1-kontext-dev.safetensors|diffusion_models||23802947360
+flux1-fill-dev|hf_file|black-forest-labs/FLUX.1-Fill-dev:flux1-fill-dev.safetensors|diffusion_models||23804922408
 
 # --- Flux 2 (ComfyUI-ready, quantized) ---
 # NOTE: these are the Comfy-Org split_files that match ComfyUI_examples for Flux 2
-flux2-dev-fp8mixed|hf_file|Comfy-Org/flux2-dev:split_files/diffusion_models/flux2_dev_fp8mixed.safetensors|diffusion_models||35.50GB
-flux2-mistral-encoder-fp8|hf_file|Comfy-Org/flux2-dev:split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors|text_encoders||18.00GB
-flux2-vae|hf_file|Comfy-Org/flux2-dev:split_files/vae/flux2-vae.safetensors|vae||0.34GB
-flux2-turbo-lora|hf_file|Comfy-Org/flux2-dev:split_files/loras/Flux2TurboComfyv2.safetensors|loras||2.76GB
+flux2-dev-fp8mixed|hf_file|Comfy-Org/flux2-dev:split_files/diffusion_models/flux2_dev_fp8mixed.safetensors|diffusion_models||35455599592
+flux2-mistral-encoder-fp8|hf_file|Comfy-Org/flux2-dev:split_files/text_encoders/mistral_3_small_flux2_fp8.safetensors|text_encoders||18034640095
+flux2-vae|hf_file|Comfy-Org/flux2-dev:split_files/vae/flux2-vae.safetensors|vae||336213556
+flux2-turbo-lora|hf_file|Comfy-Org/flux2-dev:split_files/loras/Flux2TurboComfyv2.safetensors|loras||2760814872
 
 # --- Ideogram 4 (ComfyUI-ready, quantized) ---
-ideogram4-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors|diffusion_models||5.11GB
-ideogram4-unconditional-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_unconditional_nvfp4_mixed.safetensors|diffusion_models||5.11GB
-ideogram4-qwen3vl-8b-nvfp4|hf_file|Comfy-Org/Ideogram-4:text_encoders/qwen3vl_8b_nvfp4.safetensors|text_encoders||5.87GB
+ideogram4-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_nvfp4_mixed.safetensors|diffusion_models||5490550037
+ideogram4-unconditional-nvfp4|hf_file|Comfy-Org/Ideogram-4:diffusion_models/ideogram4_unconditional_nvfp4_mixed.safetensors|diffusion_models||5490550037
+ideogram4-qwen3vl-8b-nvfp4|hf_file|Comfy-Org/Ideogram-4:text_encoders/qwen3vl_8b_nvfp4.safetensors|text_encoders||6305221764
 
 # --- Lens (ComfyUI-ready, quantized) ---
-lens-turbo-mxfp8|hf_file|Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors|diffusion_models||5.18GB
-lens-gpt-oss-20b-nvfp4|hf_file|Comfy-Org/Lens:text_encoders/gpt_oss_20b_nvfp4.safetensors|text_encoders||12.33GB
+lens-turbo-mxfp8|hf_file|Comfy-Org/Lens:diffusion_models/lens_turbo_mxfp8.safetensors|diffusion_models||5558630002
+lens-gpt-oss-20b-nvfp4|hf_file|Comfy-Org/Lens:text_encoders/gpt_oss_20b_nvfp4.safetensors|text_encoders||13236981318
 
 # --- PixelDiT (ComfyUI-ready, quantized) ---
-pixeldit-1300m-1024px-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors|diffusion_models||1.33GB
-pixeldit-gemma-2-2b-fp8|hf_file|Comfy-Org/PixelDiT:text_encoders/gemma_2_2b_it_elm_fp8_scaled.safetensors|text_encoders||2.44GB
-pid-flux2-1024-to-4096-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pid_flux2_1024_to_4096_4step_mxfp8.safetensors|diffusion_models||1.41GB
-pid-flux2-512-to-2048-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pid_flux2_512_to_2048_4step_mxfp8.safetensors|diffusion_models||1.41GB
+pixeldit-1300m-1024px-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pixeldit_1300m_1024px_mxfp8.safetensors|diffusion_models||1430256140
+pixeldit-gemma-2-2b-fp8|hf_file|Comfy-Org/PixelDiT:text_encoders/gemma_2_2b_it_elm_fp8_scaled.safetensors|text_encoders||2618902308
+pid-flux2-1024-to-4096-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pid_flux2_1024_to_4096_4step_mxfp8.safetensors|diffusion_models||1513724198
+pid-flux2-512-to-2048-mxfp8|hf_file|Comfy-Org/PixelDiT:diffusion_models/pid_flux2_512_to_2048_4step_mxfp8.safetensors|diffusion_models||1513724198
 
 # --- WAN Models ---
-wan2.1-t2v-1.3b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors|wan/wan2.1|*.safetensors|2.84GB
-wan2.1-t2v-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_14B_fp16.safetensors|wan/wan2.1|*.safetensors|28.58GB
-wan2.1-i2v-720p-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_i2v_720p_14B_fp16.safetensors|wan/wan2.1|*.safetensors|32.79GB
-wan2.1-vae|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/vae/wan_2.1_vae.safetensors|wan/wan2.1|*.safetensors|0.25GB
-wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,diffusion_pytorch_model*.safetensors,README.md|72.40GB
-wan2.2-ti2v-5b|hf_repo|Wan-AI/Wan2.2-TI2V-5B|wan/wan2.2-ti2v-5b|*.json,*.pth,*.safetensors,google/umt5-xxl/*,README.md|
+wan2.1-t2v-1.3b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_1.3B_fp16.safetensors|diffusion_models|*.safetensors|2838303560
+wan2.1-t2v-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_t2v_14B_fp16.safetensors|diffusion_models|*.safetensors|28577761176
+wan2.1-i2v-720p-14b|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/diffusion_models/wan2.1_i2v_720p_14B_fp16.safetensors|diffusion_models|*.safetensors|32791377504
+wan2.1-vae|hf_file|Comfy-Org/Wan_2.1_ComfyUI_repackaged:split_files/vae/wan_2.1_vae.safetensors|vae|*.safetensors|253815318
+wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,*.safetensors,*.pth,google/umt5-xxl/*,README.md|56357501157
+wan2.2-ti2v-5b|hf_repo|Wan-AI/Wan2.2-TI2V-5B|wan/wan2.2-ti2v-5b|*.json,*.pth,*.safetensors,google/umt5-xxl/*,README.md|34201537147
 
 # --- Hunyuan Image Models ---
-hunyuanimage-2.1-comfy-bf16|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/diffusion_models/hunyuanimage2.1_bf16.safetensors|diffusion_models||
-hunyuanimage-2.1-comfy-distilled-fp8|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/diffusion_models/hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors|diffusion_models||
-hunyuanimage-2.1-comfy-qwen-encoder-fp8|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors|text_encoders||
-hunyuanimage-2.1-comfy-vae|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/vae/hunyuan_image_2.1_vae_fp16.safetensors|vae||
-hunyuanimage-3.0|hf_repo|tencent/HunyuanImage-3.0|diffusers/hunyuanimage-3.0|*.py,*.json,*.safetensors,tokenizer*.json,LICENSE,README.md|
+hunyuanimage-2.1-comfy-bf16|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/diffusion_models/hunyuanimage2.1_bf16.safetensors|diffusion_models||34851687040
+hunyuanimage-2.1-comfy-distilled-fp8|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/diffusion_models/hunyuanimage2.1_distilled_fp8_e4m3fn.safetensors|diffusion_models||17453462000
+hunyuanimage-2.1-comfy-qwen-encoder-fp8|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors|text_encoders||9384670680
+hunyuanimage-2.1-comfy-vae|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/vae/hunyuan_image_2.1_vae_fp16.safetensors|vae||811184822
+hunyuanimage-3.0|hf_repo|tencent/HunyuanImage-3.0|diffusers/hunyuanimage-3.0|*.py,*.json,*.safetensors,tokenizer*.json,LICENSE,README.md|168566228728
 
 # --- VAE Models ---
-sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae||0.34GB
-vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae||0.34GB
-vae-ft-ema|hf_file|stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors|vae||0.34GB
+sdxl-vae|hf_file|madebyollin/sdxl-vae-fp16-fix:sdxl_vae.safetensors|vae||334641162
+vae-ft-mse|hf_file|stabilityai/sd-vae-ft-mse:diffusion_pytorch_model.safetensors|vae/vae-ft-mse||334643276
+vae-ft-ema|hf_file|stabilityai/sd-vae-ft-ema:diffusion_pytorch_model.safetensors|vae/vae-ft-ema||334643276
 
 # --- ControlNet Models ---
 # SD 1.5 ControlNets
-controlnet-canny|hf_file|lllyasviel/sd-controlnet-canny:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-depth|hf_file|lllyasviel/sd-controlnet-depth:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-hed|hf_file|lllyasviel/sd-controlnet-hed:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-mlsd|hf_file|lllyasviel/sd-controlnet-mlsd:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-normal|hf_file|lllyasviel/sd-controlnet-normal:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-openpose|hf_file|lllyasviel/sd-controlnet-openpose:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-scribble|hf_file|lllyasviel/sd-controlnet-scribble:diffusion_pytorch_model.safetensors|controlnet||1.45GB
-controlnet-seg|hf_file|lllyasviel/sd-controlnet-seg:diffusion_pytorch_model.safetensors|controlnet||1.45GB
+controlnet-canny|hf_file|lllyasviel/sd-controlnet-canny:diffusion_pytorch_model.safetensors|controlnet/controlnet-canny||1445157124
+controlnet-depth|hf_file|lllyasviel/sd-controlnet-depth:diffusion_pytorch_model.safetensors|controlnet/controlnet-depth||1445157124
+controlnet-hed|hf_file|lllyasviel/sd-controlnet-hed:diffusion_pytorch_model.safetensors|controlnet/controlnet-hed||1445157124
+controlnet-mlsd|hf_file|lllyasviel/sd-controlnet-mlsd:diffusion_pytorch_model.safetensors|controlnet/controlnet-mlsd||1445157124
+controlnet-normal|hf_file|lllyasviel/sd-controlnet-normal:diffusion_pytorch_model.safetensors|controlnet/controlnet-normal||1445157124
+controlnet-openpose|hf_file|lllyasviel/sd-controlnet-openpose:diffusion_pytorch_model.safetensors|controlnet/controlnet-openpose||1445157124
+controlnet-scribble|hf_file|lllyasviel/sd-controlnet-scribble:diffusion_pytorch_model.safetensors|controlnet/controlnet-scribble||1445157124
+controlnet-seg|hf_file|lllyasviel/sd-controlnet-seg:diffusion_pytorch_model.safetensors|controlnet/controlnet-seg||1445157124
 
 # --- Upscale Models ---
-realesrgan-4x|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth|upscale_models||0.07GB
-realesrgan-4x-anime|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth|upscale_models||0.02GB
-swinir-4x|hf_file|caidas/swin2SR-realworld-sr-x4-64-bsrgan-psnr:pytorch_model.bin|upscale_models||0.14GB
-esrgan-4x|url|https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth|upscale_models||0.33GB
-realesrgan-2x|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth|upscale_models||0.06GB
-latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:unet/diffusion_pytorch_model.safetensors|latent_upscale_models||1.49GB
+realesrgan-4x|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.1.0/RealESRGAN_x4plus.pth|upscale_models||67040989
+realesrgan-4x-anime|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth|upscale_models||17938799
+swin2sr-4x|hf_repo|caidas/swin2SR-realworld-sr-x4-64-bsrgan-psnr|diffusers/swin2sr-4x|*.json,pytorch_model.bin,README.md|48461718
+gfpgan-v1.4|url|https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth|facerestore_models||348632874
+realesrgan-2x|url|https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.1/RealESRGAN_x2plus.pth|upscale_models||67061725
+latent-sr|hf_file|stabilityai/sd-x2-latent-upscaler:unet/diffusion_pytorch_model.safetensors|latent_upscale_models||1490315270
 
 # --- Z-Image Turbo (the “Z-index” thing people keep saying) ---
-z-image-turbo|hf_file|Comfy-Org/z_image_turbo:split_files/diffusion_models/z_image_turbo_bf16.safetensors|diffusion_models||12.30GB
-z-image-qwen-encoder|hf_file|Comfy-Org/z_image_turbo:split_files/text_encoders/qwen_3_4b.safetensors|text_encoders||8.04GB
-z-image-ae|hf_file|Comfy-Org/z_image_turbo:split_files/vae/ae.safetensors|vae||0.34GB
+z-image-turbo|hf_file|Comfy-Org/z_image_turbo:split_files/diffusion_models/z_image_turbo_bf16.safetensors|diffusion_models||12309866400
+z-image-qwen-encoder|hf_file|Comfy-Org/z_image_turbo:split_files/text_encoders/qwen_3_4b.safetensors|text_encoders||8044982048
+z-image-ae|hf_file|Comfy-Org/z_image_turbo:split_files/vae/ae.safetensors|vae/z-image||335304388
 
 # --- Hunyuan Video Models ---
-hunyuan-video-720-fp8|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt|checkpoints||13.19GB
-hunyuan-video-720|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt|checkpoints||25.64GB
-hunyuan-video-vae|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/vae/pytorch_model.pt|vae||0.99GB
+hunyuan-video-720-fp8|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states_fp8.pt|checkpoints||13185233506
+hunyuan-video-720|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/transformers/mp_rank_00_model_states.pt|checkpoints||25642314002
+hunyuan-video-vae|hf_file|tencent/HunyuanVideo:hunyuan-video-t2v-720p/vae/pytorch_model.pt|vae||986000558
 
 # --- LTX Video Models ---
-ltx-2.3-22b-dev-fp8|hf_file|Lightricks/LTX-2.3-fp8:ltx-2.3-22b-dev-fp8.safetensors|checkpoints||
-ltx-2.3-22b-distilled-fp8|hf_file|Lightricks/LTX-2.3-fp8:ltx-2.3-22b-distilled-fp8.safetensors|checkpoints||
-ltx-2.3-22b-dev|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-dev.safetensors|checkpoints||
-ltx-2.3-22b-distilled|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled.safetensors|checkpoints||
-ltx-2.3-22b-distilled-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-1.1.safetensors|checkpoints||
-ltx-2.3-22b-distilled-lora-384|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-lora-384.safetensors|loras||
-ltx-2.3-22b-distilled-lora-384-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-lora-384-1.1.safetensors|loras||
-ltx-2.3-spatial-upscaler-x1.5-1.0|hf_file|Lightricks/LTX-2.3:ltx-2.3-spatial-upscaler-x1.5-1.0.safetensors|upscale_models||
-ltx-2.3-spatial-upscaler-x2-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-spatial-upscaler-x2-1.1.safetensors|upscale_models||
-ltx-2.3-temporal-upscaler-x2-1.0|hf_file|Lightricks/LTX-2.3:ltx-2.3-temporal-upscaler-x2-1.0.safetensors|upscale_models||
+ltx-2.3-22b-dev-fp8|hf_file|Lightricks/LTX-2.3-fp8:ltx-2.3-22b-dev-fp8.safetensors|checkpoints||29145431166
+ltx-2.3-22b-distilled-fp8|hf_file|Lightricks/LTX-2.3-fp8:ltx-2.3-22b-distilled-fp8.safetensors|checkpoints||29531884062
+ltx-2.3-22b-dev|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-dev.safetensors|checkpoints||46149344974
+ltx-2.3-22b-distilled|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled.safetensors|checkpoints||46149345038
+ltx-2.3-22b-distilled-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-1.1.safetensors|checkpoints||46149345334
+ltx-2.3-22b-distilled-lora-384|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-lora-384.safetensors|loras||7605507256
+ltx-2.3-22b-distilled-lora-384-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-22b-distilled-lora-384-1.1.safetensors|loras||7605507256
+ltx-2.3-spatial-upscaler-x1.5-1.0|hf_file|Lightricks/LTX-2.3:ltx-2.3-spatial-upscaler-x1.5-1.0.safetensors|upscale_models||1090125794
+ltx-2.3-spatial-upscaler-x2-1.1|hf_file|Lightricks/LTX-2.3:ltx-2.3-spatial-upscaler-x2-1.1.safetensors|upscale_models||995743560
+ltx-2.3-temporal-upscaler-x2-1.0|hf_file|Lightricks/LTX-2.3:ltx-2.3-temporal-upscaler-x2-1.0.safetensors|upscale_models||261944000
 
 # --- MiniMax H3 Models ---
-minimax-h3-fl2va-bf16|hf_file|Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_bf16.safetensors|diffusion_models||
-minimax-h3-qwen3vl-32b-nvfp4|hf_file|Comfy-Org/MiniMax-H3:text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|text_encoders||
-minimax-h3-audio-vae|hf_file|Comfy-Org/MiniMax-H3:vae/minimax_h3_audio_vae_fp32.safetensors|vae||
-minimax-h3-video-vae|hf_file|Comfy-Org/MiniMax-H3:vae/minimax_h3_video_vae_fp16.safetensors|vae||
+minimax-h3-fl2va-bf16|hf_file|Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_bf16.safetensors|diffusion_models||66280487368
+minimax-h3-qwen3vl-32b-nvfp4|hf_file|Comfy-Org/MiniMax-H3:text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors|text_encoders||15687142551
+minimax-h3-audio-vae|hf_file|Comfy-Org/MiniMax-H3:vae/minimax_h3_audio_vae_fp32.safetensors|vae||605254808
+minimax-h3-video-vae|hf_file|Comfy-Org/MiniMax-H3:vae/minimax_h3_video_vae_fp16.safetensors|vae||5207808496
 
 # --- LTX 2.5 Models ---
-ltx-2.5-22b-distilled-transformer-bf16|hf_file|Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors|diffusion_models||
-ltx-2.5-gemma4-12b-bf16|hf_file|Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors|text_encoders||
-ltx-2.5-gemma4-e2b-bf16|hf_file|Comfy-Org/gemma-4:text_encoders/gemma4_e2b_it_bf16.safetensors|text_encoders||
-ltx-2.5-video-vae-bf16|hf_file|Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors|vae||
-ltx-2.5-audio-vae-bf16|hf_file|Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors|vae||
+ltx-2.5-22b-distilled-transformer-bf16|hf_file|Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors|diffusion_models||42018190584
+ltx-2.5-gemma4-12b-bf16|hf_file|Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors|text_encoders||26263858182
+ltx-2.5-gemma4-e2b-bf16|hf_file|Comfy-Org/gemma-4:text_encoders/gemma4_e2b_it_bf16.safetensors|text_encoders||10278774160
+ltx-2.5-video-vae-bf16|hf_file|Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.safetensors|vae||1472223346
+ltx-2.5-audio-vae-bf16|hf_file|Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors|vae||364866540
 
 # --- Qwen Image Models ---
-qwen-image-edit-2511|hf_repo|Qwen/Qwen-Image-Edit-2511|diffusers/qwen-image-edit-2511|model_index.json,processor/*,scheduler/*.json,text_encoder/*.json,text_encoder/*.safetensors,tokenizer/*,transformer/*.json,transformer/*.safetensors,vae/*.json,vae/*.safetensors,README.md|
+qwen-image-edit-2511|hf_repo|Qwen/Qwen-Image-Edit-2511|diffusers/qwen-image-edit-2511|model_index.json,processor/*,scheduler/*.json,text_encoder/*.json,text_encoder/*.safetensors,tokenizer/*,transformer/*.json,transformer/*.safetensors,vae/*.json,vae/*.safetensors,README.md|57720461873
 
 # --- Text Encoders ---
-llava-llama-3-8b-text-encoder-tokenizer|hf_repo|Kijai/llava-llama-3-8b-text-encoder-tokenizer|text_encoders|*.json,*.safetensors|16.06GB
-clip-vit-large-patch14|hf_file|openai/clip-vit-large-patch14:pytorch_model.bin|text_encoders||1.70GB
+llava-llama-3-8b-text-encoder-tokenizer|hf_repo|Kijai/llava-llama-3-8b-text-encoder-tokenizer|text_encoders|*.json,*.safetensors|16070769980
+clip-vit-large-patch14|hf_file|openai/clip-vit-large-patch14:pytorch_model.bin|text_encoders||1710671599
 
 # --- Additional Text Encoders ---
-t5-xxl|hf_file|stabilityai/stable-diffusion-3-medium:text_encoders/t5xxl_fp8_e4m3fn.safetensors|text_encoders||2.88GB
-clip-g|hf_file|laion/CLIP-ViT-bigG-14-laion2B-39B-b160k:open_clip_pytorch_model.bin|text_encoders||3.54GB
+t5-xxl|hf_file|stabilityai/stable-diffusion-3-medium:text_encoders/t5xxl_fp8_e4m3fn.safetensors|text_encoders||4893934904
+clip-g|hf_file|laion/CLIP-ViT-bigG-14-laion2B-39B-b160k:open_clip_pytorch_model.bin|text_encoders||10158638769
+
+# --- Exact components used by bundled H3 / LTX-2.5 workflows ---
+ltx-2.5-gemma4-e2b-int8|hf_file|Comfy-Org/gemma-4:text_encoders/gemma4_e2b_it_int8_convrot.safetensors|text_encoders||5199997904
+ltx-2.5-distilled-int8|hf_file|Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors|diffusion_models||21504034224
+ltx-2.5-gemma4-12b-int8|hf_file|Lightricks/LTX-2.5:text_encoders/gemma4-12b-with-proj-ltx-2.5-comfy-int8-convrot.safetensors|text_encoders||15372969374
+ltx-2.5-spatial-upscaler|hf_file|Lightricks/LTX-2.5:latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors|latent_upscale_models||995778752
+minimax-h3-fl2va-int8|hf_file|Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors|diffusion_models||20970379616
+minimax-h3-turbo-lora|hf_file|lightx2v/Minimax-h3-Turbo:minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors|loras||1956193000

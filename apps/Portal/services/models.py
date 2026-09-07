@@ -11,6 +11,11 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
+try:
+    from .model_files import contained_path, file_paths, valid_file
+except ImportError:
+    from model_files import contained_path, file_paths, valid_file
+
 
 class ModelEntry(BaseModel):
     name: str
@@ -19,6 +24,7 @@ class ModelEntry(BaseModel):
     subdir: str
     include: Optional[str] = ""
     expected_size_bytes: Optional[int] = None
+    size_is_exact: bool = False
     category: str
     type: str
     installed: bool
@@ -26,6 +32,7 @@ class ModelEntry(BaseModel):
     info_url: Optional[str] = None
     target_path: str
     primary_path: Optional[str] = None
+    legacy_path: Optional[str] = None
 
 
 def _normalize_match_key(value: str) -> str:
@@ -188,6 +195,7 @@ def parse_manifest(
         "style_models": "style",
         "unet": "unet",
         "upscale_models": "upscale",
+        "facerestore_models": "face_restoration",
     }
 
     def parse_size(raw: str) -> Optional[int]:
@@ -221,21 +229,18 @@ def parse_manifest(
             name, kind, source, subdir, *rest = parts
             include = rest[0] if rest else ""
             expected_size_bytes = parse_size(rest[1]) if len(rest) > 1 else None
-            target_dir = models_dir / subdir
+            size_is_exact = len(rest) > 1 and rest[1].strip().isdigit()
+            validation_size = expected_size_bytes if size_is_exact else None
+            target_dir = contained_path(models_dir, subdir)
             target_dir.mkdir(parents=True, exist_ok=True)
             expected: List[Path] = []
             matched: List[Path] = []
             completed_repo_files: List[Path] = []
-            if kind == "hf_file":
-                path_in_repo = source.split(":", 1)[1] if ":" in source else ""
-                if path_in_repo:
-                    expected = [target_dir / path_in_repo]
-                    fallback = target_dir / Path(path_in_repo).name
-                    if fallback not in expected:
-                        expected.append(fallback)
-            elif kind == "url":
-                fname = Path(source.split("?", 1)[0]).name
-                expected = [target_dir / fname]
+            legacy_path = None
+            if kind in ("hf_file", "url"):
+                canonical, legacy = file_paths(kind, source, subdir, models_dir)
+                expected = [canonical]
+                legacy_path = next((str(p) for p in legacy if valid_file(p, validation_size)), None)
             elif kind == "hf_repo":
                 pats = [p.strip() for p in include.split(",") if p.strip()] if include else []
                 matched.extend(_select_hf_repo_files(target_dir, pats, name, models_dir))
@@ -244,7 +249,7 @@ def parse_manifest(
                     matched = completed_repo_files
             # If we have explicit expected files, check those
             if expected:
-                matched.extend([p for p in expected if p.exists()])
+                matched.extend([p for p in expected if valid_file(p, validation_size)])
             # Prefer safetensors when summarizing size
             safes = [p for p in matched if p.suffix == ".safetensors"]
             use_files = safes or matched
@@ -256,7 +261,7 @@ def parse_manifest(
             if not installed and expected_size_bytes:
                 size_bytes = expected_size_bytes
             category = classify_model(name, source, subdir)
-            mtype = subdir_to_type.get(subdir, "checkpoint")
+            mtype = subdir_to_type.get(subdir.split("/")[0], "checkpoint")
             info_url = None
             if kind.startswith("hf_"):
                 repo = source.split(":")[0]
@@ -271,6 +276,7 @@ def parse_manifest(
                     subdir=subdir,
                     include=include,
                     expected_size_bytes=expected_size_bytes,
+                    size_is_exact=size_is_exact,
                     category=category,
                     type=mtype,
                     installed=installed,
@@ -278,6 +284,7 @@ def parse_manifest(
                     info_url=info_url,
                     target_path=str(target_dir),
                     primary_path=primary_path,
+                    legacy_path=legacy_path,
                 )
             )
     return entries
@@ -297,7 +304,7 @@ def delete_model(name: str, manifest_path: Path, models_dir: Path) -> int:
         raise KeyError("Unknown model")
     parts = line + ["", "", "", ""]
     _, kind, source, subdir, include, *_ = parts
-    target_dir = models_dir / subdir
+    target_dir = contained_path(models_dir, subdir)
     to_delete: list[Path] = []
     include = include.strip()
 
@@ -305,14 +312,9 @@ def delete_model(name: str, manifest_path: Path, models_dir: Path) -> int:
         if p.exists():
             to_delete.append(p)
 
-    if kind == "hf_file":
-        path_in_repo = source.split(":", 1)[1] if ":" in source else source
-        if path_in_repo:
-            add_path(target_dir / path_in_repo)
-            fallback = target_dir / os.path.basename(path_in_repo)
-            add_path(fallback)
-    elif kind == "url":
-        add_path(target_dir / os.path.basename(source.split("?", 1)[0]))
+    if kind in ("hf_file", "url"):
+        canonical, _ = file_paths(kind, source, subdir, models_dir)
+        add_path(canonical)
     else:
         patterns = [p.strip() for p in include.split(",") if p.strip()] if include else []
         completed_files = _completed_repo_files(name, source, include, target_dir, models_dir) if kind == "hf_repo" else []
@@ -368,7 +370,7 @@ def model_name_for_expected_path(
                 continue
             name, kind, source, subdir, *rest = parts
             include = rest[0] if rest else ""
-            target_dir = models_dir / subdir
+            target_dir = contained_path(models_dir, subdir)
 
             expected: list[Path] = []
             if kind == "hf_file":
