@@ -1,6 +1,6 @@
 # Supervisor
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-08_
 
 LoRA Pilot uses `supervisord` as the in-container process manager.
 
@@ -20,7 +20,9 @@ Defined in config:
 - Unix socket: `/tmp/supervisor.sock` (`chmod=0700`)
 - HTTP interface: `127.0.0.1:9001`
   - Username: `admin`
-  - Password: `${SUPERVISOR_ADMIN_PASSWORD:-supervisor_secure_password_2024}`
+  - Password: `%(ENV_SUPERVISOR_ADMIN_PASSWORD)s`, read from the environment exported by bootstrap
+
+Bootstrap loads persisted settings, generates a password when none is set, and exports it before starting Supervisor. It stores the value in `/workspace/config/secrets.env` with mode `0600`.
 
 `supervisorctl` is configured to use the unix socket:
 
@@ -167,6 +169,21 @@ docker exec lora-pilot supervisorctl update
 - Supervisor HTTP listener is localhost-only (`127.0.0.1`).
 - Password should be set via `SUPERVISOR_ADMIN_PASSWORD` (bootstrap writes a random value if missing).
 - Primary operational control path in LoRA Pilot is unix-socket-backed `supervisorctl`, not exposed publicly by default.
+
+### Upgrade a custom configuration to v2.5.8
+
+If you use `SUPERVISOR_CONFIG_PATH`, check that file's HTTP authentication section:
+
+```ini
+[inet_http_server]
+port=127.0.0.1:9001
+username=admin
+password=%(ENV_SUPERVISOR_ADMIN_PASSWORD)s
+```
+
+Replace the old shell-style `${SUPERVISOR_ADMIN_PASSWORD:-...}` placeholder with the `%(ENV_SUPERVISOR_ADMIN_PASSWORD)s` form. Supervisor treats the shell-style expression as a literal password. Keep an intentional custom authentication configuration if you manage it separately.
+
+Restart the container or pod after changing the Supervisor listener credentials. A restart of an individual child service does not reload the listener. Bootstrap preserves custom Supervisor files, so installing a new image alone does not correct an old custom placeholder.
 
 ## Related
 

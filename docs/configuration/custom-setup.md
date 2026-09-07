@@ -1,6 +1,6 @@
 # Custom Setup
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-08_
 
 This page covers practical overrides when default Compose behavior is not enough: custom images, custom mounts, port remaps, bootstrap toggles, and update policy wiring.
 
@@ -66,10 +66,12 @@ Compose maps each service as `${PORT}:${PORT}`, so keep host/container values al
 
 | Variable | Default | Effect |
 |---|---|---|
-| `MEDIAPILOT_SYNC_ON_BOOT` | `1` | Sync workspace MediaPilot copy from bundled source when upstream commit changes |
-| `MEDIAPILOT_FORCE_ENV_DEFAULTS` | `0` | Force overwrite key MediaPilot `.env` defaults |
+| `MEDIAPILOT_SYNC_ON_BOOT` | `1` | Refresh bundled MediaPilot files while preserving user modifications and runtime files |
+| `MEDIAPILOT_FORCE_ENV_DEFAULTS` | `0` | Reset MediaPilot paths, Comfy API URL, and allowed origins to bootstrap defaults |
 | `TAGPILOT_SYNC_ON_BOOT` | `1` | Sync workspace TagPilot copy from bundled source |
 | `SERVICE_UPDATES_BOOT_RECONCILE` | `1` | Run service update reconcile script on boot |
+
+`MEDIAPILOT_FORCE_ENV_DEFAULTS=1` keeps other `.env` entries, including `MEDIAPILOT_ACCESS_PASSWORD`. Bootstrap uses a private temporary file and mode `0600` for the rewritten file. With the flag off, it appends missing defaults without replacing existing values. Bundle refresh excludes `.env`.
 
 Example:
 

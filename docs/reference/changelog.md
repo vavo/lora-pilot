@@ -1,6 +1,6 @@
 # Changelog
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-08_
 
 Canonical release history lives in the repository root file: `CHANGELOG`.
 
@@ -8,13 +8,17 @@ ControlPilot exposes the same content at:
 - `GET /api/changelog`
 
 Detailed GitHub release notes:
+
+- [LoRA Pilot v2.5.8](../releases/v2.5.8.md)
 - [LoRA Pilot v2.5.4](../releases/v2.5.4.md)
+
+The v2.5.8 GitHub release compares against v2.5.4 and includes the v2.5.5–v2.5.7 changelog entries. Those entries did not have separate GitHub releases.
 
 ## Current Release Entries (from `CHANGELOG`)
 
 | Header in file | High-level highlights |
 |---|---|
-| `Unreleased` | Optional ComfyUI password/API-token protection, isolated app environments, CUDA checks, and bundled LTX2.5/MiniMax H3 workflows |
+| `v2.5.8` | Models workflow catalog and installation review, Models backend extraction, startup credential/permission fixes, optional ComfyUI protection, isolated app environments, and bundled LTX2.5/MiniMax H3 workflows |
 | `v2.5.7` | August 23 ComfyUI, Kohya, AI Toolkit, Diffusion Pipe, InvokeAI, JupyterLab, code-server/VS Code, and TensorBoard pins; legacy bootstrap refresh cleanup |
 | `v2.5.6` | RunPod model-pull fixes, build-time workspace refreshes, expanded ControlPilot auth coverage, and legacy UI cleanup |
 | `v2.5.5` | July 15 LTX 2.3 support restore, CodeQL secret-storage fixes, missing `zip` CLI, and TagPilot decoded tag loading |
@@ -48,6 +52,7 @@ When adding a new release:
 1. Add the new section at the top of `CHANGELOG`.
 2. Keep entries focused on user-visible behavior changes.
 3. Include API path changes explicitly when relevant.
+4. Add the published release notes under `docs/releases/` and link them here. Record Docker publishing and GPU validation separately from GitHub release publication.
 
 ## Related
 

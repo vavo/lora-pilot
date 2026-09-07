@@ -1,8 +1,12 @@
 # LoRA Pilot Documentation
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-08_
 
 Welcome to the comprehensive documentation for LoRA Pilot, your all-in-one Stable Diffusion workspace. This documentation covers everything from initial setup to advanced configuration and development.
+
+## v2.5.8 release
+
+Read the [v2.5.8 release notes](releases/v2.5.8.md) for the Models catalog, video workflow installation, access protection, and startup fixes. The notes include upgrade steps and the failed Docker publishing run. Use the [source-tag build instructions](development/building.md#build-a-release-tag) to build this version.
 
 ## Documentation Structure
 
@@ -95,7 +99,7 @@ Everything is orchestrated by supervisord and persists to `/workspace`, ensuring
 ## 🔗 External Resources
 
 - **GitHub Repository**: https://github.com/vavo/lora-pilot
-- **Docker Hub**: https://hub.docker.com/r/vavo/lora-pilot
+- **Docker Hub**: https://hub.docker.com/r/notrius/lora-pilot
 - **Community**: [Discussions on GitHub](https://github.com/vavo/lora-pilot/discussions)
 - **Issues**: [Bug Reports and Feature Requests](https://github.com/vavo/lora-pilot/issues)
 

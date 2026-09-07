@@ -1,8 +1,24 @@
 # Building LoRA Pilot
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-08_
 
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
+
+## Build a release tag
+
+On a host with a running Docker daemon and Buildx, use a separate checkout to build the v2.5.8 source release:
+
+```bash
+git clone --branch v2.5.8 --depth 1 https://github.com/vavo/lora-pilot.git lora-pilot-v2.5.8
+cd lora-pilot-v2.5.8
+make build IMAGE=lora-pilot TAG=2.5.8
+```
+
+The Makefile runs its Docker build check before building `lora-pilot:2.5.8`. Add `CUDA_PROFILE=cu128` for the alternative CUDA 12.8 profile; the default is `cu130`. Run these commands on the Docker host, not inside an existing RunPod container.
+
+The [v2.5.8 Docker publishing run](https://github.com/vavo/lora-pilot/actions/runs/34171353062) failed at startup before creating jobs. At release preparation, it had published no versioned image. Check the run and registry before pulling `notrius/lora-pilot:2.5.8`; the GitHub source tag alone does not establish image availability.
+
+Read the [release upgrade notes](../releases/v2.5.8.md#upgrade-notes) before replacing a container, especially if you maintain a custom Supervisor configuration. Keep your persistent `/workspace` volume. Build success does not replace the [GPU compatibility checks](cuda-compatibility.md).
 
 ##  Overview
 

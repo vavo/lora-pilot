@@ -1,6 +1,6 @@
 # API Reference
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-08_
 
 ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 
@@ -45,6 +45,27 @@ process-local download queue. `app.py` supplies manifest/storage paths, the pull
 timeout and a callback that reads the current Hugging Face token. Authentication
 and cache headers remain Portal middleware. Each router has its own queue;
 restarting Portal still clears queued jobs and recent activity.
+
+### Backend ownership
+
+| Module under `apps/Portal/services/` | Responsibility |
+|---|---|
+| `models_api.py` | Nine Models routes, request validation, installation plan checks, and HTTP error mapping |
+| `model_downloads.py` | Job state, active-job reuse, subprocess output/progress, workflow sequencing, and deletion guards |
+| `models.py` | Manifest parsing, installed-state checks, and model deletion |
+| `model_files.py` | Canonical file destinations and legacy file handling |
+| `model_install.py` | Bundled workflow requirements and installation preflight |
+
+`ModelPullQueue` uses a lock around job registration and deletion guards. Workflow components run in sequence within one workflow worker; the queue does not impose a global download concurrency limit. Finished and failed jobs expire after ten minutes when cleanup runs. The blocking pull timeout defaults to 1,200 seconds; background pulls do not use that timeout.
+
+Run the focused API and installation checks from the repository root using a Python environment with the Portal test dependencies:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_models_api.py'
+python3 -m unittest discover -s tests -p 'test_model_install.py'
+```
+
+### Endpoints
 
 | Method | Path | Notes |
 |---|---|---|

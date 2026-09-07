@@ -1,6 +1,6 @@
 # Environment Variables
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-08_
 
 This page documents environment variables currently used by LoRA Pilot runtime scripts, ControlPilot services, Docker Compose files, and Docker image build args.
 
@@ -40,6 +40,8 @@ Runtime values are layered in this order:
 3. Bootstrapping in `scripts/bootstrap.sh` (creates `/workspace/config/secrets.env` and sets defaults).
 4. Per-service startup scripts (for example `scripts/start-jupyter.sh`, `scripts/comfy.sh`).
 
+At startup, bootstrap sources an existing `/workspace/config/secrets.env` before generating missing credentials. Persisted assignments can therefore override the container environment. It resolves `SUPERVISOR_CONFIG_PATH` after loading this file; changing only the container environment will not replace a persisted assignment for that variable.
+
 Practical implication:
 - Same variable can be defined in multiple places.
 - Later layers can override earlier defaults.
@@ -63,6 +65,7 @@ These are read by Compose itself and injected into the container where applicabl
 | Variable | Default | Used by |
 |---|---|---|
 | `WORKSPACE_ROOT` | `/workspace` | bootstrap + service scripts |
+| `SUPERVISOR_CONFIG_PATH` | `/etc/supervisor/supervisord.conf` | bootstrap, service reconciliation, and the Supervisor launcher |
 | `PORTAL_PORT` | `7878` | ControlPilot (`portal.sh`) |
 | `JUPYTER_PORT` | `8888` | Jupyter service |
 | `CODE_SERVER_PORT` | `8443` | code-server service |
@@ -85,6 +88,13 @@ Notes:
 
 - `scripts/bootstrap.sh` writes `JUPYTER_TOKEN`, `CODE_SERVER_PASSWORD`, `SUPERVISOR_ADMIN_PASSWORD`, and optional `HF_TOKEN` into `/workspace/config/secrets.env`.
 - If `HF_TOKEN` is empty but legacy `hf_token` exists, bootstrap maps `hf_token -> HF_TOKEN`.
+- Bootstrap exports the three service credentials before launching Supervisor. The bundled Supervisor config reads `%(ENV_SUPERVISOR_ADMIN_PASSWORD)s`.
+
+### Credential persistence
+
+Bootstrap writes credentials through a private temporary file and replaces `secrets.env` with mode `0600`. It uses shell quoting compatible with ControlPilot's writer, preserving literal quotes, dollar signs, backslashes, and multiline values across restarts. It preserves unrelated assignments and comments.
+
+Service launchers source this file as Bash configuration. Use ControlPilot Settings for supported credentials; keep valid shell assignment syntax when maintaining other settings by hand. See [Supervisor upgrade instructions](supervisor.md#upgrade-a-custom-configuration-to-v258) if you use a custom configuration file.
 
 ## Service-Specific Runtime Variables
 
