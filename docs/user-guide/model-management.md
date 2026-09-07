@@ -9,9 +9,10 @@ prefix commands with `docker exec lora-pilot`.
 
 ## ControlPilot
 
-Open **Models** in ControlPilot. **Catalog** groups models by creation task and
-family; search finds entries across all tasks. Choose **Set up** to review a
-family's components or **Choose variant** to browse its alternatives.
+Open **Models** in ControlPilot. **Catalog** lists model families with task and
+installation status. Search the list or narrow it with the task and family
+filters. Select a row to open its details panel. **Review installation** expands
+the required components; **Other variants and components** exposes alternatives.
 
 LTX-2.5 and MiniMax H3 setup checklists follow the bundled text-to-video
 workflows. Files absent from the active manifest are marked **Not in catalog**

@@ -1,13 +1,16 @@
 (() => {
   let models = [], jobs = [];
-  let tab = "catalog", task = "video", query = "", familyId = null;
+  let tab = "catalog", task = "all", query = "", familyFilter = "all", familyId = "ltx25";
   let timer = null, generation = 0, statusUnavailable = false;
   const starting = new Set();
   const $ = id => document.getElementById(id);
   const families = () => window.modelFamilies;
   const members = family => models.filter(m => window.modelFamilyFor(m).id === family.id);
   const jobFor = name => jobs.find(j => j.name === name);
-  const matches = m => [m.name, m.source, m.subdir, window.modelFamilyFor(m).title].some(v => String(v).toLowerCase().includes(query));
+  const matches = m => {
+    const family = window.modelFamilyFor(m);
+    return [m.name, m.source, m.subdir, family.title, family.task, family.summary, ...family.tags].some(v => String(v).toLowerCase().includes(query));
+  };
 
   function element(tag, className, text) {
     const node = document.createElement(tag);
@@ -42,11 +45,24 @@
       model: models.find(m => m.kind === "hf_file" && m.source === file.url.replace("https://huggingface.co/", "").replace("/resolve/main/", ":")),
     }));
   }
-  function summary(family) {
-    const required = requirements(family).filter(r => !r.optional);
-    if (required.length) return `${required.filter(r => r.model?.installed).length} of ${required.length} required files installed`;
+  function familyStatus(family) {
     const list = members(family);
-    return `${list.filter(m => m.installed).length} installed · ${list.length} catalog entries`;
+    if (list.some(m => starting.has(m.name) || jobFor(m.name)?.state === "running")) return ["Downloading", "pending"];
+    const required = requirements(family).filter(r => !r.optional);
+    if (required.length) return required.every(r => r.model?.installed) ? ["Files installed", "installed"] : ["Missing components", "missing"];
+    return list.some(m => m.installed) ? ["Files installed", "installed"] : ["Available", "available"];
+  }
+  function badge(label, state) { return element("span", `models-badge models-badge--${state}`, label); }
+  function icon(section = "models") {
+    const node = document.querySelector(`.nav [data-section="${section}"] .nav-icon`).cloneNode(true);
+    node.className = "models-icon";
+    return node;
+  }
+  function chevron() {
+    const node = $("sidebar-compact-toggle").querySelector("svg").cloneNode(true);
+    node.classList.add("models-chevron");
+    node.setAttribute("aria-hidden", "true");
+    return node;
   }
   function progress(job) {
     const bar = element("progress", "models-progress");
@@ -85,46 +101,40 @@
     return row;
   }
   function renderCatalog(container) {
-    const selected = families().filter(f => members(f).some(matches) && (query || f.task === task || (task === "editing" && f.editing) || (task === "training" && f.training)));
-    if (!selected.length) { container.append(element("p", "models-empty", "No models match. Try another task or search.")); return; }
-    if (query) container.append(element("p", "models-note", "Search results across all tasks"));
-    if (task === "training" && !query) container.append(element("p", "models-note", "Choose a model supported by your trainer. Available variants have different training requirements."));
-    const grid = element("div", "models-family-grid");
-    const more = element("div", "models-family-grid");
-    selected.forEach((family, index) => {
-      const card = element("article", "models-family-card");
-      const body = element("div", "models-family-body");
-      body.append(element("h3", "", family.title), element("p", "models-family-summary", family.summary));
-      const tags = element("div", "models-tags");
-      family.tags.forEach(tag => tags.append(element("span", "", tag)));
-      body.append(tags, element("p", "models-family-description", family.description));
-      body.append(button(`Set up ${family.title}`, "setup", family.id, "btn primary"));
-      const footer = element("div", "models-family-footer");
-      footer.append(element("span", "", summary(family)), button("Choose variant", "variants", family.id, "models-text-button"));
-      card.append(body, footer);
-      (index < 2 ? grid : more).append(card);
+    const selected = families().filter(f => members(f).some(matches) &&
+      (familyFilter === "all" || f.id === familyFilter) &&
+      (task === "all" || f.task === task || (task === "editing" && f.editing) || (task === "training" && f.training)));
+    const featured = ["ltx25", "minimax", "flux", "qwen", "sdxl"];
+    selected.sort((a, b) => (featured.includes(a.id) ? featured.indexOf(a.id) : 5) - (featured.includes(b.id) ? featured.indexOf(b.id) : 5));
+    if (familyId && !selected.some(f => f.id === familyId)) familyId = selected[0]?.id || null;
+    if (!selected.length) { container.append(element("p", "models-empty", "No models match. Try another filter or search.")); return; }
+    if (task === "training") container.append(element("p", "models-note", "Choose a variant supported by your trainer."));
+    const headings = element("div", "models-list-heading");
+    ["Model", "Task", "Status", ""].forEach(label => headings.append(element("span", "", label)));
+    container.append(headings);
+    const list = element("div", "models-family-list");
+    const taskNames = { images: "Image generation", video: "Video generation", editing: "Image editing", components: "Components" };
+    const thumbnails = { ltx25: "ltx25", minimax: "minimax", flux: "flux", qwen: "qwen", sdxl: "sdxl" };
+    selected.forEach(family => {
+      const row = button("", "select", family.id, "models-family-row");
+      row.setAttribute("aria-label", `View ${family.title}`);
+      row.setAttribute("aria-pressed", String(family.id === familyId));
+      row.setAttribute("aria-controls", "models-detail");
+      const identity = element("span", "models-family-identity");
+      if (thumbnails[family.id]) {
+        const image = element("img", "models-family-image");
+        image.src = `/model-icons/${thumbnails[family.id]}.png`;
+        image.alt = "";
+        identity.append(image);
+      } else identity.append(icon());
+      const description = element("span", "models-family-copy");
+      description.append(element("strong", "", family.title), element("small", "", family.summary));
+      identity.append(description);
+      const label = family.id === "minimax" ? "Video + audio" : taskNames[family.task];
+      row.append(identity, element("span", "models-task-label", label), badge(...familyStatus(family)), chevron());
+      list.append(row);
     });
-    container.append(grid);
-    const partial = selected.filter(f => {
-      const list = requirements(f).filter(r => !r.optional);
-      const installed = list.filter(r => r.model?.installed).length;
-      return installed > 0 && installed < list.length;
-    });
-    if (partial.length) {
-      const resume = element("section", "models-continue");
-      resume.append(element("h3", "", "Continue setup"));
-      partial.forEach(f => {
-        const row = element("div", "models-continue-row");
-        const info = element("div", "models-file-info");
-        info.append(element("strong", "", f.title), element("small", "", summary(f)));
-        row.append(info, button("Review missing files", "setup", f.id));
-        resume.append(row);
-      });
-      container.append(resume);
-    }
-    if (selected.length > 2) {
-      container.append(element("h3", "models-more-title", "More model families"), more);
-    }
+    container.append(list, element("p", "models-count", `${selected.length} model families`));
   }
   function renderDownloads(container) {
     const visible = jobs.filter(j => !query || j.name.toLowerCase().includes(query));
@@ -149,12 +159,11 @@
   }
   function render() {
     if (!$("models-page")) return;
-    const expanded = new Set(Array.from(document.querySelectorAll("details[open][data-model-details]")).map(d => d.dataset.modelDetails));
+    const expanded = new Map(Array.from(document.querySelectorAll("details[data-model-details]")).map(d => [d.dataset.modelDetails, d.open]));
     const active = document.activeElement;
     const focus = active?.dataset?.modelAction ? { action: active.dataset.modelAction, value: active.dataset.modelValue } : null;
     document.querySelectorAll("[data-model-tab]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.modelTab === tab)));
-    document.querySelectorAll("[data-model-task]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.modelTask === task)));
-    $("models-tasks").hidden = tab !== "catalog";
+    $("models-filters").hidden = tab !== "catalog";
     const installed = models.filter(m => m.installed);
     // The manifest may contain overlapping paths; do not claim this sum is disk usage.
     $("models-storage").replaceChildren(element("strong", "", `${installed.length} installed`), button("Manage installed files", "tab", "installed", "models-text-button"), document.createTextNode(" · "), button("Refresh", "refresh", "", "models-text-button"));
@@ -167,48 +176,85 @@
       if (!list.length) content.append(element("p", "models-empty", query ? "No installed models match your search." : "No models installed yet. Start with a model family in the catalog."));
       list.forEach(m => content.append(fileRow(m)));
     }
-    if (familyId && $("models-detail").open) renderDetail();
-    document.querySelectorAll("details[data-model-details]").forEach(d => { d.open = expanded.has(d.dataset.modelDetails); });
+    const showDetail = tab === "catalog" && !!familyId && models.length > 0;
+    $("models-workspace").classList.toggle("models-workspace--detail", showDetail);
+    $("models-detail").hidden = !showDetail;
+    if (showDetail) renderDetail();
+    document.querySelectorAll("details[data-model-details]").forEach(d => { if (expanded.has(d.dataset.modelDetails)) d.open = expanded.get(d.dataset.modelDetails); });
     if (focus) {
-      const scope = $("models-detail").open ? $("models-detail") : $("models-page");
+      const scope = $("models-page");
       Array.from(scope.querySelectorAll("[data-model-action]")).find(b => b.dataset.modelAction === focus.action && b.dataset.modelValue === focus.value)?.focus({ preventScroll: true });
     }
   }
   function renderDetail() {
     const family = families().find(f => f.id === familyId);
     if (!family) return;
-    $("models-detail-title").textContent = `Set up ${family.title}`;
+    $("models-detail-title").textContent = family.title;
+    $("models-detail-subtitle").textContent = family.tags.join(" · ");
     const body = $("models-detail-body");
-    body.replaceChildren(element("p", "models-note", "Review the files before downloading. Installed means files were found; it does not confirm a successful generation."));
+    const changedFamily = body.dataset.family !== familyId;
+    body.dataset.family = familyId;
+    body.replaceChildren(element("p", "models-detail-description", family.description));
     const refs = requirements(family);
     if (refs.length) {
-      body.append(element("h4", "", "Bundled workflow requirements"));
-      body.append(element("p", "models-note", "This checklist matches the bundled text-to-video workflow. Other variants may need changes to the workflow's model selections."));
-      refs.forEach(ref => {
-        if (ref.model) {
-          const row = fileRow(ref.model);
-          if (ref.optional) row.querySelector("small").prepend("Optional prompt enhancer · ");
-          body.append(row);
-        } else {
-          const row = element("div", "models-file-row");
-          const info = element("div", "models-file-info");
-          info.append(element("strong", "", ref.name), element("small", "", `${ref.optional ? "Optional · " : "Required · "}Not in catalog`));
-          row.append(info, link("Get from source", ref.url));
-          body.append(row);
-        }
+      body.append(element("h4", "", "Required files"));
+      const groups = new Map();
+      refs.filter(ref => !ref.optional).forEach(ref => {
+        if (!groups.has(ref.directory)) groups.set(ref.directory, []);
+        groups.get(ref.directory).push(ref);
       });
-      body.append(link("Workflow instructions", `https://github.com/Comfy-Org/workflow_templates/blob/785127914ff0f5bddb38c5fbe20c96912e564d9b/templates/${family.workflow}`));
+      const labels = { diffusion_models: "Diffusion model", text_encoders: "Text encoder", vae: "Video + audio VAEs", latent_upscale_models: "Spatial upscaler", loras: "Turbo LoRA" };
+      const groupList = element("div", "models-requirements");
+      const groupOrder = ["diffusion_models", "text_encoders", "vae", "latent_upscale_models", "loras"];
+      Array.from(groups).sort((a, b) => groupOrder.indexOf(a[0]) - groupOrder.indexOf(b[0])).forEach(([directory, files]) => {
+        const details = element("details", "models-requirement");
+        details.dataset.modelDetails = `${family.id}:${directory}`;
+        const heading = element("summary");
+        const installed = files.every(ref => ref.model?.installed);
+        heading.append(icon(directory === "text_encoders" ? "settings" : "models"), element("span", "models-requirement-title", labels[directory] || directory), badge(installed ? "Installed" : "Missing", installed ? "installed" : "missing"), chevron());
+        details.append(heading);
+        files.forEach(ref => details.append(requirementRow(ref)));
+        groupList.append(details);
+      });
+      body.append(groupList);
+      const optional = refs.filter(ref => ref.optional);
+      if (optional.length) {
+        const details = element("details", "models-optional");
+        details.dataset.modelDetails = `${family.id}:optional`;
+        details.append(element("summary", "", "Optional · Prompt enhancer"));
+        optional.forEach(ref => details.append(requirementRow(ref)));
+        body.append(details);
+      }
     }
     const requiredNames = new Set(refs.map(r => r.model?.name));
-    const variants = members(family).filter(m => !requiredNames.has(m.name));
+    const variants = members(family).filter(m => !requiredNames.has(m.name) && (!query || matches(m)));
     if (variants.length) {
-      const section = element("section");
-      section.id = "models-variants";
-      section.append(element("h4", "", refs.length ? "Other variants and components" : "Choose a model or component"));
-      section.append(element("p", "models-note", "Variants are alternatives. Download the files your chosen workflow needs."));
+      const section = element("details", "models-variants");
+      section.dataset.modelDetails = `${family.id}:variants`;
+      section.open = !refs.length;
+      section.append(element("summary", "", refs.length ? "Other variants and components" : "Models and components"));
+      section.append(element("p", "models-note", "Choose the files your workflow needs. Variants are alternatives."));
       variants.forEach(m => section.append(fileRow(m)));
       body.append(section);
     }
+    const access = element("div", "models-access");
+    access.append(element("strong", "", "Hugging Face access"), element("p", "models-note", "Some sources require access approval and a token. Review the source if a download fails."), button("Access settings", "settings", "", "models-text-button"));
+    body.append(access);
+    if (refs.length) {
+      body.append(button("Review installation", "review", family.id, "btn primary models-review"));
+      body.append(element("p", "models-count", "Review missing files before downloading."));
+      body.append(link("Workflow instructions", `https://github.com/Comfy-Org/workflow_templates/blob/785127914ff0f5bddb38c5fbe20c96912e564d9b/templates/${family.workflow}`));
+    }
+    body.append(element("p", "models-note", "Installed means files were found. Generation has not been verified."));
+    if (changedFamily) body.scrollTop = 0;
+  }
+  function requirementRow(ref) {
+    if (ref.model) return fileRow(ref.model);
+    const row = element("div", "models-file-row");
+    const info = element("div", "models-file-info");
+    info.append(element("strong", "", ref.name), element("small", "", "Not in catalog"));
+    row.append(info, link("Get from source", ref.url));
+    return row;
   }
   async function refresh(epoch) {
     try {
@@ -253,10 +299,16 @@
     switch (control.dataset.modelAction) {
       case "tab": tab = value; render(); break;
       case "refresh": await refresh(generation); break;
-      case "setup": case "variants":
-        familyId = value; message(""); renderDetail(); $("models-detail").showModal();
-        if (control.dataset.modelAction === "variants") $("models-variants")?.scrollIntoView({ block: "start" });
+      case "select":
+        familyId = value; message(""); render();
+        if (window.matchMedia("(max-width: 1000px)").matches) $("models-detail").scrollIntoView({ block: "start", behavior: "smooth" });
         break;
+      case "review":
+        $("models-detail").querySelectorAll("details.models-requirement").forEach(d => { d.open = true; });
+        $("models-detail-body").scrollTop = 0;
+        $("models-detail-body").querySelector("summary")?.focus();
+        break;
+      case "settings": document.querySelector('.nav [data-section="settings"]').click(); break;
       case "download": await download(value); break;
       case "copy":
         try {
@@ -275,18 +327,26 @@
         break;
     }
   }
-  window.stopModels = function () { generation++; clearTimeout(timer); timer = null; familyId = null; };
+  window.stopModels = function () { generation++; clearTimeout(timer); timer = null; };
   window.initModels = async function () {
     window.stopModels();
     const epoch = generation;
+    if (window.matchMedia("(max-width: 1000px)").matches) familyId = null;
     $("models-search").value = query;
     $("models-page").addEventListener("click", action);
-    $("models-detail").addEventListener("click", action);
-    $("models-detail-close").onclick = () => $("models-detail").close();
-    $("models-detail").addEventListener("close", () => { familyId = null; });
+    $("models-detail-close").onclick = () => {
+      const selected = familyId;
+      familyId = null; render();
+      Array.from($("models-content").querySelectorAll("[data-model-action]")).find(b => b.dataset.modelValue === selected)?.focus({ preventScroll: true });
+    };
+    $("models-task-filter").value = task;
+    $("models-family-filter").replaceChildren(new Option("All families", "all"));
+    families().forEach(f => $("models-family-filter").add(new Option(f.title, f.id)));
+    $("models-family-filter").value = familyFilter;
+    $("models-task-filter").onchange = event => { task = event.target.value; render(); };
+    $("models-family-filter").onchange = event => { familyFilter = event.target.value; render(); };
     $("models-search").addEventListener("input", event => { query = event.target.value.trim().toLowerCase(); render(); });
     document.querySelectorAll("[data-model-tab]").forEach(b => b.onclick = () => { tab = b.dataset.modelTab; render(); });
-    document.querySelectorAll("[data-model-task]").forEach(b => b.onclick = () => { task = b.dataset.modelTask; render(); });
     message("Loading models…");
     await refresh(epoch);
     if (epoch === generation) timer = setTimeout(() => poll(epoch), 2500);
