@@ -195,6 +195,8 @@ CONTROLPILOT_SESSION_COOKIE = "controlpilot_session"
 TRAINPILOT_BIN = Path("/opt/pilot/apps/TrainPilot/trainpilot.sh")
 TRAINPILOT_BUNDLED_TOML = Path("/opt/pilot/apps/TrainPilot/newlora.toml")
 TRAINPILOT_PERSISTENT_TOML = WORKSPACE_ROOT / "config" / "trainpilot" / "newlora.toml"
+_tp_lock = threading.RLock()
+_dataset_upload_lock = threading.Lock()
 _tp_proc: Optional[subprocess.Popen] = None
 _tp_logs: deque[str] = deque(maxlen=4000)
 _tp_output_dir: Optional[Path] = None
@@ -980,6 +982,8 @@ def _normalize_env_value(raw: str) -> str:
 
 
 def _sync_mediapilot_static_hotfix(app_dir: Path) -> None:
+    if os.environ.get("MEDIAPILOT_SYNC_ON_BOOT", "1") != "1":
+        return
     source_static_dir = Path("/opt/pilot/apps/MediaPilot/static")
     target_static_dir = app_dir / "static"
     if not source_static_dir.exists() or not target_static_dir.exists():
@@ -1315,7 +1319,15 @@ def list_datasets():
 async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[dict] = None):
     url = COPILOT_SIDECAR_URL.rstrip("/") + path
     try:
-        async with httpx.AsyncClient(timeout=float(COPILOT_SIDECAR_TIMEOUT_SECONDS)) as client:
+        timeout = httpx.Timeout(float(COPILOT_SIDECAR_TIMEOUT_SECONDS))
+        if path == "/chat":
+            execution_timeout = (json_body or {}).get("timeout_seconds")
+            if execution_timeout is None:
+                execution_timeout = max(1, _parse_int_env("COPILOT_TIMEOUT_SECONDS", 1800))
+            if isinstance(execution_timeout, bool) or not isinstance(execution_timeout, int) or execution_timeout <= 0:
+                raise HTTPException(status_code=422, detail="timeout_seconds must be a positive integer")
+            timeout.read = max(timeout.read, execution_timeout + 15.0)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             res = await client.request(method, url, json=json_body)
         ct = res.headers.get("content-type", "")
         if "application/json" in ct:
@@ -1333,10 +1345,10 @@ async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[d
             status_code=res.status_code,
             content={"detail": res.text if res.text else None},
         )
-    except httpx.RequestError:
-        raise HTTPException(status_code=503, detail="copilot sidecar request failed")
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="copilot sidecar timed out")
+    except httpx.RequestError:
+        raise HTTPException(status_code=503, detail="copilot sidecar request failed")
 
 
 @app.get("/api/copilot/status")
@@ -1704,18 +1716,44 @@ def upload_dataset(file: UploadFile = File(...)):
     fname_stem = _clean_name(Path(file.filename or "dataset.zip").stem)
     fname = fname_stem + ".zip"
     dest = _safe_dataset_zip_path(zip_dir / fname)
-    try:
-        _stream_upload_to_path(file, dest, max_bytes=DATASET_UPLOAD_MAX_BYTES)
-        # Extract into /workspace/datasets/<cleaned_name>
+    # Stage both files on the dataset filesystem before touching the current copy.
+    with _dataset_upload_lock:
+        staging = Path(tempfile.mkdtemp(prefix=".upload-", dir=zip_dir))
+        staged_zip = staging / "upload.zip"
+        staged_dataset = staging / "dataset"
+        backup = staging / "previous"
         extract_dir = _safe_dataset_path(target_dir / f"1_{fname_stem}")
-        if extract_dir.exists():
-            shutil.rmtree(extract_dir, ignore_errors=True)
-        extract_dir.mkdir(parents=True, exist_ok=True)
-        _safe_extract_zip(dest, extract_dir)
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(status_code=500, detail="Failed to upload dataset")
+        preserve_staging = False
+        promoted = False
+        try:
+            _stream_upload_to_path(file, staged_zip, max_bytes=DATASET_UPLOAD_MAX_BYTES)
+            staged_dataset.mkdir()
+            _safe_extract_zip(staged_zip, staged_dataset)
+            if extract_dir.exists():
+                os.replace(extract_dir, backup)
+            try:
+                os.replace(staged_dataset, extract_dir)
+                promoted = True
+                os.replace(staged_zip, dest)
+            except Exception:
+                try:
+                    if promoted:
+                        os.replace(extract_dir, staged_dataset)
+                    if backup.exists():
+                        os.replace(backup, extract_dir)
+                except Exception:
+                    preserve_staging = True
+                    logger.exception("Dataset rollback failed; recovery files retained at %s", staging)
+                raise
+        except HTTPException:
+            raise
+        except (zipfile.BadZipFile, ValueError):
+            raise HTTPException(status_code=400, detail="Invalid dataset ZIP archive")
+        except Exception:
+            raise HTTPException(status_code=500, detail="Failed to upload dataset")
+        finally:
+            if not preserve_staging:
+                shutil.rmtree(staging, ignore_errors=True)
     _invalidate_dataset_list_cache()
     return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
 
@@ -3510,10 +3548,15 @@ def _tp_reader(proc: subprocess.Popen):
             line = raw.decode("utf-8", errors="replace")
         except Exception:
             line = str(raw)
-        _tp_logs.append(line.rstrip("\n"))
+        with _tp_lock:
+            if _tp_proc is proc:
+                _tp_logs.append(line.rstrip("\n"))
     proc.stdout.close()
-    _tp_exit_code = proc.wait()
-    _tp_proc = None
+    exit_code = proc.wait()
+    with _tp_lock:
+        if _tp_proc is proc:
+            _tp_exit_code = exit_code
+            _tp_proc = None
 
 
 def _ensure_trainpilot_toml() -> Path:
@@ -3543,6 +3586,15 @@ def _resolve_trainpilot_toml_path(raw_path: str = "") -> Path:
 
 @app.post("/api/trainpilot/start")
 def trainpilot_start(req: TrainPilotRequest):
+    if not _tp_lock.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="TrainPilot is busy")
+    try:
+        return _trainpilot_start(req)
+    finally:
+        _tp_lock.release()
+
+
+def _trainpilot_start(req: TrainPilotRequest):
     global _tp_proc
     global _tp_output_dir
     global _tp_run_id
@@ -3560,17 +3612,14 @@ def trainpilot_start(req: TrainPilotRequest):
         raise HTTPException(status_code=400, detail="dataset_name is required")
     ds_name = _clean_name(PurePosixPath(ds_raw.replace("\\", "/")).name)
     out_name = _clean_name(req.output_name.strip() or ds_name)
-    _tp_output_dir = _resolve_under_root(WORKSPACE_ROOT / "outputs", WORKSPACE_ROOT / "outputs" / out_name)
-    _tp_output_baseline = {}
-    for safe_candidate in _tp_output_artifacts(_tp_output_dir):
+    output_dir = _resolve_under_root(WORKSPACE_ROOT / "outputs", WORKSPACE_ROOT / "outputs" / out_name)
+    output_baseline = {}
+    for safe_candidate in _tp_output_artifacts(output_dir):
         try:
             stat_result = safe_candidate.stat()
         except OSError:
             continue
-        _tp_output_baseline[safe_candidate.name] = (stat_result.st_size, stat_result.st_mtime_ns)
-    _tp_run_id = secrets.token_urlsafe(12)
-    _tp_exit_code = None
-    _tp_moved_run_id = None
+        output_baseline[safe_candidate.name] = (stat_result.st_size, stat_result.st_mtime_ns)
     profile = req.profile.strip() or "regular"
     if profile not in ("quick_test", "regular", "high_quality"):
         raise HTTPException(status_code=400, detail="Invalid profile")
@@ -3604,12 +3653,17 @@ def trainpilot_start(req: TrainPilotRequest):
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             env=env,
-            preexec_fn=os.setsid,
+            start_new_session=True,
         )
         _tp_logs.append(f"TrainPilot process started with PID: {proc.pid}")
     except Exception:
         _tp_logs.append("Failed to start TrainPilot")
         raise HTTPException(status_code=500, detail="Failed to start TrainPilot")
+    _tp_output_dir = output_dir
+    _tp_output_baseline = output_baseline
+    _tp_run_id = secrets.token_urlsafe(12)
+    _tp_exit_code = None
+    _tp_moved_run_id = None
     _tp_proc = proc
     _tp_logs.clear()  # Clear startup logs, start fresh for process output
     _tp_logs.append(f"=== TrainPilot process started (PID: {proc.pid}) ===")
@@ -3619,6 +3673,11 @@ def trainpilot_start(req: TrainPilotRequest):
 
 @app.post("/api/trainpilot/stop")
 def trainpilot_stop():
+    with _tp_lock:
+        return _trainpilot_stop()
+
+
+def _trainpilot_stop():
     global _tp_proc
     if not _tp_proc or _tp_proc.poll() is not None:
         _tp_proc = None
@@ -3638,6 +3697,11 @@ def trainpilot_stop():
 
 @app.post("/api/trainpilot/move-loras")
 def trainpilot_move_loras(req: TrainPilotMoveRequest):
+    with _tp_lock:
+        return _trainpilot_move_loras(req)
+
+
+def _trainpilot_move_loras(req: TrainPilotMoveRequest):
     global _tp_moved_run_id
     if not _tp_run_id or req.run_id != _tp_run_id:
         raise HTTPException(status_code=409, detail="Training run is no longer current")
@@ -3734,6 +3798,11 @@ def trainpilot_model_check(req: TrainPilotModelCheckRequest):
 
 @app.get("/api/trainpilot/logs")
 def trainpilot_logs(limit: int = 500):
+    with _tp_lock:
+        return _trainpilot_logs(limit)
+
+
+def _trainpilot_logs(limit: int = 500):
     """Get combined logs from TrainPilot process and Kohya training logs."""
     lines = []
     running = False

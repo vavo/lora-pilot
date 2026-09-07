@@ -32,66 +32,8 @@ ensure_env_var() {
   fi
 }
 
-bundle_tree_hash() {
-  local dir="$1"
-  (
-    cd "$dir" || exit 1
-    find . \
-      -path './.env' -prune -o \
-      -path './data' -prune -o \
-      -path './__pycache__' -prune -o \
-      -path './.bundle-sync-sha' -prune -o \
-      -type f -print0 \
-      | LC_ALL=C sort -z \
-      | xargs -0 sha256sum
-  ) | sha256sum | awk '{print $1}'
-}
-
-remove_stale_bundle_files() {
-  local source_dir="$1"
-  local target_dir="$2"
-  (
-    cd "$target_dir" || exit 1
-    find . -type f -print0
-  ) | while IFS= read -r -d '' relative_file; do
-    case "$relative_file" in
-      ./.env|./data/*|./__pycache__/*|*/__pycache__/*|./.bundle-sync-sha)
-        continue
-        ;;
-    esac
-    if [ ! -f "$source_dir/${relative_file#./}" ]; then
-      rm -f "$target_dir/${relative_file#./}"
-    fi
-  done
-}
-
 sync_bundled_tree() {
-  local source_dir="$1"
-  local target_dir="$2"
-  local marker_file="$target_dir/.bundle-sync-sha"
-  local source_hash
-  local recorded_hash
-
-  source_hash="$(bundle_tree_hash "$source_dir")"
-  recorded_hash=""
-  if [ -f "$marker_file" ]; then
-    recorded_hash="$(tr -d '\r\n' < "$marker_file")"
-  fi
-  if [ -n "$recorded_hash" ] && [ "$recorded_hash" = "$source_hash" ]; then
-    return 0
-  fi
-
-  mkdir -p "$target_dir"
-  remove_stale_bundle_files "$source_dir" "$target_dir"
-  (
-    cd "$source_dir" || exit 1
-    tar cf - --exclude='.env' --exclude='data' --exclude='__pycache__' --exclude='.bundle-sync-sha' .
-  ) | (
-    cd "$target_dir" || exit 1
-    tar xf -
-  )
-  printf '%s\n' "$source_hash" > "${marker_file}.tmp.$$"
-  mv -f "${marker_file}.tmp.$$" "$marker_file"
+  /opt/venvs/core/bin/python /opt/pilot/bundle-sync.py "$1" "$2"
 }
 
 # Workspace layout (avoid chmod/chown loops on mounted volumes)
@@ -186,6 +128,12 @@ if [ -d /opt/pilot/apps ]; then
     [ -d "$src" ] || continue
     name="$(basename "$src")"
     dest="$WORKSPACE_ROOT/apps/$name"
+    if [ -e "$dest" ]; then
+      case "$name" in
+        MediaPilot) [ "${MEDIAPILOT_SYNC_ON_BOOT:-1}" = "1" ] || continue ;;
+        TagPilot) [ "${TAGPILOT_SYNC_ON_BOOT:-1}" = "1" ] || continue ;;
+      esac
+    fi
     if [ ! -e "$dest" ]; then
       mkdir -p "$dest"
     fi
@@ -203,59 +151,6 @@ fi
 # MediaPilot defaults (single-port embed under ControlPilot)
 MEDIAPILOT_APP_DIR="$WORKSPACE_ROOT/apps/MediaPilot"
 if [ -d "$MEDIAPILOT_APP_DIR" ]; then
-  MEDIAPILOT_SOURCE_DIR="/opt/pilot/apps/MediaPilot"
-  MEDIAPILOT_SYNC_ON_BOOT="${MEDIAPILOT_SYNC_ON_BOOT:-1}"
-  if [ "$MEDIAPILOT_SYNC_ON_BOOT" = "1" ] && [ -d "$MEDIAPILOT_SOURCE_DIR" ]; then
-    mediapilot_sync_bundle() {
-      local src_commit_file="$MEDIAPILOT_SOURCE_DIR/.upstream-commit"
-      local dst_commit_file="$MEDIAPILOT_APP_DIR/.upstream-commit"
-      local dst_hash_file="$MEDIAPILOT_APP_DIR/.bundle-sync-sha"
-      local src_commit=""
-      local dst_commit=""
-      local src_hash=""
-      local dst_hash=""
-      local should_sync="0"
-
-      src_commit="$(tr -d '\r\n' < "$src_commit_file" 2>/dev/null || true)"
-      dst_commit="$(tr -d '\r\n' < "$dst_commit_file" 2>/dev/null || true)"
-      dst_hash="$(tr -d '\r\n' < "$dst_hash_file" 2>/dev/null || true)"
-      src_hash="$(bundle_tree_hash "$MEDIAPILOT_SOURCE_DIR" 2>/dev/null || true)"
-      if [ -n "$src_hash" ] && [ -z "$dst_hash" ]; then
-        dst_hash="$(bundle_tree_hash "$MEDIAPILOT_APP_DIR" 2>/dev/null || true)"
-      fi
-
-      if [ -n "$src_commit" ] && [ "$src_commit" != "$dst_commit" ]; then
-        should_sync="1"
-      fi
-      if [ -n "$src_hash" ] && [ "$src_hash" != "$dst_hash" ]; then
-        should_sync="1"
-      fi
-
-      if [ "$should_sync" != "1" ]; then
-        return 0
-      fi
-
-      echo "Syncing MediaPilot workspace copy to upstream commit ${src_commit:-unknown}"
-      (
-        cd "$MEDIAPILOT_SOURCE_DIR" || exit 1
-        tar cf - --exclude='.env' --exclude='data' --exclude='__pycache__' .
-      ) | (
-        cd "$MEDIAPILOT_APP_DIR" || exit 1
-        tar xf -
-      )
-
-      remove_stale_bundle_files "$MEDIAPILOT_SOURCE_DIR" "$MEDIAPILOT_APP_DIR"
-
-      if [ -n "$src_hash" ]; then
-        printf '%s\n' "$src_hash" > "$dst_hash_file"
-      fi
-    }
-
-    if ! mediapilot_sync_bundle; then
-      echo "MediaPilot sync failed; continuing with existing workspace copy." >&2
-    fi
-  fi
-
   MEDIAPILOT_FORCE_ENV_DEFAULTS="${MEDIAPILOT_FORCE_ENV_DEFAULTS:-0}"
   MEDIAPILOT_ENV_CREATED="0"
   mkdir -p \
@@ -282,16 +177,6 @@ if [ -d "$MEDIAPILOT_APP_DIR" ]; then
       ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_COMFY_API_URL" "http://127.0.0.1:${COMFY_PORT:-5555}"
       ensure_env_var "$MEDIAPILOT_ENV_FILE" "MEDIAPILOT_ALLOW_ORIGINS" "*"
     fi
-  fi
-fi
-
-# TagPilot sync: keep workspace copy aligned with bundled app updates.
-TAGPILOT_APP_DIR="$WORKSPACE_ROOT/apps/TagPilot"
-TAGPILOT_SOURCE_DIR="/opt/pilot/apps/TagPilot"
-TAGPILOT_SYNC_ON_BOOT="${TAGPILOT_SYNC_ON_BOOT:-1}"
-if [ "$TAGPILOT_SYNC_ON_BOOT" = "1" ] && [ -d "$TAGPILOT_SOURCE_DIR" ]; then
-  if ! sync_bundled_tree "$TAGPILOT_SOURCE_DIR" "$TAGPILOT_APP_DIR"; then
-    echo "TagPilot sync failed; continuing with existing workspace copy." >&2
   fi
 fi
 

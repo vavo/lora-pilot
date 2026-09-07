@@ -279,7 +279,7 @@ async function initShutdownNotice() {
   if (!btnCancel.dataset.bound) {
     btnCancel.dataset.bound = "1";
     btnCancel.addEventListener("click", () => {
-      if (!confirm("Cancel the scheduled shutdown?")) return;
+      if (!confirm(btnCancel.dataset.failed === "true" ? "Dismiss the shutdown error?" : "Cancel the scheduled shutdown?")) return;
       cancelShutdownFromNotice();
     });
   }
@@ -294,7 +294,17 @@ async function initShutdownNotice() {
   const poll = async () => {
     try {
       const st = await fetchJson("/api/shutdown/status");
-      if (st && st.scheduled) {
+      const failed = !!(st && st.error);
+      const label = wrap.querySelector(".label");
+      if (label) label.textContent = failed ? "Shutdown failed" : "Shutdown in";
+      const timeEl = document.getElementById("shutdown-notice-time");
+      if (timeEl) timeEl.hidden = failed;
+      btnCancel.textContent = failed ? "Dismiss" : "Cancel";
+      btnCancel.dataset.failed = String(failed);
+      if (failed) {
+        setShutdownNoticeVisible(true);
+        stopShutdownNoticeCountdown();
+      } else if (st && st.scheduled) {
         setShutdownNoticeVisible(true);
         const seconds = st.time_remaining || 0;
         startShutdownNoticeCountdown(seconds);

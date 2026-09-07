@@ -401,6 +401,11 @@ async function updateShutdownStatus() {
     const status = await fetchJson('/api/shutdown/status');
     const timeSpan = document.getElementById('shutdown-time');
     const meta = document.getElementById("shutdown-meta");
+    const errorEl = document.getElementById("shutdown-error");
+    if (errorEl) {
+      errorEl.textContent = status.error || "";
+      errorEl.classList.toggle("is-hidden", !status.error);
+    }
     if (!timeSpan) return;
     
     if (status.scheduled) {

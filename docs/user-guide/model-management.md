@@ -1,6 +1,6 @@
 # Model Management
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-07_
 
 ControlPilot manages the model catalogue in `/workspace/models`. On RunPod,
 the pod terminal is already inside the LoRA Pilot container: run commands
@@ -12,6 +12,13 @@ prefix commands with `docker exec lora-pilot`.
 Open **Models** in ControlPilot to browse the bundled manifest, start a pull,
 monitor its status, and delete an installed model. The browser uses the same
 manifest and downloader as the CLI.
+
+Repository (`hf_repo`) entries appear installed only after a successful pull
+records their required files and verifies that weights and indexed shards exist.
+The record lives under `/workspace/models/.download-state`; missing or resized
+files make the entry available for repair again. Existing repository downloads
+without a record need one `models pull <name>` to verify the cached files and
+create it. Single-file entries keep their existing detection behavior.
 
 ## Supported CLI
 

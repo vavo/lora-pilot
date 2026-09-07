@@ -38,6 +38,7 @@ class StartupPersistenceTests(unittest.TestCase):
             source = source.replace('/opt/venvs/core/bin/python', shlex.quote(sys.executable))
             source = source.replace('/usr/bin/supervisord', str(supervisor))
             (self.bundle / name).write_text(source)
+        (self.bundle / 'bundle-sync.py').write_text((ROOT / 'scripts/bundle-sync.py').read_text())
         (self.bundle / 'service-autostart-apply.py').write_text(
             (ROOT / 'scripts/service-autostart-apply.py').read_text()
         )
@@ -69,6 +70,25 @@ class StartupPersistenceTests(unittest.TestCase):
         self.assertNotIn('No such file or directory', result.stderr)
         for relative in ('apps/Portal', 'docs'):
             self.assertEqual((self.workspace / relative / 'example.txt').read_text(), 'user edit')
+
+    def test_mediapilot_sync_toggle_and_custom_workflow_survive_upgrade(self):
+        source = self.bundle / 'apps/MediaPilot'
+        source.mkdir(parents=True)
+        (source / 'main.py').write_text('version one')
+        result = self.start()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        target = self.workspace / 'apps/MediaPilot'
+        (target / 'comfy_upscale_workflow.json').write_text('custom workflow')
+        (source / 'main.py').write_text('version two')
+        self.env['MEDIAPILOT_SYNC_ON_BOOT'] = '0'
+        result = self.start()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((target / 'main.py').read_text(), 'version one')
+        self.env['MEDIAPILOT_SYNC_ON_BOOT'] = '1'
+        result = self.start()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual((target / 'main.py').read_text(), 'version two')
+        self.assertEqual((target / 'comfy_upscale_workflow.json').read_text(), 'custom workflow')
 
     def test_default_config_is_used_without_override(self):
         result = self.start()

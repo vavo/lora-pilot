@@ -232,6 +232,7 @@
       box-shadow: none;
       border: 1px solid rgba(255,255,255,0.18);
     }
+    .shutdown-timebox.is-hidden { display: none; }
     .shutdown-meta { position: relative; z-index: 1; margin-top: 10px; font-size: 12px; opacity: 0.85; }
   </style>
 
@@ -290,6 +291,7 @@
       <button class="shutdown-btn is-hidden" id="cancel-shutdown-btn" onclick="cancelShutdown()">Cancel Scheduler</button>
     </div>
 
+    <div class="shutdown-meta is-hidden" id="shutdown-error" role="alert"></div>
     <div class="shutdown-meta is-hidden" id="shutdown-meta">
       Shutdown time: <span id="shutdown-time"></span>
     </div>

@@ -197,7 +197,10 @@ pull_one() {
       hf_download_file "${repo}" "${path}" "${dest}"
       ;;
     hf_repo)
+      local state_helper="${MODEL_STATE_HELPER:-/opt/pilot/apps/Portal/services/models.py}"
+      "${VENV_PY}" "$state_helper" begin "$name" "$source" "$include" "$dest" "$MODELS_DIR"
       hf_download_repo "${source}" "${dest}" "${include}"
+      "${VENV_PY}" "$state_helper" complete "$name" "$source" "$include" "$dest" "$MODELS_DIR"
       ;;
     *)
       echo "ERROR: bad kind in manifest for ${name}: ${kind}"

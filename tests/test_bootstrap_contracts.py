@@ -19,19 +19,11 @@ class BootstrapManifestTests(unittest.TestCase):
         self.assertNotIn(".pre-refresh.", source)
         self.assertNotIn('cp -a "$target_dir"', source)
 
-    def test_bundled_trees_use_hashes_and_remove_deleted_files(self):
-        source = (ROOT / "scripts/bootstrap.sh").read_text()
-        self.assertIn("bundle_tree_hash()", source)
-        self.assertIn("remove_stale_bundle_files()", source)
-        self.assertIn("sync_bundled_tree()", source)
-        self.assertIn("tar cf - --exclude='.env' --exclude='data' --exclude='__pycache__'", source)
-        self.assertIn('sync_bundled_tree "$TAGPILOT_SOURCE_DIR" "$TAGPILOT_APP_DIR"', source)
-
-    def test_standalone_tagpilot_refreshes_workspace_copy(self):
-        source = (ROOT / "scripts/tagpilot.sh").read_text()
-        self.assertIn('.bundle-sync-sha', source)
-        self.assertIn("tar cf - --exclude='__pycache__'", source)
-        self.assertIn('find "${APP_DIR}" -type f', source)
+    def test_bundled_trees_share_the_inventory_sync_helper(self):
+        for name in ("bootstrap.sh", "tagpilot.sh"):
+            source = (ROOT / "scripts" / name).read_text()
+            self.assertIn("/opt/pilot/bundle-sync.py", source)
+            self.assertNotIn("remove_stale_bundle_files", source)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 DEFAULT_HOME = Path(os.environ.get("COPILOT_HOME", "/workspace/home/root"))
@@ -28,7 +28,7 @@ def _parse_int_env(name: str, default: int) -> int:
         return default
 
 
-DEFAULT_TIMEOUT_SECONDS = _parse_int_env("COPILOT_TIMEOUT_SECONDS", 1800)
+DEFAULT_TIMEOUT_SECONDS = max(1, _parse_int_env("COPILOT_TIMEOUT_SECONDS", 1800))
 
 
 def _workspace_rooted_path(raw: Optional[str], *, default: Path) -> Path:
@@ -138,7 +138,7 @@ class ChatRequest(BaseModel):
     allow_all_tools: bool = True
     allow_all_paths: bool = True
     allow_all_urls: bool = False
-    timeout_seconds: Optional[int] = None
+    timeout_seconds: Optional[int] = Field(default=None, gt=0)
 
 
 class ChatResponse(BaseModel):
