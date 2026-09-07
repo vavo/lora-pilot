@@ -1,78 +1,91 @@
 <style>
-  .models-toolbar { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:12px; }
-  .models-search { display:flex; flex-direction:column; gap:6px; width:320px; max-width:100%; min-width:0; }
-  .models-search .search { width:100%; box-sizing:border-box; }
-  .models-search input { min-width:0; }
-  .models-summary { font-size:12px; color:var(--muted); display:flex; gap:8px; align-items:center; }
-  .models-section { margin-top:16px; }
-  .models-section-header { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-  .models-grid { display:flex; flex-wrap:wrap; gap:12px; align-items:stretch; }
-  .model-card { width:320px; max-width:100%; flex:0 0 320px; box-sizing:border-box; background:var(--card); border:1px solid rgba(255, 90, 62, 0.5); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
-  .model-title { display:flex; gap:8px; align-items:center; justify-content:space-between; }
-  .model-name { font-weight:600; min-width:0; overflow-wrap:anywhere; }
-  .model-meta { overflow-wrap:anywhere; font-size:12px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px 12px; }
-  .model-source { font-size:12px; background:var(--pill); border-radius:6px; padding:4px 6px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .model-actions { display:flex; flex-wrap:wrap; gap:8px; }
-  .model-actions { align-items:center; }
-  .model-actions button { padding:6px 10px; font-size:12px; display:inline-flex; align-items:center; }
-  .model-actions .btn.danger { background:#dc2626; color:#fff; border-color:#dc2626; }
-  .model-actions .pill { display:inline-flex; align-items:center; line-height:1; }
-  .model-actions .ghost { background:var(--pill); color:var(--text); border:1px solid var(--border); }
-  .model-path { display:flex; align-items:center; gap:6px; width:100%; max-width:100%; box-sizing:border-box; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--pill); color:var(--text); text-align:left; overflow:hidden; }
-  .model-path code { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .model-path-icon { width:14px; height:14px; color:var(--muted); flex:0 0 auto; }
-  button.model-path { cursor:pointer; }
-  .model-progress { display:none; flex-direction:column; gap:6px; margin-top:6px; }
-  .model-progress-track { width:100%; height:10px; background:var(--pill); border:1px solid var(--border); border-radius:999px; overflow:hidden; }
-  .model-progress-bar { height:100%; width:0%; background: linear-gradient(90deg, var(--accent), #10b981); transition: width 0.2s ease; }
-  .model-progress-bar.indeterminate { width:45%; animation: modelProgressIndeterminate 1.15s infinite ease-in-out; }
-  .model-progress-text { font-size:12px; color:var(--muted); }
-  @media (max-width: 768px) {
-    .model-card { width:100%; flex-basis:100%; }
-  }
-  @keyframes modelProgressIndeterminate {
-    0% { transform: translateX(-120%); }
-    100% { transform: translateX(260%); }
+  .models-page { max-width:1440px; margin:0 auto; padding-bottom:32px; }
+  .models-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:32px; }
+  .models-heading h2 { font-size:28px; margin:0 0 6px; }
+  .models-heading p, .models-muted { color:var(--muted); margin:0; font-size:14px; line-height:1.6; }
+  .models-storage { text-align:right; font-size:13px; color:var(--muted); }
+  .models-storage strong { display:block; color:var(--text); font-size:16px; margin-bottom:4px; }
+  .models-page .btn.primary, .models-dialog .btn.primary { background:var(--accent); box-shadow:none; padding:12px 20px; font-size:14px; font-weight:600; }
+  .models-more-title { font-size:17px; margin:32px 0 18px; }
+  .models-tabs { display:flex; gap:28px; border-bottom:1px solid var(--border); margin-bottom:28px; }
+  .models-tabs button { border:0; border-bottom:2px solid transparent; background:none; color:var(--muted); padding:14px 2px; cursor:pointer; font:inherit; }
+  .models-tabs button[aria-pressed="true"] { color:var(--accent); border-bottom-color:var(--accent); font-weight:650; }
+  .models-controls { display:flex; flex-wrap:wrap; gap:16px; justify-content:space-between; align-items:center; margin-bottom:28px; }
+  .models-tasks { display:flex; flex-wrap:wrap; gap:4px; background:var(--pill); padding:4px; border-radius:10px; }
+  .models-tasks button { background:transparent; border:0; color:var(--muted); padding:10px 16px; border-radius:7px; font:inherit; font-size:14px; cursor:pointer; }
+  .models-tasks button[aria-pressed="true"] { background:var(--accent); color:#fff; box-shadow:none; font-weight:650; }
+  .models-search { width:260px; max-width:100%; padding:11px 14px; background:var(--card); border:1px solid var(--border); border-radius:9px; color:var(--text); font:inherit; font-size:14px; box-sizing:border-box; }
+  .models-family-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+  .models-family-card { background:var(--card); border:1px solid var(--border); border-radius:12px; display:flex; flex-direction:column; min-width:0; }
+  .models-family-body { padding:32px; flex:1; }
+  .models-family-body h3 { font-size:28px; letter-spacing:-.6px; margin:8px 0 10px; }
+  .models-family-summary { font-size:16px; color:var(--muted); margin:0 0 22px; }
+  .models-tags { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; }
+  .models-tags span { background:var(--pill); color:var(--muted); border-radius:20px; padding:6px 10px; font-size:12px; }
+  .models-family-description { color:var(--muted); font-size:14px; line-height:1.6; min-height:46px; margin-bottom:24px; }
+  .models-family-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 32px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); }
+  .models-text-button { border:0; background:transparent; color:var(--accent); cursor:pointer; padding:8px 0; font:inherit; font-size:13px; text-align:left; }
+  .models-continue { margin-top:28px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px 32px; }
+  .models-continue h3 { font-size:17px; margin:0 0 12px; }
+  .models-continue-row, .models-file-row, .models-job { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 0; border-bottom:1px solid var(--border); }
+  .models-continue-row:last-child, .models-file-row:last-child, .models-job:last-child { border-bottom:0; }
+  .models-file-info { min-width:0; flex:1; }
+  .models-file-info strong { display:block; font-size:14px; overflow-wrap:anywhere; }
+  .models-file-info small { display:block; margin-top:6px; color:var(--muted); line-height:1.5; }
+  .models-file-actions { display:flex; gap:10px; align-items:center; flex-shrink:0; }
+  .models-file-actions button { font-size:13px; }
+  .models-empty { padding:48px 20px; text-align:center; color:var(--muted); }
+  .models-error { color:var(--text); background:var(--pill); border-left:3px solid #dc2626; padding:14px; margin:12px 0; overflow-wrap:anywhere; }
+  .models-progress { width:100%; height:8px; accent-color:var(--accent); margin-top:12px; }
+  .models-dialog { width:720px; max-width:calc(100vw - 48px); max-height:85vh; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--text); padding:0; }
+  .models-dialog::backdrop { background:rgba(0,0,0,.45); }
+  .models-dialog-header { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:24px; border-bottom:1px solid var(--border); }
+  .models-dialog-header h3 { margin:0; font-size:24px; }
+  .models-dialog-body { padding:0 24px 24px; }
+  .models-dialog-body h4 { margin:24px 0 10px; }
+  .models-dialog-body details { margin-top:16px; }
+  .models-dialog-body summary { cursor:pointer; color:var(--muted); font-size:13px; padding:10px 0; }
+  .models-path { display:block; max-width:100%; font-size:12px; overflow-wrap:anywhere; margin:10px 0; }
+  .models-note { font-size:13px; line-height:1.6; color:var(--muted); }
+  .models-page [hidden], .models-dialog [hidden] { display:none !important; }
+  .models-page button:focus-visible, .models-dialog button:focus-visible, .models-search:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  @media(max-width:1000px) { .models-family-body { padding:24px; } .models-family-footer { padding:16px 24px; } }
+  @media(max-width:768px) {
+    .models-heading { align-items:flex-start; flex-direction:column; gap:12px; margin-bottom:20px; } .models-heading h2 { font-size:25px; }
+    .models-storage { text-align:left; } .models-tabs { gap:24px; margin-bottom:20px; }
+    .models-family-grid { grid-template-columns:1fr; gap:16px; } .models-search { width:100%; }
+    .models-controls { gap:12px; } .models-tasks { width:100%; } .models-tasks button { flex:1; padding:9px 10px; }
+    .models-family-body h3 { font-size:26px; } .models-family-description { min-height:0; }
+    .models-continue { padding:20px; } .models-continue-row, .models-file-row, .models-job { align-items:flex-start; flex-wrap:wrap; }
+    .models-file-info { flex-basis:100%; } .models-file-actions { flex-wrap:wrap; } .models-dialog { max-width:calc(100vw - 24px); }
+    .models-dialog-header, .models-dialog-body { padding:20px; } .models-family-footer { flex-wrap:wrap; }
   }
 </style>
-
-<h2>Models</h2>
-<div class="card">
-  <div class="models-toolbar">
-    <div class="models-search">
-      <label>Search</label>
-      <div class="search w-320">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
-          <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"></circle>
-        </svg>
-        <input id="models-search" type="text" placeholder="Search by name, source, or subdir" />
-      </div>
+<section class="models-page" id="models-page" aria-labelledby="models-title">
+  <header class="models-heading">
+    <div><h2 id="models-title">Models</h2><p>What would you like to create?</p></div>
+    <div class="models-storage" id="models-storage"></div>
+  </header>
+  <nav class="models-tabs" aria-label="Model views">
+    <button type="button" data-model-tab="catalog" aria-pressed="true">Catalog</button>
+    <button type="button" data-model-tab="installed" aria-pressed="false">Installed</button>
+    <button type="button" data-model-tab="downloads" aria-pressed="false">Downloads</button>
+  </nav>
+  <div class="models-controls">
+    <div class="models-tasks" id="models-tasks" role="group" aria-label="Creation task">
+      <button type="button" data-model-task="images" aria-pressed="false">Images</button>
+      <button type="button" data-model-task="video" aria-pressed="true">Video</button>
+      <button type="button" data-model-task="editing" aria-pressed="false">Image editing</button>
+      <button type="button" data-model-task="training" aria-pressed="false">Training</button>
+      <button type="button" data-model-task="components" aria-pressed="false">Components</button>
     </div>
-    <div class="filter">
-      <button data-cat="ALL" class="active" onclick="setFilter(this)">All</button>
-      <button data-cat="FLUX" onclick="setFilter(this)">FLUX</button>
-      <button data-cat="SDXL" onclick="setFilter(this)">SDXL</button>
-      <button data-cat="WAN" onclick="setFilter(this)">WAN</button>
-      <button data-cat="OTHERS" onclick="setFilter(this)">Others</button>
-    </div>
+    <input class="models-search" id="models-search" type="search" aria-label="Search models" placeholder="Search all models…">
   </div>
-  <div id="status" class="status">Loading models...</div>
-  <div id="models-lists" class="is-hidden">
-    <div class="models-section">
-      <div class="models-section-header">
-        <strong>Installed</strong>
-        <span id="models-installed-count" class="pill"></span>
-        <span id="models-installed-size" class="pill"></span>
-      </div>
-      <div id="models-installed" class="models-grid"></div>
-    </div>
-    <div class="models-section">
-      <div class="models-section-header">
-        <strong>Available</strong>
-        <span id="models-available-count" class="pill"></span>
-      </div>
-      <div id="models-available" class="models-grid"></div>
-    </div>
-  </div>
-</div>
+  <div id="models-message" role="status" aria-live="polite"></div>
+  <div id="models-content"></div>
+</section>
+<dialog id="models-detail" class="models-dialog" aria-labelledby="models-detail-title">
+  <header class="models-dialog-header"><h3 id="models-detail-title"></h3><button type="button" class="btn ghost" id="models-detail-close">Close</button></header>
+  <p id="models-detail-message" class="models-error" role="status" aria-live="polite" hidden></p>
+  <div class="models-dialog-body" id="models-detail-body"></div>
+</dialog>

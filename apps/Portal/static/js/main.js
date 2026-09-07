@@ -7,7 +7,7 @@ window.controlPilotSettings = window.controlPilotSettings || null;
 const viewMap = {
   dashboard: { view: "/views/dashboard.html", init: () => window.initDashboard && window.initDashboard() },
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
-  models: { view: "/views/models.html?v=20260905b", init: () => window.initModels && window.initModels() },
+  models: { view: "/views/models.html?v=20260907a", init: () => window.initModels && window.initModels() },
   datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
   mediapilot: { view: "/views/mediapilot.html?v=20260905a", init: () => window.initMediapilot && window.initMediapilot() },
   comfyui: { view: "/views/comfyui.html", init: () => window.initComfyUI && window.initComfyUI() },
@@ -143,6 +143,7 @@ async function loadSection(section) {
   setCopilotSectionVisibility(section);
   // cleanup timers when switching away
   if (currentSection && currentSection !== section) {
+    if (currentSection === "models" && window.stopModels) window.stopModels();
     if (currentSection === "dashboard" && window.stopDashboard) window.stopDashboard();
     if (currentSection === "dpipe" && window.stopDpipeLog) window.stopDpipeLog();
     if (currentSection === "trainpilot" && window.stopTpLogPoll) window.stopTpLogPoll();

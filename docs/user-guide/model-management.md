@@ -9,9 +9,19 @@ prefix commands with `docker exec lora-pilot`.
 
 ## ControlPilot
 
-Open **Models** in ControlPilot to browse the bundled manifest, start a pull,
-monitor its status, and delete an installed model. The browser uses the same
-manifest and downloader as the CLI.
+Open **Models** in ControlPilot. **Catalog** groups models by creation task and
+family; search finds entries across all tasks. Choose **Set up** to review a
+family's components or **Choose variant** to browse its alternatives.
+
+LTX-2.5 and MiniMax H3 setup checklists follow the bundled text-to-video
+workflows. Files absent from the active manifest are marked **Not in catalog**
+with a source link. Download available components individually; variants are
+alternatives, not a bundle to install together. Installation status confirms
+files were found, not that a generation has been tested.
+
+**Installed** lists downloaded entries with file paths and removal controls.
+**Downloads** shows recent progress, errors, and retries. The browser uses the
+same manifest and downloader as the CLI.
 
 Repository (`hf_repo`) entries appear installed only after a successful pull
 records their required files and verifies that weights and indexed shards exist.
