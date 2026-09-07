@@ -13,7 +13,9 @@ upsert_env_var() {
   local file="$1"
   local key="$2"
   local value="$3"
-  local tmp="${file}.tmp.$$"
+  local tmp
+  tmp="$(mktemp "${file}.tmp.XXXXXX")"
+  chmod 600 "$tmp"
   awk -v key="$key" -v value="$value" '
     BEGIN { updated = 0 }
     $0 ~ ("^" key "=") { print key "=" value; updated = 1; next }
@@ -21,6 +23,43 @@ upsert_env_var() {
     END { if (!updated) print key "=" value }
   ' "$file" > "$tmp"
   mv "$tmp" "$file"
+}
+
+preserve_other_secrets() {
+  local line record="" tail continued
+  while IFS= read -r line || [ -n "$line" ]; do
+    record+="${line}"$'\n'
+    # Keep multiline assignments intact, including escaped line continuations.
+    tail="$line"
+    continued=0
+    while [[ "$tail" == *\\ ]]; do
+      tail="${tail%\\}"
+      continued=$((1 - continued))
+    done
+    if ! bash -n <<< "$record" 2>/dev/null; then
+      continue
+    fi
+    # An unmatched quote is ignored only in a trailing comment. Its backslash
+    # must not join this record to the next assignment.
+    if [ "$continued" = "1" ] && ! bash -n <<< "${record%$'\n'}x'" 2>/dev/null; then
+      continue
+    fi
+    case "$record" in
+      JUPYTER_TOKEN=*|"export JUPYTER_TOKEN="*|CODE_SERVER_PASSWORD=*|"export CODE_SERVER_PASSWORD="*|SUPERVISOR_ADMIN_PASSWORD=*|"export SUPERVISOR_ADMIN_PASSWORD="*|HF_TOKEN=*|"export HF_TOKEN="*) ;;
+      *) printf '%s' "$record" ;;
+    esac
+    record=""
+  done < "$SECRETS_FILE"
+  if [ -n "$record" ]; then
+    echo "Cannot rewrite incomplete secrets.env assignment" >&2
+    return 1
+  fi
+}
+
+write_secret() {
+  printf 'export %s=' "$1"
+  # Match ControlPilot's writer; pass the secret on stdin, never in process args.
+  printf '%s' "$2" | /opt/venvs/core/bin/python -c 'import shlex, sys; print(shlex.quote(sys.stdin.read()))'
 }
 
 ensure_env_var() {
@@ -213,22 +252,23 @@ fi
 : "${JUPYTER_TOKEN:=$(openssl rand -hex 16)}"
 : "${CODE_SERVER_PASSWORD:=$(openssl rand -hex 16)}"
 : "${SUPERVISOR_ADMIN_PASSWORD:=$(openssl rand -hex 32)}"
+export JUPYTER_TOKEN CODE_SERVER_PASSWORD SUPERVISOR_ADMIN_PASSWORD
 
 # RunPod secret compatibility: map legacy/lowercase token name.
 if [ -z "${HF_TOKEN:-}" ] && [ -n "${hf_token:-}" ]; then
   export HF_TOKEN="${hf_token}"
 fi
 
-tmp_secrets="${SECRETS_FILE}.tmp.$$"
+tmp_secrets="$(mktemp "${SECRETS_FILE}.tmp.XXXXXX")"
 {
   if [ -f "$SECRETS_FILE" ]; then
-    grep -Ev '^(export )?(JUPYTER_TOKEN|CODE_SERVER_PASSWORD|SUPERVISOR_ADMIN_PASSWORD|HF_TOKEN)=' "$SECRETS_FILE" || true
+    preserve_other_secrets
   fi
-  printf 'export JUPYTER_TOKEN="%s"\n' "$JUPYTER_TOKEN"
-  printf 'export CODE_SERVER_PASSWORD="%s"\n' "$CODE_SERVER_PASSWORD"
-  printf 'export SUPERVISOR_ADMIN_PASSWORD="%s"\n' "$SUPERVISOR_ADMIN_PASSWORD"
+  write_secret JUPYTER_TOKEN "$JUPYTER_TOKEN"
+  write_secret CODE_SERVER_PASSWORD "$CODE_SERVER_PASSWORD"
+  write_secret SUPERVISOR_ADMIN_PASSWORD "$SUPERVISOR_ADMIN_PASSWORD"
   if [ -n "${HF_TOKEN:-}" ]; then
-    printf 'export HF_TOKEN="%s"\n' "$HF_TOKEN"
+    write_secret HF_TOKEN "$HF_TOKEN"
   fi
 } > "$tmp_secrets"
 mv "$tmp_secrets" "$SECRETS_FILE"

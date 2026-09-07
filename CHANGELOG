@@ -1,4 +1,11 @@
-Unreleased (September 5th 2026)
+v2.5.8 (September 8th 2026)
+
+- Redesigned Models around a searchable family/workflow catalog, details panel, Installed view, and download activity with retries.
+- Added reviewed LTX-2.5 and MiniMax H3 workflow installation with exact file requirements, source-access and disk-space checks, and reuse of installed files and active downloads.
+- Repaired model source metadata, canonical destinations, legacy aliases, and incomplete-download detection; separated Models API routes and queue handling from the Portal application.
+- Fixed MediaPilot move collisions, Diffusion Pipe startup/log handling, Copilot timeout handling, shutdown concurrency, and persistent bundle refresh behavior.
+- Hardened bootstrap credential serialization across repeated starts, connected Supervisor authentication to its generated password, and preserved private MediaPilot configuration permissions.
+- Added regression coverage for startup persistence, model installation, download/API behavior, and runtime reliability; 166 Python tests pass locally. Docker build checks and live GPU validation remain unavailable in the release-preparation environment.
 
 - Fixed harmless missing `.bundle-sync-sha` errors on first startup, including standalone TagPilot. Fresh workspaces now seed bundles without missing-marker warnings.
 
