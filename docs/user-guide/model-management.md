@@ -1,6 +1,6 @@
 # Model Management
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-09_
 
 ControlPilot manages the model catalogue in `/workspace/models`. On RunPod,
 the pod terminal is already inside the LoRA Pilot container: run commands
@@ -36,6 +36,18 @@ a record need one `models pull <name>` to verify cached files and create it.
 Single files must have the exact byte size at their canonical destination when
 the manifest specifies integer bytes. Rounded sizes in older custom manifests
 remain estimates; workflow preflight fetches exact sizes for missing files.
+
+## Models page reports Internal Server Error
+
+The v2.5.8 image code looks for workflow assets in `/opt/pilot/config/comfy-workflows`, while Docker bundles them in `/opt/pilot/bundled/comfy-workflows`. A failed `/api/models/workflows` request prevents the page from showing the catalog, even when `/api/models` succeeds.
+
+The source fix reads the bundled directory and keeps the repository path for local development. For an existing affected container, run this in its terminal, then refresh Models:
+
+```bash
+ln -sT /opt/pilot/bundled/comfy-workflows /opt/pilot/config/comfy-workflows
+```
+
+This command creates a compatibility link and refuses to overwrite an existing destination. It does not move model weights or require a service restart. The link belongs to the container filesystem; use a rebuilt image containing the fix when replacing the container.
 
 ## Existing downloads and corrected names
 

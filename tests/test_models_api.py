@@ -1,4 +1,6 @@
 import io
+import importlib.util
+import shutil
 import subprocess
 import tempfile
 import time
@@ -41,6 +43,35 @@ class ModelsAPITests(unittest.TestCase):
             for suffix in ["pull", "pull/start"]:
                 response = self.client.post(f"/api/models/{name}/{suffix}")
                 self.assertEqual((response.status_code, response.json()), (status, {"detail": detail}))
+
+    def test_models_page_endpoints_with_packaged_workflow_paths(self):
+        root = Path(__file__).resolve().parents[1]
+        for directory in ("bundled/comfy-workflows", "config/comfy-workflows"):
+            with self.subTest(directory=directory):
+                package_root = self.root / directory.split("/")[0]
+                module_path = package_root / "apps/Portal/services/model_install.py"
+                module_path.parent.mkdir(parents=True)
+                shutil.copyfile(root / "apps/Portal/services/model_install.py", module_path)
+                shutil.copytree(root / "config/comfy-workflows", package_root / directory)
+                spec = importlib.util.spec_from_file_location(
+                    "apps.Portal.services.packaged_model_install", module_path)
+                packaged = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(packaged)
+                self.manifest.write_text((root / "config/models.manifest").read_text())
+                with patch.object(models_api, "model_install", packaged), \
+                     patch.object(packaged, "check_source", return_value={"error": "Offline test"}), \
+                     TestClient(self.client.app, raise_server_exceptions=False) as client:
+                    for endpoint in ("/api/models", "/api/models/pulls", "/api/models/workflows"):
+                        response = client.get(endpoint)
+                        self.assertEqual(response.status_code, 200, endpoint)
+                        if endpoint == "/api/models":
+                            self.assertGreater(len(response.json()), 100)
+                        elif endpoint.endswith("workflows"):
+                            self.assertEqual(len(response.json()["workflows"]), 4)
+                    plan = client.post(
+                        "/api/models/workflows/video_ltx2_5_t2v/plan", json={})
+                    self.assertEqual(plan.status_code, 200)
+                    self.assertEqual(len(plan.json()["files"]), 5)
 
     def test_synchronous_pull_output_and_error_contract(self):
         with patch.object(self.queue, "run_command", return_value="download complete\n") as run:

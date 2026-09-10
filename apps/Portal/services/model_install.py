@@ -9,7 +9,10 @@ from pathlib import Path
 
 from .model_files import file_paths
 
-WORKFLOW_DIR = Path(__file__).resolve().parents[3] / "config/comfy-workflows"
+_PILOT_ROOT = Path(__file__).resolve().parents[3]
+WORKFLOW_DIR = _PILOT_ROOT / "bundled/comfy-workflows"
+if not WORKFLOW_DIR.is_dir():
+    WORKFLOW_DIR = _PILOT_ROOT / "config/comfy-workflows"
 WORKFLOWS = {
     f"video_{name}_{mode}": {"family": family, "title": title}
     for name, family in [("ltx2_5", "ltx25"), ("minimax_h3", "minimax")]

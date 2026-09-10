@@ -1,3 +1,7 @@
+Unreleased (September 9th 2026)
+
+- Fixed the Models page failing with HTTP 500 in Docker images: resolve workflow assets from the bundled image directory, with the repository path retained for local development. Added API regression coverage for both layouts.
+
 v2.5.8 (September 8th 2026)
 
 - Redesigned Models around a searchable family/workflow catalog, details panel, Installed view, and download activity with retries.
