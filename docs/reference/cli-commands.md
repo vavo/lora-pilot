@@ -1,79 +1,60 @@
 # CLI Commands Reference
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-10_
 
-These are the command-line entry points shipped in the image. On RunPod, the
-terminal is already inside the LoRA Pilot runtime, so run them directly. Do
-not use Docker inside the pod. For a separate Docker Compose host, use
-`docker compose exec lora-pilot ...`.
+The terminal gives you another way to work with the same services and files you see in ControlPilot. You can inspect a stopped process, download a named model, or read the error from a training session without navigating between browser views. A few commands cover much of that day-to-day work.
 
-## `pilot`
+Run these commands inside the LoRA Pilot runtime. On RunPod, use a terminal in the pod. On a separate Docker Compose host, enter the container with `docker compose exec lora-pilot bash`, or prefix a single command with `docker compose exec lora-pilot`.
 
-```bash
-pilot status [service...]
-pilot start [service...]
-pilot stop [service...]
-pilot comfy
-pilot kohya
-pilot diffpipe
-pilot jupyter
-pilot code
-pilot urls
-```
+## Inspect a service before changing it
 
-With no service argument, `pilot start` and `pilot stop` target `all`.
-Supervisor service identifiers include `controlpilot`, `comfy`, `kohya`,
-`diffpipe`, `invoke`, `ai-toolkit`, `jupyter`, and `code-server`.
-
-Examples:
+Use `pilot status` to see the supervised processes. You can narrow the result with service names, such as `pilot status comfy invoke`. Names identify processes rather than page titles: ComfyUI is `comfy`, InvokeAI is `invoke`, and ControlPilot is `controlpilot`.
 
 ```bash
 pilot status
-supervisorctl restart comfy
-supervisorctl tail -100 controlpilot
-tail -n 200 /workspace/logs/comfy.err.log
+pilot status comfy invoke
+tail -n 120 /workspace/logs/comfy.err.log
 ```
 
-## `models`
+The other service identifiers include `kohya`, `diffpipe`, `ai-toolkit`, `jupyter`, `code-server`, and the optional `copilot`. Read the relevant log before restarting a failing process. A running status confirms the process state, while a completed generation or training task confirms more of the workflow.
+
+Use `pilot start comfy` to start ComfyUI and `pilot stop comfy` when you intend to stop it. These are separate actions; choose the one you need. With no service argument, `pilot start` and `pilot stop` target all supervised services. Include a name when you intend to affect one tool.
+
+For a restart after correcting a setting, use `supervisorctl restart comfy`. That interrupts the service, so finish or stop active work first. The [Supervisor guide](../configuration/supervisor.md) explains the process configuration and its relationship to saved autostart preferences.
+
+## Distinguish service control from a direct launch
+
+The shortcuts `pilot comfy`, `pilot kohya`, `pilot diffpipe`, `pilot jupyter`, and `pilot code` execute the corresponding launcher scripts in the current terminal. They do not open a web page or ask Supervisor to start the process. Use them for deliberate foreground work when the matching supervised service is stopped; otherwise you can encounter a port conflict or a second process using the same files.
+
+The `pilot urls` command prints local service addresses from the runtime configuration. Its output includes the Jupyter token and the VS Code Server password. Use it in a private terminal and keep the output out of screenshots and support messages. For ordinary navigation, the service links in ControlPilot avoid printing those credentials.
+
+## Download the model named in the catalog
+
+Use `models where` to see the active manifest and model directory, then `models list` to browse the available entry names. Download one entry with `models pull` followed by its manifest name.
 
 ```bash
-models list
-models pull <name> [--dir SUBDIR]
-models pull-all
 models where
-models help
-```
-
-`models pull` accepts one manifest name per invocation. `--dir` is relative
-to `/workspace/models`. The active manifest is
-`/workspace/config/models.manifest`; use `models where` to inspect it.
-
-Examples:
-
-```bash
 models list
 models pull sdxl-base
-models pull sdxl-base --dir custom/sdxl-base
-models pull-all
 ```
 
-The model CLI does not provide `info`, `remove`, `validate`, `update`,
-`cleanup`, collection, backup, benchmark, or filtering subcommands. Model
-pulls and deletion are also available through ControlPilot at `/api/models`.
+The downloader accepts one catalog name per invocation. A Hugging Face repository ID is not a substitute for that name. Add or edit a manifest entry if you need a source outside the catalog, following the [manifest guide](../configuration/models-manifest.md).
 
-## Training entry points
+You can override the destination with `models pull sdxl-base --dir custom/sdxl-base`. The `--dir` value is relative to the configured model root, which defaults to `/workspace/models`, and cannot escape that directory. An alternate destination may need manual selection in a consuming tool and does not change the canonical path used by the catalog's installed-state check.
 
-```bash
-trainpilot --help
-/opt/pilot/apps/TrainPilot/trainpilot.sh --help
-```
+The `models pull-all` command downloads all entries in the active manifest. Review the catalog and available storage before choosing it; it is not a command for downloading only the components of one workflow. For an LTX-2.5 or MiniMax H3 workflow, use **Review installation** in ControlPilot to inspect its requirements and queue missing files. Use `models help` to print the model CLI's supported syntax.
 
-ControlPilot exposes the supported guided-training API under
-`/api/trainpilot/*` and Diffusion Pipe under `/dpipe/train/*`.
+The model CLI provides `list`, `pull`, `pull-all`, `where`, and `help`. For removal, use the controls in ControlPilot's **Installed** view. The [model management guide](../user-guide/model-management.md) explains verification, retries, and existing downloads.
 
-## Docker Compose host examples
+## Start training with an intentional configuration
 
-Run these on the host that owns the Compose project, not inside a RunPod pod:
+The `trainpilot` entry point opens the guided terminal flow for the supported Kohya SDXL LoRA path. It prepares the environment and can fetch required tokenizer files before reaching dataset selection. Use it when you intend to configure training. It does not implement a `--help` option, so passing that flag is not a read-only way to inspect its usage.
+
+Read the [TrainPilot guide](../components/trainpilot.md) for profiles and configuration. ControlPilot also provides a guided interface through `/api/trainpilot/*`, while its Diffusion Pipe training endpoints live under `/dpipe/train/*`. The [training workflow guide](../user-guide/training-workflows.md) helps you choose between those paths.
+
+## Run the same checks from the Docker host
+
+On the machine that owns the Compose project, you can issue a command without opening an interactive container shell.
 
 ```bash
 docker compose exec lora-pilot pilot status
@@ -81,5 +62,4 @@ docker compose exec lora-pilot models list
 docker compose logs --tail=100 lora-pilot
 ```
 
-The host-side wrapper is an operational detail; the commands after `exec
-lora-pilot` are the same commands shown above.
+The first two commands execute inside the service container. The last reads its container-level logs from the host. Use the same Compose file selection you used to launch the project. For failures within an individual application, continue with the [debugging guide](../development/debugging.md) and its service-specific log locations.

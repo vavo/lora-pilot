@@ -1,66 +1,39 @@
 # Components
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-10_
 
-RunPod pods already contain the LoRA Pilot runtime. Run `supervisorctl`,
-`tail`, and other operational commands directly in the pod; Docker is only
-available on a separate Docker Compose host. For Compose, use
-`docker compose exec lora-pilot ...`.
+You can prepare a dataset, train an adaptation, and use it in a generation workflow without moving the project between separate machines. LoRA Pilot packages the tools for those stages and connects them through the workspace. You choose the tool according to the task in front of you.
 
-This section is the map of LoRA Pilot components. Keep this page as an index; use component pages for actual workflows and settings.
+[ControlPilot](../user-guide/control-pilot.md) brings service controls, model management, and workspace views into the browser. Use it to see which applications are running and open the interface you need. A default installation serves ControlPilot on port `7878`; cloud deployments use the corresponding provider connection.
 
-## Component Index
+## Prepare the examples you want to teach
 
-| Component | Role | Default Port/Route | Page |
-|---|---|---|---|
-| Kohya SS | Full training UI | `6666` | [Kohya SS](kohya-ss.md) |
-| AI Toolkit | Modern training stack | `8675` | [AI Toolkit](ai-toolkit.md) |
-| Diffusion Pipe | Experimental training + TensorBoard | `4444` | [Diffusion Pipe](diffusion-pipe.md) |
-| ComfyUI | Node-based inference | `5555` | [ComfyUI](comfyui.md) |
-| InvokeAI | UI-first inference | `9090` | [InvokeAI](invokeai.md) |
-| TrainPilot | Guided Kohya launcher | ControlPilot tab | [TrainPilot](trainpilot.md) |
-| TagPilot | Dataset prep/tagging | `/tagpilot/` on `7878` | [TagPilot](tagpilot.md) |
-| MediaPilot | Output curation/gallery | `/mediapilot/` on `7878` | [MediaPilot](mediapilot.md) |
-| Copilot Sidecar | Optional coding assistant backend | `7879` (internal/local) | [Copilot Sidecar](copilot-sidecar.md) |
+[TagPilot](tagpilot.md) gives you an interface for reviewing images and editing their tags or captions. Open it through ControlPilot or its `/tagpilot/` route, then save the prepared collection under `/workspace/datasets`. Those image-and-text pairs remain accessible to the training tools and to a terminal.
 
-## How They Fit Together
+For a concrete starting point, use the [dataset preparation guide](../user-guide/dataset-preparation.md). It explains naming, importing a ZIP, and saving a revision you can inspect before training.
 
-1. Prepare data in TagPilot.
-2. Train with TrainPilot/Kohya/AI Toolkit/Diffusion Pipe.
-3. Generate in ComfyUI or InvokeAI.
-4. Review and curate in MediaPilot.
+## Choose a training path for the model
 
-## Shared Paths
+[TrainPilot](trainpilot.md) provides a guided SDXL LoRA route through Kohya. You select a dataset and profile in ControlPilot, then use the generated configuration for the run. It suits a project where you want that supported path without assembling the training configuration from scratch.
 
-All components are wired to the same workspace:
-- `/workspace/models`
-- `/workspace/datasets`
-- `/workspace/outputs`
-- `/workspace/config`
-- `/workspace/logs`
+[Kohya SS](kohya-ss.md), served on port `6666` by default, exposes the upstream training interface. [AI Toolkit](ai-toolkit.md) provides another training stack, with its interface on port `8675`. Choose according to the model family and training method you intend to use, then follow the relevant guide for its inputs and settings.
 
-## Quick Ops
+[Diffusion Pipe](diffusion-pipe.md) provides a training path through ControlPilot and a configurable service launcher. Its default port `4444` serves TensorBoard. With no `DIFFPIPE_CONFIG`, the service starts TensorBoard without launching training. Seeing that service running does not mean a training job has started.
 
-```bash
-# Service state
-supervisorctl status
+## Generate and compare the results
 
-# Logs
-tail -n 200 /workspace/logs/controlpilot.out.log
-tail -n 200 /workspace/logs/comfy.out.log
-tail -n 200 /workspace/logs/invoke.out.log
-```
+[ComfyUI](comfyui.md) gives you a graph of nodes for building and reusing generation workflows. Its default port is `5555`. [InvokeAI](invokeai.md) provides an image-generation interface on port `9090`. Both connect to shared model storage, though each still requires compatible assets and its own model setup.
 
-## Related
+[MediaPilot](mediapilot.md), available through ControlPilot at `/mediapilot/`, helps you review supported generated images, keep favorites, and organize results. ComfyUI writes to `/workspace/outputs/comfy`, while the bundled InvokeAI integration uses `/workspace/outputs/invoke`. You can compare a training experiment's results without moving them into a separate gallery installation.
 
-- [User Guide](../user-guide/README.md)
-- [Configuration](../configuration/README.md)
-- [Documentation Home](../README.md)
+The [inference guide](../user-guide/inference.md) connects those tools into a generation-and-review session. Use it to establish a baseline before you evaluate a new LoRA or a more elaborate workflow.
 
----
+## Work with the files behind the interfaces
 
----
+JupyterLab and VS Code Server provide notebook, terminal, and editing access to the workspace. Their default ports are `8888` and `8443`. These are useful when you need to inspect a configuration or a saved output without leaving the deployment.
 
-## 📝 Feedback
+The optional [Copilot sidecar](copilot-sidecar.md) connects the installed GitHub Copilot CLI to ControlPilot. It uses internal port `7879` and requires its own service and authentication setup. Open its guide before enabling it; the rest of the creative workflow can run without it.
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+For shell commands on RunPod, use the pod's terminal. On a Docker Compose host, enter the container with `docker compose exec lora-pilot bash`. From there, `supervisorctl status` shows the managed services, and the [debugging guide](../development/debugging.md) helps you choose the correct log.
+
+Keep `/workspace/models`, `/workspace/datasets`, and `/workspace/outputs` with the settings and application state that belong to the project. The [file-structure guide](../reference/file-structure.md) explains those locations. Return to [configuration](../configuration/README.md) to adjust the deployment or the [user guide](../user-guide/README.md) to choose your next task.

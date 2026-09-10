@@ -1,183 +1,87 @@
 # Model Management
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-10_
 
-ControlPilot manages the model catalogue in `/workspace/models`. On RunPod,
-the pod terminal is already inside the LoRA Pilot container: run commands
-directly. Do not use Docker inside the pod. On a separate Docker Compose host,
-prefix commands with `docker exec lora-pilot`.
+A video workflow may depend on several downloads before you can generate a frame. The main model is only part of the setup; text encoders, VAEs, and other components each have a place in the workflow. ControlPilot's Models page lets you review those requirements together and see what you already have.
 
-## ControlPilot
+Use the catalog to prepare for a specific project. You can search by family, inspect a workflow's files, and download what is missing into the shared workspace. That gives you a clearer starting point than a collection of filenames with no connection to the task you want to run.
 
-Open **Models** in ControlPilot. **Catalog** lists model families with task and
-installation status. Search the list or narrow it with the task and family
-filters. Select a row to open its details panel. For LTX-2.5 and MiniMax H3,
-choose **Text to video** or **Image to video**, then **Review installation**.
-The review lists exact required files, installed files to reuse, download sizes,
-destinations, free space and source access. The LTX prompt enhancer is optional.
-**Download missing files** queues only missing components and reuses active jobs.
-Failed downloads can be retried from **Downloads**; reviewing again skips files
-that have since finished. Access or disk-space failures block installation.
+## Choose a family and review its requirements
 
-These lists come directly from the four bundled workflow graphs. They describe
-the bundled versions, not user-edited copies. Other families expose individual
-models and components; choose the variants your workflow needs.
+Open **Models** in ControlPilot. The **Catalog** view groups entries by model family and provides search, task, and family filters. Select a row to open its details panel. For LTX-2.5 and MiniMax H3, choose **Text to video** or **Image to video**, then select **Review installation**.
 
-**Installed** lists downloaded entries with file paths and removal controls.
-**Downloads** shows recent progress, errors, and retries. Queued jobs run in the
-Portal process; restarting Portal loses the queue. Completed files remain on
-the persistent volume. Reopen the review to queue the remaining files.
-File installation does not confirm GPU compatibility or successful generation.
+The review shows required files, installed files it can reuse, download sizes, destinations, available space, and source access. For LTX, the prompt enhancer is optional. Read the review before choosing **Download missing files**, especially if you are working with limited storage or a source that requires Hugging Face approval.
 
-Repository (`hf_repo`) entries appear installed only after a successful pull
-records required files and verifies weights and indexed shards. The record lives
-under `/workspace/models/.download-state`. Existing repository downloads without
-a record need one `models pull <name>` to verify cached files and create it.
-Single files must have the exact byte size at their canonical destination when
-the manifest specifies integer bytes. Rounded sizes in older custom manifests
-remain estimates; workflow preflight fetches exact sizes for missing files.
+The requirements come from the four bundled workflow graphs. If you edit a graph or import another version, check its requirements as a separate workflow. Other catalog families expose individual models and components; select the variants that match the tool and workflow you intend to use.
 
-## Models page reports Internal Server Error
+## Follow the download through to completion
 
-The v2.5.8 image code looks for workflow assets in `/opt/pilot/config/comfy-workflows`, while Docker bundles them in `/opt/pilot/bundled/comfy-workflows`. A failed `/api/models/workflows` request prevents the page from showing the catalog, even when `/api/models` succeeds.
+**Download missing files** queues the missing components and reuses active jobs. Access or disk-space failures block installation. Use **Downloads** to follow progress and inspect errors. After resolving a failure, retry the affected download or review the workflow again to skip components that have finished.
 
-The source fix reads the bundled directory and keeps the repository path for local development. For an existing affected container, run this in its terminal, then refresh Models:
+The queue belongs to the running ControlPilot process. Restarting ControlPilot loses that queue, while completed files remain on the persistent volume. After a restart, reopen the review and queue the remaining files. Avoid treating a queued job as a completed installation.
+
+Open **Installed** to inspect downloaded entries, their file paths, and removal controls. Installation status describes file checks. You still need compatible nodes, an appropriate GPU setup, and a completed generation to establish that the workflow runs on your machine. The [inference guide](inference.md) covers that next stage.
+
+## Understand what the file checks establish
+
+For a single-file entry with an exact integer byte size in the manifest, the installed-state check expects that size at the canonical destination. Rounded sizes in older custom manifests remain estimates. Workflow preflight retrieves exact sizes for missing files when checking their sources.
+
+For a repository entry, a successful pull records the required files and verifies weights and indexed shards. LoRA Pilot keeps that record under `/workspace/models/.download-state`. If you have an older repository download without a record, run `models pull` with its catalog name to verify cached files and create the record.
+
+These checks help distinguish complete downloads from folders that merely exist. They do not replace a model compatibility check or a test generation. If a consuming application cannot see a completed download, check its model setup and refresh behavior before fetching another copy.
+
+## Keep the catalog and destinations clear
+
+The default active manifest is `/workspace/config/models.manifest`. The image's bundled default is `/opt/pilot/config/models.manifest.default`. Use `models where` inside the pod or container to identify the configured paths before editing or troubleshooting the catalog.
+
+Bootstrap tracks the bundled manifest so it can refresh a previously seeded copy during upgrades and preserve later customizations. A workspace without that tracking record receives a one-time refresh. Back up a customized manifest before upgrading an older workspace, then compare your entries with the bundled catalog.
+
+Each line uses the format `name|kind|source|subdir|include|size(optional)`. Supported kinds are `url`, `hf_file`, and `hf_repo`. The destination comes from the entry, under the model root, rather than from a category you choose afterward. Read the [manifest guide](../configuration/models-manifest.md) before adding a source or changing its layout.
+
+Hugging Face downloads can use `HF_TOKEN` or the token configured through ControlPilot. A token does not grant access that the source account has not received. If access fails, read the job's response and check the relevant source and account permissions.
+
+## Use the terminal for a named download
+
+On RunPod, run operational commands in the pod's terminal. On a Docker Compose host, enter the container with `docker compose exec lora-pilot bash` first. The following example inspects the configured catalog and downloads the SDXL base entry.
+
+```bash
+models where
+models list
+models pull sdxl-base
+```
+
+Use `models help` to inspect the supported syntax. The CLI accepts one manifest name per pull. It also provides `models pull-all`, which targets the entire active catalog. Review the scope and storage before using that command for a workspace with many large entries.
+
+An optional `--dir` changes the download destination relative to the model root. For example, `models pull sdxl-base --dir custom/sdxl-base` writes into that alternate location. It does not update the catalog's canonical installed-state path. Use the default destination unless your workflow has a reason to use another one.
+
+For a single command from a Compose host, use `docker compose exec lora-pilot models pull sdxl-base`. The [CLI reference](../reference/cli-commands.md) explains service controls and the other supported commands. Removal belongs to ControlPilot's **Installed** view rather than a `models remove` subcommand.
+
+## Connect an automated workflow
+
+For automation, `GET /api/models` returns catalog entries and `GET /api/models/pulls` returns recent download jobs. Start a background download with `POST /api/models/{name}/pull/start` and inspect it through `GET /api/models/{name}/pull/status`. The synchronous alternative is `POST /api/models/{name}/pull`, while removal uses `POST /api/models/{name}/delete`.
+
+Bundled workflow metadata is available through `GET /api/models/workflows`. Use the workflow-specific `/plan` and `/install` routes to review and submit a complete installation; installation requires the current plan identifier. Authenticated requests use the `controlpilot_session` cookie when password protection is enabled. Consult the [API reference](../development/api-reference.md) and preserve the browser's review-before-install behavior in your own integration.
+
+## Existing downloads and corrected names
+
+Single Hugging Face files use the entry's subdirectory followed by the filename, without repeating upstream directories such as `vae/vae`. The downloader verifies a source hash before reusing a legacy nested file. It preserves legacy copies and keeps an existing file intact until its replacement finishes. Removing an entry targets its canonical file.
+
+Older ControlNet and VAE files named `diffusion_pytorch_model.safetensors` can be ambiguous. The corrected entries use model-specific subdirectories and preserve the old files. Z-Image's `ae.safetensors` uses `vae/z-image` to distinguish it from FLUX's file with the same name.
+
+Some catalog names also changed. `realistic-vision-v6-sd15` replaces the misleading `realistic-vision-xl` name and identifies an SD1.5 model. `swin2sr-4x` replaces `swinir-4x`, and `gfpgan-v1.4` replaces `esrgan-4x`. The CLI accepts those old names as aliases when the active manifest contains the corrected entries. Existing GFPGAN and Swin2SR files remain preserved, but their corrected destinations need another pull. Real-ESRGAN entries are unchanged.
+
+## Diagnose a failed download or catalog load
+
+For a failed download, read its job output in **Downloads** and check the active manifest with `models where`. Run `df -h /workspace/models` inside the container to inspect available space. The ControlPilot logs at `/workspace/logs/controlpilot.err.log` and `/workspace/logs/controlpilot.out.log` provide additional context.
+
+For a 404 from a model source, compare the repository and file path in the active manifest with the current upstream source. Preserve your custom catalog and correct the affected entry rather than replacing unrelated entries. The [debugging guide](../development/debugging.md) explains the relevant API checks.
+
+An affected v2.5.8-era container can show **Could not load models: Internal Server Error** because its code looks for workflow assets in `/opt/pilot/config/comfy-workflows`, while the image stores them in `/opt/pilot/bundled/comfy-workflows`. The corrected source reads the bundled path and retains a local-development fallback. Existing images require a rebuild to include that change.
+
+For that specific path mismatch, confirm that the bundled directory exists and the expected configuration path is absent. Then run this command in the affected container and refresh Models.
 
 ```bash
 ln -sT /opt/pilot/bundled/comfy-workflows /opt/pilot/config/comfy-workflows
 ```
 
-This command creates a compatibility link and refuses to overwrite an existing destination. It does not move model weights or require a service restart. The link belongs to the container filesystem; use a rebuilt image containing the fix when replacing the container.
-
-## Existing downloads and corrected names
-
-Single Hugging Face files now land at `<subdir>/<filename>`, without repeating
-upstream directories such as `vae/vae`. A pull verifies the source hash before
-reusing a legacy nested file. Existing files remain intact until a replacement
-finishes, and legacy copies are preserved. Removing an entry deletes only its
-canonical file. Old ControlNet/VAE files named `diffusion_pytorch_model.safetensors`
-are ambiguous: the downloader preserves them and fetches into a model-specific
-subdirectory. Z-Image's `ae.safetensors` also has its own `vae/z-image` directory
-to avoid shared deletion with FLUX.
-
-The corrected names are `realistic-vision-v6-sd15` (SD1.5, formerly
-`realistic-vision-xl`), `swin2sr-4x` (a Transformers repository, formerly
-`swinir-4x`), and `gfpgan-v1.4` (face restoration, formerly `esrgan-4x`). The CLI
-accepts the old names as aliases when the active manifest uses the new names.
-Old GFPGAN and Swin2SR downloads are preserved; their corrected destinations
-need a new pull. Real-ESRGAN entries are unchanged.
-
-## Supported CLI
-
-The image currently exposes these commands:
-
-```bash
-models list
-models pull <name> [--dir SUBDIR]
-models pull-all
-models where
-models help
-```
-
-Examples for a RunPod terminal:
-
-```bash
-models list
-models where
-models pull sdxl-base
-models pull sdxl-base --dir custom/sdxl-base
-models pull-all
-```
-
-The `--dir` value is relative to `/workspace/models` and cannot escape that
-directory. `models where` prints the active manifest and model directory.
-
-Docker Compose host equivalents:
-
-```bash
-docker exec lora-pilot models list
-docker exec lora-pilot models pull sdxl-base
-```
-
-The CLI accepts one manifest name per `models pull` invocation. It does not
-support `validate`, `update`, `cleanup`, collections, arbitrary repository IDs,
-or the other subcommands/flags sometimes shown in older guides. Use the
-ControlPilot API for browser-managed pulls and deletion.
-
-## Manifest and storage
-
-The active manifest is `/workspace/config/models.manifest`. The bundled image
-default is `/opt/pilot/config/models.manifest.default`; bootstrap refreshes
-bundled app/docs/default content while preserving user-customized runtime
-configuration.
-
-Model files are stored below:
-
-```text
-/workspace/models/
-├── checkpoints/
-├── loras/
-├── vae/
-├── controlnet/
-├── upscale_models/
-└── ...
-```
-
-The exact destination is defined by each manifest entry. Use `models list` and
-`models where` rather than assuming a category directory or model name.
-
-Manifest entries use this format:
-
-```text
-name|kind|source|subdir|include|size(optional)
-```
-
-Supported kinds are `url`, `hf_file`, and `hf_repo`. Gated Hugging Face pulls
-use the `HF_TOKEN` environment variable or the token configured through
-ControlPilot.
-
-## Download failures
-
-Run these checks directly on RunPod:
-
-```bash
-models where
-models list
-ls -la /workspace/config/models.manifest
-df -h /workspace/models
-command -v hf || ls -l /opt/venvs/core/bin/hf /opt/venvs/core/bin/huggingface-cli
-```
-
-For a failed model, check the ControlPilot job output and the service logs:
-
-```bash
-tail -n 200 /workspace/logs/controlpilot.err.log
-tail -n 200 /workspace/logs/controlpilot.out.log
-```
-
-If a Hugging Face entry returns 404, verify the repository and file path in
-the active manifest against the current upstream repository. Do not replace a
-user-customized manifest automatically; edit or restore that entry explicitly.
-
-## Integration
-
-ComfyUI, Kohya, AI Toolkit, and InvokeAI share `/workspace/models`. A model
-download succeeding only means the files were written; the consuming service
-may need a restart or a model-library refresh before the file appears in its
-UI.
-
-## API endpoints
-
-ControlPilot exposes model operations at:
-
-```text
-GET  /api/models
-POST /api/models/{name}/pull
-POST /api/models/{name}/pull/start
-GET  /api/models/{name}/pull/status
-GET  /api/models/pulls
-POST /api/models/{name}/delete
-```
-
-Authenticated API requests must send the `controlpilot_session` cookie when
-password protection is enabled.
+The compatibility link refuses to overwrite an existing destination and requires no service restart. It leaves model weights in place. Because the link belongs to the container filesystem, use an image containing the source fix when you replace the container. Other HTTP 500 failures need their own log diagnosis.

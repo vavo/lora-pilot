@@ -1,56 +1,41 @@
 # Configuration
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-This section is the index for LoRA Pilot configuration docs.
+You may begin with the default setup and later want a different arrangement: models on a separate disk, a service on another port, or fewer applications starting with the container. LoRA Pilot gives you several places to make those changes. Knowing which one owns a setting helps you keep the next startup predictable.
 
-See [ComfyUI access protection](comfy-access.md) for browser login and API tokens.
+Separate the container's deployment settings from the preferences you save through an application. A port mapping belongs to the deployment. A model catalog override belongs to the workspace. A service's current running state is different from its saved autostart preference.
 
-## Pages
+## Choose the deployment shape
 
-- [Environment Variables](environment-variables.md)  
-  Runtime variables, service-specific env knobs, and build-time `ARG` summary.
+The [Docker Compose guide](docker-compose.md) explains the standard, development, and CPU configurations. The standard file maps a host workspace into `/workspace` and exposes the service ports. The development file adds source mounts for editing. The CPU file omits the NVIDIA runtime and exposes a smaller set of interfaces by default.
 
-- [Models Manifest](models-manifest.md)  
-  Manifest format (`name|kind|source|subdir|include|size`), seeding rules, CLI/API behavior.
+For Compose, create `.env` from `.env.example` if you do not have one. Read the variables referenced by the Compose file you are using before adding values. Compose uses `.env` for substitution; an entry reaches the application only if the configuration passes it into the container. The [environment-variable reference](environment-variables.md) connects the available settings to their purpose.
 
-- [Supervisor](supervisor.md)  
-  Managed programs, autostart/log behavior, and ControlPilot service endpoints.
+Use [custom setup](custom-setup.md) for image overrides, storage mounts, and port changes. After changing the selected image, environment, or mounts, apply the deployment configuration with Compose and verify the resulting service state. Restarting one application inside an existing container does not change that container's mounts or published ports.
 
-- [Docker Compose](docker-compose.md)  
-  Compose file matrix (`standard`, `dev`, `cpu`), runtime behavior, and operational commands.
+## Save service preferences at the right level
 
-- [Custom Setup](custom-setup.md)  
-  Practical override patterns for images, mounts, ports, bootstrap toggles, and update policy files.
+Open **Services** in ControlPilot to inspect the tools you use. Starting a service changes its current state; its autostart setting controls whether it starts during boot. LoRA Pilot saves autostart preferences in `/workspace/config/service-autostart.toml` by default and applies them to the Supervisor configuration.
 
-## Source Of Truth In Repo
+The [Supervisor guide](supervisor.md) explains the managed processes, log locations, and service identifiers. Use those identifiers for terminal operations so you target the intended process. For example, the ComfyUI service is named `comfy`, while the InvokeAI service is `invoke`.
 
-- Compose/runtime env templates: `.env.example`, `config/env.defaults`, `docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.cpu.yml`
-- Build args: `build.env.example`, `Dockerfile`
-- Bootstrapping/runtime wiring: `scripts/bootstrap.sh`, service scripts in `scripts/`
-- Supervisor config: `supervisor/supervisord.conf`
-- Models manifests: `config/models.manifest`, `config/models.manifest.default`
+Service update preferences have a separate file at `/workspace/config/service-updates.toml`. Keep a record of changes you make to a working environment and test the affected workflow afterward. Opening an updated interface confirms less than completing a familiar generation or training task.
 
-## Practical Order
+## Adapt the catalog without losing track of its source
 
-1. Set container/runtime env in `.env` (copy from `.env.example`).
-2. Start with `docker compose -f docker-compose.yml up -d`.
-3. Validate service state in ControlPilot (`/api/services`).
-4. Adjust model manifest at `/workspace/config/models.manifest` as needed.
-5. Use service autostart/update controls in ControlPilot if required.
+The model catalog describes named downloads and their destinations. Its default runtime location is `/workspace/config/models.manifest`; the image carries a default copy under `/opt/pilot/config/models.manifest.default`. The [manifest guide](models-manifest.md) explains the fields, while [model management](../user-guide/model-management.md) covers the browser and terminal workflows.
 
-## Related
+Before editing an existing catalog, save a copy and use `models where` inside the container to identify the active path. Bootstrap can refresh a previously seeded catalog during an image upgrade. Its tracking file distinguishes later user edits, but a workspace without that tracking file receives a one-time refresh. Keep your own copy of a customized manifest before upgrading an older workspace.
 
-- [Documentation Home](../README.md)
-- [Getting Started](../getting-started/README.md)
-- [User Guide](../user-guide/README.md)
+## Configure access for the interface you expose
 
----
+Use ControlPilot's settings for its login configuration. If you want ComfyUI to use the protected entry point, follow [ComfyUI access protection](comfy-access.md). That guide explains the browser session and the separate Comfy-only API token.
 
----
+Treat the other exposed services according to their own access configuration. A password on ControlPilot does not establish protection for an independent port. Keep `/workspace/config/secrets.env` private and inspect individual settings without copying the whole file into a support request.
 
-## 📝 Feedback
+## Distinguish build choices from runtime choices
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+The image build determines which applications and dependency versions are installed. Those choices come from `Dockerfile`, `Makefile`, and `build.env.example`; the [build guide](../development/building.md) explains how to change them. Runtime settings come from the deployment environment, persisted configuration, and the service launchers under `scripts`.
 
-
+After a change, open ControlPilot, inspect the affected service, and repeat the action that prompted the change. Use [debugging](../development/debugging.md) if it fails, or return to the [user guide](../user-guide/README.md) to continue your project.

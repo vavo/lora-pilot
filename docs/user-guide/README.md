@@ -1,60 +1,35 @@
 # User Guide
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-Task-oriented guide for day-to-day LoRA Pilot usage.
+A project can move through several tools before you have an image you want to keep. You might review photographs in TagPilot, train a LoRA with Kohya, and test it in ComfyUI before choosing the strongest results in MediaPilot. In LoRA Pilot, you can do that work against one shared workspace.
 
-## Start Here
+Use this guide to choose the next action for your project. You can begin with generation, prepare a training dataset, or return to a saved run without following a fixed sequence through every application.
 
-1. [ControlPilot](control-pilot.md)  
-   Service control, logs, models/datasets UI, system telemetry.
-2. [Model Management](model-management.md)  
-   Pull/delete models and keep `/workspace/models` clean.
-3. [Dataset Preparation](dataset-preparation.md)  
-   TagPilot workflow and dataset hygiene.
-4. [Training Workflows](training-workflows.md)  
-   Train with TrainPilot, Kohya, AI Toolkit, and Diffusion Pipe paths.
-5. [Inference](inference.md)  
-   ComfyUI and InvokeAI workflows with shared model/output paths.
+## Find your way around ControlPilot
 
-## Use-Case Shortcuts
+[ControlPilot](control-pilot.md) is the starting point for checking the machine and opening services. The dashboard shows resource usage, while **Services** provides process controls and logs. On a local installation, open `http://localhost:7878`. On RunPod, use your pod's connection for that port.
 
-- Need to restart a broken service quickly: [ControlPilot](control-pilot.md)
-- Need missing model files before training: [Model Management](model-management.md)
-- Need to clean captions/tags before training: [Dataset Preparation](dataset-preparation.md)
-- Need profile-driven fast training start: [Training Workflows](training-workflows.md)
-- Need generation + review loop: [Inference](inference.md)
+Open a tool through its service link so you reach the address configured for your deployment. The default local ports are `5555` for ComfyUI and `9090` for InvokeAI. Kohya uses `6666`, while JupyterLab and VS Code Server use `8888` and `8443`. A service can still be initializing after ControlPilot opens, so check its state if the link does not load.
 
-## Default URLs
+## Generate with a model you already have
 
-- ControlPilot: `http://localhost:7878`
-- ComfyUI: `http://localhost:5555`
-- Kohya SS: `http://localhost:6666`
-- InvokeAI: `http://localhost:9090`
-- JupyterLab: `http://localhost:8888`
-- code-server: `http://localhost:8443`
+For a new image session, start with [model management](model-management.md). Choose a model family and confirm the files required by your intended workflow. Some workflows need several components, and a successful download does not establish that the selected engine can use them together.
 
-## Suggested Workflow
+Continue with [inference](inference.md) to generate a baseline and compare variations. You can use ComfyUI for a reusable graph or InvokeAI for an image session through its interface. Keep the prompt and settings with a useful result so you can return to the same experiment later.
 
-1. Pull required base models.
-2. Build/validate dataset.
-3. Run first short training pass.
-4. Generate in ComfyUI/InvokeAI.
-5. Curate outputs and iterate.
+Open [MediaPilot](../components/mediapilot.md) to review supported images from the shared output locations. Comparing several attempts in one place helps you choose what to keep and identify what you want to change next.
 
-## Related
+## Prepare and train your own adaptation
 
-- [Getting Started](../getting-started/README.md)
-- [Configuration](../configuration/README.md)
-- [Components](../components/README.md)
-- [Troubleshooting](../getting-started/troubleshooting.md)
+Use [dataset preparation](dataset-preparation.md) to import a collection and review its captions. You can open the saved dataset in TagPilot, make corrections, and save it back to the workspace. Keep revisions distinct if you want to compare the effects of changing the training examples.
 
----
+The [training workflows guide](training-workflows.md) explains the available routes through TrainPilot, Kohya SS, AI Toolkit, and Diffusion Pipe. Choose a trainer that supports the base model and adaptation you intend to make. TrainPilot provides a guided SDXL LoRA path through Kohya; the other interfaces offer their own controls and requirements.
 
----
+After a run, test the adaptation on prompts that represent its intended use. Compare it with the base model as well as with earlier training attempts. That comparison gives you a reason to adjust the dataset or training settings instead of repeating the same run without a clear question.
 
-## 📝 Feedback
+## Keep the next session connected to this one
 
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+Your files belong under `/workspace`, with model assets in `models`, training collections in `datasets`, and results in `outputs`. Settings and logs also have workspace locations. Read the [file-structure guide](../reference/file-structure.md) before moving or backing up a project so you preserve more than its final images.
 
-
+For a failed service or workflow, begin with [debugging](../development/debugging.md). For a setup change, use [configuration](../configuration/README.md). If the terminology still feels unfamiliar, the [getting-started courses](../getting-started/README.md) explain the ideas behind the tools as you use them.
