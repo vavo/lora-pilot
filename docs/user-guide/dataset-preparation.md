@@ -1,131 +1,49 @@
 # Dataset Preparation
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-This guide covers the dataset workflow that is actually wired in LoRA Pilot today: ControlPilot dataset APIs + TagPilot editing/saving.
+A folder of photographs can become the starting point for a character you can place in new scenes or a visual style you can use across a project. Before training, you decide what the examples have in common and what should remain free to change. That decision shapes the dataset you build.
 
-## Storage and Naming Rules
+LoRA Pilot keeps preparation close to training. You can import images through ControlPilot, review their captions in TagPilot, and save the result into the shared workspace. You spend less time moving files between tools and more time deciding what you want the model to learn.
 
-Datasets live under:
+## Give the collection a clear purpose
 
-- `/workspace/datasets`
+Imagine you want to train a LoRA around a handmade ceramic teapot. Across your examples, the teapot should remain recognizable while you vary the angle, lighting, and surroundings. If you show it against the same kitchen wall in each photograph, you give the trainer little evidence for separating the subject from that setting.
 
-ControlPilot dataset listing (`GET /api/datasets`) only shows directories that:
+Review the collection at full size before you upload it. Remove accidental duplicates and images that contradict the subject you want to teach. Keep useful variation, including views you want the model to handle later. LoRA Pilot does not assign a quality score to the dataset; you make these judgments by inspecting the images. The [Datasets 101 course](../getting-started/datasets-101/README.md) develops this process in more depth.
 
-- are folders
-- start with `1_`
+## Bring the images into ControlPilot
 
-If you create/rename through ControlPilot API, names are normalized and prefixed automatically:
+Open **Datasets** in ControlPilot. Create a named dataset to begin a new collection, or choose **Upload ZIP** to import files you have prepared elsewhere. For a straightforward import, place the images and any matching caption files at the top level of the archive, then give the ZIP a descriptive name such as `ceramic_teapot.zip`.
 
-- `my_set` -> `1_my_set`
+ControlPilot keeps datasets under `/workspace/datasets` and displays folders with the `1_` prefix. Creating `ceramic_teapot` through the interface produces `1_ceramic_teapot`. Importing `ceramic_teapot.zip` produces that same dataset name and stores the archive under `/workspace/datasets/ZIPs`.
 
-ZIP archives are stored in:
+Use a distinct name for a new revision if you want to retain the previous collection. Uploading another ZIP with the same name replaces the matching dataset after the archive passes import validation. The stored ZIP is a convenient snapshot, but it shares the workspace with the working files. Keep a copy elsewhere for backup.
 
-- `/workspace/datasets/ZIPs`
+![The dataset upload dialog in ControlPilot.](../assets/images/controlpilot/controlpilot-datasets-upload-modal.png)
 
-## Supported File Types
+The dataset browser recognizes PNG, JPEG, WebP, BMP, and GIF extensions. Recognition in this browser does not establish support in a trainer, so check the requirements of your chosen training workflow. For an image dataset, confirm that the files open as the still images you expect.
 
-Image extensions recognized by dataset APIs include:
+## Describe the image you can see
 
-- `.png`
-- `.jpg`
-- `.jpeg`
-- `.webp`
-- `.bmp`
-- `.gif`
+Open the dataset in TagPilot to review its images and text. You can edit tags or captions by hand, or use a configured AI provider to draft them. Read generated text before saving it. An appealing description can still invent a material, miss a detail, or name the wrong subject.
 
-Caption/tag files are plain `.txt` files next to images.
+For the teapot project, a caption might read “ceramic teapot on a wooden table, side view, soft window light.” Describe visible differences that matter to the training task. If your training approach uses a trigger term for the subject, apply that convention throughout the collection. Follow the caption format expected by your trainer and base model rather than assuming that one style of tagging fits them all.
 
-## Typical Workflow (UI)
+LoRA Pilot saves captions as plain `.txt` files beside their images. An image named `teapot_side.png` pairs with `teapot_side.txt`. This arrangement lets you inspect or edit the same material from JupyterLab or VS Code without converting it into an application-specific format.
 
-1. Open ControlPilot (`http://localhost:7878`) and go to datasets.
-2. Create a dataset or upload a ZIP.
-3. Open TagPilot (`/tagpilot`) to edit tags/captions.
-4. Save back to `/workspace/datasets` (full save or incremental save flow).
-5. Use the dataset name (for example `1_my_set`) in training tools.
+## Save a version you can trust
 
-![ControlPilot Dataset Upload Modal](../assets/images/controlpilot/controlpilot-datasets-upload-modal.png)
+Use TagPilot's workspace save action and wait for its completion message. That action writes the loaded collection back to the selected dataset, sending images and their text in sequence. It resets the destination at the start, so load the complete collection you intend to keep before saving over an existing dataset. An interrupted save may leave an incomplete working copy.
 
-## API Workflow (Equivalent)
+After saving, reopen the dataset and check an image near the end of the collection as well as the first one. Confirm that the captions match and that the number of images makes sense. The completed save also creates a ZIP snapshot in `/workspace/datasets/ZIPs`.
 
-### Create a dataset
+For terminal work, run `ls /workspace/datasets/1_ceramic_teapot` inside the pod or container to inspect the saved files. If you automate imports, the corresponding entry points are `POST /api/datasets/create` and `POST /api/datasets/upload`. TagPilot uses `POST /api/tagpilot/save-item` for its sequential save flow. The [API reference](../development/api-reference.md) provides the wider interface context.
 
-```bash
-curl -s -X POST http://localhost:7878/api/datasets/create \
-  -H "Content-Type: application/json" \
-  -d '{"name":"my_set"}'
-```
+## Carry the same collection into training
 
-### Upload and extract ZIP
+Select the saved dataset in your training interface and confirm that it resolves to the intended workspace folder. Keep the dataset revision and training configuration together in your project notes. After a test run, you can trace an unwanted background or a weak side view back to the examples you supplied and make a targeted revision.
 
-```bash
-curl -s -X POST http://localhost:7878/api/datasets/upload \
-  -F "file=@/path/to/my_set.zip"
-```
+If a ZIP import fails, check that the archive contains ordinary files with relative paths. ControlPilot rejects paths that escape the dataset directory and rejects symbolic links. Rebuild the archive from the source images instead of trying to preserve those entries.
 
-### Load files for TagPilot-style editing
-
-```bash
-curl -s "http://localhost:7878/api/tagpilot/load?name=1_my_set"
-```
-
-### Save full ZIP back to dataset
-
-```bash
-curl -s -X POST "http://localhost:7878/api/tagpilot/save?name=1_my_set" \
-  -F "file=@/path/to/updated_dataset.zip"
-```
-
-### Incremental save (large datasets)
-
-Endpoint:
-
-- `POST /api/tagpilot/save-item`
-
-Fields:
-
-- `name` (query)
-- `file` (multipart)
-- `tags` (optional form)
-- `reset` (optional bool)
-- `done` (optional bool; when true, writes ZIP in `datasets/ZIPs`)
-
-## ZIP Safety Rules
-
-Dataset ZIP extraction rejects unsafe members, including:
-
-- absolute paths
-- parent traversal (`..`)
-- symlinks
-
-If import fails, rebuild ZIP with normal relative paths only.
-
-## Quick Pre-Training Checklist
-
-- Dataset folder exists under `/workspace/datasets/1_<name>`.
-- Images load and captions are readable.
-- Dataset appears in `GET /api/datasets`.
-- Final ZIP snapshot exists in `/workspace/datasets/ZIPs` (optional but useful backup).
-
-## Not Found in Repo
-
-- A built-in dataset quality scoring/validation engine is **Not found in repo**.
-- A dataset-specific CLI command set (`lora-pilot dataset ...`) is **Not found in repo**.
-
-## Related
-
-- [TagPilot](../components/tagpilot.md)
-- [Training Workflows](training-workflows.md)
-- [ControlPilot](control-pilot.md)
-- [Datasets 101](../getting-started/datasets-101/README.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
+Continue with [TagPilot](../components/tagpilot.md) for editing controls or [training workflows](training-workflows.md) to use the saved collection. For guidance on choosing source material, read [image collection strategies](../getting-started/datasets-101/image-collection-strategies.md).

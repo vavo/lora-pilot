@@ -1,147 +1,59 @@
 # Debugging
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-This page covers practical debugging flows for the current LoRA Pilot runtime.
+You can have a working dashboard, a running generation service, and a failed model load at the same time. LoRA Pilot brings several applications into one workspace, but each application still has its own startup and execution path. The fastest useful diagnosis identifies the point where your intended action stopped working.
 
-## Fast Triage
+Begin with the action you took and the result you expected. “ComfyUI opens, but this workflow fails while loading its VAE” gives you a much narrower search than “generation is broken.” Keep the error text and the time of the attempt so you can match it to the correct log.
 
-1. Confirm container is running.
-2. Check supervisor-managed service states.
-3. Inspect the right service log.
-4. Hit the relevant API status endpoint.
+## Start from the visible symptom
 
-```bash
-docker compose ps
-curl -s http://localhost:7878/api/services
-docker compose exec lora-pilot supervisorctl status
-```
+If you can open ControlPilot, visit **Services** and check the affected tool's state. Read its log before restarting it. A restart can interrupt active work and will not resolve an invalid model path. For a local deployment where ControlPilot itself is unavailable, run `docker compose ps` and `docker compose logs --tail=120 lora-pilot` from the repository directory on the Docker host.
 
-## Log Locations
-
-Supervisor and service logs live under `/workspace/logs`.
-
-| Service | Stdout log | Stderr log |
-|---|---|---|
-| `controlpilot` | `/workspace/logs/controlpilot.out.log` | `/workspace/logs/controlpilot.err.log` |
-| `comfy` | `/workspace/logs/comfy.out.log` | `/workspace/logs/comfy.err.log` |
-| `kohya` | `/workspace/logs/kohya.out.log` | `/workspace/logs/kohya.err.log` |
-| `diffpipe` | `/workspace/logs/diffpipe.out.log` | `/workspace/logs/diffpipe.err.log` |
-| `invoke` | `/workspace/logs/invoke.out.log` | `/workspace/logs/invoke.err.log` |
-| `jupyter` | `/workspace/logs/jupyter.out.log` | `/workspace/logs/jupyter.err.log` |
-| `code-server` | `/workspace/logs/code-server.out.log` | `/workspace/logs/code-server.err.log` |
-| `ai-toolkit` | `/workspace/logs/ai-toolkit.out.log` | `/workspace/logs/ai-toolkit.err.log` |
-| `copilot` | `/workspace/logs/copilot.out.log` | `/workspace/logs/copilot.err.log` |
-
-Supervisor main log:
-
-- `/workspace/logs/supervisord.log`
-
-## Service Control Debugging
+Run the remaining shell examples inside the pod or container. On RunPod, open a Jupyter or SSH terminal for that pod. On a local Docker host, enter the container with `docker compose exec lora-pilot bash`. You do not need to install or run Docker inside the pod to inspect its services.
 
 ```bash
-docker compose exec lora-pilot supervisorctl status
-docker compose exec lora-pilot supervisorctl restart controlpilot
-docker compose exec lora-pilot supervisorctl restart comfy
+supervisorctl status
+tail -n 120 /workspace/logs/controlpilot.err.log
 ```
 
-ControlPilot equivalents:
+The supervisor status shows which processes are running. It does not prove that a model can load or that a workflow can finish. Continue with the action that failed once you have confirmed the process state.
 
-- `GET /api/services`
-- `POST /api/services/{name}/{action}`
-- `GET /api/services/{name}/log?lines=200`
+## Read the log for the tool doing the work
 
-## Workflow-Specific Debugging
+Service logs live under `/workspace/logs`, with paired `.out.log` and `.err.log` files. For ComfyUI, read `comfy.out.log` and `comfy.err.log`. InvokeAI uses `invoke.out.log` and `invoke.err.log`; Kohya uses `kohya.out.log` and `kohya.err.log`. The same naming pattern applies to `diffpipe`, `jupyter`, `code-server`, `ai-toolkit`, and `copilot`. Supervisor writes its own log to `supervisord.log`.
 
-### Models
-
-- Start pull job: `POST /api/models/{name}/pull/start`
-- Watch progress: `GET /api/models/{name}/pull/status`
-- List recent jobs: `GET /api/models/pulls`
-
-### TrainPilot
-
-- Start: `POST /api/trainpilot/start`
-- Stop: `POST /api/trainpilot/stop`
-- Combined logs: `GET /api/trainpilot/logs`
-- Check missing checkpoint/VAE paths from TOML: `POST /api/trainpilot/model-check`
-
-### Diffusion Pipe
-
-- Validate model paths: `POST /dpipe/train/validate`
-- Start/stop: `POST /dpipe/train/start`, `POST /dpipe/train/stop`
-- Logs: `GET /dpipe/train/logs`
-
-### MediaPilot
-
-- Check embed/env status: `GET /api/mediapilot/status`
-- If unavailable, inspect `controlpilot` logs for mount/load errors.
-
-### Copilot Sidecar
-
-- Through ControlPilot: `GET /api/copilot/status`
-- Sidecar direct (internal port): `GET http://127.0.0.1:7879/status`
-
-## GPU Debugging
+Start near the time you reproduced the failure. Look for the first meaningful error in that attempt, then read the context around it. A later “process exited” line describes the outcome but may not explain the missing file, package import, or device failure that caused it.
 
 ```bash
-docker compose exec lora-pilot nvidia-smi
-docker compose exec lora-pilot /opt/pilot/gpu-smoke-test.sh
-curl -s http://localhost:7878/api/telemetry
+tail -n 160 /workspace/logs/comfy.out.log
+tail -n 160 /workspace/logs/comfy.err.log
 ```
 
-If GPU is unavailable, `scripts/comfy.sh` falls back to `--cpu` mode.
+You can also use ControlPilot's **View logs** action. For API-based inspection, `GET /api/services` returns service states and `GET /api/services/{name}/log?lines=200` returns a recent service log. Use an authenticated session if you have enabled ControlPilot access protection.
 
-## Common Runtime Pitfalls
+## Follow the affected feature
 
-### Missing or stale secrets
+For a Models page that fails to load, check `/api/models`, `/api/models/pulls`, and `/api/models/workflows`. The page needs the catalog, download state, and workflow metadata. A failure in one response can prevent the combined page from loading even if the model files themselves are intact. Use the ControlPilot error log to identify the failed request and file path. The [model management guide](../user-guide/model-management.md) explains the installation flow.
 
-Bootstrap writes `/workspace/config/secrets.env` with generated tokens/passwords. If auth behavior looks wrong, inspect that file first.
+For a failed download, inspect the job status and its error text before retrying. `GET /api/models/{name}/pull/status` returns the status for that model, while `GET /api/models/pulls` lists recent jobs. Distinguish a source-access error from a failed write to the workspace; changing a token will not repair a full disk.
 
-### Writable path issues
+For TrainPilot, use `/api/trainpilot/logs` to inspect the run, and check the model paths before launch through `/api/trainpilot/model-check`. For Diffusion Pipe, the corresponding path validation and log endpoints are `/dpipe/train/validate` and `/dpipe/train/logs`. Validation requests use `POST`; log requests use `GET`. The [API reference](api-reference.md) describes request details.
 
-Most services assume writable `/workspace` paths for cache/config/log/output. Validate mounts and permissions before deeper debugging.
+For an unavailable MediaPilot embed, check `/api/mediapilot/status` and the ControlPilot log. For Copilot, check `/api/copilot/status` and confirm that the optional sidecar is running. You can inspect its `/status` endpoint on port `7879` from inside the container without exposing that internal service to the public network.
 
-### RunPod shutdown surprises
+## Check the device and the filesystem
 
-Shutdown scheduling uses `RUNPOD_*` env to decide stop vs remove behavior. Confirm:
+Use `nvidia-smi` to confirm system-level GPU visibility. If an error points to CUDA or an installed package, run `/opt/pilot/gpu-smoke-test.sh` while the GPU is free for a test. The script exercises the installed environments; follow it with the actual failing workflow to confirm the repair.
 
-- `RUNPOD_POD_SHUTDOWN`
-- `RUNPOD_VOLUME_TYPE`
-- `RUNPOD_NETWORK_VOLUME_ID`
+For a missing-file error, inspect the exact path in the message. Models and user data belong under the persistent `/workspace` tree, while bundled code and assets belong under `/opt/pilot`. Confirm that the expected mount exists and that the service can read or write the relevant directory before changing permissions or redownloading files.
 
-## Dev-Mode Debugging
+Check credential settings without copying their values into bug reports. Bootstrap stores secrets in `/workspace/config/secrets.env`. For an unexpected scheduled RunPod shutdown, inspect `RUNPOD_POD_SHUTDOWN`, `RUNPOD_VOLUME_TYPE`, and `RUNPOD_NETWORK_VOLUME_ID` in the deployment configuration and compare them with the intended storage and shutdown behavior.
 
-`docker-compose.dev.yml` mounts source and scripts into the container.
+## Make one correction and repeat the same action
 
-Useful pattern:
+After correcting a service setting, restart that service when you are ready to interrupt it. For example, `supervisorctl restart comfy` restarts ComfyUI. Check its log, then repeat the workflow that exposed the problem. Keep the input and settings the same so the result tells you whether the correction addressed that failure.
 
-1. Run dev compose profile.
-2. Set `PORTAL_RELOAD=1` (used by `scripts/portal.sh`) for auto-reload in ControlPilot.
-3. Tail `controlpilot` logs while reproducing.
+For source-level development, `docker-compose.dev.yml` mounts Portal source and selected runtime scripts into the container. The Portal launcher supports `PORTAL_RELOAD=1`; pass it into the container environment if you want API reloads during local work. A value in your host's `.env` file has an effect only if the Compose configuration forwards it.
 
-## Useful Commands
-
-```bash
-docker compose logs -f lora-pilot
-docker compose exec lora-pilot tail -n 200 /workspace/logs/controlpilot.err.log
-docker compose exec lora-pilot tail -n 200 /workspace/logs/comfy.err.log
-docker compose exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
-```
-
-## Related
-
-- [API Reference](api-reference.md)
-- [Supervisor](../configuration/supervisor.md)
-- [Performance Tuning](../deployment/performance-tuning.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
+A useful bug report includes the image tag or revision you tested, the affected service, the action that failed, and a short redacted log excerpt. State whether you reproduced it after your change. Continue with [architecture](architecture.md) to trace the code path or [performance tuning](../deployment/performance-tuning.md) if the workflow completes but takes longer than expected.

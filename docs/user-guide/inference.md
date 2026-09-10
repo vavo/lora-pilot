@@ -1,121 +1,53 @@
 # Inference
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-LoRA Pilot has two inference paths sharing the same model store. ComfyUI (`5555`) is the graph-based workbench for workflow control. InvokeAI (`9090`) is the faster UI-driven path for prompt iteration and selection.
+You can explore a scene through dozens of small decisions: the subject's pose, the light across a face, the space around an object. Inference is the stage where you use a trained model to generate a result from those decisions. You can begin with a written prompt and, with a compatible workflow, add references or guide part of an existing image.
 
-If you are deciding whether a task should be text-to-image, image-to-image, inpainting, ControlNet, text-to-video, or image-to-video, start with [Workflow Types](../getting-started/inference-101/workflow-types.md).
+LoRA Pilot brings ComfyUI and InvokeAI into the same workspace. You can choose the interface that suits the task, keep your model files in shared storage, and review supported outputs in MediaPilot. This gives you room to experiment without rebuilding your environment for each approach.
 
-## Engine Selection
+## Choose the way you want to work
 
-| Engine | Pick it when | URL | Output Path |
-|---|---|---|---|
-| ComfyUI | You need reusable workflow graphs, node-level control, automation | `http://localhost:5555` | `/workspace/outputs/comfy` |
-| InvokeAI | You want fast prompt iteration with less setup | `http://localhost:9090` | `/workspace/outputs/invoke` |
+Open **Services** in ControlPilot to reach your generation tool. ComfyUI offers a graph of connected nodes, which makes it useful when you want to inspect how a result was made and reuse the same sequence. InvokeAI provides another image-generation interface within the stack. Explore it when you want to work through image variations using its available controls.
 
-Control hub:
-- ControlPilot: `http://localhost:7878`
+On a local installation, the default addresses are `http://localhost:5555` for ComfyUI and `http://localhost:9090` for InvokeAI. On RunPod, use the service links for your pod. If you have enabled ComfyUI access protection, use its protected entry point through ControlPilot as described in the [access guide](../configuration/comfy-access.md).
 
-## Shared Paths (No Duplication Needed)
+Choose the workflow according to the change you want to make. A text-to-image workflow starts from a written description. Image-to-image begins with an existing image. Inpainting targets a selected region. Each requires compatible models and components; the [workflow types guide](../getting-started/inference-101/workflow-types.md) explains the differences before you commit to a setup.
 
-| Path | Purpose |
-|---|---|
-| `/workspace/models` | Checkpoints, LoRAs, VAE, and related model assets |
-| `/workspace/outputs/comfy` | Comfy generations |
-| `/workspace/outputs/invoke` | InvokeAI generations |
+## Match the model to the workflow
 
-## Quick Runbook
+Open **Models** and review the files your chosen workflow needs. A base model, its text encoder, and a compatible VAE each play a different role in generation. A LoRA adds an adaptation for a compatible base family. Having a file on disk does not establish that a particular node or generation engine can use it.
 
-1. Confirm services:
+LoRA Pilot stores shared model assets under `/workspace/models`. ComfyUI points its model directory there, and the InvokeAI launcher connects its model storage to the same root. You still need to complete the chosen engine's model setup and select the appropriate assets. Shared storage reduces file shuffling; compatibility and model registration remain part of the generation setup.
 
-```bash
-docker exec lora-pilot supervisorctl status comfy invoke
-```
+The bundled LTX-2.5 and MiniMax H3 workflows provide video starting points in ComfyUI. Their presence does not include the model weights or prove that a run will fit your GPU. Review the requirements in [model management](model-management.md), then confirm the workflow has the nodes and files it needs before queueing it.
 
-2. Confirm model files exist in `/workspace/models`.
-3. Generate in chosen engine.
-4. Curate in MediaPilot.
+## Build a comparison you can learn from
 
-## ComfyUI Workflow
+Try a concrete scene such as “a red bicycle beside a stone wall, overcast afternoon.” Generate a baseline with the selected model's supported settings and save the prompt with the result. Then change one aspect of the scene, perhaps the lighting, and compare the new image with the first.
 
-1. Open ComfyUI.
-2. Load checkpoint/LoRA nodes.
-3. Set prompt, negative, sampler, scheduler, steps, CFG.
-4. Queue generation.
-5. Validate latest image via ControlPilot helper endpoint if needed.
+Keep the seed and other settings fixed where the workflow allows it. That makes the comparison more useful within the same setup, though it does not promise identical results across engines or software versions. If you change the model, resolution, prompt, and sampler together, you will have less evidence about which decision improved the image.
 
-Comfy helper endpoints:
-- `GET /api/comfy/status`
-- `GET /api/comfy/latest-image`
-- `GET /proxy/comfy/{path}`
-- `WS /ws/comfy`
+In ComfyUI, inspect the selected model files and the connections leading to the output node. In InvokeAI, check the selected model and generation settings before submitting a variation. The [core generation settings guide](../getting-started/inference-101/core-generation-settings.md) explains the controls so you can adjust them with a purpose.
 
-Example:
+## Review the image beyond the preview
+
+ComfyUI writes generated files under `/workspace/outputs/comfy`. The bundled InvokeAI integration uses `/workspace/outputs/invoke`. Open MediaPilot to compare supported images, keep favorites, and organize useful results. You can also inspect the files from JupyterLab or VS Code.
+
+Return to your baseline after several variations. You may prefer the composition from an earlier attempt while keeping the lighting from a later one. Recording those choices gives you a concrete direction for the next run. If you use generated images in a future training dataset, review their defects and suitability with the same care you would apply to other source images.
+
+## Resolve the blockage at the right place
+
+If the interface does not open, check the service state and its log in ControlPilot. If the interface opens but a model is missing, check its location and the engine's model setup. If the run fails after loading begins, read the execution error before downloading another copy of the same model.
+
+For a terminal check, run these commands inside the pod or container. On a local Docker host, enter it with `docker compose exec lora-pilot bash` first.
 
 ```bash
-curl -s http://localhost:7878/api/comfy/status
-curl -s http://localhost:7878/api/comfy/latest-image
+supervisorctl status comfy invoke
+tail -n 120 /workspace/logs/comfy.err.log
+tail -n 120 /workspace/logs/invoke.err.log
 ```
 
-When debugging ComfyUI directly, the upstream API is also useful through the Comfy service itself: `/system_stats` for hardware and VRAM, `/object_info` for available node classes and valid inputs, `/models/{folder}` for visible model files, `/queue` for execution state, and `/history/{prompt_id}` for outputs after a prompt is submitted.
+For an out-of-memory error, try a smaller supported resolution or batch and stop other GPU jobs you no longer need. Reducing steps can shorten a run, but it may not solve a memory shortage. The [performance guide](../deployment/performance-tuning.md) helps you separate loading time, generation time, and memory pressure.
 
-## InvokeAI Workflow
-
-1. Open InvokeAI.
-2. Select model (shared `/workspace/models`).
-3. Generate and iterate prompt/settings.
-4. Review files in `/workspace/outputs/invoke` and MediaPilot.
-
-## Practical Iteration Pattern
-
-Explore style or concept rapidly in InvokeAI when the workflow is simple. Move the repeatable setup into ComfyUI when the graph matters: LoRAs, ControlNet, inpainting, upscales, detailers, or video nodes. Review outputs in MediaPilot, then promote strong outputs back into datasets when they are useful for future training.
-
-## Diagnostics
-
-```bash
-# Service logs
-docker exec lora-pilot tail -n 200 /workspace/logs/comfy.out.log
-docker exec lora-pilot tail -n 200 /workspace/logs/invoke.out.log
-docker exec lora-pilot tail -n 200 /workspace/logs/invoke.err.log
-```
-
-## Troubleshooting
-
-### UI not reachable
-- Check service state (`supervisorctl status comfy invoke`).
-- Check Compose port mapping for `5555` and `9090`.
-
-### Model missing in engine UI
-- Confirm file location and permissions under `/workspace/models`.
-- For InvokeAI, verify shared-model wiring:
-
-```bash
-ls -la /workspace/apps/invoke/models
-```
-
-### Generated files not visible in MediaPilot
-- Verify MediaPilot env points to both output dirs:
-  - `MEDIAPILOT_OUTPUT_DIR=/workspace/outputs/comfy`
-  - `MEDIAPILOT_INVOKEAI_DIR=/workspace/outputs/invoke`
-
-### OOM or very slow generation
-- Lower resolution and steps.
-- Use lighter checkpoints for tests.
-- Avoid running heavy training jobs concurrently with inference.
-
-## Related
-
-- [ComfyUI](../components/comfyui.md)
-- [InvokeAI](../components/invokeai.md)
-- [Inference 101](../getting-started/inference-101/README.md)
-- [Workflow Types](../getting-started/inference-101/workflow-types.md)
-- [MediaPilot](../components/mediapilot.md)
-- [Model Management](model-management.md)
-- [Section Index](README.md)
-- [Documentation Home](../README.md)
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+Continue with the [ComfyUI guide](../components/comfyui.md) for graph-based work, the [InvokeAI guide](../components/invokeai.md) for its workspace integration, or [Inference 101](../getting-started/inference-101/README.md) for a deeper grounding in generation.
