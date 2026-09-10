@@ -31,7 +31,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import httpx
 
@@ -3758,6 +3758,26 @@ def get_docs_file(path: str):
             return {"content": candidate.read_text(encoding="utf-8"), "source": source}
 
     raise HTTPException(status_code=404, detail="Requested docs file not found")
+
+
+@app.get("/api/docs/assets/{path:path}")
+def get_docs_asset(path: str):
+    rel_path = PurePosixPath(path.replace("\\", "/"))
+    if (rel_path.is_absolute() or ".." in rel_path.parts
+            or any(":" in part or "\x00" in part for part in rel_path.parts)
+            or rel_path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}):
+        raise HTTPException(status_code=400, detail="Invalid docs asset path")
+    for root in _docs_root_candidates():
+        assets = (root / "assets").resolve()
+        candidate = (assets / rel_path).resolve()
+        if not assets.is_relative_to(root.resolve()) or not candidate.is_relative_to(assets):
+            continue
+        if candidate.is_file():
+            return FileResponse(candidate, headers={
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+            })
+    raise HTTPException(status_code=404, detail="Requested docs asset not found")
 
 
 @app.get("/api/mediapilot/status")

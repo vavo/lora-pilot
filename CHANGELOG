@@ -1,5 +1,7 @@
 Unreleased (September 9th 2026)
 
+Fixed broken images in ControlPilot Docs. Screenshots and diagrams now load relative to their article, and the README logo uses the bundled static asset. Documentation images remain behind ControlPilot authentication.
+
 - Fixed the Models page failing with HTTP 500 in Docker images: resolve workflow assets from the bundled image directory, with the repository path retained for local development. Added API regression coverage for both layouts.
 
 v2.5.8 (September 8th 2026)

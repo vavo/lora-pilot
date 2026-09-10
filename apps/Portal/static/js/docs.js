@@ -316,7 +316,7 @@ function applyAllowedAttributes(sourceEl, targetEl, tag, sourcePath) {
     }
 
     if (name === "src") {
-      const safeSrc = sanitizeImageReference(value);
+      const safeSrc = sanitizeImageReference(value, sourcePath);
       if (!safeSrc) continue;
       targetEl.setAttribute("src", safeSrc);
       continue;
@@ -390,7 +390,7 @@ function isChangelogLinkPath(rawPath) {
   return path === "changelog" || path === "changelog.md";
 }
 
-function sanitizeImageReference(rawSrc) {
+function sanitizeImageReference(rawSrc, sourcePath = "") {
   const src = String(rawSrc || "").trim();
   if (!src) return "";
   if (/[\u0000-\u001F\u007F]/.test(src)) return "";
@@ -400,6 +400,18 @@ function sanitizeImageReference(rawSrc) {
     const scheme = schemeMatch[1].toLowerCase();
     if (scheme === "http" || scheme === "https") return src;
     return "";
+  }
+  const suffixStart = src.search(/[?#]/);
+  const path = suffixStart === -1 ? src : src.slice(0, suffixStart);
+  const suffix = suffixStart === -1 ? "" : src.slice(suffixStart);
+  const sourceDir = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/") + 1) : "";
+  const combined = path.startsWith("/") || path.startsWith("docs/") ? path : `${sourceDir}${path}`;
+  const normalized = normalizeDocPath(combined);
+  if (normalized.startsWith("docs/assets/")) {
+    return `/api/docs/assets/${normalized.slice("docs/assets/".length)}${suffix}`;
+  }
+  if (normalized.startsWith("apps/Portal/static/")) {
+    return `/${normalized.slice("apps/Portal/static/".length)}${suffix}`;
   }
   return src;
 }
