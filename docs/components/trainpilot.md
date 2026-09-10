@@ -1,167 +1,55 @@
 # TrainPilot
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-TrainPilot is the quick-start training automation layer for Kohya in LoRA Pilot. It wraps a curated SDXL training flow around dataset selection, profile presets, and TOML patching.
+Your first training run can answer a focused question: can this collection teach an SDXL model the subject you have in mind? TrainPilot gives you a guided way to set up that experiment through Kohya. You choose a saved dataset and a profile, then follow the run through its logs and saved outputs.
 
-##  Overview
+TrainPilot is an SDXL LoRA launcher. It prepares a configuration for Kohya's `sdxl_train_network.py`; use the other [training paths](../user-guide/training-workflows.md) when your model family or training method requires them.
 
-TrainPilot provides:
-- Fast profile-based LoRA training startup
-- Headless launch from ControlPilot (no whiptail dialogs)
-- Automatic dataset staging and output folder setup
-- Preflight model checks from selected TOML (checkpoint + VAE existence)
-- Combined runtime logs (TrainPilot + Kohya `train.log`)
+## Begin with a reviewed dataset
 
-Current implementation runs `sd-scripts/sdxl_train_network.py` and is SDXL-focused.
+Open **Train with kohya** in ControlPilot and select a dataset. If the collection is missing, return to **Datasets** and confirm that you saved it under `/workspace/datasets` with the expected `1_` naming convention. Review its images and captions before committing GPU time to training.
 
-##  Access
+Give the output a name that distinguishes this experiment from earlier runs. A name such as `teapot_sideviews_test` tells you more about the intent than `final_v2`. Keep the dataset revision and the question you are testing in your project notes so you can interpret the result later.
 
-### Through ControlPilot (recommended)
-- Open `TrainPilot` tab in ControlPilot (`http://localhost:7878`)
-- Select dataset, output name, profile, then `Start`
+![The guided Kohya training page in ControlPilot.](../assets/images/controlpilot/controlpilot-train-kohya-copilot.png)
 
-![TrainPilot with Copilot Drawer](../assets/images/controlpilot/controlpilot-train-kohya-copilot.png)
+ControlPilot checks the Kohya and TensorBoard service state before launch and offers to start missing services. It also checks the checkpoint and VAE paths from the selected TOML configuration. If it can match missing files to catalog entries, it offers a download path. A successful preflight establishes those checks, rather than promising that the full run will fit the GPU.
 
-### Script path
-- `/workspace/apps/TrainPilot/trainpilot.sh`
+## Choose a profile as an experiment size
 
-### Base config file
-- `/workspace/apps/TrainPilot/newlora.toml`
+The `quick_test` profile starts from a target of 600 steps with a 12-epoch ceiling. It uses rank 32, alpha 16, batch size 1, gradient accumulation of 2, and `fp16` precision. Use it to inspect whether the setup and dataset produce a useful direction before committing to a larger run.
 
-## ⚙️ Profiles (Current Defaults)
+The `regular` profile starts from 1,200 steps and a 25-epoch ceiling, with rank 48, alpha 24, batch size 2, gradient accumulation of 2, and `bf16`. The `high_quality` profile starts from 2,400 steps and a 45-epoch ceiling, with rank 64, alpha 32, batch size 4, accumulation of 1, and `bf16`. The profile name is not a guarantee that the resulting LoRA will suit your project better.
 
-| Profile | Steps (base) | Max Epochs | Rank/Alpha | Batch | Precision |
-|---|---:|---:|---|---:|---|
-| `quick_test` | `600` | `12` | `32/16` | `1` (+ grad acc `2`) | `fp16` |
-| `regular` | `1200` | `25` | `48/24` | `2` (+ grad acc `2`) | `bf16` |
-| `high_quality` | `2400` | `45` | `64/32` | `4` (+ grad acc `1`) | `bf16` |
+TrainPilot adjusts the step target for datasets above 80 images and clamps it to a calculated epoch ceiling. The number of steps in the final configuration may therefore differ from the starting target. Compare completed runs using their saved configuration and output, rather than relying on the profile label alone.
 
-Additional behavior:
-- Large datasets (`>80` images) increase target step count.
-- Effective steps are clamped by computed epoch caps.
+## Know which configuration the run uses
 
-## 🧪 What Happens on Start
+The persistent base configuration defaults to `/workspace/config/trainpilot/newlora.toml`. ControlPilot's launcher uses `/opt/pilot/apps/TrainPilot/trainpilot.sh`, and the training process defaults to `/opt/venvs/kohya/bin/python`. The workspace application copy is not the launcher path used by the current ControlPilot integration.
 
-0. **Service preflight**
-   - ControlPilot checks `kohya` and the TensorBoard service (`diffpipe`) before submitting training.
-   - If either service is stopped, the UI warns and offers to start the missing service(s).
+At launch, TrainPilot copies the selected TOML to `/workspace/outputs/<output_name>/<output_name>.toml` and applies profile values. These include rank, batch, learning-rate, precision, and step settings. Editing one of those values in the base TOML does not guarantee it survives the profile patching. Inspect the generated run configuration when you need to know the settings that reached Kohya.
 
-1. **Model preflight**
-   - `POST /api/trainpilot/model-check` parses TOML and validates:
-   - `pretrained_model_name_or_path`
-   - `vae`
-   - Missing local files can be mapped to `models.manifest` entries for one-click download.
+The launcher stages a copy of the dataset under the training directory selected by the configuration. Use a dedicated staging directory: the staging flow can clear existing child directories before copying the chosen collection. Keep your source dataset and other projects outside that scratch location. Read [dataset preparation](../user-guide/dataset-preparation.md) for the saved collection's layout.
 
-2. **TOML copy + patch**
-   - Source TOML is copied to `/workspace/outputs/<output_name>/<output_name>.toml`.
-   - Profile values patch learning rates, rank/alpha, precision, steps, attention flags.
+## Follow the run and judge its output
 
-3. **Dataset staging**
-   - Dataset is copied into `train_data_dir/<repeats>_<dataset_name>`.
-   - Training uses staged data path from the patched TOML.
+The run writes its training log to `/workspace/outputs/<output_name>/_logs/train.log`. ControlPilot combines launcher messages and training logs in its interface. If a run fails, inspect the first meaningful error and the generated TOML before changing several settings at once.
 
-4. **Training launch**
-   - Runs:
-   - `/opt/venvs/core/bin/python -u sd-scripts/sdxl_train_network.py --config ... --sdpa`
-   - Logs stream to:
-   - `/workspace/outputs/<output_name>/_logs/train.log`
+TrainPilot writes TensorBoard events under `/workspace/logs/TrainPilot`. Use **Open TensorBoard** on the training page to inspect them through the shared TensorBoard service on port `4444`. A fresh run may need time to produce event files before there is anything to display.
 
-## 🖥️ ControlPilot API
+After training, use a compatible SDXL generation workflow to compare the adaptation with the base model. Test more than one prompt relevant to your intended use. You may discover that the subject is recognizable in familiar views but weak in a new setting; that gives you a specific reason to revise the dataset or training setup. [Is my LoRA good?](../getting-started/loRA-training-101/is-my-lora-good.md) develops that evaluation process.
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/trainpilot/start` | `POST` | Start headless TrainPilot run |
-| `/api/trainpilot/stop` | `POST` | Stop running process |
-| `/api/trainpilot/model-check` | `POST` | Validate TOML model paths |
-| `/api/trainpilot/logs` | `GET` | Combined TrainPilot + Kohya logs |
-| `/api/trainpilot/toml` | `GET` | Current base TOML content |
+## Use the terminal when you want a scripted run
 
-## 🧵 Script Modes
+Run `trainpilot` inside the pod or container for the interactive flow. It prepares the environment and may download required tokenizer files before presenting dataset choices. It does not implement a `--help` option. Read the configuration first rather than using that flag as a harmless inspection command.
 
-### A) Interactive mode (whiptail)
+For a headless run, provide a real saved dataset and an existing TOML. The following example launches training; replace the names with your intended experiment and run it only when the GPU and output location are ready.
+
 ```bash
-cd /workspace/apps/TrainPilot
-bash trainpilot.sh
+NO_CONFIRM=1 DATASET_NAME=1_ceramic_teapot OUTPUT_NAME=teapot_test   PROFILE=quick_test TOML=/workspace/config/trainpilot/newlora.toml   /opt/pilot/apps/TrainPilot/trainpilot.sh
 ```
 
-### B) Headless mode (used by ControlPilot)
-```bash
-cd /workspace/apps/TrainPilot
-NO_CONFIRM=1 DATASET_NAME=my_dataset OUTPUT_NAME=my_lora PROFILE=regular TOML=/workspace/apps/TrainPilot/newlora.toml bash trainpilot.sh
-```
+Queue mode accepts `--queue` followed by entries in the form `TOML:DATASET[:OUTPUT[:PROFILE]]`. It runs them in sequence and reports a nonzero result if any queued run fails. Each entry still needs its own valid inputs and an output name that makes the result identifiable.
 
-### C) Queue mode
-```bash
-cd /workspace/apps/TrainPilot
-bash trainpilot.sh --queue \
-  "/workspace/apps/TrainPilot/newlora.toml:my_dataset:run_a:quick_test" \
-  "/workspace/apps/TrainPilot/newlora.toml:my_dataset:run_b:regular"
-```
-
-Queue item format:
-- `TOML:DATASET[:OUTPUT[:PROFILE]]`
-
-## 📌 Required Inputs
-
-Minimum requirements:
-- A dataset directory under `/workspace/datasets/1_*`
-- Valid TOML file with local paths for:
-  - `pretrained_model_name_or_path`
-  - `vae`
-
-If those model files are missing, ControlPilot can offer manifest-based download before start.
-
-##  Troubleshooting
-
-### TrainPilot fails immediately
-- Check executable/script presence:
-```bash
-ls -l /workspace/apps/TrainPilot/trainpilot.sh
-```
-- Validate TOML exists:
-```bash
-ls -l /workspace/apps/TrainPilot/newlora.toml
-```
-
-### No datasets listed
-- Ensure dataset folders follow `1_*` convention in `/workspace/datasets`.
-- Check datasets API:
-```bash
-curl -s http://localhost:7878/api/datasets
-```
-
-### Logs are empty or confusing
-- Read raw training log directly:
-```bash
-tail -n 200 /workspace/outputs/<output_name>/_logs/train.log
-```
-
-### TensorBoard
-
-TrainPilot writes TensorBoard event files to `/workspace/logs/TrainPilot` and ControlPilot exposes them through:
-
-- `TrainPilot` page: **Open TensorBoard** button
-- Shared status endpoint: `GET /api/tensorboard/status` (source `trainpilot`)
-- Shared TensorBoard UI (port `4444`) used by Diffusion Pipe service
-
-### Process hangs or OOM
-- Start with `quick_test`.
-- Lower batch and/or rank in TOML.
-- Verify CUDA/GPU availability in container.
-
-## Related
-
-- [Kohya SS](kohya-ss.md)
-- [Training Workflows](../user-guide/training-workflows.md)
-- [LoRA Training 101](../getting-started/loRA-training-101/README.md)
-- [Section Index](README.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+For API integration, `POST /api/trainpilot/start` and `/stop` control a run, `/model-check` checks paths, and `GET /api/trainpilot/logs` returns combined logs. The `/api/trainpilot/toml` endpoint supports reading and saving the base configuration. Consult the [API reference](../development/api-reference.md) for request details and [debugging](../development/debugging.md) for runtime failures.

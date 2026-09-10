@@ -1,135 +1,55 @@
 # Copilot Sidecar
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-Copilot Sidecar is an optional FastAPI service that lets ControlPilot call the `copilot` CLI through HTTP.
-It is designed for workspace-local execution and persists Copilot config/auth under `/workspace`.
+You can ask about a training configuration while keeping the project files in the same environment. LoRA Pilot's optional Copilot integration connects the ControlPilot drawer to the installed GitHub Copilot CLI. It lets you work with an assistant in the context of the workspace rather than moving each file into a separate conversation by hand.
 
-## What It Does
+The sidecar is the local service between the browser and the CLI. A chat request can invoke tools and change files, depending on the permissions passed to the CLI. Treat it as an execution interface and give it a task with a clear scope.
 
-- Exposes a small API on localhost (`127.0.0.1`, default port `7879`).
-- Runs `copilot -p <prompt>` for each chat request.
-- Bridges ControlPilot UI requests (`/api/copilot/*`) to sidecar endpoints.
-- Stores Copilot config in workspace-backed paths so auth survives restarts.
+## Open the assistant when you need it
 
-![ControlPilot Copilot Page](../assets/images/controlpilot/controlpilot-copilot.png)
+The Supervisor service is named `copilot` and has autostart disabled in the bundled configuration. Start it through **Services** when you want to use the assistant. ControlPilot enables the chat prompt and Run control after it can reach the sidecar and confirm that the CLI is installed. The drawer refreshes status when opened and during background checks.
 
-## Runtime Wiring
+CLI availability and account access are separate checks. A token-presence indicator shows that a credential may be available; it does not prove that the credential is valid or that a request will succeed. Complete the GitHub Copilot authentication required by your installed CLI before relying on the integration.
 
-- Supervisor program: `copilot` (`autostart=false`) in `supervisor/supervisord.conf`.
-- Startup script: `scripts/copilot-sidecar.sh`.
-- Script sets:
-  - `HOME=${COPILOT_HOME:-/workspace/home/root}`
-  - `XDG_CONFIG_HOME=${COPILOT_XDG_CONFIG_HOME:-/workspace/home/root/.config}`
-- Uvicorn bind:
-  - `127.0.0.1:${COPILOT_SIDECAR_PORT:-7879}`
+![The Copilot interface within ControlPilot.](../assets/images/controlpilot/controlpilot-copilot.png)
 
-ControlPilot backend target:
-- `COPILOT_SIDECAR_URL` (default `http://127.0.0.1:7879`)
+A useful initial task is to explain a particular configuration file and identify the settings relevant to a planned run. Name the file and describe the question. Review the response against that file before asking for an edit, then inspect any changes before starting training. The drawer is hidden while you use MediaPilot.
 
-## Sidecar API
+## Understand the execution boundary
 
-- `GET /health`
-- `GET /status`
-- `POST /chat`
+The sidecar accepts a working directory that resolves under `/workspace`. Its default is `/workspace`, controlled by `COPILOT_CWD`. It starts the CLI in that directory and sends the prompt through standard input. The working-directory check determines where the process starts; it is not a filesystem sandbox for the tools the CLI can execute.
 
-`POST /chat` request fields:
+The request defaults `allow_all_tools` and `allow_all_paths` to `true`, while `allow_all_urls` defaults to `false`. These map to the corresponding CLI permission flags. With the broad defaults, a request can use powerful tools and access paths beyond its starting folder according to the CLI's behavior and the container's permissions. Use the integration within a workspace and access arrangement you trust.
 
-- `prompt` (required)
-- `cwd` (optional; must resolve under `/workspace`)
-- `allow_all_tools` (default `true`)
-- `allow_all_paths` (default `true`)
-- `allow_all_urls` (default `false`)
-- `timeout_seconds` (optional; default from `COPILOT_TIMEOUT_SECONDS`)
+The launcher binds the sidecar to `127.0.0.1` on port `7879` by default. ControlPilot connects through `COPILOT_SIDECAR_URL`, whose default is `http://127.0.0.1:7879`. Keep that service internal and use the ControlPilot bridge for browser access. The sidecar does not provide a separate public login layer.
 
-## ControlPilot API Bridge
+## Keep authentication with the workspace
 
-In `apps/Portal/app.py`, ControlPilot exposes:
+The launcher sets `HOME` from `COPILOT_HOME`, defaulting to `/workspace/home/root`. It sets `XDG_CONFIG_HOME` from `COPILOT_XDG_CONFIG_HOME`, defaulting to `/workspace/home/root/.config`. These workspace-backed locations let the CLI retain configuration across sessions when the workspace persists.
 
-- `GET /api/copilot/status`
-- `POST /api/copilot/chat`
-- `GET /api/copilot/token`
-- `POST /api/copilot/token`
+The integration recognizes token availability through variables including `COPILOT_GITHUB_TOKEN`, and ControlPilot provides token configuration through its settings flow. Keep credentials private and ensure that an interactive CLI session uses the same home and configuration locations as the sidecar. Authenticating under a different home directory may leave the service unable to find that configuration.
 
-Notes:
-- If the sidecar is unreachable, status returns a graceful payload with `sidecar_reachable=false`.
-- Chat calls are pass-through to sidecar `/chat`.
+The sidecar records the selected working directory in the CLI's trusted-folder configuration. Existing configuration and authentication files therefore form part of the state you should understand before sharing or backing up the workspace.
 
-## Environment Variables
+## Check availability without executing a task
 
-| Variable | Default |
-|---|---|
-| `COPILOT_SIDECAR_PORT` | `7879` |
-| `COPILOT_SIDECAR_URL` | `http://127.0.0.1:7879` |
-| `COPILOT_TIMEOUT_SECONDS` | `1800` |
-| `COPILOT_HOME` | `/workspace/home/root` |
-| `COPILOT_XDG_CONFIG_HOME` | `/workspace/home/root/.config` |
-| `COPILOT_CWD` | `/workspace` |
-| `COPILOT_GITHUB_TOKEN` | empty |
-
-## Quick Checks
+Run the following inside the pod or container to inspect the service and its status. On a Docker Compose host, enter the container with `docker compose exec lora-pilot bash` first.
 
 ```bash
-# Sidecar process
 supervisorctl status copilot
-
-# Sidecar status endpoint
-curl -s http://127.0.0.1:7879/status
-
-# Sidecar health check
 curl -s http://127.0.0.1:7879/health
-
-# Send a quick chat probe
-curl -s -X POST http://127.0.0.1:7879/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"prompt":"What tools are available?","allow_all_urls":false,"timeout_seconds":30}'
-
-# ControlPilot bridge status
-curl -s http://127.0.0.1:7878/api/copilot/status
+curl -s http://127.0.0.1:7879/status
 ```
 
-## API Surface Details
+The health endpoint reports whether the service answers. The status endpoint reports CLI availability, version information when available, and configuration indicators without returning the token values. Through ControlPilot, `GET /api/copilot/status` adds information about whether the sidecar is reachable.
 
-`POST /chat` accepts this payload:
+Use these read-only checks before submitting a chat as a diagnostic probe. A prompt such as “what tools are available?” still invokes the CLI and can perform work; it is not equivalent to a health request.
 
-```json
-{
-  "prompt": "string",
-  "cwd": "/workspace/path/for/file-access",
-  "allow_all_tools": true,
-  "allow_all_paths": true,
-  "allow_all_urls": false,
-  "timeout_seconds": 1800
-}
-```
+## Read a completed or failed request
 
-Behavior notes:
+The internal `POST /chat` endpoint requires `prompt` and accepts `cwd`, the permission fields, and an optional positive `timeout_seconds`. ControlPilot forwards chat requests through `POST /api/copilot/chat`. The default timeout comes from `COPILOT_TIMEOUT_SECONDS`, with a bundled default of `1800` seconds.
 
-- `cwd` is validated to stay under `/workspace` before command execution.
-- If `copilot` is missing, requests return HTTP `503`.
-- If a command exceeds `timeout_seconds`, the sidecar returns timeout response with `returncode: 124`.
-- `GET /status` includes auth-availability indicators:
-  - `env_has_token`
-  - `config_has_token_like_field`
-- `GET /health` is a simple availability probe.
+A response includes `ok`, `returncode`, elapsed duration, and captured output. If the CLI is missing, the sidecar returns HTTP `503`. A timeout returns `ok: false` and `returncode: 124`, with available output and a timeout message. Read those fields before treating a response as completed work.
 
-## Related
-
-- [ControlPilot](../user-guide/control-pilot.md)
-- [API Reference](../development/api-reference.md)
-- [Supervisor](../configuration/supervisor.md)
-- [Section Index](README.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
-### Chat availability
-
-ControlPilot disables the chat prompt, Run button, and URL permission checkbox until the Copilot sidecar is reachable and the CLI is installed. Start and Settings remain available. Service actions update chat availability immediately; background checks run approximately every 15 seconds and opening the drawer refreshes status. MediaPilot continues to hide the drawer.
+For a service error, inspect `/workspace/logs/copilot.err.log` and the ControlPilot log. Use the [debugging guide](../development/debugging.md) to trace connection failures, or the [Supervisor guide](../configuration/supervisor.md) to understand service startup. Return to the [component overview](README.md) for the training and generation tools around the assistant.

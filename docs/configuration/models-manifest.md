@@ -1,154 +1,67 @@
 # Models Manifest
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-10_
 
-LoRA Pilot model downloads are driven by a pipe-delimited manifest file.
+A model catalog is useful when a name leads to the right files in the right place. LoRA Pilot's manifest records that connection in a text file you can inspect and edit. The downloader and ControlPilot use those entries to locate sources, choose destinations, and report what is installed.
 
-## Locations
+A custom entry lets you keep a project's model choice in the same catalog as the bundled models. Add it with a stable name and a precise source, then test that entry before relying on it in a larger workflow.
 
-Runtime paths used by scripts and ControlPilot:
+## Identify the active file before editing
 
-- Active manifest: `/workspace/config/models.manifest`
-- Default fallback: `/opt/pilot/config/models.manifest.default`
+The default runtime manifest is `/workspace/config/models.manifest`. The image carries its bundled default at `/opt/pilot/config/models.manifest.default`. Run `models where` inside the pod or container to see the configured paths. On a Docker Compose host, enter the container with `docker compose exec lora-pilot bash` first.
 
-Repository sources:
+In the repository, `config/models.manifest` provides the file copied into the image, while `config/models.manifest.default` is the matching reference copy. Keep the two identical when contributing a catalog change. For a workspace-only customization, edit the active runtime file and preserve your own backup.
 
-- `config/models.manifest` (copied into the image as `/opt/pilot/config/models.manifest.default`)
-- `config/models.manifest.default` (kept aligned as the repo reference list)
+The downloader supports `WORKSPACE_ROOT`, `MODELS_DIR`, `MODELS_MANIFEST`, and `DEFAULT_MODELS_MANIFEST` overrides. Keep the launch environment consistent between a terminal command and ControlPilot so you do not inspect one catalog while the browser uses another.
 
-## Bootstrap Refresh Behavior
+## Read one entry from left to right
 
-At container bootstrap, the bundled manifest is checked against the persistent runtime manifest:
-
-- A missing runtime manifest is created from `/opt/pilot/config/models.manifest.default`.
-- When a new image contains a different bundled manifest, the managed runtime manifest is refreshed.
-- The first migration backs up the previous file as `/workspace/config/models.manifest.pre-refresh.<timestamp>`.
-- If the runtime manifest was edited, bootstrap preserves it and logs that it is customized.
-
-The bundle hash is stored at `/workspace/config/.models.manifest.bundle.sha256`. This lets persistent RunPod volumes receive catalogue updates without requiring Docker access inside the Pod.
-
-## Line Format
-
-One model per line:
+Each non-comment line describes one named download using six pipe-separated fields.
 
 ```text
 name|kind|source|subdir|include|size
 ```
 
-Fields:
+The `name` is the identifier used by `models pull` and the model API. The `kind` selects `hf_file` for one Hugging Face file, `hf_repo` for a repository download, or `url` for a direct download address. The `source` then identifies the corresponding file, repository, or URL.
 
-- `name`: stable ID used by CLI/API (`models pull <name>`, `/api/models/{name}/pull/start`)
-- `kind`: `hf_file`, `hf_repo`, or `url`
-- `source`:
-  - `hf_file`: `<repo_id>:<path_in_repo>`
-  - `hf_repo`: `<repo_id>`
-  - `url`: direct URL
-- `subdir`: destination under `/workspace/models`
-- `include`: optional, only relevant for `hf_repo` (comma-separated glob patterns)
-- `size`: optional expected size (`TB`, `GB`, `MB`, `KB`, or bytes). Bundled entries use exact bytes from upstream metadata; repository sizes sum the selected files.
+The `subdir` sets a destination relative to the model root. For repository entries, `include` can restrict the download with comma-separated glob patterns. Leave an empty field between pipes when no include filter is needed. The final `size` field is optional and can contain integer bytes or a supported unit such as `GB` or `MB`. Comments beginning with `#` and empty lines are ignored.
 
-Comments (`# ...`) and empty lines are ignored.
-
-## Current Kind Usage (Repo Manifests)
-
-- `hf_file`: primary mechanism
-- `hf_repo`: used for selected repos
-- `url`: direct download URLs for non-Hugging Face assets, including the current Real-ESRGAN and GFPGAN entries
-
-## Real Examples
+The bundled SDXL base entry provides a concrete example.
 
 ```text
 sdxl-base|hf_file|stabilityai/stable-diffusion-xl-base-1.0:sd_xl_base_1.0.safetensors|checkpoints||6938078334
-juggernaut-xl|hf_repo|RunDiffusion/Juggernaut-XL|checkpoints|*.safetensors|6938040706
-wan2.2-animate-14b|hf_repo|Wan-AI/Wan2.2-Animate-14B|wan/wan2.2-animate-14b|*.json,*.safetensors,*.pth,google/umt5-xxl/*,README.md|56357501157
-minimax-h3-fl2va-int8|hf_file|Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors|diffusion_models||20970379616
-ltx-2.5-distilled-int8|hf_file|Lightricks/LTX-2.5:diffusion_models/ltx-2.5-22b-distilled-transformer-comfy-int8-convrot.safetensors|diffusion_models||21504034224
 ```
 
-The bundled manifests include Comfy-ready quantized Ideogram 4, Lens, and PixelDiT entries. They reuse the existing `flux2-vae` entry when a Flux 2 VAE is needed instead of duplicating that model under each pack.
+Here, the source combines a Hugging Face repository ID with a path after the colon. The downloader places the file's basename under `checkpoints`. With the default root, that produces `/workspace/models/checkpoints/sd_xl_base_1.0.safetensors`. The empty include field is appropriate for a single file, and the final integer records the expected byte size in this catalog entry.
 
-## CLI + API That Use This Manifest
+## Keep repository filters complete
 
-### CLI (`/opt/pilot/get-models.sh`, symlinked as `models` and `pilot-models`)
+An `hf_repo` entry uses a repository ID without a colon-separated file path. Its include filters determine which files the downloader requests. A filter that keeps weights but omits the configuration or indexed shards required by a model can leave the consuming tool unable to load it.
 
-- `models list`
-- `models pull <name>`
-- `models pull-all`
-- `models where`
+For example, the bundled `wan2.2-animate-14b` entry includes configuration and weight patterns together with `google/umt5-xxl/*`. Inspect the full entry in the active manifest before changing its filters. The source layout, the consuming tool, and the completion checks all matter; reducing a download to the most recognizable filename is not a reliable way to make it smaller.
 
-Environment overrides:
+A direct `url` entry uses the URL's filename at the specified destination. Give different assets distinct destinations when upstream names collide. The [migration guidance](../user-guide/model-management.md#existing-downloads-and-corrected-names) explains corrections for older ambiguous filenames and catalog names.
 
-- `WORKSPACE_ROOT` (default `/workspace`)
-- `MODELS_DIR` (default `${WORKSPACE_ROOT}/models`)
-- `MODELS_MANIFEST` (default `${WORKSPACE_ROOT}/config/models.manifest`)
-- `DEFAULT_MODELS_MANIFEST` (default `/opt/pilot/config/models.manifest.default`)
+## Understand refresh behavior across image upgrades
 
-### ControlPilot API
+Bootstrap records the bundled manifest hash at `/workspace/config/.models.manifest.bundle.sha256`. If the runtime catalog is missing, it seeds it from the image. If the runtime copy still matches the recorded bundle hash, bootstrap can refresh it from the new image. If it differs, bootstrap preserves the customized copy.
 
-- `GET /api/models`
-- `POST /api/models/{name}/pull`
-- `POST /api/models/{name}/pull/start`
-- `GET /api/models/{name}/pull/status`
-- `GET /api/models/pulls`
-- `POST /api/models/{name}/delete`
-- `GET /api/models/workflows`
-- `POST /api/models/workflows/{workflow_id}/plan`
-- `POST /api/models/workflows/{workflow_id}/install`
+The first migration into this tracking scheme is a separate case. A workspace without the hash record receives a one-time refresh, with the prior file backed up as `models.manifest.pre-refresh.<timestamp>`. Keep a separate copy of a customized older catalog before upgrading, then compare the resulting entries with your intended configuration.
 
-Workflow plans derive their dependencies from `config/comfy-workflows/*.json`.
-The plan request accepts `optional` filenames; installation accepts the same
-selection plus the returned `plan_id` and repeats access/storage checks.
+This mechanism updates catalog text. It does not prove that every referenced source is reachable at the time of a later download. Read source errors and correct a stale entry without replacing unrelated customizations.
 
-## Install Detection Rules (ControlPilot)
+## Interpret installed state and removal
 
-For each entry, `apps/Portal/services/models.py` computes `installed`, `size_bytes`, and links:
+For `hf_file` and `url` entries, ControlPilot checks the canonical destination for a nonempty file. If the size is specified as integer bytes, the file must match that exact size. Rounded unit values remain estimates and use the nonempty-file check. Legacy nested files are reported separately and do not count as the canonical installation.
 
-- `hf_file` and `url`: require a nonempty file at `<subdir>/<basename>` with the
-  manifest's exact byte size, when specified as integer bytes. Rounded unit
-  values in custom manifests remain estimates and use the legacy nonempty-file
-  check. Legacy nested locations are
-  reported separately and do not count as installed.
-- `hf_repo`: requires a completion receipt matching the source/include filter,
-  recorded file sizes and valid weights/shards. A pull creates or repairs it.
+Repository entries require a completion record that matches the source, include filter, recorded file sizes, and valid weights or shards. A pull creates or repairs that record. These are download-completion checks; the consuming engine still needs a compatible model setup and a successful test run.
 
-The single-file downloader uses an isolated staging directory, an atomic final
-move, and a destination lock. Legacy HF files are reused only after hash
-verification. See [migration details](../user-guide/model-management.md#existing-downloads-and-corrected-names).
+The Hugging Face single-file downloader stages the replacement and uses a destination lock before the final move. Legacy Hugging Face files are reused only after source-hash verification. ControlPilot removal uses the entry metadata: it targets expected files for single-file entries and selected files for repository entries, with additional guards for shared top-level folders. Inspect the installed paths before removing an entry you have customized.
 
-## Deletion Behavior
+## Test a change at the scale of one entry
 
-Deletion uses manifest metadata to avoid broad accidental removal:
+Save the manifest, run `models list`, and confirm that the expected name appears. That checks local catalog reading; it does not contact the source or validate an entire repository's contents. Run `models pull` for the specific entry when you are ready to download and verify it, then refresh **Models** in ControlPilot.
 
-- `hf_file` and `url`: delete expected concrete files
-- `hf_repo`: delete matched files only
+The browser's workflow plans use the bundled ComfyUI graphs to derive requirements. `GET /api/models/workflows` returns their catalog, while the workflow-specific `/plan` and `/install` routes review and submit an installation. A plan accepts optional filenames; installation needs the same selection and the returned `plan_id`, then repeats the access and storage checks.
 
-For shared top-level model folders, repo-file selection has an extra guard to avoid deleting unrelated files when name matching fails.
-
-## Editing Workflow
-
-1. Ensure manifest exists:
-   - run `models where` or open Models tab in ControlPilot.
-2. Edit `/workspace/config/models.manifest`.
-3. Validate quickly:
-   - `models list`
-4. Pull one entry:
-   - `models pull <name>`
-5. Refresh ControlPilot Models tab.
-
-On RunPod, run the commands directly in the pod terminal. Do not use
-`docker exec lora-pilot`; that prefix is only for a Docker Compose host.
-
-## Related
-
-- [Environment Variables](environment-variables.md)
-- [Docker Compose](docker-compose.md)
-- [Section Index](README.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+Use [model management](../user-guide/model-management.md) for the complete browser flow and [CLI commands](../reference/cli-commands.md) for terminal operations. Keep the catalog entry, installed files, and workflow selection aligned so the next run uses the model you intended.

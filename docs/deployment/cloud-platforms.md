@@ -1,114 +1,45 @@
 # Cloud Platforms
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-10_
 
-This page documents cloud deployment paths that are explicitly supported by repository code and configuration.
+You can work on a laptop while a remote GPU handles the training or generation. LoRA Pilot packages the creative tools into the container you deploy there, and you reach their interfaces through the browser. The practical task is to keep the compute session connected to storage you can return to.
 
-## Supported By Repo Evidence
+The repository provides a RunPod template link and Docker Compose configurations for a prepared host. For another cloud provider, the Compose path gives you the application deployment; you still configure that provider's machine, storage, and network access.
 
-| Platform path | Status | Evidence |
-|---|---|---|
-| RunPod | Supported | One-click template URL in `README.md`; RunPod-aware runtime behavior in scripts/services |
-| Generic Docker host (cloud VM) | Supported | `docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.cpu.yml` |
-| Kubernetes/Helm/Terraform modules | Not found in repo | No deployable manifests/modules wired to this app runtime |
+## Start with the deployment you intend to keep
 
-## RunPod (Primary Cloud Path)
+The project links to a [RunPod template](https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n) as its primary cloud starting point. Review the selected image and storage in the provider console before deploying. A template is a starting configuration, and a tag name alone does not confirm which source changes an image contains.
 
-### 1. Deploy
+The image starts through `/opt/pilot/start.sh`, loads persisted settings during bootstrap, and launches Supervisor. Open the pod's ControlPilot connection on port `7878` by default, then use **Services** to reach individual applications. You may see the dashboard while another service is still initializing.
 
-- Use template: [RunPod template](https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n)
-- App entrypoint runs bootstrap then supervisor:
-  - `/opt/pilot/start.sh` (loads persisted settings through bootstrap and starts Supervisor with the selected config)
+Inside the pod's Jupyter or SSH terminal, run `supervisorctl status` to inspect the managed services. That terminal is already inside LoRA Pilot. Docker Compose commands belong on a separate Docker host, rather than inside the pod.
 
-### 2. Persist the right storage
+## Make storage an explicit part of the project
 
-Repository behavior assumes durable state under `/workspace`.
+LoRA Pilot writes project data and settings under `/workspace`. Confirm which provider storage backs that mount. On RunPod, container disk is temporary, volume disk remains with the pod until deletion, and network volumes have a lifecycle independent of a particular pod. Read the current [RunPod storage documentation](https://docs.runpod.io/pods/storage/types) before choosing a stop or termination action.
 
-Critical persisted paths:
+Keep models, datasets, and outputs together with the application state you need for the next session. The [file-structure guide](../reference/file-structure.md) identifies those paths. An attached persistent volume does not replace a backup of work you cannot recreate.
 
-- `/workspace/models`
-- `/workspace/datasets`
-- `/workspace/outputs`
-- `/workspace/config`
-- `/workspace/cache`
-- `/workspace/logs`
+For a test of your setup, save a small project file under `/workspace`, confirm its location on the intended mount, and inspect the provider's retention rules. Do this before accumulating a large dataset or a long training run. You need evidence about the actual mount, not merely a directory called `workspace`.
 
-### 3. Optional RunPod-related env
+## Understand the scheduled shutdown action
 
-- `HF_TOKEN`
-- `SUPERVISOR_ADMIN_PASSWORD`
-- `RUNPOD_POD_SHUTDOWN`
-- `RUNPOD_VOLUME_TYPE`
-- `RUNPOD_NETWORK_VOLUME_ID`
+ControlPilot can schedule a shutdown, but the action depends on configuration. On RunPod, the runtime first reads the saved `shutdown_mode` from ControlPilot settings. If none is set, it uses `RUNPOD_POD_SHUTDOWN`. Values such as `remove`, `terminate`, or `delete` select removal; `stop` or `halt` select stopping the pod.
 
-### 4. Access
+Without an explicit mode, the runtime uses `RUNPOD_VOLUME_TYPE` and `RUNPOD_NETWORK_VOLUME_ID` to select the action. A network-volume indicator selects removal, a local-storage indicator selects stop, and the remaining default is stop. Confirm those inputs against the actual deployment before scheduling the action.
 
-- ControlPilot on `PORTAL_PORT` (default `7878`)
-- Jupyter origin policy already includes RunPod proxy domains by default (`start-jupyter.sh`)
+If the RunPod command is missing or fails, ControlPilot reports failure. It does not fall back to a host shutdown after a failed RunPod command. The local `shutdown -h now` path applies when the runtime has no RunPod pod ID. A status of `requested` means the command returned successfully; verify the final pod state in the provider console before treating the session as stopped.
 
-## RunPod-Aware Runtime Behavior
+## Use a Docker host on another provider
 
-### Shutdown API behavior
+On a cloud VM with Docker and the NVIDIA runtime configured, clone the repository and use the [Docker Compose guide](../configuration/docker-compose.md). Set the image and environment for that deployment, and mount durable storage at the host path used for `./workspace` before starting the stack.
 
-`/api/shutdown/schedule` ultimately uses `apps/Portal/services/shutdown.py` logic:
+The repository does not supply a ready-to-deploy Helm chart or Terraform module. If your platform requires those tools, build the deployment around the runtime's existing persistence and service requirements, then validate it as a separate integration. Avoid assuming that a generic architecture example establishes a tested provider deployment.
 
-- If `RUNPOD_POD_ID` is set:
-  - `RUNPOD_POD_SHUTDOWN=remove|terminate|delete` -> `runpodctl remove pod <id>`
-  - `RUNPOD_POD_SHUTDOWN=stop|halt` -> `runpodctl stop pod <id>`
-  - Otherwise it derives action from `RUNPOD_VOLUME_TYPE`/`RUNPOD_NETWORK_VOLUME_ID`
-- If RunPod command path is unavailable, it falls back to `shutdown -h now`
+Use the configured service links or a protected connection to reach the interfaces. Set the access policy for each exposed application; a ControlPilot password alone does not secure an independent service port. The [ComfyUI access guide](../configuration/comfy-access.md) explains its optional gateway protection.
 
-### Secret compatibility
+## Verify a small session before a long job
 
-Bootstrap maps legacy RunPod-style `hf_token` to `HF_TOKEN` when `HF_TOKEN` is not already set.
+Open ControlPilot and inspect the services, then confirm GPU visibility inside the runtime with `nvidia-smi`. Download the files for a small supported workflow, complete a generation, and locate its output under `/workspace/outputs`. The [first-run guide](../getting-started/first-run.md) walks through this session.
 
-## Generic Cloud VM Deployment (AWS/GCP/Azure/OCI/etc)
-
-This repo ships a Docker Compose deployment path, not provider-specific orchestration.
-
-Minimal flow:
-
-1. Provision a GPU-capable VM with Docker and NVIDIA runtime.
-2. Clone repo and create env file:
-   - `cp .env.example .env`
-3. Start:
-   - `docker compose -f docker-compose.yml up -d`
-4. Persist `./workspace` on a durable cloud volume.
-
-## Post-Deploy Verification
-
-```bash
-docker compose ps
-docker compose logs -f lora-pilot
-curl -s http://localhost:7878/api/services
-curl -s http://localhost:7878/api/telemetry
-```
-
-Expected:
-
-- `api/services` returns service states for supervisor-managed programs.
-- `api/telemetry` returns host/memory/disk/GPU payload.
-
-## Not Found In Repo
-
-- First-party Terraform modules for cloud deployment
-- Helm chart / Kubernetes manifests integrated with this runtime
-- Cloud-specific load balancer / ingress templates tied to LoRA Pilot internals
-
-## Related
-
-- [Configuration](../configuration/README.md)
-- [Environment Variables](../configuration/environment-variables.md)
-- [Supervisor](../configuration/supervisor.md)
-- [Production](production.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
-
-
+Keep the image reference and the successful workflow settings with your project notes. After an image replacement, repeat that familiar task before launching a long training run. Use [performance tuning](performance-tuning.md) for a slow workflow and [debugging](../development/debugging.md) for one that fails.
