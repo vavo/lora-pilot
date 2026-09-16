@@ -15,7 +15,7 @@ const viewMap = {
   trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
   dpipe: { view: "/views/dpipe.html", init: () => window.initDpipe && window.initDpipe() },
   docs: { view: "/views/docs.html", init: () => window.initDocs && window.initDocs() },
-  settings: { view: "/views/settings.html", init: () => window.initSettings && window.initSettings() },
+  settings: { view: "/views/settings.html?v=20260916a", init: () => window.initSettings && window.initSettings() },
   support: { view: "/views/support.html", init: () => window.initSupport && window.initSupport() },
 };
 
@@ -45,6 +45,9 @@ function closeSidebar() {
 function setTheme(mode) {
   const root = document.documentElement;
   root.setAttribute("data-theme", mode);
+  document.querySelectorAll('input[name="settings-theme"]').forEach(input => {
+    input.checked = input.value === mode;
+  });
   const dark = mode === "dark";
   if (logoImg) logoImg.src = "/logo.svg";
   if (topLogo) topLogo.src = "/logo.svg";
@@ -82,6 +85,8 @@ function updateSidebarNavTooltips() {
 function setSidebarCompact(compact) {
   if (!sidebar || !isDesktopLayout()) return;
   sidebar.classList.toggle("compact", compact);
+  const compactSetting = document.getElementById("settings-sidebar-compact");
+  if (compactSetting) compactSetting.checked = compact;
   // Refresh theme toggle label text for compact vs full.
   const mode = document.documentElement.getAttribute("data-theme") || "light";
   setTheme(mode);

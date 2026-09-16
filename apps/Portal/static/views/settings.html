@@ -1,15 +1,109 @@
 <style>
-  .settings-grid { display:grid; gap:16px; }
-  .settings-card { display:flex; flex-direction:column; gap:12px; }
-  .settings-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-  .settings-note { font-size:13px; color:var(--muted); }
-  .settings-status { min-height:20px; }
+  .settings-page { --settings-accent:#dc4215; --settings-selected:#fff3ee; max-width:1440px; margin:0 auto; padding:16px 32px 32px; }
+  :root[data-theme="dark"] .settings-page { --settings-accent:#ff926f; --settings-selected:#2b1c19; }
+  .nav a[data-section="settings"].active .nav-icon { color:inherit; }
+  .nav a[data-section="settings"].active { background:#fff2ec; color:#dc4215; }
+  :root[data-theme="dark"] .nav a[data-section="settings"].active { background:#2b1c19; color:#ff926f; }
+  .settings-heading { margin:0 0 36px; }
+  .settings-heading h2 { margin:0 0 6px; font-size:44px; letter-spacing:-1px; line-height:1.2; }
+  .settings-heading p { margin:0; color:var(--muted); font-size:18px; }
+  .settings-tabs { display:flex; gap:36px; border-bottom:1px solid var(--border); margin-bottom:30px; }
+  .settings-tabs button { padding:16px 8px; border:0; border-bottom:2px solid transparent; border-radius:0; background:none; color:var(--muted); font:inherit; font-size:16px; cursor:pointer; white-space:nowrap; }
+  .settings-tabs button[aria-selected="true"] { color:var(--settings-accent); border-bottom-color:var(--settings-accent); font-weight:650; }
+  .settings-page :focus-visible { outline:2px solid var(--settings-accent); outline-offset:4px; }
+  .settings-panel[hidden] { display:none; }
+  .settings-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:40px; align-items:start; }
+  .settings-main { min-width:0; }
+  .settings-section { padding:18px 0 30px; border-bottom:1px solid var(--border); }
+  .settings-section + .settings-section { padding-top:30px; }
+  .settings-section h3 { margin:0 0 6px; font-size:26px; letter-spacing:-.4px; }
+  .settings-section p { margin:0 0 24px; color:var(--muted); line-height:1.6; font-size:16px; }
   .settings-section-title { margin:0; }
+  .settings-note, .settings-page .tip { font-size:13px; color:var(--muted); line-height:1.6; }
+  .settings-note { margin:0; }
+  .settings-card { display:flex; flex-direction:column; gap:16px; }
+  .settings-card p { margin:0; }
+  .settings-page .field { gap:10px; }
+  .settings-page .field > label, .settings-label { font-size:14px; font-weight:550; color:var(--text); }
+  .settings-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .settings-page .input { max-width:100%; font:inherit; font-size:14px; border-radius:8px; padding:12px; }
+  .settings-page .w-320 { width:360px; }
+  .settings-page .settings-row > .input { flex:1 1 240px; min-width:0; }
+  .settings-page .btn { font-size:14px; font-weight:600; border-radius:8px; padding:12px 16px; box-shadow:none; }
+  .settings-page .btn.primary { background:#ef542e; color:#fff; }
+  .settings-page .btn.secondary { background:var(--card); }
+  .settings-status { display:block; min-height:20px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; color:var(--muted); }
+  .settings-aside { align-self:stretch; border-left:1px solid var(--border); padding:18px 0 12px 30px; }
+  .settings-aside h3 { margin:0 0 14px; font-size:18px; }
+  .settings-aside p { margin:0; color:var(--muted); font-size:16px; line-height:1.7; }
+  .settings-aside section + section { border-top:1px solid var(--border); padding-top:28px; margin-top:28px; }
+  .settings-themes { border:0; padding:0; margin:26px 0 0; }
+  .settings-themes legend { margin-bottom:14px; font-size:14px; font-weight:550; }
+  .settings-theme-options { display:flex; gap:20px; max-width:480px; }
+  .settings-theme-choice { display:flex; align-items:center; gap:12px; flex:1; padding:16px 20px; border:1px solid var(--border); border-radius:7px; cursor:pointer; font-weight:550; }
+  .settings-theme-choice:has(input:checked) { background:var(--settings-selected); border-color:var(--settings-accent); }
+  .settings-theme-choice input { width:20px; height:20px; margin:0; accent-color:var(--settings-accent); }
+  .settings-toggle-row { display:flex; align-items:start; justify-content:space-between; gap:24px; padding-top:26px; }
+  .settings-toggle-copy { flex:1; }
+  .settings-toggle-copy label { font-size:15px; font-weight:550; cursor:pointer; }
+  .settings-toggle-copy p { margin:12px 0 0; }
+  .settings-page .svc-switch { flex-shrink:0; appearance:none; width:42px; height:24px; background:var(--border); border:1px solid var(--input-border); border-radius:20px; cursor:pointer; position:relative; margin:0; }
+  .settings-page .svc-switch::before { content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0002; transition:transform .15s; }
+  .settings-page .svc-switch:checked { background:var(--settings-accent); }
+  .settings-page .svc-switch:checked::before { transform:translateX(18px); }
+  .settings-page .svc-autostart { display:flex; gap:12px; align-items:center; font-size:14px; }
+  .settings-toggle-divider { border-top:1px solid var(--border); margin-top:28px; }
+  .settings-savebar { font-size:14px; display:flex; justify-content:space-between; align-items:center; gap:20px; border-top:1px solid var(--border); margin-top:80px; padding:22px 0; }
+  .settings-savebar .btn { flex-shrink:0; font-size:16px; padding:14px 22px; }
+  .settings-savebar .settings-status { font-size:14px; }
+  .settings-general .settings-section:last-of-type { border-bottom:0; }
+  .settings-details { border-top:1px solid var(--border); padding-top:14px; }
+  .settings-details summary { cursor:pointer; margin-bottom:14px; font-size:14px; }
+  .settings-time-field { display:flex; flex-direction:column; gap:8px; width:90px; font-size:12px; color:var(--muted); }
+  .settings-time-field input { width:100%; }
+  .settings-load-error { color:#b42318; margin-bottom:20px; font-size:14px; }
+  :root[data-theme="dark"] .settings-load-error { color:#fda29b; }
+  @media (max-width:1100px) { .settings-layout { grid-template-columns:minmax(0,1fr) 220px; gap:28px; } .settings-aside { padding-left:22px; } }
+  @media (max-width:900px) { .settings-layout { grid-template-columns:minmax(0,1fr); } .settings-aside { align-self:stretch; border-left:0; border-top:1px solid var(--border); padding:24px 0; } .settings-savebar { margin-top:40px; } }
+  @media (max-width:575px) { .settings-page { padding:4px 0 24px; } .settings-heading h2 { font-size:30px; } .settings-tabs { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-bottom:18px; } .settings-tabs button { padding:13px 8px; font-size:13px; } .settings-page .settings-row > .input { flex-basis:100%; } .settings-theme-options { gap:12px; } .settings-theme-choice { padding:14px; } .settings-section h3 { font-size:21px; } .settings-savebar { flex-wrap:wrap; } .settings-savebar .btn { width:100%; } }
+  @media (prefers-reduced-motion:reduce) { .settings-page .svc-switch::before { transition:none; } }
 </style>
-
-<h2>Settings</h2>
-<div class="settings-grid">
-  <div class="card settings-card">
+<div class="settings-page">
+  <header class="settings-heading"><h2>Settings</h2><p>Your workspace, your defaults.</p></header>
+  <div class="settings-tabs" role="tablist" aria-label="Settings categories">
+    <button id="settings-tab-general" role="tab" aria-controls="settings-panel-general" aria-selected="true" tabindex="0" type="button">General</button>
+    <button id="settings-tab-access" role="tab" aria-controls="settings-panel-access" aria-selected="false" tabindex="-1" type="button">Access & security</button>
+    <button id="settings-tab-connections" role="tab" aria-controls="settings-panel-connections" aria-selected="false" tabindex="-1" type="button">Connections</button>
+    <button id="settings-tab-shutdown" role="tab" aria-controls="settings-panel-shutdown" aria-selected="false" tabindex="-1" type="button">Shutdown</button>
+  </div>
+  <p id="settings-load-error" class="settings-load-error" role="alert" hidden></p>
+  <section id="settings-panel-general" class="settings-panel settings-general" role="tabpanel" aria-labelledby="settings-tab-general">
+    <div class="settings-layout">
+      <div class="settings-main">
+        <section class="settings-section">
+          <h3>Appearance</h3><p>Choose how ControlPilot looks and feels in your browser.</p>
+          <fieldset class="settings-themes"><legend>Theme</legend><div class="settings-theme-options">
+            <label class="settings-theme-choice"><input type="radio" name="settings-theme" value="light" checked />Light</label>
+            <label class="settings-theme-choice"><input type="radio" name="settings-theme" value="dark" />Dark</label>
+          </div></fieldset>
+          <div class="settings-toggle-row settings-toggle-divider">
+            <div class="settings-toggle-copy"><label for="settings-sidebar-compact">Compact sidebar</label><p>Show only icons in the sidebar to save horizontal space.</p></div>
+            <input id="settings-sidebar-compact" class="svc-switch" type="checkbox" role="switch" />
+          </div>
+        </section>
+        <section class="settings-section">
+          <h3>Copilot</h3><p>Control how Copilot handles links and external resources.</p>
+          <div class="settings-toggle-row">
+            <div class="settings-toggle-copy"><label for="settings-copilot-allow-urls">Allow all URLs by default</label><p>Choose whether Copilot can open any URL without asking.</p></div>
+            <input id="settings-copilot-allow-urls" class="svc-switch" type="checkbox" role="switch" />
+          </div>
+        </section>
+        <div class="settings-savebar"><span id="settings-ui-status" class="settings-status" role="status">Changes apply when you save.</span><button id="settings-ui-save" class="btn primary" type="button">Save preferences</button></div>
+      </div>
+      <aside class="settings-aside"><section><h3>Make room for your work</h3><p>Use a compact sidebar to keep the interface focused on what you’re doing. You can switch back anytime.</p></section><section><h3>Saved across restarts</h3><p>Save your preferences here to keep them across ControlPilot restarts. The light/dark switch in the left menu applies immediately.</p></section></aside>
+    </div>
+  </section>
+  <section id="settings-panel-access" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-access" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card">
     <h3 class="settings-section-title">Access Protection</h3>
     <div class="settings-note">Protect ControlPilot with a password. This guards the Portal UI and API with a session login.</div>
     <label class="svc-autostart" title="Require password for ControlPilot">
@@ -17,17 +111,16 @@
       <span>Require password</span>
     </label>
     <div class="field">
-      <label>Password</label>
+      <label for="settings-password">Password</label>
       <input id="settings-password" class="input w-320" type="password" placeholder="Set ControlPilot password" />
     </div>
     <div class="settings-row">
       <button id="settings-password-save" class="btn primary" type="button">Save protection</button>
       <button id="settings-logout" class="btn secondary" type="button">Log out</button>
-      <span id="settings-password-status" class="status settings-status"></span>
+      <span id="settings-password-status" class="status settings-status" role="status"></span>
     </div>
-  </div>
-
-  <div class="card settings-card">
+</section>
+<section class="settings-section settings-card">
     <h3 class="settings-section-title">ComfyUI Access</h3>
     <p class="settings-note">Off by default: existing ComfyUI URLs and API clients keep working without credentials. When enabled, browsers use your ControlPilot login and external API clients need a token.</p>
     <label class="svc-autostart">
@@ -54,89 +147,47 @@
         <button id="settings-comfy-copy" class="btn secondary" type="button">Copy token</button>
       </div>
     </div>
-    <label for="settings-comfy-example">API example (use HTTPS for remote connections)</label>
-    <textarea id="settings-comfy-example" class="input" rows="3" readonly></textarea>
-  </div>
-
-  <div class="card settings-card">
-    <h3 class="settings-section-title">Interface</h3>
-    <div class="field">
-      <label>Theme</label>
+    <details class="settings-details"><summary>API request example</summary><label for="settings-comfy-example">API example (use HTTPS for remote connections)</label>
+    <textarea id="settings-comfy-example" class="input" rows="3" readonly></textarea></details>
+</section>
+<section class="settings-section settings-card"><h3>MediaPilot</h3>    <div class="field">
+      <label for="settings-mediapilot-password">MediaPilot Password</label>
       <div class="settings-row">
-        <select id="settings-theme" class="input w-320">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
-        <button id="settings-ui-save" class="btn primary" type="button">Save UI</button>
+        <input id="settings-mediapilot-password" class="input w-320" type="password" placeholder="Empty = no password" />
+        <button id="settings-mediapilot-save" class="btn primary" type="button">Save</button>
       </div>
+      <div class="tip">Protect the media gallery with its own password. Saving an empty field removes protection.</div>
+      <div id="settings-mediapilot-status" class="status settings-status" role="status"></div>
     </div>
-    <label class="svc-autostart" title="Use compact sidebar by default">
-      <input id="settings-sidebar-compact" class="svc-switch" type="checkbox" />
-      <span>Compact sidebar by default</span>
-    </label>
-    <div id="settings-ui-status" class="status settings-status"></div>
-  </div>
 
-  <div class="card settings-card">
-    <h3 class="settings-section-title">Shutdown Defaults</h3>
-    <div class="field">
-      <label>RunPod shutdown mode</label>
-      <select id="settings-shutdown-mode" class="input w-320">
-        <option value="">Auto</option>
-        <option value="stop">Stop pod</option>
-        <option value="remove">Remove pod</option>
-      </select>
-      <div class="tip">Auto follows the existing storage-aware logic. Use remove only if you mean it.</div>
-    </div>
-    <div class="field">
-      <label>Default countdown</label>
-      <div class="settings-row">
-        <input id="settings-shutdown-hours" class="input" type="number" min="0" max="99" value="0" style="width:90px" />
-        <input id="settings-shutdown-mins" class="input" type="number" min="0" max="59" value="1" style="width:90px" />
-        <input id="settings-shutdown-secs" class="input" type="number" min="0" max="59" value="0" style="width:90px" />
-        <button id="settings-shutdown-save" class="btn primary" type="button">Save defaults</button>
-      </div>
-      <div class="tip">Used to prefill the Dashboard shutdown scheduler.</div>
-    </div>
-    <div id="settings-shutdown-status" class="status settings-status"></div>
-  </div>
-
-  <div class="card settings-card">
-    <h3 class="settings-section-title">Credentials</h3>
-    <div class="field">
-      <label>Hugging Face Token</label>
+</section>
+</div><aside class="settings-aside"><section><h3>Protect your workspace</h3><p>ControlPilot’s password protects the dashboard and its API. ComfyUI and MediaPilot have their own access controls.</p></section><section><h3>Plan for a restart</h3><p>Changing ComfyUI protection restarts ComfyUI and interrupts active generations. Apply changes when your queue is idle.</p></section></aside></div></section>
+  <section id="settings-panel-connections" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-connections" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card"><h3>Hugging Face</h3><p>Access gated models and authenticated downloads.</p>    <div class="field">
+      <label for="settings-hf-token">Hugging Face Token</label>
       <div class="settings-row">
         <input id="settings-hf-token" class="input w-320" type="password" placeholder="HF_TOKEN" />
         <button id="settings-hf-save" class="btn primary" type="button">Save</button>
         <button id="settings-hf-clear" class="btn secondary" type="button">Clear</button>
       </div>
       <div class="tip">Used for gated model downloads. <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">Manage tokens</a>.</div>
-      <div id="settings-hf-status" class="status settings-status"></div>
+      <div id="settings-hf-status" class="status settings-status" role="status"></div>
     </div>
 
-    <div class="field">
-      <label>Copilot GitHub Token</label>
+</section>
+<section class="settings-section settings-card"><h3>GitHub Copilot</h3><p>Connect the assistant to your GitHub account.</p>    <div class="field">
+      <label for="settings-copilot-token">Copilot GitHub Token</label>
       <div class="settings-row">
         <input id="settings-copilot-token" class="input w-320" type="password" placeholder="COPILOT_GITHUB_TOKEN" />
         <button id="settings-copilot-save" class="btn primary" type="button">Save</button>
         <button id="settings-copilot-clear" class="btn secondary" type="button">Clear</button>
       </div>
       <div class="tip">After changing this token, the Copilot sidecar is restarted so the drawer picks it up.</div>
-      <div id="settings-copilot-status" class="status settings-status"></div>
+      <div id="settings-copilot-status" class="status settings-status" role="status"></div>
     </div>
 
-    <div class="field">
-      <label>MediaPilot Password</label>
-      <div class="settings-row">
-        <input id="settings-mediapilot-password" class="input w-320" type="password" placeholder="Empty = no password" />
-        <button id="settings-mediapilot-save" class="btn primary" type="button">Save</button>
-      </div>
-      <div class="tip">This writes <code>MEDIAPILOT_ACCESS_PASSWORD</code> to MediaPilot's <code>.env</code>. Leave it empty to disable password protection.</div>
-      <div id="settings-mediapilot-status" class="status settings-status"></div>
-    </div>
-
-    <div class="field">
-      <label>Jupyter Token</label>
+</section>
+<section class="settings-section settings-card"><h3>Jupyter</h3><p>Manage notebook access and allowed origins.</p>    <div class="field">
+      <label for="settings-jupyter-token">Jupyter Token</label>
       <div class="settings-row">
         <input id="settings-jupyter-token" class="input w-320" type="password" placeholder="Leave empty to regenerate on restart" />
         <button id="settings-jupyter-save" class="btn primary" type="button">Save</button>
@@ -144,23 +195,37 @@
       <div class="tip">Saving restarts Jupyter. Leaving the token blank removes it and lets Jupyter generate a new one on next start.</div>
     </div>
     <div class="field">
-      <label>Jupyter Extra Allow-Origin Pattern</label>
+      <label for="settings-jupyter-origin">Jupyter Extra Allow-Origin Pattern</label>
       <div class="settings-row">
         <input id="settings-jupyter-origin" class="input w-320" type="text" placeholder="Regex appended to the default allowlist" />
       </div>
-      <div id="settings-jupyter-status" class="status settings-status"></div>
+      <div id="settings-jupyter-status" class="status settings-status" role="status"></div>
     </div>
 
+</section>
+</div><aside class="settings-aside"><section><h3>Your secrets stay hidden</h3><p>Saved credentials are never displayed. A saved indicator confirms they are configured; enter a new value to replace one.</p></section><section><h3>Service restarts</h3><p>Saving a Copilot token restarts the assistant. Saving Jupyter settings restarts Jupyter.</p></section></aside></div></section>
+  <section id="settings-panel-shutdown" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-shutdown" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card">
+    <h3 class="settings-section-title">Shutdown Defaults</h3>
     <div class="field">
-      <label>Copilot Drawer</label>
-      <label class="svc-autostart" title="Default allow-all-URLs for the Copilot drawer">
-        <input id="settings-copilot-allow-urls" class="svc-switch" type="checkbox" />
-        <span>Default to allow all URLs</span>
-      </label>
-      <div class="settings-row">
-        <button id="settings-copilot-defaults-save" class="btn primary" type="button">Save drawer defaults</button>
-      </div>
-      <div id="settings-copilot-defaults-status" class="status settings-status"></div>
+      <label for="settings-shutdown-mode">RunPod shutdown mode</label>
+      <select id="settings-shutdown-mode" class="input w-320">
+        <option value="">Auto</option>
+        <option value="stop">Stop pod</option>
+        <option value="remove">Remove pod</option>
+      </select>
+      <div class="tip">Auto chooses a shutdown mode based on storage. Removing a pod permanently deletes its container and local storage.</div>
     </div>
-  </div>
+    <div class="field">
+      <span class="settings-label">Default countdown</span>
+      <div class="settings-row">
+        <label class="settings-time-field">Hours<input id="settings-shutdown-hours" class="input" type="number" min="0" max="99" value="0"  /></label>
+        <label class="settings-time-field">Minutes<input id="settings-shutdown-mins" class="input" type="number" min="0" max="59" value="1"  /></label>
+        <label class="settings-time-field">Seconds<input id="settings-shutdown-secs" class="input" type="number" min="0" max="59" value="0"  /></label>
+        <button id="settings-shutdown-save" class="btn primary" type="button">Save defaults</button>
+      </div>
+      <div class="tip">Used to prefill the Dashboard shutdown scheduler.</div>
+    </div>
+    <div id="settings-shutdown-status" class="status settings-status" role="status"></div>
+</section>
+</div><aside class="settings-aside"><section><h3>Set the default, not the timer</h3><p>These values prefill the Dashboard shutdown scheduler. Saving them does not schedule a shutdown.</p></section><section><h3>Choose storage carefully</h3><p>Stop keeps the pod available to restart. Remove deletes the pod and its local storage. Keep anything you need on a network volume or in a backup.</p></section></aside></div></section>
 </div>

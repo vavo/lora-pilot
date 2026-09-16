@@ -16,7 +16,7 @@ window.initSettings = async function () {
     mediapilotInput: document.getElementById("settings-mediapilot-password"),
     mediapilotSave: document.getElementById("settings-mediapilot-save"),
     mediapilotStatus: document.getElementById("settings-mediapilot-status"),
-    theme: document.getElementById("settings-theme"),
+    themes: document.querySelectorAll('input[name="settings-theme"]'),
     uiSave: document.getElementById("settings-ui-save"),
     sidebarCompact: document.getElementById("settings-sidebar-compact"),
     uiStatus: document.getElementById("settings-ui-status"),
@@ -31,9 +31,34 @@ window.initSettings = async function () {
     jupyterSave: document.getElementById("settings-jupyter-save"),
     jupyterStatus: document.getElementById("settings-jupyter-status"),
     copilotAllowUrls: document.getElementById("settings-copilot-allow-urls"),
-    copilotDefaultsSave: document.getElementById("settings-copilot-defaults-save"),
-    copilotDefaultsStatus: document.getElementById("settings-copilot-defaults-status"),
   };
+
+  const tabs = [...document.querySelectorAll('.settings-tabs [role="tab"]')];
+  function selectTab(selected) {
+    tabs.forEach(tab => {
+      const active = tab === selected;
+      tab.setAttribute("aria-selected", String(active));
+      tab.tabIndex = active ? 0 : -1;
+      document.getElementById(tab.getAttribute("aria-controls")).hidden = !active;
+    });
+  }
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectTab(tab));
+    tab.addEventListener("keydown", event => {
+      let next;
+      if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+      if (event.key === "ArrowLeft") next = (index + tabs.length - 1) % tabs.length;
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = tabs.length - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      selectTab(tabs[next]);
+      tabs[next].focus();
+    });
+  });
+  document.getElementById("settings-panel-general").addEventListener("change", () => {
+    els.uiStatus.textContent = "Unsaved changes.";
+  });
 
   const comfy = Object.fromEntries(["enabled", "save", "status", "url", "generate", "revoke", "token-status", "token-result", "token", "copy", "example"].map(name => [name, document.getElementById(`settings-comfy-${name}`)]));
 
@@ -97,7 +122,7 @@ window.initSettings = async function () {
     window.controlPilotSettings = settings || {};
     renderComfy(settings.comfy_access || {}, settings.password_enabled);
     if (els.passwordEnabled) els.passwordEnabled.checked = !!(settings && settings.password_enabled);
-    if (els.theme) els.theme.value = settings && settings.theme === "dark" ? "dark" : "light";
+    els.themes.forEach(input => { input.checked = input.value === (settings.theme === "dark" ? "dark" : "light"); });
     if (els.sidebarCompact) els.sidebarCompact.checked = !!(settings && settings.sidebar_compact);
     if (els.shutdownMode) els.shutdownMode.value = (settings && settings.shutdown_mode) || "";
     if (els.shutdownHours) els.shutdownHours.value = String((settings && settings.shutdown_default_hours) ?? 0);
@@ -209,22 +234,38 @@ window.initSettings = async function () {
   }
 
   async function saveUiSettings() {
-    if (els.uiStatus) els.uiStatus.textContent = "Saving...";
+    els.uiStatus.textContent = "Saving preferences…";
+    els.uiSave.disabled = true;
+    let appearanceSaved = false;
+    // Capture both groups before awaiting, so one click saves one consistent snapshot.
+    const ui = {
+      theme: [...els.themes].find(input => input.checked)?.value || "light",
+      sidebar_compact: !!els.sidebarCompact?.checked,
+    };
+    const allowAllUrls = !!els.copilotAllowUrls?.checked;
     try {
       const res = await fetchJson("/api/settings/ui", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          theme: els.theme?.value || "light",
-          sidebar_compact: !!els.sidebarCompact?.checked,
-        }),
+        body: JSON.stringify(ui),
       });
+      appearanceSaved = true;
       if (typeof window.applyControlPilotUiSettings === "function") {
         window.applyControlPilotUiSettings(res);
       }
-      if (els.uiStatus) els.uiStatus.textContent = "UI defaults saved.";
+      const copilot = await fetchJson("/api/settings/copilot-defaults", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allow_all_urls: allowAllUrls }),
+      });
+      if (typeof window.applyCopilotDrawerDefaults === "function") {
+        window.applyCopilotDrawerDefaults(copilot);
+      }
+      els.uiStatus.textContent = "Preferences saved.";
     } catch (e) {
-      if (els.uiStatus) els.uiStatus.textContent = e.message || String(e);
+      els.uiStatus.textContent = (appearanceSaved ? "Appearance saved. Copilot preferences were not saved: " : "Could not save preferences: ") + settingsError(e);
+    } finally {
+      els.uiSave.disabled = false;
     }
   }
 
@@ -265,23 +306,6 @@ window.initSettings = async function () {
       await refresh();
     } catch (e) {
       if (els.jupyterStatus) els.jupyterStatus.textContent = e.message || String(e);
-    }
-  }
-
-  async function saveCopilotDefaults() {
-    if (els.copilotDefaultsStatus) els.copilotDefaultsStatus.textContent = "Saving...";
-    try {
-      const res = await fetchJson("/api/settings/copilot-defaults", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ allow_all_urls: !!els.copilotAllowUrls?.checked }),
-      });
-      if (typeof window.applyCopilotDrawerDefaults === "function") {
-        window.applyCopilotDrawerDefaults(res);
-      }
-      if (els.copilotDefaultsStatus) els.copilotDefaultsStatus.textContent = "Copilot drawer defaults saved.";
-    } catch (e) {
-      if (els.copilotDefaultsStatus) els.copilotDefaultsStatus.textContent = e.message || String(e);
     }
   }
 
@@ -350,14 +374,12 @@ window.initSettings = async function () {
     els.jupyterSave.dataset.bound = "1";
     els.jupyterSave.addEventListener("click", saveJupyterSettings);
   }
-  if (els.copilotDefaultsSave && !els.copilotDefaultsSave.dataset.bound) {
-    els.copilotDefaultsSave.dataset.bound = "1";
-    els.copilotDefaultsSave.addEventListener("click", saveCopilotDefaults);
-  }
 
   try {
     await refresh();
   } catch (e) {
-    if (els.passwordStatus) els.passwordStatus.textContent = settingsError(e);
+    const error = document.getElementById("settings-load-error");
+    error.hidden = false;
+    error.textContent = "Could not load settings: " + settingsError(e);
   }
 };
