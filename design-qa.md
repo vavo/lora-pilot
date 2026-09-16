@@ -1,3 +1,27 @@
+# ControlPilot Settings: version 1 verification
+
+final result: passed
+
+The selected reference is `/Users/vavo/.codex/generated_images/01a078ab-a505-7ef1-9fc5-ea15eaf13c01/exec-d11f7414-265d-4c3b-8f8d-cea550412596.png`. The implementation was verified at `http://127.0.0.1:18789/` in the Settings view, using an isolated temporary workspace.
+
+The final desktop screenshot is `/tmp/lora-settings-v1-desktop-final.png`. Reference and implementation are both 1487 by 1058 pixels. The browser viewport was 1487 by 1058 CSS pixels with device pixel ratio 1, so no density normalization was needed. Both comparison images show General, light theme, expanded sidebar, and disabled compact/sidebar URL defaults. Both images were opened together in one comparison tool response.
+
+Typography uses the existing system font stack. The page heading, section headings, body copy, and control labels follow the selected hierarchy. The implementation keeps the existing global sidebar size and typography rather than enlarging the rest of the application to match the generated mock. The retained left-menu theme switch is an explicit user requirement.
+
+The layout preserves the four horizontal category tabs, continuous form surface, two theme choices, separated preference rows, help column, and bottom save action. Initial review found cramped typography and a rounded active tab inherited from global styles. The implementation increased type sizes and spacing, removed tab rounding, stretched the help divider, and enlarged the save button. The final comparison found no actionable P0, P1, or P2 differences. Slight differences in generated-image font metrics and control density remain acceptable within the existing application shell.
+
+Colors use existing light/dark tokens with scoped orange selection states. The source logo and existing navigation icons remain in use; no raster replacements or new decorative assets were introduced. Copy preserves the mock's intent while correcting its claim of automatic saving: preferences save explicitly, while the menu theme switch applies immediately. Controls and labels are clearly readable in the full-resolution comparison, so an additional focused crop was unnecessary.
+
+Mobile screenshots are `/tmp/lora-settings-v1-mobile.png` and `/tmp/lora-settings-v1-mobile-dark.png`, captured at 390 by 844 CSS pixels. An initial mobile pass showed an uneven three-plus-one tab wrap and a detached Clear action. The final layout uses two columns for mobile tabs and a full-width credential field before its actions. All four panels have document width 390 pixels, with no horizontal overflow. The final mobile light/dark screenshots confirm readable controls and the responsive help column.
+
+Browser interactions verified the left-menu theme switch synchronizes the General theme selection, General saving applies appearance, compact sidebar persists after reload, the sidebar can be expanded again, tab clicks and Home-key navigation work, and shutdown defaults save without scheduling shutdown. The mobile menu retained its theme switch and updated the Settings radio state. Browser warning/error logs were empty.
+
+The full Python suite passed 172 tests. The new frontend regression test executes Settings JavaScript and covers tab keyboard behavior, masked saved credentials, successful General saves, failure before saving, and partial failure after appearance has saved. JavaScript syntax and whitespace checks passed. Credential changes and service restarts were not exercised against live services; their existing API handlers remain in place.
+
+No implementation fixes remain from this review. The production Docker image and running pod have not been updated by this change.
+
+---
+
 # Models — version 1 correction
 
 Date: 2026-09-07
