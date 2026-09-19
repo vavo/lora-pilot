@@ -13,6 +13,11 @@ on:
       - "build.env.example"
       - "scripts/build/**"
   workflow_dispatch:
+    inputs:
+      publish_latest:
+        description: Also update the latest tag
+        type: boolean
+        default: false
 
 env:
   IMAGE_NAME: notrius/lora-pilot
@@ -42,8 +47,9 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
+          flavor: latest=false
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ github.event_name != 'workflow_dispatch' || inputs.publish_latest }}
             type=raw,value=dev
             type=sha,prefix=sha-
             type=semver,pattern={{version}}

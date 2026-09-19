@@ -1,8 +1,18 @@
 # Building LoRA Pilot
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-19_
 
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
+
+## Publish a development image with GitHub Actions
+
+Run the repository's **Publish Docker image** workflow on `main` to build and push `notrius/lora-pilot:dev` plus a commit-specific SHA tag. Manual builds leave `latest` unchanged unless you enable **Also update the latest tag**. From an authenticated GitHub CLI, start a development build with:
+
+```bash
+gh workflow run publish-docker.yml -R vavo/lora-pilot --ref main -f publish_latest=false
+```
+
+Wait for the workflow to finish and verify the Docker Hub manifest before pulling the new image. Push-triggered builds retain their existing publication behavior. Publishing an image does not replace the running container or validate training on its GPU.
 
 ## Build a release tag
 
