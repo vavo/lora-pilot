@@ -150,6 +150,10 @@ qwen-image-edit-2511|hf_repo|Qwen/Qwen-Image-Edit-2511|diffusers/qwen-image-edit
 llava-llama-3-8b-text-encoder-tokenizer|hf_repo|Kijai/llava-llama-3-8b-text-encoder-tokenizer|text_encoders|*.json,*.safetensors|16070769980
 clip-vit-large-patch14|hf_file|openai/clip-vit-large-patch14:pytorch_model.bin|text_encoders||1710671599
 
+# --- FLUX.1 training encoders ---
+flux-clip-l|hf_file|comfyanonymous/flux_text_encoders:clip_l.safetensors|text_encoders||246144152
+flux-t5xxl-fp16|hf_file|comfyanonymous/flux_text_encoders:t5xxl_fp16.safetensors|text_encoders||9787841024
+
 # --- Additional Text Encoders ---
 t5-xxl|hf_file|stabilityai/stable-diffusion-3-medium:text_encoders/t5xxl_fp8_e4m3fn.safetensors|text_encoders||4893934904
 clip-g|hf_file|laion/CLIP-ViT-bigG-14-laion2B-39B-b160k:open_clip_pytorch_model.bin|text_encoders||10158638769

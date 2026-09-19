@@ -6,6 +6,7 @@ import threading
 import httpx
 
 LAUNCH_LOCK = threading.RLock()
+managed_conflicts = lambda: []
 
 
 def conflicts():

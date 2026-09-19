@@ -3,6 +3,11 @@ import os
 import signal
 import subprocess
 import threading
+
+try:
+    from .services import gpu_guard
+except ImportError:
+    from services import gpu_guard
 from collections import deque
 from pathlib import Path
 from typing import List, Optional, Union
@@ -490,7 +495,12 @@ def start_training(req: TrainRequest):
     if not _start_lock.acquire(blocking=False):
         raise HTTPException(status_code=400, detail="A training process is already starting.")
     try:
-        return _start_training(req)
+        with gpu_guard.LAUNCH_LOCK:
+            _ensure_single_run()
+            blockers = gpu_guard.managed_conflicts() + gpu_guard.conflicts()
+            if blockers:
+                raise HTTPException(status_code=409, detail=" ".join(blockers))
+            return _start_training(req)
     finally:
         _start_lock.release()
 

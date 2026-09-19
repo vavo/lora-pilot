@@ -50,6 +50,8 @@ try:
     from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
     from .services.comfy_access import read_policy, token_matches  # type: ignore
+    from .services.training_api import create_router as create_training_router
+    from .services import gpu_guard
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
@@ -58,6 +60,8 @@ except (ImportError, ValueError):
         from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from services.comfy import create_router as create_comfy_router  # type: ignore
         from services.comfy_access import read_policy, token_matches  # type: ignore
+        from services.training_api import create_router as create_training_router
+        from services import gpu_guard
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
         from apps.Portal.services.models_api import create_router as create_models_router  # type: ignore
@@ -65,6 +69,8 @@ except (ImportError, ValueError):
         from apps.Portal.services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
         from apps.Portal.services.comfy_access import read_policy, token_matches  # type: ignore
+        from apps.Portal.services.training_api import create_router as create_training_router
+        from apps.Portal.services import gpu_guard
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -3420,12 +3426,20 @@ def _resolve_trainpilot_toml_path(raw_path: str = "") -> Path:
 
 @app.post("/api/trainpilot/start")
 def trainpilot_start(req: TrainPilotRequest):
-    if not _tp_lock.acquire(blocking=False):
-        raise HTTPException(status_code=409, detail="TrainPilot is busy")
+    if not gpu_guard.LAUNCH_LOCK.acquire(blocking=False):
+        raise HTTPException(status_code=409, detail="Another GPU job is starting")
     try:
-        return _trainpilot_start(req)
+        blockers = gpu_guard.managed_conflicts() + gpu_guard.conflicts()
+        if blockers:
+            raise HTTPException(status_code=409, detail=" ".join(blockers))
+        if not _tp_lock.acquire(blocking=False):
+            raise HTTPException(status_code=409, detail="TrainPilot is busy")
+        try:
+            return _trainpilot_start(req)
+        finally:
+            _tp_lock.release()
     finally:
-        _tp_lock.release()
+        gpu_guard.LAUNCH_LOCK.release()
 
 
 def _trainpilot_start(req: TrainPilotRequest):
@@ -3865,6 +3879,29 @@ def mediapilot_status():
         "comfy_api_url": os.environ.get("MEDIAPILOT_COMFY_API_URL", ""),
         "error": "MediaPilot failed to load" if MEDIAPILOT_LOAD_ERROR else None,
     }
+
+
+def _legacy_training_conflicts():
+    reasons = []
+    if _tp_proc and _tp_proc.poll() is None:
+        reasons.append("A legacy TrainPilot run is active.")
+    # Diffusion Pipe's public API can also start a GPU job in this process.
+    try:
+        from . import dpipe_api
+    except ImportError:
+        import dpipe_api
+    with dpipe_api._proc_lock:
+        if any(proc.poll() is None for proc in dpipe_api._procs.values()):
+            reasons.append("Diffusion Pipe training is active.")
+    return reasons
+
+
+_training_router, _training_queue = create_training_router(
+    WORKSPACE_ROOT, MODELS_DIR, _resolve_existing_dataset_dir, _resolve_trainpilot_toml_path,
+    lambda path: models_service.model_name_for_expected_path(path, MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR),
+    _legacy_training_conflicts,
+)
+app.include_router(_training_router)
 
 
 # Static assets

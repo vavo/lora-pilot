@@ -151,6 +151,8 @@ class TrainPilotOwnershipTests(unittest.TestCase):
                             ("_tp_output_dir", None), ("_tp_output_baseline", {}), ("_tp_moved_run_id", None)]:
             self.stack.enter_context(patch.object(portal, name, value))
         self.request = portal.TrainPilotRequest(dataset_name="sample", output_name="sample", toml_path=str(config))
+        self.stack.enter_context(patch.object(portal.gpu_guard, "conflicts", return_value=[]))
+        self.stack.enter_context(patch.object(portal.gpu_guard, "managed_conflicts", return_value=[]))
 
     def test_start_reservation_rejects_overlap_and_keeps_one_owner(self):
         entered, release = threading.Event(), threading.Event()
