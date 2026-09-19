@@ -2,6 +2,7 @@
 window.trainingWorkspace = (() => {
   let epoch = 0, timer = null, selected = null, current = null, paused = false;
   let comparisonError = '';
+  let comparisonFormRun = null;
   let sourceRun = null, preflightEpoch = 0, comparisonBusy = false, historySignature = '';
   const $ = id => document.getElementById(id);
   const api = (path, body) => fetchJson(`/api/training${path}`, body === undefined ? {} : {
@@ -91,6 +92,8 @@ window.trainingWorkspace = (() => {
     $('tp-run-config').textContent = run.effective_config || run.config_text || 'No saved configuration.';
     $('tp-status').textContent = run.error || `${run.spec.output_name}: ${run.status}`;
     renderTpResult(tpLastData);
+    $('tp-compare-download').href = `/api/training/runs/${run.id}/comparison/workflow`;
+    $('tp-compare-download').hidden = !run.comparison_workflow;
     updateProgressUI(findLatestProgress(lines), tpRunning, run.status === 'succeeded');
     syncTpActions();
     const choices = $('tp-compare-artifact');
@@ -102,11 +105,18 @@ window.trainingWorkspace = (() => {
     }
   }
   function renderComparison(data) {
+    if (current && comparisonFormRun !== current.id) {
+      comparisonFormRun = current.id;
+      $('tp-compare-prompt').value = data.request?.prompt || '';
+      $('tp-compare-seed').value = data.request?.seed ?? 31337;
+      $('tp-compare-strength').value = data.request?.strength ?? 1;
+      if (data.request?.artifact) $('tp-compare-artifact').value = data.request.artifact;
+    }
     const active = ['queued', 'running', 'submitting', 'unknown'].includes(data.status);
     $('tp-compare-generate').disabled = comparisonBusy || active || !current?.artifacts?.length;
     $('tp-compare-open').disabled = comparisonBusy || !current?.artifacts?.length;
     $('tp-compare-reset').hidden = !['unknown', 'submitting', 'unavailable'].includes(data.status);
-    $('tp-compare-status').textContent = data.error || comparisonError || ({ none: '', queued: 'Comparison queued in ComfyUI…', running: 'Generating both comparison images…', succeeded: 'Same prompt and seed. Only the LoRA branch changes.' }[data.status] || data.status);
+    $('tp-compare-status').textContent = data.error || comparisonError || ({ none: '', queued: 'Comparison queued in ComfyUI…', running: 'Generating both comparison images…', succeeded: 'Same prompt and seed. Only the LoRA branch changes.' }[data.status] ?? data.status);
     const images = $('tp-compare-images');
     const signature = JSON.stringify(data.images || []);
     if (images.dataset.signature === signature) return;
@@ -225,6 +235,7 @@ window.trainingWorkspace = (() => {
   }
   async function init() {
     const generation = ++epoch;
+    comparisonFormRun = null;
     historySignature = ''; sourceRun = null;
     $('tp-family').onchange = () => { sourceRun = null; preflight(); };
     $('tp-current-defaults').onclick = () => { sourceRun = null; preflight(); };

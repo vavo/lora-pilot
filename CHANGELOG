@@ -1,10 +1,19 @@
-Unreleased (September 19th 2026)
+Unreleased (September 20th 2026)
+
+Added guided FLUX.1 dev training alongside SDXL, with separate Kohya recipes and explicit model requirements. The catalog includes the full CLIP-L and FP16 T5 encoders required by this recipe.
+
+Added a persistent guided training queue and history. Runs use unique output directories and private dataset staging. Users can pause dispatch, cancel waiting work, stop managed training, inspect configuration and logs, repeat runs, or reuse saved settings. Restart recovery marks active work interrupted and pauses pending work for inspection. GPU and ComfyUI workload checks coordinate ControlPilot launches; external tools remain outside its ownership.
+
+Added Try my LoRA after successful training. Native ComfyUI workflows compare the same prompt and seed with and without the selected LoRA, then display both images. Users can also load the prepared graph into ComfyUI or download its JSON. Submission tracking prevents accidental duplicate jobs after uncertain network responses.
+
+Added `/api/training` endpoints while preserving the legacy TrainPilot API. Local regression tests and browser checks cover queue recovery, file retention, comparison state, and responsive layouts. GPU training and generation require validation in a new image on target hardware.
+
 
 ControlPilot now follows the path from dataset preparation to a usable LoRA. The Dashboard puts upload, training, ComfyUI, and Gallery actions beside a compact status summary. The sidebar groups tools under Prepare, Train, Create, and Manage, with Light and Dark controls available on desktop and mobile.
 
 The Datasets page now shows image previews and matched caption coverage. Its next-step actions open the selected collection in Caption images or Guided training. Upload progress, empty states, and a separate Manage menu make preparation easier to follow.
 
-Guided training now brings the dataset, LoRA name, profile, and run summary into one form, with configuration and logs in expandable sections. Successful runs show their saved files and an explicit move into the shared LoRA library. Existing filenames are preserved on conflicts. The latest result survives browser navigation and reload while ControlPilot remains running; persistent files remain after a server restart.
+Guided training now brings the dataset, LoRA name, profile, and run summary into one form, with configuration and logs in expandable sections. Successful runs show their saved files and can copy them into the shared LoRA library while preserving originals. Persistent history now survives ControlPilot restarts, with saved configuration, logs, status, and output references.
 
 Models now opens Settings directly on Connections and returns to the selected catalog family. The Hugging Face token control distinguishes saved credentials from a new entry without revealing saved secrets.
 

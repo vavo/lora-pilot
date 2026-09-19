@@ -25,11 +25,12 @@ def now():
 
 
 def under(root, path):
-    root = Path(os.path.realpath(root))
-    path = Path(os.path.realpath(path))
-    if path != root and not str(path).startswith(str(root) + os.sep):
+    root_resolved = os.path.realpath(str(root))
+    resolved = os.path.realpath(str(path))
+    root_with_sep = os.path.join(root_resolved, '')
+    if resolved != root_resolved and not resolved.startswith(root_with_sep):
         raise HTTPException(400, 'Path must stay within its workspace directory')
-    return path
+    return Path(resolved)
 
 
 def write_json(path, value):

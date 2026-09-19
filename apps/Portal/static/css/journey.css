@@ -122,7 +122,7 @@
 .tp-result-files td { overflow-wrap:anywhere; }
 .tp-result-files th:last-child, .tp-result-files td:last-child { text-align:right; }
 .tp-result-path { display:flex; align-items:center; gap:12px; flex-wrap:wrap; color:var(--muted); font-size:13px; }
-.tp-result-path code { overflow-wrap:anywhere; }
+.tp-result-path code, #tp-result-destination { overflow-wrap:anywhere; white-space:normal; }
 .tp-result-next { border-top:1px solid var(--border); margin-top:26px; padding-top:26px; }
 .tp-result-next h3 { margin-bottom:8px; }
 .tp-result-next p { color:var(--muted); }

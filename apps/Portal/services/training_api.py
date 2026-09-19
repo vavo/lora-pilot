@@ -50,6 +50,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         data = {key: value for key, value in run.items() if key not in {'template', 'dataset_fingerprint', 'process_identity'}}
         if detail:
             data['library_destination'] = str(models / 'loras/ControlPilot' / run['id'])
+            data['comparison_workflow'] = (queue.directory(run['id']) / 'comparison-workflow.json').is_file()
             data['artifacts'] = artifacts(run)
             data['lines'] = queue.logs(run['id'])
             data['config_text'] = under(queue.directory(run['id']), queue.directory(run['id']) / 'template.toml').read_text()

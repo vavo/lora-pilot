@@ -30,7 +30,7 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
 ## From your images to a usable LoRA
 
-In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, choose a guided SDXL training profile, and move the completed LoRA into the shared library for ComfyUI. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
+In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, queue guided SDXL or FLUX.1 dev training, and compare the completed LoRA with its base model in ComfyUI. Persistent history keeps configurations, logs, and output locations available after a restart, and library copies preserve original checkpoints. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
 
 These interface changes are **unreleased**. The [ControlPilot guide](docs/user-guide/control-pilot.md) describes the current source; check the [changelog](CHANGELOG) and the image you deploy before expecting the same screens on an existing pod.
 

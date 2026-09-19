@@ -1,12 +1,12 @@
 # Changelog
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-09-20_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Current unreleased work
 
-The September 19 entry covers the ControlPilot workflow redesign. You can start from the Dashboard, inspect dataset previews and caption coverage, prepare a guided training run, then move its saved LoRA files into the shared library. The grouped sidebar retains light and dark controls, and Models opens Connections without losing the selected catalog family.
+The September 20 entry adds persistent training history, a serial queue with GPU conflict checks, guided FLUX.1 dev training alongside SDXL, and a paired LoRA comparison in ComfyUI. You can start from the Dashboard, inspect dataset previews and caption coverage, queue a run, then copy its saved LoRA files into the shared library without removing the originals. The grouped sidebar retains light and dark controls, and Models opens Connections without losing the selected catalog family.
 
 This section also records the Settings redesign, the Models HTTP 500 fix, and repaired documentation images. These are source changes awaiting a release. A changelog entry does not establish that a Docker image contains the change or that training has passed on a target GPU.
 

@@ -1,6 +1,6 @@
 # ControlPilot
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-09-20_
 
 ControlPilot brings the path from a folder of images to a usable LoRA into one workspace. Start with your dataset, prepare captions, choose a training profile, and bring the result into ComfyUI. Models, service controls, and detailed logs remain close when you need them.
 
@@ -18,7 +18,7 @@ Datasets accepts ZIP archives containing images and optional matching captions. 
 
 When captions are missing, **Review captions** opens the selected collection in Caption images. A fully captioned collection offers **Train a LoRA**, carrying the dataset into Guided training. **Manage** keeps rename and delete actions separate from that next step. You can also create an empty dataset and add images through the existing captioning workspace.
 
-Guided training presents the dataset, LoRA name, and Quick test, Balanced, or Extended profile together with a run summary. Configuration and logs remain available in expandable sections. A successful run leads to saved filenames and an explicit move into the shared LoRA library. Read the [TrainPilot guide](../components/trainpilot.md) for profile behavior and result persistence.
+Guided training brings SDXL and FLUX.1 dev into the same setup flow. Choose a dataset, name the LoRA, and select a profile. A persistent queue and history keep the experiment available after a restart, while the result screen lets you copy checkpoints into the library and compare the LoRA against its base model. Read the [TrainPilot guide](../components/trainpilot.md) for the complete workflow.
 
 ## Connect model access without losing your place
 
@@ -34,13 +34,15 @@ Use **Installed** to inspect paths and remove model files, or **Downloads** to f
 
 ## Follow a training run through to its files
 
-Guided training uses TrainPilot and Kohya for SDXL LoRAs. Its visible profiles are **Quick test**, **Balanced**, and **Extended**. Choose a small experiment first, inspect the output, and use what you learn to decide whether a longer run is useful. The [TrainPilot guide](../components/trainpilot.md) explains the actual profile values and how dataset size affects them.
+Choose SDXL or FLUX.1 dev, then select **Quick test**, **Balanced**, or **Extended**. The families use separate Kohya recipes and model requirements. Preflight checks required files and detected GPU conflicts before you add the experiment to the queue.
 
-During training, the form locks to prevent a second launch. Progress appears when the trainer reports it, and **Logs & diagnostics** retains the detailed output. A failed or stopped run shows its state instead of a success screen. Saved checkpoints remain in the workspace for inspection.
+You can prepare another run while one is training. The queue dispatches one guided run at a time and waits for detected GPU workloads. **Pause queue** holds the next start without interrupting current training. External tools can still compete for memory, so inspect Services when the queue reports a blocker.
 
-A successful run shows its new LoRA files, sizes, and saved location. **Copy path** gives you that location. **Move to LoRA library** moves the current run's files into `/workspace/models/loras`; it does not overwrite an existing file with the same name. After the move, **Open ComfyUI** takes you to the next tool. Load an SDXL workflow that supports your LoRA and select it there.
+**Training queue & history** keeps run status, configuration snapshots, logs, and output locations on your persistent volume. **View run** opens its details, **Use settings** fills a new setup from the saved configuration, and **Repeat run** queues another experiment against the current dataset. A server restart marks formerly running jobs interrupted and pauses pending work for inspection. It does not automatically resume checkpoints or recreate the result of a process it no longer owns.
 
-You can leave this page and return to the latest result, or reload the browser after moving the files. ControlPilot keeps this run summary in memory, so a server restart clears the summary. Your saved files remain on the persistent workspace volume. **Train another LoRA** returns to the setup form. For Diffusion Pipe, open **Advanced training** and follow the [training workflows guide](training-workflows.md).
+A successful run shows saved files and their location. **Copy to LoRA library** makes copies under `/workspace/models/loras/ControlPilot/<run-id>` while preserving the originals. **Try my LoRA** sends a native-node workflow to ComfyUI and displays images generated with the same prompt and seed, with and without the chosen LoRA. You can also open the prepared graph in ComfyUI without generating immediately.
+
+A failed or stopped run keeps its status and logs rather than showing a success screen. Any saved checkpoints remain in its output directory. For model families or controls outside these guided recipes, open the relevant trainer described in the [training workflows guide](training-workflows.md).
 
 ## Keep preparation, generation, and review connected
 

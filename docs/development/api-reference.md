@@ -135,7 +135,33 @@ Missing provider keys and invalid inputs return `400`. Upstream provider failure
 
 Sidecar URL is configured by `COPILOT_SIDECAR_URL` (default `http://127.0.0.1:7879`).
 
-## TrainPilot API
+## Persistent guided training API
+
+The guided interface uses `/api/training`. These routes follow ControlPilot authentication and persist run records under the workspace. The legacy SDXL API remains available separately below.
+
+| Method | Path | Behavior |
+|---|---|---|
+| `POST` | `/api/training/preflight` | Checks recipe model files and reports detected GPU conflicts. |
+| `GET` | `/api/training/runs` | Returns the latest 100 run summaries, queue pause state, conflicts, and active run ID. |
+| `POST` | `/api/training/runs` | Saves a configuration snapshot and queues a uniquely identified run. |
+| `POST` | `/api/training/queue` | Accepts `{"paused":true}` or `false`; pausing does not stop current work. |
+| `GET` | `/api/training/runs/{id}` | Returns status, artifacts, saved configuration, effective configuration when available, and up to 500 recent log lines. |
+| `POST` | `/api/training/runs/{id}/cancel` | Cancels a queued run or stops a currently managed process. |
+| `POST` | `/api/training/runs/{id}/repeat` | Queues a new run using saved configuration and the current dataset. |
+| `POST` | `/api/training/runs/{id}/library` | Copies successful artifacts into a per-run LoRA library directory without removing originals. |
+| `POST` | `/api/training/runs/{id}/comparison/prepare` | Copies the selected artifact, checks live ComfyUI node/model availability, and saves a comparison graph without queueing it. |
+| `GET` | `/api/training/runs/{id}/comparison/workflow` | Downloads the prepared API-format workflow JSON. |
+| `POST` | `/api/training/runs/{id}/comparison` | Prepares and submits the paired comparison to ComfyUI. |
+| `GET` | `/api/training/runs/{id}/comparison` | Returns persisted comparison state and result image URLs. |
+| `POST` | `/api/training/runs/{id}/comparison/reset` | Explicitly resets comparison tracking only when the ComfyUI queue is empty. |
+
+Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path`. Supported families are `sdxl` and `flux1`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family; the chosen profile is applied to the new run.
+
+Run creation returns the new record and UUID. Each run has a separate output directory. The queue accepts at most 50 active or waiting runs and returns HTTP 409 when full. Missing models fail before queueing. A dataset changed since queueing fails at launch, with an explanation saved in the record. After a restart, interrupted processes are not automatically resumed and pending dispatch remains paused. Only one ControlPilot worker can own the queue for a workspace.
+
+Comparison requests contain `artifact`, `prompt`, and optional `seed` and `strength`. Seeds range from zero to `4294967295`; strength ranges from zero to two. A successful training record and saved artifact are required. Active managed training and duplicate or unconfirmed comparison submissions return HTTP 409. A lost submission response is persisted as `unknown`, requiring inspection and an explicit reset before retrying. Resetting tracking does not cancel a ComfyUI job or remove its outputs.
+
+## Legacy TrainPilot API
 
 | Method | Path | Notes |
 |---|---|---|
@@ -163,7 +189,7 @@ The logs response retains `lines`, `running`, `run_id`, `exit_code`, `lora_files
 
 Use the current `run_id` when calling the move endpoint. A stale run ID or an existing destination filename returns HTTP 409. The handler only selects new or changed `.safetensors` files from the successful run's output directory. It returns the moved filenames and destination on success. This is a move, so the source files leave the output directory.
 
-Training state belongs to one ControlPilot process. Browser navigation and reload preserve the latest result; restarting ControlPilot clears that metadata. Persistent output files remain available on disk. The UI requires a current run, exit code zero, and no stopped flag before showing a completed result.
+This legacy API keeps training state in one ControlPilot process; restarting it clears that metadata while preserving output files. The current guided interface uses the persistent API above instead. Legacy start requests retain their payload and response shapes but now reject detected GPU conflicts with HTTP 409. Legacy runs are not imported into the persistent history automatically.
 
 ## Diffusion Pipe API
 
