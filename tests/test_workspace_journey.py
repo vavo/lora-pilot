@@ -63,6 +63,30 @@ class WorkspaceJourneyTests(unittest.TestCase):
             with self.subTest(path=path), self.assertRaises(portal.HTTPException):
                 portal.dataset_preview('1_sample', path)
 
+    @unittest.skipIf(Image is None, "Pillow is required for image previews")
+    def test_preview_keeps_nested_images_and_rejects_sibling_and_internal_links(self):
+        nested = self.dataset / 'nested'
+        nested.mkdir()
+        image = nested / 'a b.PNG'
+        Image.new('RGB', (60, 40), 'white').save(image)
+        response = portal.dataset_preview('1_sample', 'nested/a b.PNG')
+        with Image.open(io.BytesIO(response.body)) as preview:
+            self.assertEqual(preview.size, (60, 40))
+        sibling = self.dataset.with_name('1_sample-private')
+        sibling.mkdir()
+        Image.new('RGB', (60, 40), 'black').save(sibling / 'secret.png')
+        (self.dataset / 'internal.png').symlink_to(image)
+        (self.dataset / 'escape.png').symlink_to(sibling / 'secret.png')
+        (self.dataset / 'linked-dir').symlink_to(sibling, target_is_directory=True)
+        for path in ['../1_sample-private/secret.png', 'nested/../../1_sample-private/secret.png',
+                     str(sibling / 'secret.png'), 'internal.png', 'escape.png', 'linked-dir/secret.png']:
+            with self.subTest(path=path), self.assertRaises(portal.HTTPException) as error:
+                portal.dataset_preview('1_sample', path)
+            self.assertEqual(error.exception.status_code, 400)
+        with self.assertRaises(portal.HTTPException) as error:
+            portal._resolve_under_root(self.dataset, sibling / 'secret.png')
+        self.assertEqual(error.exception.status_code, 400)
+
     def test_completion_metadata_survives_a_move_and_is_scoped_to_the_run(self):
         artifact = portal._tp_output_dir / 'run000001.safetensors'
         artifact.write_bytes(b'weights')

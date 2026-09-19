@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Documentation sanitizer regression checks</title>
+<h1>Documentation sanitizer regression checks</h1>
+<p>Serve the repository with python3 -m http.server --bind 127.0.0.1 and open /tests/docs_sanitizer.html.</p>
+<pre id="results">Running...</pre>
+<script src="../apps/Portal/static/js/docs.js"></script>
+<script>
+// Use the browser's real HTML parser, attribute serialization and reparsing.
+const results = [];
+function check(name, run) {
+  try {
+    run();
+    results.push({ name, passed: true });
+  } catch (error) {
+    results.push({ name, passed: false, error: error.message });
+  }
+}
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+function render(html) {
+  const output = document.createElement('div');
+  output.innerHTML = sanitizeAndDecorateHtml(html, 'docs/components/test.md');
+  return output;
+}
+for (const src of [
+  'javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'java&#x73;cript:alert(1)',
+  '&#106;avascript:alert(1)', 'java&#9;script:alert(1)', 'java&#10;script:alert(1)',
+  'data:image/svg+xml,unsafe', 'file:///etc/passwd', 'vbscript:msgbox(1)',
+]) {
+  check(`Reject ${src}`, () => {
+    const output = render(`<img src="${src}" onerror="alert(1)" alt="example">`);
+    const img = output.querySelector('img');
+    assert(img && !img.hasAttribute('src'), 'Unsafe image source survived');
+    assert(!img.hasAttribute('onerror'), 'Event handler survived');
+    assert(img.alt === 'example', 'Legitimate alternative text changed');
+  });
+}
+check('Keep image markup inside attribute values inert after reparse', () => {
+  const output = render('<img src="&quot;&gt;&lt;img src=x onerror=alert(1)&gt;" alt="quoted">');
+  assert(output.querySelectorAll('img').length === 1, 'Attribute escaped into markup');
+  assert(!output.querySelector('[onerror]'), 'Injected event handler survived');
+});
+check('Drop executable tags, handlers, srcdoc and unsupported attributes', () => {
+  const output = render('<script>alert(1)<\/script><iframe srcdoc="unsafe"></iframe>' +
+    '<svg onload="alert(1)"></svg><img src="/logo.svg" onload="alert(1)" srcdoc="unsafe">');
+  assert(!output.querySelector('script,iframe,svg,[onload],[srcdoc]'), 'Executable markup survived');
+  assert(output.querySelector('img').getAttribute('src') === '/logo.svg', 'Safe image changed');
+});
+for (const [src, expected] of [
+  ['../assets/images/a%20b.png', '/api/docs/assets/images/a%20b.png'],
+  ['https://example.com/image.png', 'https://example.com/image.png'],
+  ['//example.com/image.png', '//example.com/image.png'],
+]) {
+  check(`Keep ${src}`, () => {
+    const img = render(`<img src="${src}" alt="A &amp; B" title="Example">`).querySelector('img');
+    assert(img.getAttribute('src') === expected, 'Image URL changed');
+    assert(img.alt === 'A & B' && img.title === 'Example', 'Safe attributes changed');
+  });
+}
+document.getElementById('results').textContent = JSON.stringify({
+  passed: results.every(result => result.passed), checks: results.length, results,
+}, null, 2);
+</script>

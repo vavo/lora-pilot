@@ -64,6 +64,13 @@ process.stdout.write(JSON.stringify(refs.map(([src, source]) =>
             ('javascript:alert(1)', 'README.md', ''),
             ('data:image/svg+xml,unsafe', 'README.md', ''),
             ('file:///etc/passwd', 'README.md', ''),
+            ('  JaVaScRiPt:alert(1)  ', 'README.md', ''),
+            ('java\tscript:alert(1)', 'README.md', ''),
+            ('java\nscript:alert(1)', 'README.md', ''),
+            ('\x00javascript:alert(1)', 'README.md', ''),
+            ('vbscript:msgbox(1)', 'README.md', ''),
+            ('blob:https://example.com/unsafe', 'README.md', ''),
+            (' HTTPS://example.com/a.png ', 'README.md', 'HTTPS://example.com/a.png'),
         ]
         self.assertEqual(self.resolve_images([row[:2] for row in cases]), [row[2] for row in cases])
 
@@ -93,3 +100,39 @@ process.stdout.write(JSON.stringify(refs.map(([src, source]) =>
         with patch.object(portal, '_controlpilot_request_authenticated', return_value=False):
             response = self.client.get('/api/docs/assets/images/learning-101/inference-101-overview.svg')
             self.assertEqual(response.status_code, 401)
+
+    def test_assets_reject_symlink_escapes_but_keep_contained_links(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            docs = root / 'docs'
+            assets = docs / 'assets'
+            (assets / 'nested').mkdir(parents=True)
+            sibling = docs / 'assets-private'
+            sibling.mkdir()
+            (sibling / 'secret.png').write_bytes(b'private-image')
+            image = assets / 'nested' / 'a b.PNG'
+            image.write_bytes(b'public-image')
+            (assets / 'internal.png').symlink_to(image)
+            (assets / 'escape.png').symlink_to(sibling / 'secret.png')
+            (assets / 'linked-dir').symlink_to(sibling, target_is_directory=True)
+            with patch.object(portal, '_docs_root_candidates', return_value=[docs]):
+                for path in ['nested/a%20b.PNG', 'internal.png', 'nested%5ca%20b.PNG']:
+                    with self.subTest(path=path):
+                        response = self.client.get('/api/docs/assets/' + path)
+                        self.assertEqual(response.status_code, 200)
+                        self.assertEqual(response.content, b'public-image')
+                for path in ['escape.png', 'linked-dir/secret.png',
+                             '%2e%2e/assets-private/secret.png', '%252e%252e/secret.png',
+                             'nested%00/secret.png']:
+                    with self.subTest(path=path):
+                        response = self.client.get('/api/docs/assets/' + path)
+                        self.assertIn(response.status_code, (400, 404))
+                        self.assertNotIn(b'private-image', response.content)
+
+            escaped_docs = root / 'escaped-docs'
+            escaped_docs.mkdir()
+            (escaped_docs / 'assets').symlink_to(sibling, target_is_directory=True)
+            with patch.object(portal, '_docs_root_candidates', return_value=[escaped_docs]):
+                response = self.client.get('/api/docs/assets/secret.png')
+                self.assertEqual(response.status_code, 404)
+                self.assertNotIn(b'private-image', response.content)
