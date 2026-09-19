@@ -52,7 +52,7 @@ SDXL starts from `/workspace/config/trainpilot/newlora.toml`. **Advanced configu
 
 The SDXL launcher is `/opt/pilot/apps/TrainPilot/trainpilot.sh`. FLUX invokes Kohya's `sd-scripts/flux_train_network.py` directly. Both use `/opt/venvs/kohya/bin/python` by default; the Kohya browser service does not need to be running to execute these scripts.
 
-**Logs & diagnostics** shows the recent persisted log tail. The full launcher output remains in `/workspace/config/training/<run-id>/run.log`. SDXL also writes `_logs/train.log` inside its output directory. TensorBoard events live under `/workspace/logs/TrainPilot` for SDXL and inside the run's output `_logs` directory for FLUX. The shared TensorBoard service can display them when it is running.
+**Logs & diagnostics** shows the recent persisted log tail. The full launcher output remains in `/workspace/config/training/<run-id>/run.log`. SDXL also writes `_logs/train.log` inside its output directory. TensorBoard events for both guided families live under `/workspace/logs/TrainPilot`, with a separate directory for each run. The shared TensorBoard service can display them when it is running.
 
 ## See what your LoRA changes
 

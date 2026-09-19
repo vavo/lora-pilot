@@ -73,6 +73,7 @@ class GuidedTrainingTests(unittest.TestCase):
         config = tomllib.loads((self.directory / 'effective.toml').read_text())
         dataset = tomllib.loads((self.directory / 'dataset.toml').read_text())
         self.assertEqual(config['output_dir'], run['output_dir'])
+        self.assertEqual(Path(config['logging_dir']).parent, self.root.resolve() / 'logs/TrainPilot')
         copied = Path(dataset['datasets'][0]['subsets'][0]['image_dir'])
         self.assertNotEqual(copied, self.dataset)
         self.assertEqual((copied / 'a.txt').read_text(), 'a portrait')

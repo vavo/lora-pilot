@@ -144,7 +144,7 @@ class GuidedTraining:
             dataset_config.write_text(toml.dumps({'datasets': [dict(resolution=1024, batch_size=1, enable_bucket=True,
                 subsets=[dict(image_dir=path, num_repeats=1, caption_extension='.txt') for path in subsets])]}))
             config.update(dataset_config=str(dataset_config), output_dir=str(output), output_name=spec['output_name'],
-                          logging_dir=str(output / '_logs'), log_with='tensorboard')
+                          logging_dir=str(self.workspace / 'logs/TrainPilot' / output.name), log_with='tensorboard')
             path = directory / 'effective.toml'
             path.write_text(toml.dumps(config))
             script = kohya / 'sd-scripts/flux_train_network.py'

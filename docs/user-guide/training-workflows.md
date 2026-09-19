@@ -62,7 +62,7 @@ The service on port `4444` supplies shared TensorBoard access and can run withou
 
 ## Read the evidence before the next run
 
-Open TensorBoard when you want to inspect recorded metrics. Its shared sources include Diffusion Pipe logs, SDXL TrainPilot events, and output directories used by Kohya, guided FLUX, and AI Toolkit. Fresh runs may need time to create event files. `GET /api/tensorboard/status` reports the configured sources and whether events are available.
+Open TensorBoard when you want to inspect recorded metrics. Its shared sources include Diffusion Pipe logs, guided SDXL and FLUX events, and output directories used by Kohya and AI Toolkit. Fresh runs may need time to create event files. `GET /api/tensorboard/status` reports the configured sources and whether events are available.
 
 For guided runs, inspect Logs & diagnostics and Selected run configuration. Full launcher logs remain under `/workspace/config/training/<run-id>/run.log`, and checkpoints live under `/workspace/outputs/<name>-<run-id>`. A failed run can still contain a useful saved checkpoint, but its failure should be understood before another run is queued.
 

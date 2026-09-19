@@ -5,6 +5,33 @@ from pathlib import Path
 
 
 class ComparisonBridgeTests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('node'), 'Node.js is required for the frontend lifecycle test')
+    def test_leaving_training_during_dataset_fetch_does_not_initialize_detached_page(self):
+        script_path = Path(__file__).resolve().parents[1] / 'apps/Portal/static/js/trainpilot.js'
+        script = r'''
+const fs = require('fs'), vm = require('vm'), assert = require('assert');
+let page = {}, complete, initialized = 0;
+const context = {window:{addEventListener(){},trainingWorkspace:{init(){ initialized++; }}}, document:{getElementById(){return page}}};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), context);
+context.bindTpControls = () => {};
+context.loadTpDatasets = () => new Promise(resolve => { complete = resolve; });
+(async () => {
+  const pending = context.window.initTrainpilot();
+  page = null;
+  complete();
+  await pending;
+  assert.equal(initialized, 0);
+  page = {};
+  const active = context.window.initTrainpilot();
+  complete();
+  await active;
+  assert.equal(initialized, 1);
+})().catch(error => { console.error(error); process.exit(1); });
+'''
+        result = subprocess.run(['node', '-e', script, str(script_path)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     @unittest.skipUnless(shutil.which('node'), 'Node.js is required for the frontend bridge test')
     def test_prepared_graph_loads_once_without_queueing_and_rejects_custom_nodes(self):
         bridge = Path(__file__).resolve().parents[1] / 'apps/ComfyPilot/web/comparison.js'

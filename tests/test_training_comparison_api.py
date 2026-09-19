@@ -70,6 +70,17 @@ class TrainingComparisonApiTests(unittest.TestCase):
         self.assertEqual(self.client.post(self.prefix + '/library').status_code, 409)
         self.assertEqual(partial.read_bytes(), b'incomplete user copy')
 
+    def test_comparison_rejects_traversal_and_symlinked_artifacts(self):
+        secret = self.root / 'outside.safetensors'
+        secret.write_bytes(b'outside the run')
+        (self.artifact.parent / 'linked.safetensors').symlink_to(secret)
+        with patch('apps.Portal.services.training_api.comfy') as remote:
+            for name in ('../outside.safetensors', str(secret), 'linked.safetensors'):
+                response = self.client.post(self.prefix + '/comparison/prepare', json=dict(self.request, artifact=name))
+                self.assertEqual(response.status_code, 400, response.text)
+            remote.assert_not_called()
+        self.assertEqual(secret.read_bytes(), b'outside the run')
+
     def test_generation_persists_results_and_rejects_duplicate_submission(self):
         def comfy(method, path, **kwargs):
             if path == 'object_info':

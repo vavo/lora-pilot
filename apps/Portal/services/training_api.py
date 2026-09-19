@@ -131,19 +131,20 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             return public(queue.submit(dict(old['spec'], _template=old['template'])))
 
     def publish_lora(run, name):
-        available = {item['name'] for item in artifacts(run)}
-        if name not in available or run['status'] != 'succeeded':
+        selected = next((item for item in artifacts(run) if item['name'] == name), None)
+        if selected is None or run['status'] != 'succeeded':
             raise HTTPException(400, 'Select a saved artifact from a successful training run')
-        source = under(workspace / 'outputs', Path(run['output_dir']) / name)
+        filename = selected['name']
+        source = under(workspace / 'outputs', Path(run['output_dir']) / filename)
         target_dir = under(models, models / 'loras' / 'ControlPilot' / run['id'])
         target_dir.mkdir(parents=True, exist_ok=True)
-        target = under(target_dir, target_dir / name)
+        target = under(target_dir, target_dir / filename)
         if target.exists():
             # Never overwrite a user-edited library copy.
             if not filecmp.cmp(target, source, shallow=False):
                 raise HTTPException(409, 'A different LoRA already exists in the library destination')
         else:
-            temporary = target_dir / (name + '.partial')
+            temporary = target_dir / (filename + '.partial')
             created = False
             try:
                 with temporary.open('xb') as dest:

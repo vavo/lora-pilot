@@ -106,7 +106,7 @@ class TrainingRuns:
     def directory(self, run_id):
         if not re.fullmatch(r'[a-f0-9]{32}', run_id):
             raise HTTPException(404, 'Training run not found')
-        directory = self.root / run_id
+        directory = self.root / uuid.UUID(run_id).hex
         if directory.is_symlink():
             raise HTTPException(400, 'Invalid training history path')
         return under(self.root, directory)

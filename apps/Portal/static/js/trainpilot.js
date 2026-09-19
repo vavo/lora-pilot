@@ -6,10 +6,11 @@ let tpDatasets = [];
 const tpProfiles = { quick_test: "Quick test", regular: "Balanced", high_quality: "Extended" };
 
 window.initTrainpilot = async function () {
+  const page = document.getElementById('tp-page');
   tpStatusKnown = false;
   bindTpControls();
   await loadTpDatasets();
-  window.trainingWorkspace.init();
+  if (page && page === document.getElementById('tp-page')) window.trainingWorkspace.init();
 };
 
 function bindTpControls() {

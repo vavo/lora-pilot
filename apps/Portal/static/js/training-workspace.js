@@ -157,7 +157,7 @@ window.trainingWorkspace = (() => {
       if (generation === epoch) timer = setTimeout(() => poll(generation), 3000);
     }
   }
-  function refresh() { clearTimeout(timer); epoch++; poll(epoch); }
+  function refresh() { if (!$('tp-page')) return; clearTimeout(timer); epoch++; poll(epoch); }
   async function submit() {
     if (tpStarting || !tpStatusKnown) return;
     const request = spec();
