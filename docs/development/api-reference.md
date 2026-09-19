@@ -1,6 +1,6 @@
 # API Reference
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-19_
 
 ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 
@@ -85,7 +85,8 @@ python3 -m unittest discover -s tests -p 'test_model_install.py'
 
 | Method | Path | Notes |
 |---|---|---|
-| `GET` | `/api/datasets` | Lists dataset dirs (`/workspace/datasets/1_*`) |
+| `GET` | `/api/datasets` | Lists dataset dirs (`/workspace/datasets/1_*`) with image counts, caption coverage, and preview paths |
+| `GET` | `/api/datasets/{name}/preview?file={relative_path}` | Returns a bounded JPEG thumbnail for a dataset image |
 | `POST` | `/api/datasets/create` | Body: `{"name":"..."}` |
 | `POST` | `/api/datasets/upload` | Multipart `file` zip upload + extract |
 | `DELETE` | `/api/datasets/{name}` | Deletes dataset + best-effort zip cleanup |
@@ -96,6 +97,10 @@ python3 -m unittest discover -s tests -p 'test_model_install.py'
 | `GET` | `/api/tagpilot/providers` | Provider status for Gemini/Grok/OpenAI; does not expose secret values |
 | `POST` | `/api/tagpilot/providers/{provider}/key` | Saves or clears the provider key in `/workspace/config/secrets.env` |
 | `POST` | `/api/tagpilot/generate` | Multipart image generation through Gemini/Grok/OpenAI |
+
+Dataset entries retain `name`, `label`, `images`, `size_bytes`, `has_tags`, and `path`, and add `captioned_images` and `preview_files`. Caption coverage counts images with a matching nonempty `.txt` or `.caption` file in the same directory. `preview_files` contains up to three relative image paths; URL-encode the dataset name and query value when requesting a preview.
+
+The preview route preserves aspect ratio within 180 by 180 pixels and returns `image/jpeg`. It rejects absolute paths, traversal, symbolic links, non-image files, inputs larger than 32 MiB, and images above 40 million pixels. Responses use private caching and follow ControlPilot's authentication policy.
 
 `/api/tagpilot/save-item` multipart fields:
 
@@ -137,7 +142,8 @@ Sidecar URL is configured by `COPILOT_SIDECAR_URL` (default `http://127.0.0.1:78
 | `POST` | `/api/trainpilot/start` | Starts TrainPilot subprocess |
 | `POST` | `/api/trainpilot/stop` | Stops TrainPilot subprocess |
 | `POST` | `/api/trainpilot/model-check` | Checks TOML-referenced checkpoint/VAE paths |
-| `GET` | `/api/trainpilot/logs` | Combined process + training log diagnostics |
+| `GET` | `/api/trainpilot/logs` | Combined logs, process state, current-run metadata, and LoRA artifacts |
+| `POST` | `/api/trainpilot/move-loras` | Body: `{"run_id":"..."}`; moves eligible files into the shared LoRA directory |
 | `GET` | `/api/trainpilot/toml` | Returns default TOML content |
 
 `/api/trainpilot/start` body:
@@ -147,15 +153,17 @@ Sidecar URL is configured by `COPILOT_SIDECAR_URL` (default `http://127.0.0.1:78
   "dataset_name": "1_my_dataset",
   "output_name": "my_run",
   "profile": "regular",
-  "toml_path": "/opt/pilot/apps/TrainPilot/newlora.toml"
+  "toml_path": "/workspace/config/trainpilot/newlora.toml"
 }
 ```
 
-Allowed `profile` values:
+The profile values are `quick_test` (Quick test), `regular` (Balanced), and `high_quality` (Extended).
 
-- `quick_test`
-- `regular`
-- `high_quality`
+The logs response retains `lines`, `running`, `run_id`, `exit_code`, `lora_files`, and `move_available`. It also returns `moved`, `run`, `output_dir`, `lora_destination`, and `artifacts`. Each artifact contains `name` and `size_bytes`. Run metadata includes the dataset, output name, profile, start time, stop state, and finish time when available. After a move, the response retains the moved files' names and sizes for the result screen.
+
+Use the current `run_id` when calling the move endpoint. A stale run ID or an existing destination filename returns HTTP 409. The handler only selects new or changed `.safetensors` files from the successful run's output directory. It returns the moved filenames and destination on success. This is a move, so the source files leave the output directory.
+
+Training state belongs to one ControlPilot process. Browser navigation and reload preserve the latest result; restarting ControlPilot clears that metadata. Persistent output files remain available on disk. The UI requires a current run, exit code zero, and no stopped flag before showing a completed result.
 
 ## Diffusion Pipe API
 

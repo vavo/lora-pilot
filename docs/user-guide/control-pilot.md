@@ -24,337 +24,38 @@ Guided training presents the dataset, LoRA name, and Quick test, Balanced, or Ex
 
 The Models catalog's **Access settings** action opens Settings directly on **Connections**. Hugging Face credentials remain hidden after saving, and the saved indicator distinguishes a configured token from an empty field. Both **Back to Models** and **Return to Models** return to the selected catalog family. Some gated models also require license acceptance on Hugging Face; saving a token does not grant that approval.
 
-### Services Management
-
-![ControlPilot Services](../assets/images/controlpilot/controlpilot-services.png)
-![ControlPilot Services Invoke Log Modal](../assets/images/controlpilot/controlpilot-services-invoke-log-modal.png)
-
-#### Service Overview
-Each service card displays:
-- **Service Name**: Component identifier
-- **Status**: Running, Stopped, or Error
-- **Port**: Network port number
-- **Resource Usage**: Memory and GPU consumption
-- **Actions**: Start, Stop, Restart, Logs, Open
-
-#### Service Controls
-```bash
-# Available actions for each service:
-- Start: Launch the service
-- Stop: Graceful shutdown
-- Restart: Stop and start service
-- Logs: View service logs
-- Open: Launch service interface
-- Update: Update to latest version
-```
-
-#### Service Details
-Click on any service to see:
-- **Configuration**: Current settings and environment
-- **Resource Usage**: Real-time memory and GPU usage
-- **Log History**: Recent log entries
-- **Health Checks**: Service health status
-
-### Model Management
-
-![ControlPilot Models](../assets/images/controlpilot/controlpilot-models.png)
-
-Browse model families in **Catalog**, filter by task or family, and select a row
-for details. For bundled LTX-2.5 and MiniMax H3 workflows, choose a variant and
-use **Review installation** to check required files, optional components, sizes,
-source access and free storage. **Download missing files** reuses installed
-components and queues the rest.
-
-**Installed** provides paths and removal controls. **Downloads** shows progress,
-errors and retries. File presence does not prove GPU readiness. See
-[Model Management](model-management.md) for CLI commands and existing-download
-migration behavior.
-
-### Dataset Tools
-
-![ControlPilot Datasets Upload Modal](../assets/images/controlpilot/controlpilot-datasets-upload-modal.png)
-
-#### TagPilot Integration
-- **Launch TagPilot**: Open dataset tagging interface
-- **Recent Datasets**: View recently created datasets
-- **Dataset Stats**: Image count, caption coverage
-- **Quick Actions**: Create new dataset, import existing
-
-#### MediaPilot Integration
-- **Launch MediaPilot**: Open media management interface
-- **Image Gallery**: Browse generated images
-- **Batch Operations**: Organize and process images
-- **Export Options**: Download or share collections
-
-### Docs and Support Tabs
-
-![ControlPilot Docs Tab](../assets/images/controlpilot/controlpilot-docs.png)
-![ControlPilot Support Tab](../assets/images/controlpilot/controlpilot-support.png)
-
-### Training Orchestration
-
-#### TrainPilot Integration
-- **Quick Training**: Fast setup with common profiles
-- **Dataset Selection**: Choose from available datasets
-- **Model Selection**: Pick base model for training
-- **Configuration**: Training parameters and settings
-
-#### Job Management
-- **Active Jobs**: Currently running training jobs
-- **Job Queue**: Pending training jobs
-- **Job History**: Completed and failed jobs
-- **Progress Tracking**: Real-time training progress
-
-#### Training Profiles
-```yaml
-# Available training profiles:
-- quick_test: 100 steps, basic testing
-- medium_training: 500 steps, balanced quality
-- full_training: 1000+ steps, high quality
-- experimental: Latest features, experimental
-```
-
-### File Browser
-
-#### Workspace Navigation
-- **Directory Tree**: Browse workspace structure
-- **File Operations**: Copy, move, delete, rename
-- **Preview**: Quick file preview for images and text
-- **Upload**: Upload files to workspace
-
-#### Common Directories
-```
-/workspace/
-├── datasets/           # Training datasets
-├── outputs/           # Training outputs
-├── models/            # Downloaded models
-├── cache/             # Cache files
-├── config/            # Configuration files
-└── logs/              # Log files
-```
-
-### System Monitoring
-
-#### Resource Usage
-- **GPU Utilization**: Real-time GPU usage graphs
-- **Memory Usage**: System and GPU memory consumption
-- **Disk Usage**: Storage space and usage trends
-- **Network Activity**: Data transfer rates
-
-#### Service Health
-- **Uptime**: Service running time
-- **Response Times**: API response performance
-- **Error Rates**: Service error frequency
-- **Resource Limits**: Memory and CPU limits
-
-#### Log Management
-- **Live Logs**: Real-time log streaming
-- **Log History**: Historical log entries
-- **Log Filtering**: Filter by service or error level
-- **Log Export**: Download logs for analysis
-
-##  Advanced Features
-
-### API Access
-
-#### REST API
-ControlPilot provides a REST API for automation:
-
-```bash
-# Service management
-GET /api/services              # List all services
-POST /api/services/{name}/start   # Start service
-POST /api/services/{name}/stop    # Stop service
-
-# Model management
-GET /api/models               # List models
-POST /api/models/pull         # Download model
-DELETE /api/models/{name}     # Remove model
-
-# TrainPilot management
-POST /api/trainpilot/start    # Start guided Kohya training
-POST /api/trainpilot/stop     # Stop guided Kohya training
-GET  /api/trainpilot/logs     # Read guided training logs
-
-# Diffusion Pipe management
-POST /dpipe/train/validate    # Validate a Diffusion Pipe request
-POST /dpipe/train/start       # Start Diffusion Pipe training
-POST /dpipe/train/stop        # Stop Diffusion Pipe training
-GET  /dpipe/train/logs        # Read Diffusion Pipe logs
-```
-
-#### API Authentication
-```bash
-# Enable ControlPilot password authentication in Settings, or persist it in
-# /workspace/config/controlpilot-settings.json.
-# The browser login creates the controlpilot_session cookie used by the API.
-
-# For scripted API calls, send that cookie after logging in through the UI.
-curl --cookie 'controlpilot_session=<session-cookie>' http://localhost:7878/api/services
-```
-
-When password protection is enabled, the same session is required for
-Diffusion Pipe, the ComfyUI proxy, and the ComfyUI preview WebSocket. Login
-and auth-status endpoints remain public so the browser can establish a
-session.
-
-### Custom Configuration
-
-#### Environment Variables
-```bash
-# ControlPilot configuration
-CONTROLPILOT_PORT=7878
-CONTROLPILOT_HOST=0.0.0.0
-# Supervisor web UI password (separate from ControlPilot login)
-SUPERVISOR_ADMIN_PASSWORD=secure_password
-CONTROLPILOT_LOG_LEVEL=INFO
-```
-
-#### Custom Themes
-```bash
-# Custom CSS and themes
-# Place custom.css in /workspace/config/controlpilot/
-# Restart ControlPilot to apply
-```
-
-### Integration with Other Tools
-
-#### JupyterLab Integration
-- **Launch**: Open JupyterLab from ControlPilot
-- **Workspace Access**: Direct access to workspace files
-- **Kernel Management**: Switch between Python environments
-
-#### Code Server Integration
-- **VS Code in Browser**: Full VS Code experience
-- **Workspace Mount**: Direct workspace access
-- **Extension Support**: Install VS Code extensions
-
-#### Copilot Sidecar Integration
-- **AI Assistant**: GitHub Copilot integration
-- **Code Generation**: AI-powered code assistance
-- **Workspace Awareness**: Context-aware suggestions
-
-##  Performance Optimization
-
-### Interface Optimization
-
-#### Caching
-- **Model Cache**: Cache model information for faster loading
-- **Log Cache**: Cache log entries for better performance
-- **Image Cache**: Cache thumbnails and previews
-
-#### Lazy Loading
-- **Service Status**: Load service information on demand
-- **Model Lists**: Paginate model lists for large collections
-- **Log History**: Load log entries incrementally
-
-### Resource Management
-
-#### Memory Optimization
-- **Log Rotation**: Automatic log file rotation
-- **Cache Management**: Intelligent cache cleanup
-- **Resource Limits**: Set memory limits for components
-
-#### Performance Monitoring
-- **Response Time Tracking**: Monitor API response times
-- **Resource Usage Alerts**: Alert on high resource usage
-- **Performance Metrics**: Track system performance over time
-
-##  Troubleshooting
-
-### Common Issues
-
-#### Service Won't Start
-```bash
-# Check service logs
-tail -n 100 /workspace/logs/controlpilot.out.log
-
-# Check port availability
-netstat -tulpn | grep :7878
-
-# Restart service
-supervisorctl restart controlpilot
-```
-
-#### Models Not Showing
-```bash
-# Check model directory
-docker exec lora-pilot ls -la /workspace/models/
-
-# Check model manifest
-cat /opt/pilot/config/models.manifest.default
-
-# Refresh model list
-curl http://localhost:7878/api/models/refresh
-```
-
-#### Training Jobs Not Starting
-```bash
-# Check training service
-docker exec lora-pilot supervisorctl status kohya
-docker exec lora-pilot supervisorctl status ai-toolkit
-
-# Check dataset availability
-docker exec lora-pilot ls -la /workspace/datasets/images/
-
-# Check model availability
-docker exec lora-pilot ls -la /workspace/models/stable-diffusion/
-```
-
-### Debug Commands
-
-#### Health Check
-```bash
-# API health check
-curl http://localhost:7878/api/health
-
-# Service status check
-curl http://localhost:7878/api/services
-
-# System information
-curl http://localhost:7878/api/system/info
-```
-
-#### Log Analysis
-```bash
-# View ControlPilot logs
-docker exec lora-pilot tail -f /workspace/logs/controlpilot.out.log
-
-# Check for errors
-docker exec lora-pilot grep -i error /workspace/logs/controlpilot.out.log
-
-# Monitor resource usage
-docker exec lora-pilot top -bn1 | head -20
-```
-
-##  Best Practices
-
-### Service Management
-1. **Start Services Gradually**: Start core services first
-2. **Monitor Resources**: Keep an eye on GPU and memory usage
-3. **Regular Restarts**: Restart services periodically for stability
-4. **Log Management**: Regularly check and clean up logs
-
-### Model Management
-1. **Plan Storage**: Ensure sufficient disk space for models
-2. **Organize Models**: Use consistent naming conventions
-3. **Regular Cleanup**: Remove unused models to free space
-4. **Backup Important Models**: Save trained models externally
-
-### Training Workflows
-1. **Test Small**: Start with small test datasets
-2. **Monitor Progress**: Keep an eye on training progress
-3. **Save Checkpoints**: Save training progress regularly
-4. **Validate Results**: Test trained models before deployment
-
-### System Maintenance
-1. **Regular Updates**: Keep components updated
-2. **Backup Configuration**: Save important configuration files
-3. **Monitor Health**: Regularly check system health
-4. **Performance Tuning**: Optimize settings based on usage patterns
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+## Manage services and model files
+
+Open **Services** to inspect the tools running in your workspace. Each service exposes the controls supported by that integration, including starting, stopping, restarting, and viewing logs. Follow its application link when you need the tool's own interface. The autostart switch controls whether Supervisor starts that service on boot. Image-managed applications receive their bundled updates through a new image.
+
+In **Models**, browse the Catalog, filter by task or family, and select a row for details. Bundled LTX-2.5 and MiniMax H3 workflows offer **Review installation**, where you can inspect required files, optional components, source access, and available storage before downloading. **Download missing files** reuses installed components and queues the remaining files.
+
+Use **Installed** to inspect paths and remove model files, or **Downloads** to follow progress and retry failures. An installed file still needs a compatible workflow and a successful GPU run before you can judge the result. The [model management guide](model-management.md) covers downloads and existing-file migration.
+
+## Follow a training run through to its files
+
+Guided training uses TrainPilot and Kohya for SDXL LoRAs. Its visible profiles are **Quick test**, **Balanced**, and **Extended**. Choose a small experiment first, inspect the output, and use what you learn to decide whether a longer run is useful. The [TrainPilot guide](../components/trainpilot.md) explains the actual profile values and how dataset size affects them.
+
+During training, the form locks to prevent a second launch. Progress appears when the trainer reports it, and **Logs & diagnostics** retains the detailed output. A failed or stopped run shows its state instead of a success screen. Saved checkpoints remain in the workspace for inspection.
+
+A successful run shows its new LoRA files, sizes, and saved location. **Copy path** gives you that location. **Move to LoRA library** moves the current run's files into `/workspace/models/loras`; it does not overwrite an existing file with the same name. After the move, **Open ComfyUI** takes you to the next tool. Load an SDXL workflow that supports your LoRA and select it there.
+
+You can leave this page and return to the latest result, or reload the browser after moving the files. ControlPilot keeps this run summary in memory, so a server restart clears the summary. Your saved files remain on the persistent workspace volume. **Train another LoRA** returns to the setup form. For Diffusion Pipe, open **Advanced training** and follow the [training workflows guide](training-workflows.md).
+
+## Keep preparation, generation, and review connected
+
+**Caption images** opens TagPilot for image and caption editing. Use its workspace save action before returning to training, then check the caption coverage in Datasets. A complete caption count tells you that matching nonempty files exist; it cannot tell you whether their descriptions are useful.
+
+**ComfyUI** opens the generation workspace. **Gallery** opens MediaPilot to review saved media. Both use the shared workspace, which lets you prepare a dataset, train an adaptation, and inspect generated results without copying files between containers. For file work outside these views, use the JupyterLab or code-server link in Services.
+
+## Set workspace defaults and access
+
+Settings groups preferences into **General**, **Access & security**, **Connections**, and **Shutdown**. Save General preferences with its save action. The sidebar Light and Dark controls apply the theme when you choose it. Connection settings use their own save controls; leaving a credential field blank keeps the saved value unless you choose Clear.
+
+Access & security contains ControlPilot password protection and optional ComfyUI protection. Review the [security guidance](../configuration/comfy-access.md) before changing access on a public pod. Shutdown preferences set the timer's defaults; configure an actual schedule from the Dashboard's **Scheduled shutdown** section.
+
+## Find help while you work
+
+Open **Docs** to read the bundled guides or changelog inside ControlPilot. **Support** provides the project's support links. If a service fails, inspect its log in Services. If training fails, start with **Logs & diagnostics** and the generated run configuration. Keep the first meaningful error when asking for help, and remove credentials from anything you share.
+
+For automation, use the [API reference](../development/api-reference.md). It documents the dataset, model, service, and training routes, including the result metadata used by these screens. If password protection is enabled, scripts must authenticate with the same ControlPilot session policy as the browser.

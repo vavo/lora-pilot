@@ -1,6 +1,6 @@
 # Dataset Preparation
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-19_
 
 A folder of photographs can become the starting point for a character you can place in new scenes or a visual style you can use across a project. Before training, you decide what the examples have in common and what should remain free to change. That decision shapes the dataset you build.
 
@@ -20,13 +20,13 @@ ControlPilot keeps datasets under `/workspace/datasets` and displays folders wit
 
 Use a distinct name for a new revision if you want to retain the previous collection. Uploading another ZIP with the same name replaces the matching dataset after the archive passes import validation. The stored ZIP is a convenient snapshot, but it shares the workspace with the working files. Keep a copy elsewhere for backup.
 
-![The dataset upload dialog in ControlPilot.](../assets/images/controlpilot/controlpilot-datasets-upload-modal.png)
-
 The dataset browser recognizes PNG, JPEG, WebP, BMP, and GIF extensions. Recognition in this browser does not establish support in a trainer, so check the requirements of your chosen training workflow. For an image dataset, confirm that the files open as the still images you expect.
 
 ## Describe the image you can see
 
-Open the dataset in TagPilot to review its images and text. You can edit tags or captions by hand, or use a configured AI provider to draft them. Read generated text before saving it. An appealing description can still invent a material, miss a detail, or name the wrong subject.
+The dataset row shows previews, an image count, and caption coverage. A caption counts when a nonempty `.txt` or `.caption` file has the same basename as an image in the same directory. Unrelated caption files do not increase the count, and two caption formats for one image still count as one captioned image.
+
+Choose **Review captions** to open that collection in **Caption images**, the TagPilot editor, and review its images and text. You can edit tags or captions by hand, or use a configured AI provider to draft them. Read generated text before saving it. An appealing description can still invent a material, miss a detail, or name the wrong subject.
 
 For the teapot project, a caption might read “ceramic teapot on a wooden table, side view, soft window light.” Describe visible differences that matter to the training task. If your training approach uses a trigger term for the subject, apply that convention throughout the collection. Follow the caption format expected by your trainer and base model rather than assuming that one style of tagging fits them all.
 
@@ -42,7 +42,7 @@ For terminal work, run `ls /workspace/datasets/1_ceramic_teapot` inside the pod 
 
 ## Carry the same collection into training
 
-Select the saved dataset in your training interface and confirm that it resolves to the intended workspace folder. Keep the dataset revision and training configuration together in your project notes. After a test run, you can trace an unwanted background or a weak side view back to the examples you supplied and make a targeted revision.
+When the dataset has captions for all its images, choose **Train a LoRA** to open Guided training with that collection selected. You can also select it from the training page. Check the image and caption counts in the form before choosing a profile. Keep the dataset revision and training configuration together in your project notes. After a test run, you can trace an unwanted background or a weak side view back to the examples you supplied and make a targeted revision.
 
 If a ZIP import fails, check that the archive contains ordinary files with relative paths. ControlPilot rejects paths that escape the dataset directory and rejects symbolic links. Rebuild the archive from the source images instead of trying to preserve those entries.
 

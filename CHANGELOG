@@ -1,4 +1,16 @@
-Unreleased (September 9th 2026)
+Unreleased (September 19th 2026)
+
+ControlPilot now follows the path from dataset preparation to a usable LoRA. The Dashboard puts upload, training, ComfyUI, and Gallery actions beside a compact status summary. The sidebar groups tools under Prepare, Train, Create, and Manage, with Light and Dark controls available on desktop and mobile.
+
+The Datasets page now shows image previews and matched caption coverage. Its next-step actions open the selected collection in Caption images or Guided training. Upload progress, empty states, and a separate Manage menu make preparation easier to follow.
+
+Guided training now brings the dataset, LoRA name, profile, and run summary into one form, with configuration and logs in expandable sections. Successful runs show their saved files and an explicit move into the shared LoRA library. Existing filenames are preserved on conflicts. The latest result survives browser navigation and reload while ControlPilot remains running; persistent files remain after a server restart.
+
+Models now opens Settings directly on Connections and returns to the selected catalog family. The Hugging Face token control distinguishes saved credentials from a new entry without revealing saved secrets.
+
+Added a dataset preview endpoint, caption-coverage API fields, completed-run metadata, and regression coverage for preview path safety, caption matching, result states, and file movement. All 178 tests passed during implementation. Desktop, mobile, and both themes were checked locally with sample data; a fresh image build and live GPU rehearsal remain unverified.
+
+Updated the ControlPilot, dataset, training, and API documentation to match this workflow. Local QA reports, browser-test output, downloaded models, and environment overrides stay outside version control; the bundled model manifest and environment examples remain trackable.
 
 Redesigned ControlPilot Settings with General, Access & security, Connections, and Shutdown tabs. Added a single General preferences save, keyboard tab navigation, and responsive layouts while retaining the sidebar theme switch and existing credential controls.
 

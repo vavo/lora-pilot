@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 *.manifest
+!config/models.manifest
 *.spec
 *.egg
 *.egg-info/
@@ -33,6 +34,9 @@ docs/_build/
 
 # Environments
 .env
+.env.*
+!.env.example
+!.env.*.example
 .envrc
 .venv
 .venv/
@@ -52,6 +56,7 @@ __pypackages__/
 pip-log.txt
 pip-delete-this-directory.txt
 workspace/
+/models/
 .rcs/
 instance/
 .webassets-cache
@@ -60,6 +65,9 @@ celerybeat-schedule
 celerybeat.pid
 
 # Testing
+/playwright-report/
+/test-results/
+/output/playwright/
 htmlcov/
 .tox/
 .nox/
@@ -112,6 +120,7 @@ local_settings.py
 .pypirc
 
 # Plans / local scratch docs
+/design-qa.md
 WINDOWS_WSL_INSTALLER_PLAN.md
 docs/development/dockerfile-refactor-plan.md
 docs/development/2026-07-05-lora-pilot-value-suggestions.md

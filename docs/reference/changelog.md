@@ -1,68 +1,23 @@
 # Changelog
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-19_
 
-Canonical release history lives in the repository root file: `CHANGELOG`.
+The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
-ControlPilot exposes the same content at:
-- `GET /api/changelog`
+## Current unreleased work
 
-Detailed GitHub release notes:
+The September 19 entry covers the ControlPilot workflow redesign. You can start from the Dashboard, inspect dataset previews and caption coverage, prepare a guided training run, then move its saved LoRA files into the shared library. The grouped sidebar retains light and dark controls, and Models opens Connections without losing the selected catalog family.
 
-- [LoRA Pilot v2.5.8](../releases/v2.5.8.md)
-- [LoRA Pilot v2.5.4](../releases/v2.5.4.md)
+This section also records the Settings redesign, the Models HTTP 500 fix, and repaired documentation images. These are source changes awaiting a release. A changelog entry does not establish that a Docker image contains the change or that training has passed on a target GPU.
 
-The v2.5.8 GitHub release compares against v2.5.4 and includes the v2.5.5–v2.5.7 changelog entries. Those entries did not have separate GitHub releases.
+## Published release notes
 
-## Current Release Entries (from `CHANGELOG`)
+Read the [v2.5.8 release notes](../releases/v2.5.8.md) for the Models catalog, workflow installation review, backend extraction, and runtime fixes. That GitHub release compares against [v2.5.4](../releases/v2.5.4.md) and includes the intervening v2.5.5 through v2.5.7 changelog entries, which did not have separate GitHub releases. Earlier entries remain in the root history.
 
-| Header in file | High-level highlights |
-|---|---|
-| `v2.5.8` | Models workflow catalog and installation review, Models backend extraction, startup credential/permission fixes, optional ComfyUI protection, isolated app environments, and bundled LTX2.5/MiniMax H3 workflows |
-| `v2.5.7` | August 23 ComfyUI, Kohya, AI Toolkit, Diffusion Pipe, InvokeAI, JupyterLab, code-server/VS Code, and TensorBoard pins; legacy bootstrap refresh cleanup |
-| `v2.5.6` | RunPod model-pull fixes, build-time workspace refreshes, expanded ControlPilot auth coverage, and legacy UI cleanup |
-| `v2.5.5` | July 15 LTX 2.3 support restore, CodeQL secret-storage fixes, missing `zip` CLI, and TagPilot decoded tag loading |
-| `v2.5.4` | July 5 build/runtime refresh, CUDA profile cleanup, ComfyUI Manager/runtime fixes, and code-scanning vulnerabilities reduced to 0 |
-| `v2.5.3` | July 3 TagPilot frontend refresh, TensorBoard integration, and JupyterLab/code-server update |
-| `v2.5.0` | CUDA 13.0 default profile, shared core Python stack, refreshed bundled tools, and manifest/build updates |
-| `v2.4.3` | TagPilot provider compatibility, persisted provider keys, dark-mode/crop fixes, and Docker layer cleanup |
-| `v2.4.2` | Blackwell/CUDA baseline refresh, AI Toolkit isolation, and backend TagPilot provider APIs |
-| `v2.4.1` | CodeQL hardening, legacy Diffusion Pipe Gradio retirement, and CUDA 12.8 stack preparation |
-| `v2.4` | ControlPilot settings/security, embedded app layout cleanup, TrainPilot/Diffusion Pipe improvements, extracted Docker build scripts |
-| `v2.3` | Pinned Comfy/Kohya/Diffusion Pipe/build dependency refresh and InvokeAI `6.11.1` baseline |
-| `v2.2` | MediaPilot embed under `/mediapilot`, service update endpoints/jobs, TagPilot incremental save endpoint, InvokeAI `INVOKEAI_VERSION` pin update |
-| `v2.0` | AI Toolkit integration, ControlPilot redesign/refactor, Copilot sidecar integration |
-| `Version 1.99` | ComfyUI-Downloader, TrainPilot progress/log fixes, Docs markdown rendering + changelog in Docs |
-| `Version 1.9` | Shutdown scheduler behavior updates, model/Comfy fixes, modular service refactor, Docker Compose improvements |
-| `Version 1.8` | InvokeAI update to `6.10.0`, ControlPilot UX/security fixes, shutdown scheduler introduction |
+## Maintain the history
 
-## Notes About Format
+Add user-visible changes to the newest Unreleased section. Keep them there until a version is assigned, and describe what a user can do or what changed in an existing flow. Mention API additions when they affect integrations. Detailed implementation history belongs in Git.
 
-- Entries are newest-first.
-- Keep unreleased changes under `Unreleased` until a release version is assigned.
-- Release notes are grouped by release date, with at most one changelog version per day.
-- Keep highlights broad and user-facing; detailed commit history belongs in git.
-- Version headers currently mix formats (`v2.2` vs `Version 1.99`).
-- Recent v2.x entries include calendar dates in the root `CHANGELOG`; older entries may not.
+When publishing a release, give its section a version and date, add the release notes under `docs/releases/`, and link them here. Keep Docker publication and GPU validation separate from GitHub release publication so readers can tell what they can deploy and what has been tested.
 
-## How to Update
-
-When adding a new release:
-
-1. Add the new section at the top of `CHANGELOG`.
-2. Keep entries focused on user-visible behavior changes.
-3. Include API path changes explicitly when relevant.
-4. Add the published release notes under `docs/releases/` and link them here. Record Docker publishing and GPU validation separately from GitHub release publication.
-
-## Related
-
-- [API Reference](../development/api-reference.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+See the [API reference](../development/api-reference.md) for integration details or return to the [documentation home](../README.md).

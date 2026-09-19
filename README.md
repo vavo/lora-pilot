@@ -28,6 +28,12 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 - **JupyterLab** and **code-server** for notebook/dev workflows.
 - **Copilot sidecar (optional)** - workspace-aware assistant integration.
 
+## From your images to a usable LoRA
+
+In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, choose a guided SDXL training profile, and move the completed LoRA into the shared library for ComfyUI. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
+
+These interface changes are **unreleased**. The [ControlPilot guide](docs/user-guide/control-pilot.md) describes the current source; check the [changelog](CHANGELOG) and the image you deploy before expecting the same screens on an existing pod.
+
 ## Current release
 
 [LoRA Pilot v2.5.8](https://github.com/vavo/lora-pilot/releases/tag/v2.5.8) includes the Models workflow catalog, reviewed LTX-2.5/MiniMax H3 installation, optional ComfyUI access protection, and startup security fixes. See the [release notes and upgrade guidance](docs/releases/v2.5.8.md).
@@ -45,7 +51,7 @@ docker run --gpus all -p 7878:7878 -p 5555:5555 -p 6666:6666 -v /path/to/your/da
 Short version: it supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev/schnell/kontext), Chroma, Lumina-Image 2.0, LTX/LTX2, HunyuanVideo, Wan2.1/Wan2.2, Cosmos, HiDream, Qwen-Image, Z-Image** and more for training, plus almost everything for inference.
 
 <img width="1465" height="830" alt="Control Pilot screenshot" src="https://github.com/user-attachments/assets/ad090402-6233-4e8c-965c-522d46321e8a"/>
-Screenshot of Control Pilot UI
+Screenshot from an earlier ControlPilot interface; the current source uses the workflow navigation described above.
 
 Everything is orchestrated by **supervisord** and writes to **/workspace**, so reboots do not nuke your progress.
 

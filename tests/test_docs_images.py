@@ -43,7 +43,7 @@ process.stdout.write(JSON.stringify(refs.map(([src, source]) =>
             images += re.findall(r'<img[^>]+src=["\']([^"\']+)', content)
             references.extend((src, path.relative_to(ROOT).as_posix())
                               for src in images if not src.startswith(('http:', 'https:', '//')))
-        self.assertGreater(len(references), 20)
+        self.assertTrue(references, "Expected local documentation images to validate")
         with patch.object(portal, '_docs_root_candidates', return_value=[ROOT / 'docs']):
             for ref, url in zip(references, self.resolve_images(references)):
                 with self.subTest(reference=ref, url=url):

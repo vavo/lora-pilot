@@ -1,6 +1,6 @@
 # Training Workflows
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-09-19_
 
 This page is the practical training runbook for LoRA Pilot as it exists now.
 
@@ -8,34 +8,22 @@ This page is the practical training runbook for LoRA Pilot as it exists now.
 
 | Stack | Best Use | Interface | Notes |
 |---|---|---|---|
-| TrainPilot | Fastest first run (SDXL-focused flow) | ControlPilot `TrainPilot` tab / API | Applies profile defaults and launches Kohya training script |
+| TrainPilot | Fastest first run (SDXL-focused flow) | ControlPilot **Guided training** / API | Applies profile defaults and launches Kohya training script |
 | Kohya SS | Manual full-control LoRA config | `http://localhost:6666` | Most configurable UI path |
 | AI Toolkit | Modern FLUX/SDXL workflows | `http://localhost:8675` | Separate stack with persistent DB/output mapping |
-| Diffusion Pipe | Experimental/DeepSpeed path | ControlPilot `Dpipe` tab + TensorBoard `:4444` | API-driven config generation; single active run in API guard |
+| Diffusion Pipe | Experimental/DeepSpeed path | ControlPilot **Advanced training** + TensorBoard `:4444` | API-driven config generation; single active run in API guard |
 
 ## Prerequisites (All Stacks)
 
-1. Dataset exists in `/workspace/datasets/1_*`.
-2. Required model files exist in `/workspace/models`.
-3. Services are up:
+Run the commands below directly in a RunPod terminal. From a Docker Compose host, prefix them with `docker exec lora-pilot`.
+
+Save the dataset under `/workspace/datasets/1_*` and confirm that the required model files are present in `/workspace/models`. Inspect the services relevant to your chosen trainer before launching a run:
 
 ```bash
-docker exec lora-pilot supervisorctl status kohya ai-toolkit diffpipe controlpilot
+supervisorctl status kohya ai-toolkit diffpipe controlpilot
 ```
 
-4. GPU is visible (if using GPU flow):
-
-```bash
-docker exec lora-pilot nvidia-smi
-```
-
-## Standard Workflow
-
-1. Prepare dataset in TagPilot.
-2. Pull/check required base models.
-3. Start with shortest useful run.
-4. Evaluate outputs in ComfyUI/InvokeAI.
-5. Iterate parameters and rerun.
+Run `nvidia-smi` in the pod to confirm that its GPU is visible. Prepare and review captions in TagPilot, then start with a short training experiment. Compare its outputs in ComfyUI or InvokeAI before changing the dataset or increasing the training budget.
 
 ## Workflow A: TrainPilot (Recommended First Pass)
 
@@ -43,14 +31,11 @@ TrainPilot is a guided wrapper over Kohya training in ControlPilot.
 
 ### UI Path
 
-1. Open ControlPilot `TrainPilot`.
-2. Pick dataset (`1_*` folder).
-3. Set output name.
-4. Choose profile:
-   - `quick_test`
-   - `regular`
-   - `high_quality`
-5. Start and watch logs.
+Open **Guided training** in ControlPilot, or choose **Train a LoRA** beside a prepared dataset. Check the selected collection and its caption count, give the LoRA a name, then choose **Quick test**, **Balanced**, or **Extended**. These labels map to the API values `quick_test`, `regular`, and `high_quality`.
+
+Review the model-file checks before choosing **Start training**. ControlPilot offers to start missing services and can offer downloads for missing model files that it recognizes in the catalog. Follow progress on the page and expand **Logs & diagnostics** for the trainer's output.
+
+After a successful run, inspect the filenames and choose **Move to LoRA library** when you want ComfyUI to find them in the shared LoRA folder. Resolve any existing-name conflict before retrying. The result survives browser reloads during the same ControlPilot process; restarting the server clears the summary while preserving saved files. The [TrainPilot guide](../components/trainpilot.md) covers profile behavior and configuration in more detail.
 
 ### API Path
 
@@ -61,7 +46,7 @@ curl -s -X POST http://localhost:7878/api/trainpilot/start \
     "dataset_name":"1_my_dataset",
     "output_name":"my_lora_run",
     "profile":"quick_test",
-    "toml_path":"/opt/pilot/apps/TrainPilot/newlora.toml"
+    "toml_path":"/workspace/config/trainpilot/newlora.toml"
   }'
 ```
 
@@ -143,7 +128,7 @@ ControlPilot exposes Dpipe endpoints and UI for this stack.
 You can view training metrics for all currently supported stacks on the same TensorBoard instance:
 
 - `diffpipe` stack: logs are written to `/workspace/logs/diffusion-pipe` and exposed under `ControlPilot → Services → diffpipe`
-- `TrainPilot`: uses `/workspace/logs/TrainPilot` and is available from `TrainPilot` page or `diffpipe` card
+- `TrainPilot`: uses `/workspace/logs/TrainPilot` and is available from **Guided training** or `diffpipe` card
 - `Kohya SS`: scans `/workspace/outputs` for tensorboard events and is available via `Services` → Kohya
 - `AI Toolkit`: scans `/workspace/outputs/ai-toolkit` and is available via `Services` → AI Toolkit
 
@@ -204,7 +189,7 @@ docker exec lora-pilot models pull <model_name>
 - Verify GPU memory pressure:
 
 ```bash
-docker exec lora-pilot nvidia-smi
+nvidia-smi
 ```
 
 ### Logs look empty
