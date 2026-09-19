@@ -85,6 +85,21 @@ class GuidedTrainingTests(unittest.TestCase):
         with self.assertRaises(HTTPException):
             self.recipe.requirements(dict(self.spec, family='sdxl'), {'pretrained_model_name_or_path': '/etc/passwd'})
 
+    def test_sdxl_launch_uses_private_config_and_dataset_without_changing_defaults(self):
+        original = self.config.read_bytes()
+        run = self.recipe.prepare(dict(self.spec, family='sdxl'), self.rid, self.directory)
+        run['id'] = self.rid
+        with patch('subprocess.Popen') as popen:
+            self.recipe.launch(run, io.BytesIO())
+        env = popen.call_args.kwargs['env']
+        config = tomllib.loads(Path(env['TOML']).read_text())
+        self.assertEqual(Path(env['DATASET_NAME']).resolve(), (self.directory / 'images').resolve())
+        self.assertEqual(Path(config['train_data_dir']).resolve(), (self.directory / 'training-images').resolve())
+        self.assertEqual(env['OUTPUT_NAME'], Path(run['output_dir']).name)
+        self.assertEqual(env['PROFILE'], 'quick_test')
+        self.assertEqual(self.config.read_bytes(), original)
+        self.assertEqual((self.dataset / 'a.txt').read_text(), 'a portrait')
+
     def test_api_history_repeat_cancel_and_config_snapshot(self):
         old_check = gpu_guard.managed_conflicts
         self.addCleanup(setattr, gpu_guard, 'managed_conflicts', old_check)

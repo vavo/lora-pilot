@@ -11,7 +11,10 @@ from typing import Literal
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from ..dpipe_api import toml
+try:
+    from ..dpipe_api import toml
+except ImportError:
+    from dpipe_api import toml
 from .training_runs import under
 
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.bmp'}
@@ -29,6 +32,7 @@ class TrainingRequest(BaseModel):
     family: Literal['sdxl', 'flux1'] = 'sdxl'
     profile: Literal['quick_test', 'regular', 'high_quality'] = 'regular'
     toml_path: str = ''
+    source_run_id: str | None = Field(default=None, pattern=r'^[a-f0-9]{32}$')
 
 
 class GuidedTraining:

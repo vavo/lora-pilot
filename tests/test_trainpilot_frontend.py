@@ -16,18 +16,6 @@ class TrainPilotFrontendTests(unittest.TestCase):
         self.assertNotIn('hf_bin="/opt/venvs/core/bin/hf"', text)
         self.assertIn("openai/clip-vit-large-patch14", text)
 
-    def test_start_warns_and_starts_required_services_before_training(self):
-        text = (ROOT / "apps/Portal/static/js/trainpilot.js").read_text(encoding="utf-8")
-
-        self.assertIn('{ name: "kohya", label: "Kohya" }', text)
-        self.assertIn('{ name: "diffpipe", label: "TensorBoard" }', text)
-        self.assertIn("Start missing service(s) now?", text)
-        self.assertIn("/api/services/${encodeURIComponent(service.name)}/start", text)
-        self.assertLess(
-            text.index("await ensureTrainpilotRuntimeServices(status)"),
-            text.index('await fetchJson("/api/trainpilot/start"'),
-        )
-
     def test_move_loras_moves_only_current_run_artifacts(self):
         try:
             from apps.Portal import app as portal_app
@@ -86,7 +74,7 @@ class TrainPilotFrontendTests(unittest.TestCase):
 
 
 class TrainPilotResultBehaviorTests(unittest.TestCase):
-    def test_result_state_and_move_retry(self):
+    def test_result_states_escape_filenames_and_show_library_copy(self):
         import shutil
         import subprocess
         if not shutil.which('node'):
@@ -127,18 +115,10 @@ vm.runInContext(fs.readFileSync('apps/Portal/static/js/trainpilot.js','utf8'), c
   assert.equal(get('tp-result').hidden,false);
   assert.equal(get('tp-result-files').children[0].children[0].textContent,'<img onerror=bad>.safetensors');
   assert.equal(get('tp-move-loras').disabled,false);
-  context.input = data;
-  vm.runInContext('tpLastData = input',context);
-  await context.moveTrainpilotLoras();
-  assert.match(get('tp-move-status').textContent,/destination conflict/);
-  assert.equal(get('tp-move-loras').disabled,false);
-  assert.equal(calls[0][1].run_id,'current');
-  rejectMove = false;
-  await context.moveTrainpilotLoras();
-  assert.equal(get('tp-move-loras').textContent,'Open ComfyUI');
+  context.renderTpResult({...data, moved:true});
+  assert.equal(get('tp-move-loras').textContent,'Copied to LoRA library');
+  assert.equal(get('tp-move-loras').disabled,true);
   assert.equal(get('tp-result-path').textContent,'/workspace/models/loras');
-  await context.moveTrainpilotLoras();
-  assert.equal(calls.at(-1),'comfyui');
   vm.runInContext('tpDismissedRunId = "current"',context);
   context.renderTpResult(data);
   assert.equal(get('tp-result').hidden,true);

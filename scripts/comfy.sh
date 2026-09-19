@@ -198,6 +198,10 @@ ln -s "${WORKSPACE_ROOT}/models" "${COMFY_DIR}/models"
 ensure_model_dirs
 # Point Comfy custom nodes to workspace apps/comfy/custom_nodes
 rm -rf "${COMFY_DIR}/custom_nodes"
+# Native-node comparison handoff; no Python execution nodes or extra dependencies.
+if [ -d /opt/pilot/apps/ComfyPilot ] && [ ! -e "${CUSTOM_NODES_DIR}/lora_pilot_comparison" ] && [ ! -L "${CUSTOM_NODES_DIR}/lora_pilot_comparison" ]; then
+  ln -s /opt/pilot/apps/ComfyPilot "${CUSTOM_NODES_DIR}/lora_pilot_comparison"
+fi
 ln -s "${CUSTOM_NODES_DIR}" "${COMFY_DIR}/custom_nodes"
 cd "$COMFY_DIR"
 

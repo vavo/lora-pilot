@@ -143,7 +143,12 @@ async function checkComfyUIStatus() {
       }
       if (portEl) portEl.textContent = comfyPort;
       if (iframeEl && (!iframeEl.src || iframeEl.src === "about:blank")) {
-        iframeEl.src = getComfyUIUrl(comfyPort);
+        let target = getComfyUIUrl(comfyPort);
+        if (window.pendingComfyWorkflow) {
+          target += '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify(window.pendingComfyWorkflow));
+          window.pendingComfyWorkflow = null;
+        }
+        iframeEl.src = target;
       }
     } else {
       comfyStatusFailures += 1;

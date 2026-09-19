@@ -49,6 +49,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
     def public(run, detail=False):
         data = {key: value for key, value in run.items() if key not in {'template', 'dataset_fingerprint', 'process_identity'}}
         if detail:
+            data['library_destination'] = str(models / 'loras/ControlPilot' / run['id'])
             data['artifacts'] = artifacts(run)
             data['lines'] = queue.logs(run['id'])
             data['config_text'] = under(queue.directory(run['id']), queue.directory(run['id']) / 'template.toml').read_text()
@@ -77,7 +78,14 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
 
     @router.post('/preflight')
     def preflight(req: TrainingRequest):
-        checks = recipe.requirements(req.model_dump())
+        config = None
+        if req.source_run_id:
+            ready()
+            old = queue.get(req.source_run_id)
+            if old['spec']['family'] != req.family:
+                raise HTTPException(400, 'Saved configuration belongs to a different model family')
+            config = old['template']
+        checks = recipe.requirements(req.model_dump(), config)
         return dict(checks, conflicts=managed_conflicts() + gpu_guard.conflicts(),
                     note='FLUX.1 dev uses full-size weights and substantial GPU/system memory. Block swapping is enabled.'
                          if req.family == 'flux1' else 'SDXL uses the existing Kohya profiles.')
@@ -85,7 +93,17 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
     @router.post('/runs')
     def submit(req: TrainingRequest):
         ready()
-        return public(queue.submit(req.model_dump()))
+        spec = req.model_dump()
+        if req.source_run_id:
+            old = queue.get(req.source_run_id)
+            if old['spec']['family'] != req.family:
+                raise HTTPException(400, 'Saved configuration belongs to a different model family')
+            spec['_template'] = dict(old['template'])
+            if req.family == 'flux1' and req.profile != old['spec']['profile']:
+                profile = recipe.template(spec)
+                for key in ('network_dim', 'network_alpha', 'max_train_steps'):
+                    spec['_template'][key] = profile[key]
+        return public(queue.submit(spec))
 
     @router.post('/queue')
     def set_queue(req: QueueRequest):
@@ -125,14 +143,18 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
                 raise HTTPException(409, 'A different LoRA already exists in the library destination')
         else:
             temporary = target_dir / (name + '.partial')
+            created = False
             try:
-                with temporary.open('xb') as dest, source.open('rb') as src:
-                    shutil.copyfileobj(src, dest)
+                with temporary.open('xb') as dest:
+                    created = True
+                    with source.open('rb') as src:
+                        shutil.copyfileobj(src, dest)
                 os.link(temporary, target)
             except FileExistsError:
                 raise HTTPException(409, 'LoRA library destination already exists; retry after checking it')
             finally:
-                temporary.unlink(missing_ok=True)
+                if created:
+                    temporary.unlink(missing_ok=True)
         return target.relative_to(models / 'loras').as_posix()
 
     @router.post('/runs/{run_id}/library')
@@ -202,6 +224,18 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
                     data['error'] = 'ComfyUI no longer has this job. Check its history before generating again.'
             write_json(path, data)
             return data
+
+    @router.post('/runs/{run_id}/comparison/reset')
+    def reset_comparison(run_id: str):
+        ready()
+        with queue.lock:
+            queue.get(run_id)
+            jobs = comfy('GET', 'queue')
+            if jobs.get('queue_running') or jobs.get('queue_pending'):
+                raise HTTPException(409, 'Wait until the ComfyUI queue is empty before resetting an unconfirmed comparison')
+            state = {'status': 'none', 'images': []}
+            write_json(comparison_file(run_id), state)
+            return state
 
     @router.post('/runs/{run_id}/comparison')
     def generate_comparison(run_id: str, req: ComparisonRequest):

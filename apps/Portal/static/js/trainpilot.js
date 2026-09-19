@@ -5,12 +5,11 @@ let tpStatusKnown = false, tpDismissedRunId = null, tpLastData = null;
 let tpDatasets = [];
 const tpProfiles = { quick_test: "Quick test", regular: "Balanced", high_quality: "Extended" };
 
-window.initTrainpilot = function () {
+window.initTrainpilot = async function () {
   tpStatusKnown = false;
   bindTpControls();
-  loadTpDatasets();
-  refreshTpPreflight();
-  startTpLogPoll();
+  await loadTpDatasets();
+  window.trainingWorkspace.init();
 };
 
 function bindTpControls() {
@@ -132,77 +131,11 @@ function clearModelDownloadUI() {
   text.textContent = "";
 }
 
-const TRAINPILOT_RUNTIME_SERVICES = [
-  { name: "kohya", label: "Kohya" },
-  { name: "diffpipe", label: "TensorBoard" },
-];
-
-function serviceStateLabel(service) {
-  if (!service) return "not found";
-  return service.state || service.state_raw || (service.running ? "RUNNING" : "not running");
-}
-
-async function fetchServiceMap() {
-  const services = await fetchJson("/api/services");
-  const byName = {};
-  (Array.isArray(services) ? services : []).forEach(service => {
-    if (service && service.name) byName[service.name] = service;
-  });
-  return byName;
-}
-
-async function waitForTrainpilotServices(names, statusEl) {
-  const deadline = Date.now() + 20000;
-  while (Date.now() < deadline) {
-    const byName = await fetchServiceMap();
-    const missing = names.filter(name => !(byName[name] && byName[name].running));
-    if (!missing.length) return true;
-    if (statusEl) {
-      const labels = missing.map(name => TRAINPILOT_RUNTIME_SERVICES.find(s => s.name === name)?.label || name);
-      statusEl.textContent = `Waiting for ${labels.join(", ")}...`;
-    }
-    await new Promise(resolve => setTimeout(resolve, 1000));
-  }
-  return false;
-}
-
-async function ensureTrainpilotRuntimeServices(statusEl) {
-  if (statusEl) statusEl.textContent = "Checking services...";
-  const byName = await fetchServiceMap();
-  const missing = TRAINPILOT_RUNTIME_SERVICES
-    .map(service => ({ ...service, current: byName[service.name] || null }))
-    .filter(service => !(service.current && service.current.running));
-
-  if (!missing.length) return true;
-
-  const lines = missing
-    .map(service => `- ${service.label}: ${serviceStateLabel(service.current)}`)
-    .join("\n");
-  const ok = confirm(
-    `Training works best when Kohya and TensorBoard are running.\n\n` +
-    `These services are not running:\n${lines}\n\n` +
-    `Start missing service(s) now?`
-  );
-  if (!ok) return false;
-
-  for (const service of missing) {
-    if (statusEl) statusEl.textContent = `Starting ${service.label}...`;
-    await fetchJson(`/api/services/${encodeURIComponent(service.name)}/start`, { method: "POST" });
-  }
-
-  const ready = await waitForTrainpilotServices(missing.map(service => service.name), statusEl);
-  if (!ready) {
-    const labels = missing.map(service => service.label).join(", ");
-    throw new Error(`${labels} did not report RUNNING after start request`);
-  }
-  return true;
-}
-
 async function ensureTrainpilotModelsPresent(tomlPath) {
-  const check = await fetchJson("/api/trainpilot/model-check", {
+  const check = await fetchJson("/api/training/preflight", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ toml_path: tomlPath || "" }),
+    body: JSON.stringify(window.trainingWorkspace.spec()),
   });
   const missing = (check && check.missing) ? check.missing : [];
   if (!missing.length) return true;
@@ -214,7 +147,7 @@ async function ensureTrainpilotModelsPresent(tomlPath) {
     return `- ${kind}: ${path}${mapped}`;
   }).join("\n");
 
-  const ok = confirm(`Missing model files referenced by the TOML:\n\n${lines}\n\nDownload now?`);
+  const ok = confirm(`Missing model files for this training family:\n\n${lines}\n\nDownload now?`);
   if (!ok) return false;
 
   const downloadable = missing.filter(m => m.model_name);
@@ -313,10 +246,10 @@ function syncTpActions() {
   const start = document.getElementById("tp-start");
   if (!start) return;
   const dataset = tpDatasets.find(d => d.name === document.getElementById("tp-dataset").value);
-  const busy = tpStarting || tpRunning || tpStopping;
+  const busy = tpStarting || tpStopping;
   start.disabled = busy || !tpStatusKnown || !dataset?.images || !document.getElementById("tp-output").value.trim();
-  start.hidden = tpRunning;
-  start.textContent = tpStarting ? "Preparing training…" : "Start training";
+  start.hidden = false;
+  start.textContent = tpStarting ? "Preparing training…" : "Add to training queue";
   const stop = document.getElementById("tp-stop");
   stop.hidden = !tpRunning;
   stop.disabled = tpStopping;
@@ -324,23 +257,7 @@ function syncTpActions() {
 }
 
 async function refreshTpPreflight() {
-  const page = document.getElementById("tp-page");
-  if (!page) return;
-  const check = page.querySelector("#tp-check-model");
-  try {
-    const config = await fetchJson("/api/trainpilot/toml");
-    if (!page.isConnected) return;
-    page.querySelector("#tp-toml").value = config.path;
-    page.querySelector("#toml-config-path").textContent = config.path;
-    const result = await fetchJson("/api/trainpilot/model-check", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toml_path: config.path }),
-    });
-    if (!page.isConnected) return;
-    check.textContent = result.missing.length ? "Model files missing · you’ll be offered a download before training." : "Configured checkpoint and VAE files found";
-    check.classList.toggle("verified", !result.missing.length);
-  } catch {
-    if (page.isConnected) check.textContent = "Model check unavailable. Review Advanced configuration before starting.";
-  }
+  return window.trainingWorkspace?.preflight();
 }
 
 window.openDatasets = function (evt) {
@@ -385,124 +302,13 @@ window.refreshTrainpilotTensorBoardStatus = async function () {
   }
 };
 
-window.startTrainPilot = async function () {
-  if (tpStarting || tpRunning || !tpStatusKnown) return;
-  const dataset = document.getElementById("tp-dataset")?.value.trim() || "";
-  const outputEl = document.getElementById("tp-output");
-  const output = normalizeOutputName(outputEl?.value.trim() || "");
-  const profile = document.getElementById("tp-profile")?.value || "regular";
-  const toml = document.getElementById("tp-toml")?.value.trim() || "";
-  const status = document.getElementById("tp-status");
-  if (outputEl) outputEl.value = output;
-  updateEpochExample(output);
-  if (!dataset || !output || !tpDatasets.find(d => d.name === dataset)?.images) {
-    showTpError("Choose a dataset with images and give your LoRA a name.");
-    return;
-  }
-  tpStarting = true;
-  showTpError("");
-  syncTpActions();
-  if (status) status.textContent = "Starting...";
-  try {
-    const servicesOk = await ensureTrainpilotRuntimeServices(status);
-    if (!servicesOk) {
-      if (status) status.textContent = "Canceled.";
-      return;
-    }
-    clearModelDownloadUI();
-    const ok = await ensureTrainpilotModelsPresent(toml);
-    if (!ok) {
-      if (status) status.textContent = "Canceled.";
-      return;
-    }
-    await fetchJson("/api/trainpilot/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        dataset_name: dataset,
-        output_name: output,
-        profile,
-        toml_path: toml,
-      }),
-    });
-    tpRunning = true;
-    tpDismissedRunId = null;
-    if (status) status.textContent = "Preparing training…";
-    refreshTrainpilotTensorBoardStatus().catch(() => {});
-  } catch (e) {
-    clearModelDownloadUI();
-    showTpError(`Could not start training: ${e.message || e}`);
-    if (status) status.textContent = "Training did not start.";
-  } finally {
-    tpStarting = false;
-    syncTpActions();
-  }
-};
-
-window.stopTrainPilot = async function () {
-  if (!tpRunning || tpStopping || !confirm("Stop this training run? Saved checkpoints will remain in your workspace.")) return;
-  const status = document.getElementById("tp-status");
-  tpStopping = true;
-  syncTpActions();
-  if (status) status.textContent = "Stopping…";
-  try {
-    await fetchJson("/api/trainpilot/stop", { method: "POST" });
-    tpRunning = false;
-    if (status) status.textContent = "Training stopped.";
-  } catch (e) {
-    showTpError(`Could not stop training: ${e.message || e}`);
-  } finally {
-    tpStopping = false;
-    syncTpActions();
-  }
-};
-
-function startTpLogPoll() {
-  window.stopTpLogPoll();
-  const generation = tpPollGeneration;
-  const poll = async () => {
-    try {
-      const data = await fetchJson("/api/trainpilot/logs?limit=500");
-      if (generation !== tpPollGeneration || !document.getElementById("tp-page")) return;
-      tpLastData = data;
-      tpStatusKnown = true;
-      tpRunning = data.running === true;
-      if (tpRunning) showTpError("");
-      const lines = data.lines || [];
-      const progress = data.run_id ? findLatestProgress(lines) : null;
-      const finished = !data.running && data.exit_code === 0 && !data.run?.stopped && !!data.run_id;
-      const pre = document.getElementById("tp-logs");
-      pre.textContent = lines.join("\n") || "No logs available yet.";
-      pre.scrollTop = pre.scrollHeight;
-      const status = document.getElementById("tp-status");
-      if (!tpStarting && !tpStopping && status) {
-        const message = tpRunning ? (progress ? "Training running" : "Preparing training…")
-          : data.run?.stopped ? "Training stopped. Saved checkpoints remain in your workspace."
-          : finished ? "Training completed."
-          : data.run_id && data.exit_code !== null ? `Training failed (exit ${data.exit_code}). Open Logs & diagnostics for details.`
-          : "No training running";
-        if (status.textContent !== message) status.textContent = message;
-      }
-      updateProgressUI(progress, tpRunning, finished);
-      renderTpResult(data);
-      syncTpActions();
-    } catch (error) {
-      if (generation !== tpPollGeneration) return;
-      tpStatusKnown = false;
-      const status = document.getElementById("tp-status");
-      if (status && !tpStarting) status.textContent = "Training status unavailable. Reconnecting…";
-      syncTpActions();
-    } finally {
-      if (generation === tpPollGeneration) tpLogTimer = setTimeout(poll, 2000);
-    }
-  };
-  poll();
-}
-
+window.startTrainPilot = () => window.trainingWorkspace.submit();
+window.stopTrainPilot = () => window.trainingWorkspace.stopRun();
 window.stopTpLogPoll = function () {
   tpPollGeneration++;
   clearTimeout(tpLogTimer);
   tpLogTimer = null;
+  window.trainingWorkspace?.stop();
 };
 
 function renderTpResult(data) {
@@ -520,7 +326,7 @@ function renderTpResult(data) {
   document.getElementById("tp-result-profile").textContent = tpProfiles[data.run?.profile] || "Custom";
   document.getElementById("tp-result-finished").textContent = data.run?.finished_at ? new Date(data.run.finished_at).toLocaleString() : "Completed";
   const files = data.artifacts || [];
-  document.getElementById("tp-result-count").textContent = files.length ? `${files.length} checkpoint${files.length === 1 ? "" : "s"} ${data.moved ? "moved to your LoRA library" : "saved in your workspace"}.` : "No new LoRA files found. Check the logs and output folder.";
+  document.getElementById("tp-result-count").textContent = files.length ? `${files.length} checkpoint${files.length === 1 ? "" : "s"} ${data.moved ? "copied to your LoRA library" : "saved in your workspace"}.` : "No new LoRA files found. Check the logs and output folder.";
   const list = document.getElementById("tp-result-files");
   const signature = JSON.stringify(files);
   if (list.dataset.files !== signature) {
@@ -536,36 +342,15 @@ function renderTpResult(data) {
   }
   document.getElementById("tp-result-path").textContent = (data.moved ? data.lora_destination : data.output_dir) || "Unavailable";
   document.getElementById("tp-result-destination").textContent = data.lora_destination || "";
-  document.getElementById("tp-result-instructions").textContent = data.moved ? "Your files are in the shared LoRA folder. Open ComfyUI, load a compatible workflow and select your LoRA." : "Move the trained files to your shared LoRA folder so ComfyUI can find them.";
+  document.getElementById("tp-result-instructions").textContent = data.moved ? "A copy is in your shared LoRA library. Your original run files remain saved." : "Copy the trained files to your shared LoRA folder, or generate a comparison below.";
   if (data.moved && !tpMoving) document.getElementById("tp-move-status").textContent = "Your LoRA files are ready in the shared library.";
   const button = document.getElementById("tp-move-loras");
-  button.disabled = tpMoving || (!data.moved && !data.move_available);
-  button.textContent = tpMoving ? "Moving files…" : data.moved ? "Open ComfyUI" : "Move to LoRA library";
+  button.disabled = tpMoving || data.moved || !data.move_available;
+  button.textContent = tpMoving ? "Copying files…" : data.moved ? "Copied to LoRA library" : "Copy to LoRA library";
 }
 
 async function moveTrainpilotLoras() {
-  if (tpMoving || !tpLastData) return;
-  if (tpLastData.moved) { window.loadSection("comfyui"); return; }
-  if (!tpLastData.move_available) return;
-  const runId = tpLastData.run_id;
-  const status = document.getElementById("tp-move-status");
-  tpMoving = true;
-  renderTpResult(tpLastData);
-  status.textContent = "Moving files…";
-  try {
-    const moved = await fetchJson("/api/trainpilot/move-loras", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ run_id: runId }),
-    });
-    if (tpLastData.run_id === runId) {
-      tpLastData = { ...tpLastData, moved: true, move_available: false, lora_destination: moved.destination };
-      status.textContent = `Moved ${moved.files.length} LoRA file(s) to your library.`;
-    }
-  } catch (error) {
-    status.textContent = `Move failed: ${error.message || error}. Your saved files can be found at the path above.`;
-  } finally {
-    tpMoving = false;
-    renderTpResult(tpLastData);
-  }
+  return window.trainingWorkspace.publish();
 }
 
 function autoFillOutput(labelText) {
@@ -581,7 +366,7 @@ function autoFillOutput(labelText) {
 function normalizeOutputName(value) {
   return String(value || "")
     .trim()
-    .replace(/\s+/g, "_");
+    .replace(/\s+/g, "_").replace(/[^A-Za-z0-9_-]/g, "").replace(/^[-_]+/, "").slice(0, 80);
 }
 
 function updateEpochExample(name) {
