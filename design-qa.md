@@ -1,3 +1,25 @@
+# ControlPilot: five-screen workflow implementation
+
+Date: 2026-09-19
+
+final result: passed
+
+The approved references are the five September 19 designs: Dashboard (`exec-e4d1523e-3db6-40fd-82a0-c9856d2d8827.png`), Datasets (`exec-348affbf-7241-4586-b889-4992a75a4c78.png`), training setup (`exec-f2d99d34-3e08-4b69-bee2-3d0c9db2d69d.png`), completed training (`exec-a28b3c92-d1ac-4f19-ae6c-79ecda957a15.png`), and Connections (`exec-1fd28d8c-f412-446b-929e-5f93664fe4e4.png`). Originals are in the local generated-images directory for this task.
+
+The implementation was inspected at http://127.0.0.1:18789/ using a separate temporary workspace. Each reference was placed beside its rendered screen in `/tmp/cp-qa/compare-{dashboard,datasets,training,completion,settings}.png` and opened for visual comparison. Final desktop captures and references are both 1487 by 1058 pixels, DPR 1. Initial resize captures were discarded because capture ran before the browser finished resizing. Capturing after the rendered-state observation resolved it.
+
+The comparison preserves the orange actions, quiet neutral surfaces, grouped sidebar, creation-first dashboard rows, dataset coverage, guided form and summary, completed-file table, and dark Connections layout. The first pass identified undersized desktop navigation and controls, a missing completion indicator, and crowded navigation at shorter heights. These were corrected and the screens compared again. No actionable P0, P1, or P2 visual findings remain. Minor P3 differences in type metrics, row density and decorative icons remain within the existing product's styles. Primary orange is darker for readable white text. Feather 4.29.2 icons and its MIT license are included locally.
+
+Illustrative values are replaced by actual API state. The CPU-only preview reports no detected GPU and unavailable Supervisor services. Uploaded test images are copies of the bundled SDXL icon, so the thumbnails correctly differ from the reference's mug photography. Both 22-of-24 and 24-of-24 caption coverage were checked. Completion tests used clearly identified 29-byte fixture files, not trained weights. Only confirmed training completion and existing output files receive completion indicators; no invented step count or dataset-quality certification is displayed. Existing service confirmation and model-download behavior is retained.
+
+Browser checks covered Dashboard upload entry, ZIP upload, dialog dismissal, previews, captioning handoff, dataset-to-training selection, profile and output-name changes, model-file preflight, running controls and progress, failed-start and failed-run states, completed-file display, real fixture-file movement, browser reload after movement, conflict retry, and returning to the training form. Models opens Connections directly and both return links preserve the selected family. Sidebar theme choices work in desktop and mobile layouts. Mobile Datasets, training and Connections were inspected at 390 by 844; document width remains 390 pixels. The compact navigation at 1280 by 720 retains all destinations. Browser JavaScript error logs were empty in the final inspected session.
+
+All 178 Python tests pass, including Node-driven frontend behavior checks. New coverage exercises caption matching, bounded previews, traversal and symlink rejection, current-run movement, conflict preservation, completion metadata after movement, and frontend result/retry states. JavaScript syntax, Python compilation and git whitespace checks pass. Docker build-check could not connect to the stopped local Docker daemon. No image was built or published and no live GPU training was performed. A fresh image and RunPod rehearsal remain the deployment checks. The completion summary survives browser navigation and reload while the ControlPilot process remains alive; restarting that process clears run metadata without removing persistent files.
+
+The reports below record earlier implementations and their original validation boundaries.
+
+---
+
 # ControlPilot Settings: version 1 verification
 
 final result: passed

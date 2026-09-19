@@ -207,6 +207,7 @@ _tp_run_id: Optional[str] = None
 _tp_exit_code: Optional[int] = None
 _tp_output_baseline: dict[str, tuple[int, int]] = {}
 _tp_moved_run_id: Optional[str] = None
+_tp_run_details: dict = {}
 
 _service_update_lock = threading.Lock()
 _service_update_jobs: dict[str, "ServiceUpdateJob"] = {}
@@ -691,6 +692,8 @@ class DatasetEntry(BaseModel):
     size_bytes: int
     has_tags: bool
     path: str
+    captioned_images: int = 0
+    preview_files: list[str] = []
 
 
 class TrainPilotModelCheckRequest(BaseModel):
@@ -749,6 +752,9 @@ def _scan_dataset_dir(dataset_dir: Path) -> DatasetEntry:
     images = 0
     size_bytes = 0
     has_tags = False
+    image_stems = []
+    caption_stems = set()
+    preview_files = []
     stack = [dataset_dir]
 
     while stack:
@@ -767,8 +773,14 @@ def _scan_dataset_dir(dataset_dir: Path) -> DatasetEntry:
                         size_bytes += stat_result.st_size
                         if suffix in _DATASET_IMAGE_EXTS:
                             images += 1
-                        elif not has_tags and suffix in _DATASET_TAG_EXTS and stat_result.st_size > 0:
+                            relative = Path(entry.path).relative_to(dataset_dir)
+                            image_stems.append(relative.with_suffix("").as_posix())
+                            if len(preview_files) < 3:
+                                preview_files.append(relative.as_posix())
+                        elif suffix in _DATASET_TAG_EXTS and stat_result.st_size > 0:
                             has_tags = True
+                            relative = Path(entry.path).relative_to(dataset_dir)
+                            caption_stems.add(relative.with_suffix("").as_posix())
                     except Exception:
                         continue
         except Exception:
@@ -784,6 +796,8 @@ def _scan_dataset_dir(dataset_dir: Path) -> DatasetEntry:
         size_bytes=size_bytes,
         has_tags=has_tags,
         path=str(dataset_dir),
+        captioned_images=sum(stem in caption_stems for stem in image_stems),
+        preview_files=preview_files,
     )
 
 
@@ -1607,6 +1621,43 @@ def upload_dataset(file: UploadFile = File(...)):
                 shutil.rmtree(staging, ignore_errors=True)
     _invalidate_dataset_list_cache()
     return {"status": "uploaded", "zip": str(dest), "extracted_to": str(extract_dir)}
+
+
+@app.get("/api/datasets/{name}/preview")
+def dataset_preview(name: str, file: str):
+    from io import BytesIO
+    from PIL import Image, ImageOps, UnidentifiedImageError
+    from fastapi.responses import Response
+
+    root = _resolve_existing_dataset_dir(name)
+    candidate = root / file
+    # Check both containment and every component before opening user-controlled files.
+    relative = Path(file)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise HTTPException(status_code=400, detail="Invalid image path")
+    for part in [candidate, *candidate.parents]:
+        if part == root:
+            break
+        if part.is_symlink():
+            raise HTTPException(status_code=400, detail="Invalid image path")
+    target = _resolve_under_root(root, candidate)
+    if target.suffix.lower() not in _DATASET_IMAGE_EXTS or not target.is_file():
+        raise HTTPException(status_code=404, detail="Image not found")
+    if target.stat().st_size > 32 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Image too large for preview")
+    try:
+        with Image.open(target) as original:
+            if original.width * original.height > 40_000_000:
+                raise HTTPException(status_code=413, detail="Image too large for preview")
+            original.thumbnail((180, 180))
+            thumbnail = ImageOps.exif_transpose(original).convert("RGB")
+            output = BytesIO()
+            thumbnail.save(output, format="JPEG", quality=80)
+    except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError):
+        raise HTTPException(status_code=422, detail="Image preview unavailable")
+    return Response(output.getvalue(), media_type="image/jpeg", headers={
+        "Cache-Control": "private, max-age=60", "X-Content-Type-Options": "nosniff",
+    })
 
 
 @app.delete("/api/datasets/{name}")
@@ -3338,6 +3389,7 @@ def _tp_reader(proc: subprocess.Popen):
     with _tp_lock:
         if _tp_proc is proc:
             _tp_exit_code = exit_code
+            _tp_run_details["finished_at"] = datetime.now(timezone.utc).isoformat()
             _tp_proc = None
 
 
@@ -3441,6 +3493,9 @@ def _trainpilot_start(req: TrainPilotRequest):
     except Exception:
         _tp_logs.append("Failed to start TrainPilot")
         raise HTTPException(status_code=500, detail="Failed to start TrainPilot")
+    _tp_run_details.clear()
+    _tp_run_details.update(dataset=ds_name, output_name=out_name, profile=profile,
+                           started_at=datetime.now(timezone.utc).isoformat(), stopped=False)
     _tp_output_dir = output_dir
     _tp_output_baseline = output_baseline
     _tp_run_id = secrets.token_urlsafe(12)
@@ -3464,6 +3519,7 @@ def _trainpilot_stop():
     if not _tp_proc or _tp_proc.poll() is not None:
         _tp_proc = None
         return {"status": "noop"}
+    _tp_run_details["stopped"] = True
     try:
         os.killpg(os.getpgid(_tp_proc.pid), signal.SIGTERM)
         _tp_proc.wait(timeout=5)
@@ -3498,10 +3554,12 @@ def _trainpilot_move_loras(req: TrainPilotMoveRequest):
     conflicts = [target.name for target in targets if target.exists() or target.is_symlink()]
     if conflicts:
         raise HTTPException(status_code=409, detail=f"LoRA already exists in models: {conflicts[0]}")
+    file_details = [{"name": artifact.name, "size_bytes": artifact.stat().st_size} for artifact in artifacts]
     destination.mkdir(parents=True, exist_ok=True)
     for artifact, target in zip(artifacts, targets):
         shutil.move(str(artifact), str(target))
     _tp_moved_run_id = _tp_run_id
+    _tp_run_details["moved_files"] = file_details
     return {"status": "moved", "files": [target.name for target in targets], "destination": str(destination)}
 
 
@@ -3665,6 +3723,12 @@ def _trainpilot_logs(limit: int = 500):
     
     # Always return a valid response, even if empty
     artifacts = _tp_lora_artifacts()
+    file_details = []
+    for path in artifacts:
+        try:
+            file_details.append({"name": path.name, "size_bytes": path.stat().st_size})
+        except OSError:
+            continue
     return {
         "lines": lines[-limit:],
         "running": running,
@@ -3672,6 +3736,12 @@ def _trainpilot_logs(limit: int = 500):
         "exit_code": _tp_exit_code,
         "lora_files": [path.name for path in artifacts],
         "move_available": bool(artifacts) and _tp_moved_run_id != _tp_run_id,
+        "moved": bool(_tp_run_id) and _tp_moved_run_id == _tp_run_id,
+        "run": dict(_tp_run_details) if _tp_run_id else {},
+        "output_dir": str(_tp_output_dir) if _tp_output_dir else None,
+        "lora_destination": str(MODELS_DIR / "loras"),
+        "artifacts": (_tp_run_details.get("moved_files", []) if _tp_run_id and _tp_moved_run_id == _tp_run_id
+                      else file_details),
     }
 
 

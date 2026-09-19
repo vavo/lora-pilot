@@ -397,7 +397,12 @@
       case "install-workflow": await installWorkflow(control); break;
       case "close-review": $("models-install-dialog").close(); break;
       case "recheck-workflow": await reviewInstallation(value); break;
-      case "settings": $("models-install-dialog").close(); document.querySelector('.nav [data-section="settings"]').click(); break;
+      case "settings":
+        $("models-install-dialog").close();
+        window.pendingSettingsTab = "connections";
+        window.settingsReturnSection = "models";
+        window.loadSection("settings");
+        break;
       case "download": await download(value); break;
       case "copy":
         try {
@@ -420,7 +425,8 @@
   window.initModels = async function () {
     window.stopModels();
     const epoch = generation;
-    if (window.matchMedia("(max-width: 1000px)").matches) familyId = null;
+    if (!window.returningToModels && window.matchMedia("(max-width: 1000px)").matches) familyId = null;
+    window.returningToModels = false;
     $("models-search").value = query;
     $("models-page").addEventListener("click", action);
     $("models-detail-close").onclick = () => {

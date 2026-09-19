@@ -19,7 +19,7 @@ class MediaPilotLayoutTests(unittest.TestCase):
         self.assertIn("drawer.hidden = disabled", main)
         self.assertIn('section === "mediapilot"', main)
         self.assertIn('view: "/views/mediapilot.html?v=20260905a"', main)
-        self.assertIn('src="/js/main.js?v=20260916a"', index)
+        self.assertRegex(index, r'src="/js/main\.js\?v=[^"]+"')
         self.assertIn("height: 100vh", view)
         self.assertNotIn("margin: -24px", view)
         self.assertNotIn("margin: -16px", view)

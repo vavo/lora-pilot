@@ -28,15 +28,6 @@ class TrainPilotFrontendTests(unittest.TestCase):
             text.index('await fetchJson("/api/trainpilot/start"'),
         )
 
-    def test_completed_training_offers_to_move_new_loras(self):
-        text = (ROOT / "apps/Portal/static/js/trainpilot.js").read_text()
-
-        self.assertIn("data.move_available", text)
-        self.assertIn("Move the new LoRA file(s) to /workspace/models/loras?", text)
-        self.assertIn('fetchJson("/api/trainpilot/move-loras"', text)
-        self.assertIn("data.run_id !== tpMovePromptedRunId", text)
-        self.assertIn("status.textContent = tpLastMoveMessage", text)
-
     def test_move_loras_moves_only_current_run_artifacts(self):
         try:
             from apps.Portal import app as portal_app
@@ -92,6 +83,68 @@ class TrainPilotFrontendTests(unittest.TestCase):
                     portal_app._tp_output_baseline,
                     portal_app._tp_moved_run_id,
                 ) = old_state
+
+
+class TrainPilotResultBehaviorTests(unittest.TestCase):
+    def test_result_state_and_move_retry(self):
+        import shutil
+        import subprocess
+        if not shutil.which('node'):
+            self.skipTest('Node.js is required')
+        script = r'''
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const nodes = new Map();
+function node() { return {dataset:{}, children:[], textContent:'', append(child) {this.children.push(child)}, replaceChildren() {this.children=[]}}; }
+const get = id => {if (!nodes.has(id)) nodes.set(id,node()); return nodes.get(id)};
+let rejectMove = true, calls = [];
+const context = {
+  window: {addEventListener() {}, loadSection(section) {calls.push(section)}},
+  document: {getElementById:get, createElement:node},
+  formatBytes: value => `${value} B`,
+  fetchJson: async (url, options) => {
+    calls.push([url, JSON.parse(options.body)]);
+    if (rejectMove) throw new Error('destination conflict');
+    return {files:['safe.safetensors'], destination:'/workspace/models/loras'};
+  },
+};
+vm.createContext(context);
+vm.runInContext(fs.readFileSync('apps/Portal/static/js/trainpilot.js','utf8'), context);
+(async () => {
+  const data = {run_id:'current',running:false,exit_code:0,run:{dataset:'1_example',profile:'regular'},
+    output_dir:'/workspace/outputs/example',lora_destination:'/workspace/models/loras',move_available:true,
+    artifacts:[{name:'<img onerror=bad>.safetensors',size_bytes:24}]};
+  context.renderTpResult({...data,running:true});
+  assert.equal(get('tp-result').hidden,true);
+  context.renderTpResult({...data,exit_code:1});
+  assert.equal(get('tp-result').hidden,true);
+  context.renderTpResult({...data,run:{stopped:true}});
+  assert.equal(get('tp-result').hidden,true);
+  context.renderTpResult({...data,run_id:null});
+  assert.equal(get('tp-result').hidden,true);
+  context.renderTpResult(data);
+  assert.equal(get('tp-result').hidden,false);
+  assert.equal(get('tp-result-files').children[0].children[0].textContent,'<img onerror=bad>.safetensors');
+  assert.equal(get('tp-move-loras').disabled,false);
+  context.input = data;
+  vm.runInContext('tpLastData = input',context);
+  await context.moveTrainpilotLoras();
+  assert.match(get('tp-move-status').textContent,/destination conflict/);
+  assert.equal(get('tp-move-loras').disabled,false);
+  assert.equal(calls[0][1].run_id,'current');
+  rejectMove = false;
+  await context.moveTrainpilotLoras();
+  assert.equal(get('tp-move-loras').textContent,'Open ComfyUI');
+  assert.equal(get('tp-result-path').textContent,'/workspace/models/loras');
+  await context.moveTrainpilotLoras();
+  assert.equal(calls.at(-1),'comfyui');
+  vm.runInContext('tpDismissedRunId = "current"',context);
+  context.renderTpResult(data);
+  assert.equal(get('tp-result').hidden,true);
+})().catch(error => { console.error(error); process.exitCode=1; });
+'''
+        subprocess.run(['node', '-e', script], cwd=ROOT, check=True)
 
 
 if __name__ == "__main__":

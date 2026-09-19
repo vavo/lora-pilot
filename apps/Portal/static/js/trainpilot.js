@@ -1,10 +1,15 @@
 let tpLogTimer = null;
-let tpMovePromptedRunId = null;
-let tpLastMoveMessage = "";
+let tpPollGeneration = 0;
+let tpStarting = false, tpRunning = false, tpStopping = false, tpMoving = false;
+let tpStatusKnown = false, tpDismissedRunId = null, tpLastData = null;
+let tpDatasets = [];
+const tpProfiles = { quick_test: "Quick test", regular: "Balanced", high_quality: "Extended" };
 
 window.initTrainpilot = function () {
+  tpStatusKnown = false;
   bindTpControls();
   loadTpDatasets();
+  refreshTpPreflight();
   startTpLogPoll();
 };
 
@@ -25,6 +30,32 @@ function bindTpControls() {
     });
     updateEpochExample(output.value || "");
   }
+  document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.addEventListener("change", () => {
+    document.getElementById("tp-profile").value = input.value;
+    updateTpSummary();
+  }));
+  document.getElementById("tp-review-dataset").onclick = () => {
+    const dataset = tpDatasets.find(d => d.name === document.getElementById("tp-dataset").value);
+    if (dataset) openTagpilotDataset(dataset.name);
+  };
+  document.getElementById("tp-move-loras").onclick = moveTrainpilotLoras;
+  document.getElementById("tp-another").onclick = () => {
+    tpDismissedRunId = tpLastData?.run_id;
+    renderTpResult(tpLastData);
+    document.getElementById("tp-dataset")?.focus();
+  };
+  document.getElementById("tp-result-logs").onclick = () => {
+    const details = document.getElementById("tp-diagnostics");
+    details.open = true;
+    details.scrollIntoView({ block: "start" });
+    details.querySelector("summary").focus();
+  };
+  document.getElementById("tp-copy-path").onclick = async event => {
+    try {
+      await navigator.clipboard.writeText(document.getElementById("tp-result-path").textContent);
+      event.target.textContent = "Copied";
+    } catch { event.target.textContent = "Select the path to copy"; }
+  };
   refreshTrainpilotTensorBoardStatus().catch(() => {});
 }
 
@@ -230,35 +261,85 @@ async function ensureTrainpilotModelsPresent(tomlPath) {
 
 async function loadTpDatasets() {
   const sel = document.getElementById("tp-dataset");
-  const status = document.getElementById("tp-status");
   if (!sel) return;
-  sel.innerHTML = `<option>Loading datasets...</option>`;
   try {
-    const data = await fetchJson("/api/datasets");
-    sel.innerHTML = "";
-    if (!data.length) {
-      sel.innerHTML = `<option value="">No datasets found</option>`;
-      return;
+    tpDatasets = await fetchJson("/api/datasets");
+    if (!sel.isConnected) return;
+    sel.replaceChildren();
+    if (!tpDatasets.length) sel.add(new Option("No datasets yet", ""));
+    tpDatasets.forEach(d => sel.add(new Option(d.display || d.name, d.name)));
+    if (window.pendingTrainDataset && tpDatasets.some(d => d.name === window.pendingTrainDataset)) {
+      sel.value = window.pendingTrainDataset;
     }
-    data.forEach(d => {
-      const label = `${d.display || d.name} (${d.images || 0} images)`;
-      const val = d.path || d.name;
-      const opt = document.createElement("option");
-      opt.value = val;
-      opt.textContent = label;
-      sel.appendChild(opt);
+    window.pendingTrainDataset = null;
+    const changed = () => {
+      autoFillOutput(sel.selectedOptions[0]?.textContent || "");
+      updateTpSummary();
+    };
+    sel.addEventListener("change", changed);
+    if (tpDatasets.length) changed();
+    else updateTpSummary();
+  } catch (error) {
+    if (sel.isConnected) {
+      sel.replaceChildren(new Option("Datasets unavailable", ""));
+      showTpError(`Could not load datasets: ${error.message || error}`);
+      updateTpSummary();
+    }
+  }
+}
+
+function updateTpSummary() {
+  const selected = document.getElementById("tp-dataset");
+  if (!selected) return;
+  const dataset = tpDatasets.find(d => d.name === selected.value);
+  const text = dataset ? `${dataset.images} images · ${dataset.captioned_images || 0} captions` : "Upload a dataset to get started.";
+  document.getElementById("tp-dataset-info").textContent = text;
+  document.getElementById("tp-summary-dataset").textContent = dataset?.display || "Choose a dataset";
+  document.getElementById("tp-summary-profile").textContent = tpProfiles[document.getElementById("tp-profile").value];
+  document.getElementById("tp-summary-output").textContent = document.getElementById("tp-output").value || "—";
+  const check = document.getElementById("tp-check-dataset");
+  check.textContent = dataset?.images ? `Dataset available · ${text}` : "Add images to a dataset before training.";
+  check.classList.toggle("verified", !!dataset?.images);
+  document.getElementById("tp-review-dataset").hidden = !dataset;
+  syncTpActions();
+}
+
+function showTpError(message) {
+  const el = document.getElementById("tp-error");
+  if (el) { el.textContent = message; el.hidden = !message; }
+}
+
+function syncTpActions() {
+  const start = document.getElementById("tp-start");
+  if (!start) return;
+  const dataset = tpDatasets.find(d => d.name === document.getElementById("tp-dataset").value);
+  const busy = tpStarting || tpRunning || tpStopping;
+  start.disabled = busy || !tpStatusKnown || !dataset?.images || !document.getElementById("tp-output").value.trim();
+  start.hidden = tpRunning;
+  start.textContent = tpStarting ? "Preparing training…" : "Start training";
+  const stop = document.getElementById("tp-stop");
+  stop.hidden = !tpRunning;
+  stop.disabled = tpStopping;
+  document.getElementById("tp-fields").disabled = busy;
+}
+
+async function refreshTpPreflight() {
+  const page = document.getElementById("tp-page");
+  if (!page) return;
+  const check = page.querySelector("#tp-check-model");
+  try {
+    const config = await fetchJson("/api/trainpilot/toml");
+    if (!page.isConnected) return;
+    page.querySelector("#tp-toml").value = config.path;
+    page.querySelector("#toml-config-path").textContent = config.path;
+    const result = await fetchJson("/api/trainpilot/model-check", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ toml_path: config.path }),
     });
-    // Keep output synced with currently selected dataset.
-    if (sel.options.length) {
-      const firstVal = sel.options[0].textContent || "";
-      autoFillOutput(firstVal);
-      sel.addEventListener("change", () => {
-        const txt = sel.options[sel.selectedIndex]?.textContent || "";
-        autoFillOutput(txt);
-      });
-    }
-  } catch (e) {
-    if (status) status.textContent = `Error loading datasets: ${e.message || e}`;
+    if (!page.isConnected) return;
+    check.textContent = result.missing.length ? "Model files missing · you’ll be offered a download before training." : "Configured checkpoint and VAE files found";
+    check.classList.toggle("verified", !result.missing.length);
+  } catch {
+    if (page.isConnected) check.textContent = "Model check unavailable. Review Advanced configuration before starting.";
   }
 }
 
@@ -305,6 +386,7 @@ window.refreshTrainpilotTensorBoardStatus = async function () {
 };
 
 window.startTrainPilot = async function () {
+  if (tpStarting || tpRunning || !tpStatusKnown) return;
   const dataset = document.getElementById("tp-dataset")?.value.trim() || "";
   const outputEl = document.getElementById("tp-output");
   const output = normalizeOutputName(outputEl?.value.trim() || "");
@@ -313,7 +395,13 @@ window.startTrainPilot = async function () {
   const status = document.getElementById("tp-status");
   if (outputEl) outputEl.value = output;
   updateEpochExample(output);
-  tpLastMoveMessage = "";
+  if (!dataset || !output || !tpDatasets.find(d => d.name === dataset)?.images) {
+    showTpError("Choose a dataset with images and give your LoRA a name.");
+    return;
+  }
+  tpStarting = true;
+  showTpError("");
+  syncTpActions();
   if (status) status.textContent = "Starting...";
   try {
     const servicesOk = await ensureTrainpilotRuntimeServices(status);
@@ -337,168 +425,148 @@ window.startTrainPilot = async function () {
         toml_path: toml,
       }),
     });
-    if (status) status.textContent = "Running...";
+    tpRunning = true;
+    tpDismissedRunId = null;
+    if (status) status.textContent = "Preparing training…";
     refreshTrainpilotTensorBoardStatus().catch(() => {});
   } catch (e) {
     clearModelDownloadUI();
-    if (status) status.textContent = `Error: ${e.message || e}`;
+    showTpError(`Could not start training: ${e.message || e}`);
+    if (status) status.textContent = "Training did not start.";
+  } finally {
+    tpStarting = false;
+    syncTpActions();
   }
 };
 
 window.stopTrainPilot = async function () {
+  if (!tpRunning || tpStopping || !confirm("Stop this training run? Saved checkpoints will remain in your workspace.")) return;
   const status = document.getElementById("tp-status");
-  if (status) status.textContent = "Stopping...";
+  tpStopping = true;
+  syncTpActions();
+  if (status) status.textContent = "Stopping…";
   try {
     await fetchJson("/api/trainpilot/stop", { method: "POST" });
-    if (status) status.textContent = "Stopped.";
+    tpRunning = false;
+    if (status) status.textContent = "Training stopped.";
   } catch (e) {
-    if (status) status.textContent = `Error: ${e.message || e}`;
+    showTpError(`Could not stop training: ${e.message || e}`);
+  } finally {
+    tpStopping = false;
+    syncTpActions();
   }
 };
 
 function startTpLogPoll() {
-  if (tpLogTimer) return;
+  window.stopTpLogPoll();
+  const generation = tpPollGeneration;
   const poll = async () => {
-    const pre = document.getElementById("tp-logs");
-    const status = document.getElementById("tp-status");
-    if (!pre) return;
     try {
-      const response = await fetch("/api/trainpilot/logs?limit=500");
-      if (!response.ok) {
-        console.error("TrainPilot logs endpoint returned:", response.status, response.statusText);
-        pre.textContent = `Error loading logs: ${response.status} ${response.statusText}`;
-        return;
-      }
-      const data = await response.json();
+      const data = await fetchJson("/api/trainpilot/logs?limit=500");
+      if (generation !== tpPollGeneration || !document.getElementById("tp-page")) return;
+      tpLastData = data;
+      tpStatusKnown = true;
+      tpRunning = data.running === true;
+      if (tpRunning) showTpError("");
       const lines = data.lines || [];
-      const running = data.running === true;
-      const finished = lines.some(line => line.includes('=== Training finished'));
-      const progress = findLatestProgress(lines);
-
-      if (data.move_available && data.run_id && data.run_id !== tpMovePromptedRunId) {
-        tpMovePromptedRunId = data.run_id;
-        const loraFiles = Array.isArray(data.lora_files) ? data.lora_files : [];
-        const fileList = loraFiles.map(name => `- ${name}`).join("\n");
-        const shouldMove = confirm(
-          `Training completed. Move the new LoRA file(s) to /workspace/models/loras?\n\n${fileList}`
-        );
-        if (shouldMove) {
-          try {
-            const moved = await fetchJson("/api/trainpilot/move-loras", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ run_id: data.run_id }),
-            });
-            const movedCount = Array.isArray(moved.files) ? moved.files.length : loraFiles.length;
-            tpLastMoveMessage = `Moved ${movedCount} LoRA file(s) to models/loras.`;
-            if (status) status.textContent = tpLastMoveMessage;
-          } catch (moveError) {
-            if (status) status.textContent = `Move failed: ${moveError.message || moveError}`;
-          }
-        }
-      }
-      
-      // Always show the latest logs, even if they're just debug info
-      if (lines.length === 0) {
-        pre.textContent = "No logs available yet...";
-        updateProgressUI(null, false, false);
-        return;
-      }
-      
-      // Enhance log display with better formatting
-      const formattedLines = lines.map(line => {
-        // Highlight important log patterns
-        if (line.includes('--- Kohya training logs')) {
-          return `\n${line}\n${'='.repeat(50)}`;
-        }
-        if (line.includes('epoch') || line.includes('step')) {
-          return `🔄 ${line}`;
-        }
-        if (line.includes('loss')) {
-          return `📊 ${line}`;
-        }
-        if (line.includes('error') || line.includes('Error') || line.includes('ERROR')) {
-          return `❌ ${line}`;
-        }
-        if (line.includes('warning') || line.includes('Warning') || line.includes('WARNING')) {
-          return `⚠️ ${line}`;
-        }
-        if (line.includes('=== Starting Kohya')) {
-          return `🚀 ${line}`;
-        }
-        if (line.includes('=== Training finished')) {
-          return `✅ ${line}`;
-        }
-        if (line.includes('--- TrainPilot logs endpoint called')) {
-          return `📡 ${line}`;
-        }
-        if (line.includes('--- TrainPilot process running')) {
-          return `🟢 ${line}`;
-        }
-        if (line.includes('--- No TrainPilot process')) {
-          return `🔴 ${line}`;
-        }
-        return line;
-      });
-      
-      pre.textContent = formattedLines.join("\n");
-      
-      // Show last meaningful line as status hint
-      if (status && lines.length) {
-        const lastLine = lines[lines.length - 1];
-        if (tpLastMoveMessage && !running) {
-          status.textContent = tpLastMoveMessage;
-        } else if (!running) {
-          status.textContent = finished ? 'Training completed!' : 'No training process active';
-        } else if (progress) {
-          status.textContent = 'Training running';
-        } else if (lastLine.includes('=== Training finished')) {
-          status.textContent = 'Training completed!';
-        } else if (lastLine.includes('error') || lastLine.includes('Error')) {
-          status.textContent = `Error: ${lastLine.trim()}`;
-        } else if (lastLine.includes('--- TrainPilot process running')) {
-          status.textContent = 'Training process is running...';
-        } else if (lastLine.includes('--- No TrainPilot process')) {
-          status.textContent = 'No training process active';
-        } else if (lastLine && !lastLine.includes('---')) {
-          status.textContent = lastLine.trim();
-        }
-      }
-
-      updateProgressUI(progress, running, finished);
-      
-      // Show training indicator if training is active
-      const indicator = document.getElementById("tp-training-indicator");
-      if (indicator) {
-        const hasTrainingLogs = lines.some(line => 
-          line.includes('=== Starting Kohya') || 
-          line.includes('step') || 
-          line.includes('epoch')
-        );
-        const hasFinished = finished;
-        
-        if (running && (hasTrainingLogs || progress) && !hasFinished) {
-          indicator.classList.remove("is-hidden");
-        } else {
-          indicator.classList.add("is-hidden");
-        }
-      }
-      
-      // Auto-scroll to bottom
+      const progress = data.run_id ? findLatestProgress(lines) : null;
+      const finished = !data.running && data.exit_code === 0 && !data.run?.stopped && !!data.run_id;
+      const pre = document.getElementById("tp-logs");
+      pre.textContent = lines.join("\n") || "No logs available yet.";
       pre.scrollTop = pre.scrollHeight;
-    } catch (e) {
-      console.error("Error polling TrainPilot logs:", e);
-      // Don't show error in UI to avoid noise, just log to console
+      const status = document.getElementById("tp-status");
+      if (!tpStarting && !tpStopping && status) {
+        const message = tpRunning ? (progress ? "Training running" : "Preparing training…")
+          : data.run?.stopped ? "Training stopped. Saved checkpoints remain in your workspace."
+          : finished ? "Training completed."
+          : data.run_id && data.exit_code !== null ? `Training failed (exit ${data.exit_code}). Open Logs & diagnostics for details.`
+          : "No training running";
+        if (status.textContent !== message) status.textContent = message;
+      }
+      updateProgressUI(progress, tpRunning, finished);
+      renderTpResult(data);
+      syncTpActions();
+    } catch (error) {
+      if (generation !== tpPollGeneration) return;
+      tpStatusKnown = false;
+      const status = document.getElementById("tp-status");
+      if (status && !tpStarting) status.textContent = "Training status unavailable. Reconnecting…";
+      syncTpActions();
+    } finally {
+      if (generation === tpPollGeneration) tpLogTimer = setTimeout(poll, 2000);
     }
   };
   poll();
-  tpLogTimer = setInterval(poll, 2000);
 }
 
 window.stopTpLogPoll = function () {
-  if (tpLogTimer) clearInterval(tpLogTimer);
+  tpPollGeneration++;
+  clearTimeout(tpLogTimer);
   tpLogTimer = null;
 };
+
+function renderTpResult(data) {
+  const panel = document.getElementById("tp-result");
+  if (!panel) return;
+  const complete = !!data?.run_id && !data.running && data.exit_code === 0 && !data.run?.stopped && data.run_id !== tpDismissedRunId;
+  panel.hidden = !complete;
+  document.getElementById("tp-completion-steps").hidden = !complete;
+  document.getElementById("tp-files-saved").hidden = !(data.artifacts?.length);
+  document.getElementById("tp-setup").hidden = complete;
+  document.getElementById("tp-heading").textContent = complete ? "Your LoRA is trained" : "Train your LoRA";
+  document.getElementById("tp-subheading").textContent = complete ? "Training finished. Choose what to do with your files next." : "Choose your images and a training profile. TrainPilot handles the setup.";
+  if (!complete) return;
+  document.getElementById("tp-result-dataset").textContent = data.run?.dataset?.replace(/^1_/, "").replaceAll("_", " ") || "Current run";
+  document.getElementById("tp-result-profile").textContent = tpProfiles[data.run?.profile] || "Custom";
+  document.getElementById("tp-result-finished").textContent = data.run?.finished_at ? new Date(data.run.finished_at).toLocaleString() : "Completed";
+  const files = data.artifacts || [];
+  document.getElementById("tp-result-count").textContent = files.length ? `${files.length} checkpoint${files.length === 1 ? "" : "s"} ${data.moved ? "moved to your LoRA library" : "saved in your workspace"}.` : "No new LoRA files found. Check the logs and output folder.";
+  const list = document.getElementById("tp-result-files");
+  const signature = JSON.stringify(files);
+  if (list.dataset.files !== signature) {
+    list.dataset.files = signature;
+    list.replaceChildren();
+    files.forEach(file => {
+      const row = document.createElement("tr");
+      for (const value of [file.name, formatBytes(file.size_bytes)]) {
+        const cell = document.createElement("td"); cell.textContent = value; row.append(cell);
+      }
+      list.append(row);
+    });
+  }
+  document.getElementById("tp-result-path").textContent = (data.moved ? data.lora_destination : data.output_dir) || "Unavailable";
+  document.getElementById("tp-result-destination").textContent = data.lora_destination || "";
+  document.getElementById("tp-result-instructions").textContent = data.moved ? "Your files are in the shared LoRA folder. Open ComfyUI, load a compatible workflow and select your LoRA." : "Move the trained files to your shared LoRA folder so ComfyUI can find them.";
+  if (data.moved && !tpMoving) document.getElementById("tp-move-status").textContent = "Your LoRA files are ready in the shared library.";
+  const button = document.getElementById("tp-move-loras");
+  button.disabled = tpMoving || (!data.moved && !data.move_available);
+  button.textContent = tpMoving ? "Moving files…" : data.moved ? "Open ComfyUI" : "Move to LoRA library";
+}
+
+async function moveTrainpilotLoras() {
+  if (tpMoving || !tpLastData) return;
+  if (tpLastData.moved) { window.loadSection("comfyui"); return; }
+  if (!tpLastData.move_available) return;
+  const runId = tpLastData.run_id;
+  const status = document.getElementById("tp-move-status");
+  tpMoving = true;
+  renderTpResult(tpLastData);
+  status.textContent = "Moving files…";
+  try {
+    const moved = await fetchJson("/api/trainpilot/move-loras", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ run_id: runId }),
+    });
+    if (tpLastData.run_id === runId) {
+      tpLastData = { ...tpLastData, moved: true, move_available: false, lora_destination: moved.destination };
+      status.textContent = `Moved ${moved.files.length} LoRA file(s) to your library.`;
+    }
+  } catch (error) {
+    status.textContent = `Move failed: ${error.message || error}. Your saved files can be found at the path above.`;
+  } finally {
+    tpMoving = false;
+    renderTpResult(tpLastData);
+  }
+}
 
 function autoFillOutput(labelText) {
   const out = document.getElementById("tp-output");
@@ -520,7 +588,8 @@ function updateEpochExample(name) {
   const el = document.getElementById("tp-epoch-example");
   if (!el) return;
   const safe = normalizeOutputName(name) || "output_name";
-  el.textContent = `Example epoch name: ${safe}000001.safetensors`;
+  el.textContent = `Example file: ${safe}000001.safetensors`;
+  updateTpSummary();
 }
 
 // TOML Config Modal Functions
@@ -577,6 +646,7 @@ window.saveTomlConfig = async function () {
       body: JSON.stringify({ content }),
     });
     if (saveStatus) saveStatus.textContent = "Saved.";
+    refreshTpPreflight();
     const pathInput = document.getElementById("tp-toml");
     const pathLabel = document.getElementById("toml-config-path");
     const modalPath = document.getElementById("toml-modal-path");

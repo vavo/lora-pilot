@@ -69,6 +69,7 @@
   @media (prefers-reduced-motion:reduce) { .settings-page .svc-switch::before { transition:none; } }
 </style>
 <div class="settings-page">
+  <a id="settings-back-models" class="journey-link settings-return" href="#models" hidden>Back to Models</a>
   <header class="settings-heading"><h2>Settings</h2><p>Your workspace, your defaults.</p></header>
   <div class="settings-tabs" role="tablist" aria-label="Settings categories">
     <button id="settings-tab-general" role="tab" aria-controls="settings-panel-general" aria-selected="true" tabindex="0" type="button">General</button>
@@ -162,19 +163,19 @@
 
 </section>
 </div><aside class="settings-aside"><section><h3>Protect your workspace</h3><p>ControlPilot’s password protects the dashboard and its API. ComfyUI and MediaPilot have their own access controls.</p></section><section><h3>Plan for a restart</h3><p>Changing ComfyUI protection restarts ComfyUI and interrupts active generations. Apply changes when your queue is idle.</p></section></aside></div></section>
-  <section id="settings-panel-connections" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-connections" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card"><h3>Hugging Face</h3><p>Access gated models and authenticated downloads.</p>    <div class="field">
-      <label for="settings-hf-token">Hugging Face Token</label>
+  <section id="settings-panel-connections" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-connections" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card"><div class="settings-hf-heading"><h3>Hugging Face</h3><span id="settings-hf-saved" class="pill">Checking token…</span></div><p>Download models that require an access token.</p>    <div class="field">
+      <label for="settings-hf-token">Replace token</label>
       <div class="settings-row">
-        <input id="settings-hf-token" class="input w-320" type="password" placeholder="HF_TOKEN" />
-        <button id="settings-hf-save" class="btn primary" type="button">Save</button>
+        <input id="settings-hf-token" class="input w-320" type="password" placeholder="Enter a new token" autocomplete="off" spellcheck="false" /><button id="settings-hf-reveal" class="btn secondary" type="button" aria-pressed="false">Show</button>
+        <button id="settings-hf-save" class="btn primary" type="button">Save token</button>
         <button id="settings-hf-clear" class="btn secondary" type="button">Clear</button>
       </div>
-      <div class="tip">Used for gated model downloads. <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">Manage tokens</a>.</div>
+      <div class="tip">Leave blank to keep your saved token. <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">Manage tokens on Hugging Face</a>.</div>
       <div id="settings-hf-status" class="status settings-status" role="status"></div>
     </div>
 
 </section>
-<section class="settings-section settings-card"><h3>GitHub Copilot</h3><p>Connect the assistant to your GitHub account.</p>    <div class="field">
+<details class="settings-details"><summary>Other connections</summary><section class="settings-section settings-card"><h3>GitHub Copilot</h3><p>Connect the assistant to your GitHub account.</p>    <div class="field">
       <label for="settings-copilot-token">Copilot GitHub Token</label>
       <div class="settings-row">
         <input id="settings-copilot-token" class="input w-320" type="password" placeholder="COPILOT_GITHUB_TOKEN" />
@@ -203,7 +204,8 @@
     </div>
 
 </section>
-</div><aside class="settings-aside"><section><h3>Your secrets stay hidden</h3><p>Saved credentials are never displayed. A saved indicator confirms they are configured; enter a new value to replace one.</p></section><section><h3>Service restarts</h3><p>Saving a Copilot token restarts the assistant. Saving Jupyter settings restarts Jupyter.</p></section></aside></div></section>
+</details><details class="settings-details"><summary>Captioning providers</summary><p class="settings-note">Manage credentials for AI image captions in Caption images.</p><a class="journey-link" href="#tagpilot" data-open-section="tagpilot">Open Caption images</a></details>
+</div><aside class="settings-aside"><section><h3>Access to gated models</h3><p>Some models also require you to accept their license on Hugging Face. A saved token alone does not grant access.</p><a class="journey-link" href="#models" id="settings-return-models">Return to Models</a></section><section><h3>Your secrets stay hidden</h3><p>Saved credentials are never displayed. A saved indicator confirms they are configured; enter a new value to replace one.</p></section><section><h3>Service restarts</h3><p>Saving a Copilot token restarts the assistant. Saving Jupyter settings restarts Jupyter.</p></section></aside></div></section>
   <section id="settings-panel-shutdown" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-shutdown" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card">
     <h3 class="settings-section-title">Shutdown Defaults</h3>
     <div class="field">

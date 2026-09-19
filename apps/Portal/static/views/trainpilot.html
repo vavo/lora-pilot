@@ -1,202 +1,40 @@
-<style>
-  .tp-datasets-link {
-    font-size: 13px;
-  }
-
-  .tp-select {
-    min-height: 44px;
-    font-size: 14px;
-    width: min(100%, 300px);
-  }
-
-  .tp-output-input {
-    width: min(100%, 300px);
-  }
-
-  .tp-epoch-example {
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  .tp-training-indicator {
-    margin-left: 10px;
-    align-items: center;
-  }
-  .tp-training-indicator:not(.is-hidden) {
-    display: inline-flex;
-  }
-
-  .tp-active-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    background: #10b981;
-    border-radius: 50%;
-    margin-right: 6px;
-    animation: pulse 2s infinite;
-  }
-
-  .tp-active-text {
-    color: #10b981;
-    font-size: 13px;
-  }
-
-  .tp-actions .btn.danger {
-    background: #dc2626;
-    color: #fff;
-    border-color: #dc2626;
-  }
-
-  .tp-primary-panel {
-    border-color: rgba(255, 90, 62, 0.65);
-  }
-</style>
-<div class="page-hero">
-  <img src="/logo-trainpilot.svg" alt="TrainPilot" class="page-hero-logo">
+<div class="journey-page" id="tp-page">
+<header class="journey-heading"><h2 id="tp-heading">Train your LoRA</h2><p id="tp-subheading">Choose your images and a training profile. TrainPilot handles the setup.</p></header>
+<p id="tp-error" class="status" role="alert" hidden></p>
+<div id="tp-completion-steps" class="tp-completion-steps" hidden><span><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Training finished</span><span id="tp-files-saved"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Files saved</span></div>
+<section id="tp-result" class="journey-surface" hidden aria-labelledby="tp-result-title">
+  <h3 id="tp-result-title">Training result</h3>
+  <dl class="tp-result-summary"><div><dt>Dataset</dt><dd id="tp-result-dataset"></dd></div><div><dt>Profile</dt><dd id="tp-result-profile"></dd></div><div><dt>Finished</dt><dd id="tp-result-finished"></dd></div></dl>
+  <h3>Saved LoRA files</h3><p id="tp-result-count" class="journey-note"></p>
+  <table class="tp-result-files"><thead><tr><th>Filename</th><th>Size</th></tr></thead><tbody id="tp-result-files"></tbody></table>
+  <div class="tp-result-path">Saved in <code id="tp-result-path"></code><button id="tp-copy-path" class="btn ghost" type="button">Copy path</button></div>
+  <div class="tp-result-next"><h3>Use your LoRA in ComfyUI</h3><p id="tp-result-instructions">Move the trained files to your shared LoRA folder so ComfyUI can find them.</p>
+    <button id="tp-move-loras" class="btn primary" type="button">Move to LoRA library</button>
+    <p class="journey-note">Destination: <code id="tp-result-destination"></code></p><p id="tp-move-status" class="status" role="status">You can do this later. Your files are already saved.</p>
+  </div>
+  <div class="tp-result-footer"><button class="btn ghost" type="button" id="tp-result-logs">View training logs</button><button class="btn ghost" type="button" id="tp-another">Train another LoRA</button></div>
+</section>
+<section id="tp-setup" class="journey-surface">
+<div class="tp-layout">
+<fieldset class="tp-fields" id="tp-fields"><legend class="sr-only">Training setup</legend>
+  <div class="field"><label for="tp-dataset">Dataset</label><select id="tp-dataset" class="select"><option value="">Loading datasets…</option></select><div id="tp-dataset-info" class="journey-note"></div><div><button type="button" class="journey-link" id="tp-review-dataset">Review dataset</button> <a href="#datasets" class="journey-link" onclick="openDatasets(event)">Add a dataset</a></div></div>
+  <div class="field"><label for="tp-output">LoRA name</label><input id="tp-output" class="input" type="text" placeholder="Name your LoRA" /><span class="journey-note">Used in the filenames saved after training.</span><span id="tp-epoch-example" class="journey-note"></span></div>
+  <fieldset class="tp-profiles"><legend class="tp-label">Training profile</legend><div class="tp-profile-options">
+    <label><input type="radio" name="tp-profile-choice" value="quick_test" /><span>Quick test<small>400–600 steps</small></span></label>
+    <label><input type="radio" name="tp-profile-choice" value="regular" checked /><span>Balanced<small>800–1,200 steps</small></span></label>
+    <label><input type="radio" name="tp-profile-choice" value="high_quality" /><span>Extended<small>1,600–2,400 steps</small></span></label>
+  </div><select id="tp-profile" hidden aria-label="Training profile"><option value="quick_test">Quick test</option><option value="regular" selected>Balanced</option><option value="high_quality">Extended</option></select><p class="journey-note">More steps take longer and may not improve every dataset.</p></fieldset>
+  <div class="tp-checks"><h3>Before you start</h3><p id="tp-check-dataset">Checking dataset…</p><p id="tp-check-model">Checking model files…</p><p id="tp-check-service">Required services are checked before training starts.</p></div>
+</fieldset>
+<aside class="tp-run-summary"><h3>This run</h3><dl><dt>Dataset</dt><dd id="tp-summary-dataset">Choose a dataset</dd><dt>Training engine</dt><dd>SDXL · Kohya</dd><dt>Profile</dt><dd id="tp-summary-profile">Balanced</dd><dt>Output name</dt><dd id="tp-summary-output">—</dd></dl><p class="journey-note">Your files are saved in your persistent workspace.</p></aside>
 </div>
-<h2 class="section-title-tight">Train with kohya</h2>
-<div class="card">
-  <div class="grid-2">
-    <div class="panel stack-md tp-primary-panel">
-      <h4>1. Choose dataset</h4>
-      <div>
-        <select id="tp-dataset" class="select tp-select"></select>
-        <div class="mt-6">
-          <a href="#" class="link-accent tp-datasets-link" onclick="openDatasets(event)">add new dataset</a><br>
-        </div>
-      </div>
-      <div class="field">
-        <label>Output name (this will be the name of your LoRA epochs)</label>
-        <input id="tp-output" class="input tp-output-input" type="text" placeholder="output name" />
-        <div id="tp-epoch-example" class="tp-epoch-example">Example epoch name: output_name000001.safetensors</div>
-      </div>
-
-      <h4 class="mt-16">2. Choose output quality</h4>
-      <select id="tp-profile" class="select tp-select">
-        <option value="quick_test" selected>Quick test (400-600 steps)</option>
-        <option value="regular">Normal quality (800-1200 steps)</option>
-        <option value="high_quality">High quality (1600-2400 steps)</option>
-      </select>
-    </div>
-  </div>
-  <div class="row wrap mt-14 tp-actions">
-    <button class="btn primary" onclick="startTrainPilot()">Start</button>
-    <button class="btn danger" onclick="stopTrainPilot()">Stop</button>
-    <button class="btn secondary" type="button" onclick="openTrainpilotTensorBoard()">Open TensorBoard</button>
-    <span id="tp-status" class="status"></span>
-    <span id="tp-tensorboard-status" class="status muted"></span>
-    <div id="tp-progress-wrap" class="tp-progress-wrap is-hidden">
-      <div class="tp-progress">
-        <div id="tp-progress-bar" class="tp-progress-bar"></div>
-      </div>
-      <span id="tp-progress-text" class="tp-progress-text"></span>
-    </div>
-    <div id="tp-modeldl-wrap" class="tp-progress-wrap is-hidden">
-      <div class="tp-progress">
-        <div id="tp-modeldl-bar" class="tp-progress-bar"></div>
-      </div>
-      <span id="tp-modeldl-text" class="tp-progress-text"></span>
-    </div>
-    <span id="tp-training-indicator" class="tp-training-indicator is-hidden">
-      <span class="tp-active-dot"></span>
-      <span class="tp-active-text">Training Active</span>
-    </span>
-  </div>
-  <div class="panel mt-12">
-    <h3>TOML Config</h3><br>
-    <input id="tp-toml" type="hidden" value="/workspace/config/trainpilot/newlora.toml" />
-    <code id="toml-config-path" class="link-accent code-link" onclick="showTomlConfig()">/workspace/config/trainpilot/newlora.toml</code>
-    <div class="mt-8 text-12 muted">
-      Click to edit the current training configuration
-    </div>
-  </div>
-  <div class="panel mt-12">
-    <h3>Training Logs</h3>
-    <div class="mb-8 text-12 muted">
-      Shows TrainPilot process logs + Kohya training output from <code>/workspace/outputs/*/_logs/train.log</code>
-    </div>
-    <div class="mb-8 text-12 muted">
-      TensorBoard reads TrainPilot runs from <code>/workspace/logs/TrainPilot</code> on port <code>4444</code>.
-    </div>
-    <pre id="tp-logs" class="log-box mono mono-sm"></pre>
-  </div>
- </div>
-  
-  <style>
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-
-    .tp-progress-wrap {
-      align-items: center;
-      gap: 8px;
-      margin-left: 6px;
-    }
-    .tp-progress-wrap:not(.is-hidden) {
-      display: inline-flex;
-    }
-
-    .tp-progress {
-      width: 180px;
-      height: 10px;
-      background: var(--border);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-
-    .tp-progress-bar {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, var(--accent), #10b981);
-      transition: width 0.2s ease-out;
-    }
-
-    .tp-progress-text {
-      font-size: 12px;
-      color: var(--muted);
-      min-width: 90px;
-    }
-    
-    .toml-editor {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--text);
-      width: 100%;
-      min-height: 420px;
-      resize: vertical;
-      overflow: auto;
-    }
-    
-    .toml-loading {
-      text-align: center;
-      padding: 40px;
-      color: var(--muted);
-    }
-
-    .toml-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
-
-    @media (max-width: 760px) {
-      .tp-select,
-      .tp-output-input {
-        width: 100%;
-      }
-    }
-  </style>
-
+<details class="tp-disclosure"><summary>Advanced configuration</summary><div><input id="tp-toml" type="hidden" value="/workspace/config/trainpilot/newlora.toml" /><button type="button" class="journey-link" onclick="showTomlConfig()">Edit training configuration</button><p id="toml-config-path" class="journey-note">/workspace/config/trainpilot/newlora.toml</p></div></details>
+<div class="tp-actions"><span id="tp-status" class="status" role="status">Checking training status…</span><div class="row gap-12"><button id="tp-stop" class="btn danger" type="button" onclick="stopTrainPilot()" hidden>Stop training</button><button id="tp-start" class="btn primary" type="button" onclick="startTrainPilot()" disabled>Start training</button></div></div>
+<div id="tp-progress-wrap" class="tp-progress-wrap is-hidden"><div class="tp-progress"><div id="tp-progress-bar" class="tp-progress-bar"></div></div><span id="tp-progress-text" class="tp-progress-text"></span></div>
+<div id="tp-modeldl-wrap" class="tp-progress-wrap is-hidden"><div class="tp-progress"><div id="tp-modeldl-bar" class="tp-progress-bar"></div></div><span id="tp-modeldl-text" class="tp-progress-text" role="status"></span></div>
+</section>
+<details id="tp-diagnostics" class="tp-disclosure"><summary>Logs &amp; diagnostics</summary><div><button class="btn ghost" type="button" onclick="openTrainpilotTensorBoard()">Open TensorBoard</button><p id="tp-tensorboard-status" class="journey-note"></p><pre id="tp-logs" class="log-box mono mono-sm"></pre></div></details>
+</div>
 <!-- TOML Config Modal -->
 <div id="toml-modal" class="modal" onclick="closeTomlConfig(event)">
   <div class="modal-card" data-size="lg">

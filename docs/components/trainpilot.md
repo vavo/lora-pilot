@@ -1,6 +1,6 @@
 # TrainPilot
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-19_
 
 Your first training run can answer a focused question: can this collection teach an SDXL model the subject you have in mind? TrainPilot gives you a guided way to set up that experiment through Kohya. You choose a saved dataset and a profile, then follow the run through its logs and saved outputs.
 
@@ -8,19 +8,17 @@ TrainPilot is an SDXL LoRA launcher. It prepares a configuration for Kohya's `sd
 
 ## Begin with a reviewed dataset
 
-Open **Train with kohya** in ControlPilot and select a dataset. If the collection is missing, return to **Datasets** and confirm that you saved it under `/workspace/datasets` with the expected `1_` naming convention. Review its images and captions before committing GPU time to training.
+Open **Guided training** in ControlPilot and select a dataset. If the collection is missing, return to **Datasets** and confirm that you saved it under `/workspace/datasets` with the expected `1_` naming convention. Review its images and captions before committing GPU time to training.
 
 Give the output a name that distinguishes this experiment from earlier runs. A name such as `teapot_sideviews_test` tells you more about the intent than `final_v2`. Keep the dataset revision and the question you are testing in your project notes so you can interpret the result later.
-
-![The guided Kohya training page in ControlPilot.](../assets/images/controlpilot/controlpilot-train-kohya-copilot.png)
 
 ControlPilot checks the Kohya and TensorBoard service state before launch and offers to start missing services. It also checks the checkpoint and VAE paths from the selected TOML configuration. If it can match missing files to catalog entries, it offers a download path. A successful preflight establishes those checks, rather than promising that the full run will fit the GPU.
 
 ## Choose a profile as an experiment size
 
-The `quick_test` profile starts from a target of 600 steps with a 12-epoch ceiling. It uses rank 32, alpha 16, batch size 1, gradient accumulation of 2, and `fp16` precision. Use it to inspect whether the setup and dataset produce a useful direction before committing to a larger run.
+The **Quick test** (`quick_test`) profile starts from a target of 600 steps with a 12-epoch ceiling. It uses rank 32, alpha 16, batch size 1, gradient accumulation of 2, and `fp16` precision. Use it to inspect whether the setup and dataset produce a useful direction before committing to a larger run.
 
-The `regular` profile starts from 1,200 steps and a 25-epoch ceiling, with rank 48, alpha 24, batch size 2, gradient accumulation of 2, and `bf16`. The `high_quality` profile starts from 2,400 steps and a 45-epoch ceiling, with rank 64, alpha 32, batch size 4, accumulation of 1, and `bf16`. The profile name is not a guarantee that the resulting LoRA will suit your project better.
+The **Balanced** (`regular`) profile starts from 1,200 steps and a 25-epoch ceiling, with rank 48, alpha 24, batch size 2, gradient accumulation of 2, and `bf16`. The **Extended** (`high_quality`) profile starts from 2,400 steps and a 45-epoch ceiling, with rank 64, alpha 32, batch size 4, accumulation of 1, and `bf16`. The profile name is not a guarantee that the resulting LoRA will suit your project better.
 
 TrainPilot adjusts the step target for datasets above 80 images and clamps it to a calculated epoch ceiling. The number of steps in the final configuration may therefore differ from the starting target. Compare completed runs using their saved configuration and output, rather than relying on the profile label alone.
 
@@ -37,6 +35,10 @@ The launcher stages a copy of the dataset under the training directory selected 
 The run writes its training log to `/workspace/outputs/<output_name>/_logs/train.log`. ControlPilot combines launcher messages and training logs in its interface. If a run fails, inspect the first meaningful error and the generated TOML before changing several settings at once.
 
 TrainPilot writes TensorBoard events under `/workspace/logs/TrainPilot`. Use **Open TensorBoard** on the training page to inspect them through the shared TensorBoard service on port `4444`. A fresh run may need time to produce event files before there is anything to display.
+
+When a ControlPilot run finishes successfully, its result screen shows the dataset, profile, completion time, and new LoRA files. **Copy path** gives you their saved location. **Move to LoRA library** moves those files into `/workspace/models/loras`, then offers **Open ComfyUI**. Existing files with the same names are preserved; a conflict keeps the move available so you can resolve it and retry.
+
+The latest result remains visible when you leave the page or reload your browser, including after a successful move. This run summary belongs to the current ControlPilot process and is cleared when that process restarts. The files themselves remain in persistent storage. **Train another LoRA** returns to the setup form.
 
 After training, use a compatible SDXL generation workflow to compare the adaptation with the base model. Test more than one prompt relevant to your intended use. You may discover that the subject is recognizable in familiar views but weak in a new setting; that gives you a specific reason to revise the dataset or training setup. [Is my LoRA good?](../getting-started/loRA-training-101/is-my-lora-good.md) develops that evaluation process.
 

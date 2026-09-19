@@ -1,3 +1,6 @@
+let dsSelectedName = null;
+let dsUploading = false;
+
 window.initDatasets = async function () {
   wireUpload();
   await loadDatasets();
@@ -13,8 +16,11 @@ async function loadDatasets() {
   if (table) table.classList.add("is-hidden");
   try {
     const data = await fetchJson("/api/datasets");
+    const count = document.getElementById("ds-count");
+    if (count) count.textContent = `${data.length} dataset${data.length === 1 ? "" : "s"}`;
+    document.getElementById("ds-next").hidden = true;
     if (!data.length) {
-      status.textContent = "No datasets found (expecting folders prefixed with 1_ under /workspace/datasets).";
+      status.textContent = "Your datasets will appear here. Upload a ZIP or create an empty dataset to get started.";
       return;
     }
     data.forEach(d => {
@@ -32,15 +38,49 @@ async function loadDatasets() {
       } else {
         nameTd.textContent = d.display || d.name;
       }
+      const nameInfo = document.createElement("div");
+      nameInfo.append(...nameTd.childNodes);
+      const sizeLabel = document.createElement("small");
+      sizeLabel.textContent = size;
+      nameInfo.append(sizeLabel);
+      const nameLayout = document.createElement("div");
+      nameLayout.className = "ds-name";
+      const previews = document.createElement("div");
+      previews.className = "ds-previews";
+      (d.preview_files || []).slice(0, 3).forEach(file => {
+        const img = document.createElement("img");
+        img.src = `/api/datasets/${encodeURIComponent(d.name)}/preview?file=${encodeURIComponent(file)}`;
+        img.alt = "";
+        img.loading = "lazy";
+        img.addEventListener("error", () => img.remove(), { once: true });
+        previews.append(img);
+      });
+      nameLayout.append(previews, nameInfo);
+      nameTd.append(nameLayout);
       tr.appendChild(nameTd);
-      appendTextCell(tr, d.images || 0);
-      appendTextCell(tr, size);
-      appendTextCell(tr, d.has_tags ? "Yes" : "No");
+      appendTextCell(tr, d.images || 0, "Images");
+      const captionCell = appendTextCell(tr, `${d.captioned_images || 0} of ${d.images || 0}`, "Captions");
+      const missing = Math.max(0, (d.images || 0) - (d.captioned_images || 0));
+      const captionState = document.createElement("span");
+      captionState.className = `ds-caption-state${missing ? " incomplete" : ""}`;
+      captionState.textContent = missing ? `${missing} need captions` : d.images ? "All images captioned" : "Add your first images";
+      captionCell.append(captionState);
       const actionsTd = document.createElement("td");
-      actionsTd.className = "text-right";
-      actionsTd.appendChild(datasetActionButton("Rename", "secondary", "rename", d.name));
-      actionsTd.appendChild(document.createTextNode(" "));
-      actionsTd.appendChild(datasetActionButton("Delete", "danger", "del", d.name));
+      const actions = document.createElement("div");
+      actions.className = "ds-actions";
+      const next = datasetActionButton(d.images && !missing ? "Train a LoRA" : d.images ? "Review captions" : "Add images", "ghost", "next", d.name);
+      next.addEventListener("click", () => {
+        dsSelectedName = d.name;
+        if (d.images && !missing) openTrainingDataset(d.name);
+        else openTagpilotDataset(d.name);
+      });
+      const menu = document.createElement("details");
+      menu.className = "ds-menu";
+      const summary = document.createElement("summary");
+      summary.textContent = "Manage";
+      menu.append(summary, datasetActionButton("Rename", "secondary", "rename", d.name), datasetActionButton("Delete", "danger", "del", d.name));
+      actions.append(next, menu);
+      actionsTd.append(actions);
       tr.appendChild(actionsTd);
       list.appendChild(tr);
     });
@@ -93,15 +133,18 @@ async function loadDatasets() {
     });
     if (table) table.classList.remove("is-hidden");
     status.textContent = "";
+    showDatasetNextStep(data.find(d => d.name === dsSelectedName) || data[0]);
   } catch (e) {
     status.textContent = `Error: ${e.message || e}`;
   }
 }
 
-function appendTextCell(row, value) {
+function appendTextCell(row, value, label) {
   const td = document.createElement("td");
   td.textContent = String(value);
+  if (label) td.dataset.label = label;
   row.appendChild(td);
+  return td;
 }
 
 function datasetActionButton(label, variant, action, datasetName) {
@@ -113,16 +156,17 @@ function datasetActionButton(label, variant, action, datasetName) {
 }
 
 window.createDatasetPrompt = async function () {
-  const name = prompt("Enter dataset name (will create /workspace/datasets/1_<name>)", "");
+  const name = prompt("Name your dataset", "");
   if (name === null) return;
   const status = document.getElementById("ds-status");
   if (status) status.textContent = "Creating...";
   try {
-    await fetchJson("/api/datasets/create", {
+    const created = await fetchJson("/api/datasets/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name }),
     });
+    dsSelectedName = created.name || created.path?.split("/").pop();
     if (status) status.textContent = "Created.";
     await loadDatasets();
   } catch (e) {
@@ -138,17 +182,22 @@ async function uploadDatasetFile(file) {
     if (status) status.textContent = "Select a ZIP first.";
     return;
   }
+  if (dsUploading) return;
+  dsUploading = true;
+  const input = document.getElementById("ds-zip");
+  if (input) input.disabled = true;
   if (status) status.textContent = "Uploading...";
   const fd = new FormData();
   fd.append("file", file);
   try {
-    await new Promise((resolve, reject) => {
+    const response = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/datasets/upload");
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && bar) {
           const pct = Math.round((e.loaded / e.total) * 100);
           bar.style.width = `${pct}%`;
+          if (status) status.textContent = pct === 100 ? "Upload received. Unpacking your dataset…" : `Uploading… ${pct}%`;
         }
       };
       xhr.onload = () => {
@@ -158,11 +207,19 @@ async function uploadDatasetFile(file) {
       xhr.onerror = () => reject("Upload failed");
       xhr.send(fd);
     });
+    const uploaded = JSON.parse(response);
+    dsSelectedName = uploaded.extracted_to?.split("/").pop();
     if (status) status.textContent = "Uploaded.";
+    dsUploading = false;
     closeUploadModal();
     await loadDatasets();
   } catch (e) {
-    if (status) status.textContent = `Error: ${e}`;
+    let message = e.message || String(e);
+    try { message = JSON.parse(message).detail || message; } catch {}
+    if (status) status.textContent = `Upload failed: ${message}. Choose a ZIP to retry.`;
+  } finally {
+    dsUploading = false;
+    if (input) input.disabled = false;
   }
 }
 
@@ -175,13 +232,15 @@ window.uploadDataset = async function () {
 
 window.openUploadModal = function () {
   const modal = document.getElementById("ds-modal");
-  if (modal) modal.classList.add("show");
+  if (modal) { modal.classList.add("show"); modal.showModal(); }
 };
 
 window.closeUploadModal = function (evt) {
-  if (evt && evt.target && evt.target.id && evt.target.id !== "ds-modal") return;
+  if (dsUploading) return;
+  if (evt && evt.target && evt.target.id !== "ds-modal" && !evt.target.closest(".modal-close")) return;
   const modal = document.getElementById("ds-modal");
-  if (modal) modal.classList.remove("show");
+  if (modal) { modal.classList.remove("show"); modal.close(); }
+  document.getElementById("ds-upload-open")?.focus();
   const status = document.getElementById("ds-upload-status");
   if (status) status.textContent = "";
   const inp = document.getElementById("ds-zip");
@@ -211,6 +270,11 @@ function openTagpilotDataset(name) {
 }
 
 function wireUpload() {
+  const modal = document.getElementById("ds-modal");
+  modal?.addEventListener("cancel", event => {
+    event.preventDefault();
+    closeUploadModal();
+  });
   const input = document.getElementById("ds-zip");
   const dz = document.getElementById("ds-dropzone");
   if (input) {
@@ -232,4 +296,24 @@ function wireUpload() {
       if (files && files.length) uploadDatasetFile(files[0]);
     });
   }
+}
+
+function openTrainingDataset(name) {
+  window.pendingTrainDataset = name;
+  window.loadSection("trainpilot");
+}
+
+function showDatasetNextStep(dataset) {
+  const panel = document.getElementById("ds-next");
+  if (!panel || !dataset) return;
+  const missing = Math.max(0, dataset.images - (dataset.captioned_images || 0));
+  const ready = dataset.images > 0 && missing === 0;
+  panel.hidden = false;
+  document.getElementById("ds-next-title").textContent = ready ? "Next: choose a training profile" : missing ? "Next: finish your captions" : "Next: add your images";
+  document.getElementById("ds-next-copy").textContent = ready
+    ? `${dataset.display} has captions for all ${dataset.images} images. Review them before training.`
+    : missing ? `${dataset.display} has ${missing} image${missing === 1 ? "" : "s"} without captions.` : `Open ${dataset.display} in Caption images to add files.`;
+  const action = document.getElementById("ds-next-action");
+  action.textContent = ready ? "Open training" : "Open Caption images";
+  action.onclick = () => ready ? openTrainingDataset(dataset.name) : openTagpilotDataset(dataset.name);
 }

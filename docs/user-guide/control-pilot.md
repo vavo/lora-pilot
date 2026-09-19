@@ -1,69 +1,28 @@
 # ControlPilot
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-19_
 
-ControlPilot is the central web interface for LoRA Pilot, providing a unified dashboard for managing all services, models, datasets, and training workflows. It's your command center for the entire AI workspace.
+ControlPilot brings the path from a folder of images to a usable LoRA into one workspace. Start with your dataset, prepare captions, choose a training profile, and bring the result into ComfyUI. Models, service controls, and detailed logs remain close when you need them.
 
-##  Overview
+## Find your next step
 
-ControlPilot offers:
-- **Service Management**: Start, stop, and monitor all LoRA Pilot services
-- **Model Management**: Download, organize, and manage AI models
-- **Dataset Tools**: Access TagPilot and MediaPilot for dataset work
-- **Training Orchestration**: Launch and monitor training jobs
-- **File Browser**: Navigate and manage workspace files
-- **System Monitoring**: Track resource usage and system health
+Open ControlPilot through your pod's exposed port `7878`, or visit `http://localhost:7878` when running locally. In a RunPod terminal, `supervisorctl status controlpilot` reports the service state. A Docker Compose host can run the equivalent command inside its container. RunPod terminals already run inside the pod, so they do not need a nested Docker command.
 
-##  Access and Navigation
+The Dashboard puts four starting points ahead of the hardware details: prepare a dataset, train a LoRA, generate with ComfyUI, or explore your outputs. Its compact status strip shows the detected GPU, free workspace storage, and service availability. Expand **Hardware details** when you need resource readings, or **Scheduled shutdown** when you want to configure the existing timer.
 
-### Accessing ControlPilot
+The sidebar follows the same journey. **Prepare** contains Datasets, Caption images, and Models. **Train** contains Guided training and Advanced training. **Create** opens ComfyUI and the Gallery, while **Manage** holds Services and Settings. Docs and Support sit below these groups. The Light and Dark controls remain at the bottom of the menu, including on mobile.
 
-1. **Primary URL**: http://localhost:7878
-2. **From a RunPod terminal**: `supervisorctl status controlpilot`
-3. **From a Docker Compose host**: `docker exec lora-pilot supervisorctl status controlpilot`
-4. **Health check**: `curl http://localhost:7878/api/health`
+## Give your images a clear next step
 
-RunPod pods already run the LoRA Pilot container. If `docker` is not installed
-inside the pod, run commands directly in the pod terminal and omit the
-`docker exec lora-pilot` prefix used by local Compose examples.
+Datasets accepts ZIP archives containing images and optional matching captions. A saved collection shows real image previews, its image count, and how many images have a matching nonempty caption file. Coverage is a useful starting signal; it does not assess whether those captions describe the images well.
 
-### Navigation Structure
+When captions are missing, **Review captions** opens the selected collection in Caption images. A fully captioned collection offers **Train a LoRA**, carrying the dataset into Guided training. **Manage** keeps rename and delete actions separate from that next step. You can also create an empty dataset and add images through the existing captioning workspace.
 
-```
-ControlPilot Dashboard
-├── 🏠 Home              - Overview and quick actions
-├── 🧩 Services          - Service management and control
-├── 📦 Models            - Model downloading and management
-├── 📁 Datasets          - Dataset tools and management
-├──  Training          - Training job orchestration
-├──  File Browser      - Workspace file management
-├──  System            - Resource monitoring and logs
-└──  Docs              - Integrated documentation
-```
+Guided training presents the dataset, LoRA name, and Quick test, Balanced, or Extended profile together with a run summary. Configuration and logs remain available in expandable sections. A successful run leads to saved filenames and an explicit move into the shared LoRA library. Read the [TrainPilot guide](../components/trainpilot.md) for profile behavior and result persistence.
 
-## 🖥️ Interface Guide
+## Connect model access without losing your place
 
-### Home Dashboard
-
-![ControlPilot Dashboard](../assets/images/controlpilot/controlpilot-dashboard.png)
-![ControlPilot Dashboard Shutdown Countdown](../assets/images/controlpilot/controlpilot-dashboard-shutdown-countdown.png)
-
-#### Quick Stats
-- **Active Services**: Number of running services
-- **GPU Usage**: Current GPU memory utilization
-- **Storage Usage**: Workspace disk usage
-- **Recent Jobs**: Latest training activities
-
-#### Quick Actions
-- **Start All Services**: Launch all LoRA Pilot components
-- **Download Models**: Quick access to popular models
-- **Create Dataset**: Launch TagPilot for dataset creation
-- **Start Training**: Quick training setup with TrainPilot
-
-#### System Health
-- **Service Status**: Overall system health indicator
-- **Resource Alerts**: Memory, storage, or GPU warnings
-- **Recent Logs**: Latest system events and errors
+The Models catalog's **Access settings** action opens Settings directly on **Connections**. Hugging Face credentials remain hidden after saving, and the saved indicator distinguishes a configured token from an empty field. Both **Back to Models** and **Return to Models** return to the selected catalog family. Some gated models also require license acceptance on Hugging Face; saving a token does not grant that approval.
 
 ### Services Management
 

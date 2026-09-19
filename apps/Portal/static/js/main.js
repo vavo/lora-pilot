@@ -52,8 +52,9 @@ function setTheme(mode) {
   if (logoImg) logoImg.src = "/logo.svg";
   if (topLogo) topLogo.src = "/logo.svg";
   if (themeToggle) {
-    const compact = sidebar?.classList.contains("compact");
-    themeToggle.textContent = compact ? (dark ? "☀️" : "🌙") : (dark ? "☀️ Light mode" : "🌙 Dark mode");
+    themeToggle.querySelectorAll("[data-theme-choice]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.themeChoice === mode));
+    });
   }
 }
 
@@ -154,9 +155,9 @@ async function loadSection(section) {
     if (currentSection === "trainpilot" && window.stopTpLogPoll) window.stopTpLogPoll();
     if (currentSection === "comfyui" && window.stopComfyUI) window.stopComfyUI();
   }
-  document.querySelectorAll(".nav a").forEach(a => a.classList.remove("active"));
+  document.querySelectorAll(".nav a").forEach(a => { a.classList.remove("active"); a.removeAttribute("aria-current"); });
   const active = document.querySelector(`.nav a[data-section="${section}"]`);
-  if (active) active.classList.add("active");
+  if (active) { active.classList.add("active"); active.setAttribute("aria-current", "page"); }
   closeSidebar();
   if (!viewCache[section]) {
     const res = await fetch(viewMap[section].view);
@@ -168,8 +169,13 @@ async function loadSection(section) {
   }
   contentEl.innerHTML = viewCache[section];
   // run initializer
-  viewMap[section].init();
   currentSection = section;
+  window.scrollTo(0, 0);
+  viewMap[section].init();
+  contentEl.querySelectorAll("[data-nav-icon]").forEach(target => {
+    const icon = document.querySelector(`.nav [data-section="${target.dataset.navIcon}"] .nav-icon`);
+    if (icon) target.replaceChildren(icon.cloneNode(true));
+  });
 }
 
 function setCopilotSectionVisibility(section) {
@@ -188,6 +194,14 @@ function setCopilotSectionVisibility(section) {
     drawer.classList.toggle("is-hidden", disabled);
   }
 }
+
+contentEl?.addEventListener("click", async event => {
+  const control = event.target.closest("[data-open-section]");
+  if (!control) return;
+  event.preventDefault();
+  await loadSection(control.dataset.openSection);
+  if (control.dataset.openUpload !== undefined) window.openUploadModal?.();
+});
 
 // expose for other modules
 window.loadSection = loadSection;
@@ -347,9 +361,10 @@ if (nav) {
   });
 }
 if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") || "light";
-    setTheme(current === "dark" ? "light" : "dark");
+  themeToggle.addEventListener("click", event => {
+    const choice = event.target.closest("[data-theme-choice]");
+    if (!choice) return;
+    setTheme(choice.dataset.themeChoice);
     persistUiSettings();
   });
 }

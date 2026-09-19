@@ -26,7 +26,7 @@ window.initDashboard = async function () {
 
   status.textContent = "Loading telemetry...";
   content.classList.add("is-hidden");
-  await refreshDashboardTelemetry();
+  await Promise.all([refreshDashboardTelemetry(), refreshDashboardServices()]);
 
   dashboardPollTimer = setInterval(() => {
     if (!document.getElementById("telemetry-status")) {
@@ -35,6 +35,7 @@ window.initDashboard = async function () {
       return;
     }
     refreshDashboardTelemetry();
+    refreshDashboardServices();
   }, DASHBOARD_POLL_MS);
 };
 
@@ -59,6 +60,12 @@ async function refreshDashboardTelemetry() {
       fetchJson("/api/telemetry/history").catch(() => null),
     ]);
 
+    const gpuSummary = document.getElementById("dash-summary-gpu");
+    const storageSummary = document.getElementById("dash-summary-storage");
+    if (gpuSummary) gpuSummary.textContent = data.gpus?.length
+      ? data.gpus.map(g => `${g.name}${g.mem_total ? ` · ${formatBytes(g.mem_total)}` : ""}`).join(", ") : "No GPU detected";
+    const disk = data.disks?.at(-1);
+    if (storageSummary) storageSummary.textContent = disk?.total > 0 ? `${formatBytes(disk.free)} free` : "Unavailable";
     const hostEl = document.getElementById("t-host");
     const uptimeEl = document.getElementById("t-uptime");
     if (hostEl) hostEl.textContent = data.host || "n/a";
@@ -82,11 +89,26 @@ async function refreshDashboardTelemetry() {
 
     status.textContent = "";
     content.classList.remove("is-hidden");
-    updateShutdownStatus();
   } catch (e) {
-    status.textContent = `Error: ${e.message || e}`;
+    status.textContent = `Telemetry unavailable: ${e.message || e}`;
+    for (const id of ["dash-summary-gpu", "dash-summary-storage"]) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = "Unavailable";
+    }
     renderTelemetryFallback();
     content.classList.remove("is-hidden");
+  }
+  updateShutdownStatus();
+}
+
+async function refreshDashboardServices() {
+  try {
+    const services = await fetchJson("/api/services");
+    const el = document.getElementById("dash-summary-services");
+    if (el) el.textContent = `${services.filter(s => s.running).length} running`;
+  } catch {
+    const el = document.getElementById("dash-summary-services");
+    if (el) el.textContent = "Status unavailable";
   }
 }
 
@@ -399,6 +421,12 @@ async function cancelShutdown() {
 async function updateShutdownStatus() {
   try {
     const status = await fetchJson('/api/shutdown/status');
+    const summary = document.getElementById("dash-shutdown-summary");
+    if (summary) summary.textContent = status.error ? "Shutdown failed — view details" : status.scheduled ? `Scheduled for ${status.shutdown_time || "later"}` : "No shutdown scheduled";
+    if (status.error) document.getElementById("shutdown-details")?.setAttribute("open", "");
+    const subtitle = document.querySelector(".shutdown-subtitle");
+    const mode = window.controlPilotSettings?.shutdown_mode;
+    if (subtitle && mode) subtitle.textContent = mode === "stop" ? "Stop the pod at the scheduled time" : "Terminate the pod at the scheduled time";
     const timeSpan = document.getElementById('shutdown-time');
     const meta = document.getElementById("shutdown-meta");
     const errorEl = document.getElementById("shutdown-error");
@@ -436,7 +464,8 @@ async function updateShutdownStatus() {
     }
     
   } catch (error) {
-    // ignore transient errors
+    const summary = document.getElementById("dash-shutdown-summary");
+    if (summary) summary.textContent = "Schedule unavailable";
   }
 }
 

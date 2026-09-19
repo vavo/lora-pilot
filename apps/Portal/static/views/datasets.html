@@ -1,52 +1,39 @@
-<style>
-  #ds-list .btn.danger {
-    background: #dc2626;
-    color: #fff;
-    border-color: #dc2626;
-  }
-</style>
-<h2>Datasets</h2>
-<div class="card">
-  <h3 class="section-title-tight">Existing Datasets</h3>
-  <div id="ds-status" class="status">Loading datasets...</div>
-  <table id="ds-table" class="is-hidden mt-8">
-    <thead>
-      <tr>
-        <th>Dataset name</th>
-        <th>Pictures</th>
-        <th>Size</th>
-        <th>Tags</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="ds-list"></tbody>
-  </table>
-  <div class="row wrap gap-12 mt-16">
-    <button class="btn ghost" onclick="createDatasetPrompt()">Create new</button>
-    <button class="btn ghost" onclick="openUploadModal()">Upload ZIP</button>
+<div class="journey-page">
+<header class="journey-heading"><h2>Datasets</h2><p>Bring your images. We’ll help you prepare them for training.</p></header>
+<section class="ds-upload-intro">
+  <div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div>
+  <div><h3>Start with your images</h3><p>Upload a ZIP containing your images and optional matching .txt captions.</p>
+    <div class="row wrap gap-12"><button class="btn primary" id="ds-upload-open" onclick="openUploadModal()">Upload ZIP</button><button class="journey-link" onclick="createDatasetPrompt()">Create empty dataset</button></div>
+    <p class="journey-note">Your original files stay in your workspace.</p>
   </div>
-</div>
-
+</section>
+<div class="ds-list-heading"><h3>Your datasets</h3><span id="ds-count" class="journey-note"></span></div>
+<p id="ds-status" class="status" role="status">Loading datasets…</p>
+<div class="ds-table-wrap"><table id="ds-table" class="is-hidden">
+  <thead><tr><th>Dataset</th><th>Images</th><th>Captions</th><th>Next step</th></tr></thead><tbody id="ds-list"></tbody>
+</table></div>
+<section id="ds-next" class="ds-next" hidden><div><strong id="ds-next-title"></strong><p id="ds-next-copy"></p></div><button id="ds-next-action" class="journey-link"></button></section>
 <!-- Upload modal -->
-<div id="ds-modal" class="modal" onclick="closeUploadModal(event)">
+<dialog id="ds-modal" class="modal" aria-labelledby="ds-modal-title" onclick="closeUploadModal(event)">
   <div class="modal-card" data-size="sm">
     <div class="modal-header">
-      <div class="modal-title">Upload a dataset</div>
+      <div id="ds-modal-title" class="modal-title">Upload a dataset</div>
       <button class="modal-close" type="button" aria-label="Close" onclick="closeUploadModal(event)">×</button>
     </div>
     <div class="modal-body">
       <label id="ds-dropzone" for="ds-zip" class="dropzone">
-        Drag and drop OR click to select
+        Drop a ZIP here or choose a file
         <input id="ds-zip" type="file" accept=".zip" class="file-input-hidden" />
       </label>
       <div class="progress-track">
         <div id="ds-upload-bar" class="progress-fill"></div>
       </div>
-      <div id="ds-upload-status" class="status mt-10"></div>
-      <div class="tip mt-10">ZIP will be extracted into <code>/workspace/datasets</code>.</div>
+      <div id="ds-upload-status" class="status mt-10" role="status"></div>
+      <div class="tip mt-10">Use a unique ZIP name. Uploading the same name replaces that dataset.</div>
     </div>
     <div class="modal-actions">
       <button class="btn secondary" type="button" onclick="closeUploadModal()">Close</button>
     </div>
   </div>
+</dialog>
 </div>

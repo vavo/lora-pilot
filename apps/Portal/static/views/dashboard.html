@@ -88,7 +88,21 @@
   }
 </style>
 
-<h2>Dashboard</h2>
+<div class="journey-page">
+<header class="journey-heading"><h2>Your workspace</h2><p>From your first images to a LoRA you can use.</p></header>
+<div class="journey-surface journey-summary">
+  <div><strong>GPU</strong><span id="dash-summary-gpu">Loading…</span></div>
+  <div><strong>Workspace storage</strong><span id="dash-summary-storage">Loading…</span></div>
+  <div><strong>Services</strong><span id="dash-summary-services">Loading…</span><a class="journey-link" href="#services" data-open-section="services">View services</a></div>
+</div>
+<section class="journey-surface dash-launcher"><h3>What would you like to do?</h3>
+<div class="dash-launch-row"><div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div><div><h4>Prepare a dataset</h4><p>Upload images and add captions for training.</p></div><a class="btn primary" href="#datasets" data-open-section="datasets" data-open-upload>Upload dataset</a></div>
+<div class="dash-launch-row"><div class="journey-icon" data-nav-icon="trainpilot" aria-hidden="true"></div><div><h4>Train a LoRA</h4><p>Choose a prepared dataset and a training profile.</p></div><a class="journey-link" href="#trainpilot" data-open-section="trainpilot">Open training</a></div>
+<div class="dash-launch-row"><div class="journey-icon" data-nav-icon="comfyui" aria-hidden="true"></div><div><h4>Generate with ComfyUI</h4><p>Use your models in an image or video workflow.</p></div><a class="journey-link" href="#comfyui" data-open-section="comfyui">Open ComfyUI</a></div>
+<div class="dash-launch-row"><div class="journey-icon" data-nav-icon="mediapilot" aria-hidden="true"></div><div><h4>Explore your outputs</h4><p>Browse images and videos saved in your workspace.</p></div><a class="journey-link" href="#mediapilot" data-open-section="mediapilot">Open gallery</a></div>
+</section>
+<details class="journey-details"><summary>Hardware details</summary><div class="details-body">
+
 <div class="card" id="telemetry-card">
   <div id="telemetry-status" class="status">Loading telemetry...</div>
   <div id="telemetry-content" class="is-hidden">
@@ -144,6 +158,8 @@
   </div>
 </div>
 
+</div></details>
+<details class="journey-details" id="shutdown-details"><summary>Scheduled shutdown <span id="dash-shutdown-summary" class="journey-note">Checking schedule…</span></summary><div class="details-body">
 <div id="shutdown-card" class="mt-12 shutdown-card-wrap">
   <style>
     .shutdown-widget {
@@ -240,7 +256,7 @@
     <div class="shutdown-header">
       <div>
         <div class="shutdown-title">Shutdown Pod</div>
-        <div class="shutdown-subtitle">Schedule automatic termination</div>
+        <div class="shutdown-subtitle">Uses the shutdown mode configured in Settings</div>
       </div>
       <div class="shutdown-icon" title="Scheduler">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
@@ -297,3 +313,5 @@
     </div>
   </div>
 </div>
+
+</div></details></div>

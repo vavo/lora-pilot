@@ -1,0 +1,1 @@
+Navigation icons in static/index.html are from Feather v4.29.2 (https://github.com/feathericons/feather), distributed under the accompanying MIT license. SVGs are embedded to inherit the current theme without a runtime dependency.

@@ -56,6 +56,27 @@ window.initSettings = async function () {
       tabs[next].focus();
     });
   });
+  const requestedTab = window.pendingSettingsTab;
+  window.pendingSettingsTab = null;
+  if (requestedTab) {
+    const selected = tabs.find(tab => tab.id === `settings-tab-${requestedTab}`);
+    if (selected) selectTab(selected);
+  }
+  const back = document.getElementById("settings-back-models");
+  back.hidden = window.settingsReturnSection !== "models";
+  back.onclick = event => {
+    event.preventDefault();
+    window.returningToModels = true;
+    window.loadSection("models");
+  };
+  document.getElementById("settings-return-models").onclick = back.onclick;
+  window.settingsReturnSection = null;
+  document.getElementById("settings-hf-reveal").onclick = event => {
+    const visible = els.hfInput.type === "password";
+    els.hfInput.type = visible ? "text" : "password";
+    event.target.textContent = visible ? "Hide" : "Show";
+    event.target.setAttribute("aria-pressed", String(visible));
+  };
   document.getElementById("settings-panel-general").addEventListener("change", () => {
     els.uiStatus.textContent = "Unsaved changes.";
   });
@@ -141,10 +162,11 @@ window.initSettings = async function () {
     }
     if (els.hfInput) {
       els.hfInput.value = "";
-      els.hfInput.placeholder = hf && hf.set ? "HF_TOKEN saved" : "HF_TOKEN";
+      els.hfInput.placeholder = "Enter a new token";
+      document.getElementById("settings-hf-saved").textContent = hf?.set ? "Token saved" : "No token saved";
       if (els.hfStatus) els.hfStatus.textContent = hf && hf.set
-        ? "•••••••• saved. Enter a new token to replace it."
-        : "Not configured.";
+        ? "Saved token is hidden. Enter a new token only to replace it."
+        : "No token configured.";
     }
     if (els.copilotInput) {
       els.copilotInput.value = "";

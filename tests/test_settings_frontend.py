@@ -34,12 +34,14 @@ class Element {
     const radios = ['light', 'dark'].map(value => new Element(value));
     const tabs = ['general', 'access', 'connections', 'shutdown'].map(name => {
       const el = get('settings-tab-' + name);
+      el.id = 'settings-tab-' + name;
       el.setAttribute('aria-controls', 'settings-panel-' + name);
       return el;
     });
     const requests = [], applied = [];
     const context = {
       window: {
+        pendingSettingsTab: 'connections', settingsReturnSection: 'models',
         applyControlPilotUiSettings: value => applied.push(['ui', value]),
         applyCopilotDrawerDefaults: value => applied.push(['copilot', value]),
       },
@@ -57,8 +59,11 @@ class Element {
     };
     vm.runInNewContext(fs.readFileSync('apps/Portal/static/js/settings.js', 'utf8'), context);
     await context.window.initSettings();
+    assert.equal(get('settings-panel-connections').hidden, false);
+    assert.equal(get('settings-panel-general').hidden, true);
+    assert.equal(get('settings-back-models').hidden, false);
     assert.equal(get('settings-hf-token').value, '');
-    assert.match(get('settings-hf-status').textContent, /saved/);
+    assert.match(get('settings-hf-status').textContent, /saved/i);
     tabs[1].events.click();
     assert.equal(get('settings-panel-general').hidden, true);
     assert.equal(get('settings-panel-access').hidden, false);
