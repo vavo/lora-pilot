@@ -12,6 +12,14 @@ The Dashboard puts four starting points ahead of the hardware details: prepare a
 
 The sidebar follows the same journey. **Prepare** contains Datasets, Caption images, and Models. **Train** contains Guided training and Advanced training. **Create** opens ComfyUI and the Gallery, while **Manage** holds Services and Settings. Docs and Support sit below these groups. The Light and Dark controls remain at the bottom of the menu, including on mobile.
 
+## Know what is running
+
+The build label above every page opens **Build & diagnostics**. It shows the image's source commit and build date, detected GPU and memory, and locally installed service versions and states. Choose **Copy diagnostics** when asking for support. The summary deliberately leaves out credentials, URLs, workspace paths, dataset names and logs, so you can explain which build you are testing without copying your environment. Older images and source checkouts without embedded metadata show **unknown**.
+
+The activity control stays with you as you move between pages. Open it to inspect guided training, legacy TrainPilot, managed Diffusion Pipe runs and model downloads. A percentage appears when the job reports progress. Completion and failure notices offer **View task**, which returns to the training run or the Downloads view. The page checks every five seconds while ControlPilot is open; it does not send desktop or email notifications. Work launched independently in another tool is outside this indicator's scope.
+
+If a status source becomes unavailable, its last known jobs remain visible with an explicit warning. A paused training queue is identified separately from running work. Guided run history stays in the workspace, while legacy training and download activity follow their existing service lifetimes.
+
 ## Give your images a clear next step
 
 Datasets accepts ZIP archives containing images and optional matching captions. A saved collection shows real image previews, its image count, and how many images have a matching nonempty caption file. Coverage is a useful starting signal; it does not assess whether those captions describe the images well.

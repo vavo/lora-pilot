@@ -1,5 +1,11 @@
 Unreleased (September 20th 2026)
 
+ControlPilot now shows image build identity and offers Copy diagnostics with the commit, build date, detected GPU memory and installed service versions. The support summary excludes credentials, URLs, workspace paths, dataset names and logs. New builds embed their identity in the final image layer; older images report unavailable metadata as unknown.
+
+A global activity bar keeps guided training, legacy TrainPilot, managed Diffusion Pipe and model downloads visible across pages. Completion and failure notices link back to the run or Downloads view. Temporary status failures retain the last known activity and identify it as stale.
+
+Unfinished guided training choices now return after navigation or refresh. The browser saves the dataset, model family, profile, LoRA name and any reused configuration reference. Clear draft resets the form, successful queue submission clears the submitted draft, and a missing dataset requires a new selection. Drafts stay in this browser and are separate from persistent run history.
+
 Added guided FLUX.1 dev training alongside SDXL, with separate Kohya recipes and explicit model requirements. The catalog includes the full CLIP-L and FP16 T5 encoders required by this recipe.
 
 Added a persistent guided training queue and history. Runs use unique output directories and private dataset staging. Users can pause dispatch, cancel waiting work, stop managed training, inspect configuration and logs, repeat runs, or reuse saved settings. Restart recovery marks active work interrupted and pauses pending work for inspection. GPU and ComfyUI workload checks coordinate ControlPilot launches; external tools remain outside its ownership.

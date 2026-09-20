@@ -70,7 +70,7 @@ def snapshot(gpu_reader, service_specs, supervisor, identity):
             if not re.fullmatch(r'[A-Za-z0-9 ()+._-]{1,100}', name):
                 name = 'Unknown GPU'
             memory = value.get('mem_total')
-            gpus.append({'name': name, 'memory_mib': memory if type(memory) is int and memory >= 0 else None})
+            gpus.append({'name': name, 'memory_mib': memory // (1024 * 1024) if type(memory) is int and memory >= 0 else None})
     except Exception:
         gpus = []
     data = dict(build=build, gpus=gpus, services=services,

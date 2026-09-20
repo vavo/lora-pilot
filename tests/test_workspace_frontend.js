@@ -50,3 +50,37 @@ test('invalid drafts are not restored; storage failures are available to the UI'
   const blocked=context.createTrainingDraft({getItem(){throw Error('blocked')},removeItem(){throw Error('blocked')}});
   assert.throws(()=>blocked.read());assert.throws(()=>blocked.clear());
 });
+
+test('only a successful queue submission clears the unfinished draft', async () => {
+  const store=storage();
+  const nodes=new Map();
+  const node=id=>{
+    if (!nodes.has(id)) nodes.set(id,{value:'',textContent:'',hidden:false,addEventListener(){},classList:{toggle(){}},replaceChildren(){},append(){}});
+    return nodes.get(id);
+  };
+  const submitted={family:'sdxl',profile:'regular',dataset_name:'portraits',output_name:'Monday',source_run_id:null};
+  context.createTrainingDraft(store).save(submitted);
+  let rejectSubmission=true;
+  const page=vm.createContext({window:{localStorage:store},document:{getElementById:node,querySelectorAll:()=>[],createElement:tag=>node(tag)},
+    tpStarting:false,tpStatusKnown:true,tpDismissedRunId:null,
+    setTimeout:()=>1,clearTimeout(){},normalizeOutputName:v=>v,updateEpochExample(){},updateTpSummary(){},syncTpActions(){},showTpError(){},
+    ensureTrainpilotModelsPresent:async()=>true,
+    fetchJson:async(path,options)=>{
+      if(path==='/api/trainpilot/toml')return {path:'/tmp/config.toml'};
+      if(path==='/api/training/preflight')return {missing:[],conflicts:[]};
+      if(path==='/api/training/runs' && options.method==='POST'){
+        if(rejectSubmission)throw Error('queue unavailable');
+        return {id:'a'.repeat(32)};
+      }
+      return {runs:[],paused:false,conflicts:[],active_id:null};
+    },
+  });
+  for(const file of ['training-draft','training-workspace'])vm.runInContext(fs.readFileSync(`apps/Portal/static/js/${file}.js`,'utf8'),page);
+  await page.window.trainingWorkspace.init();
+  assert.equal(node('tp-output').value,'Monday');
+  await page.window.trainingWorkspace.submit();
+  assert.equal(context.createTrainingDraft(store).read().output_name,'Monday');
+  rejectSubmission=false;
+  await page.window.trainingWorkspace.submit();
+  assert.equal(context.createTrainingDraft(store).read(),null);
+});

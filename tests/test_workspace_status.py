@@ -24,7 +24,7 @@ class DiagnosticsTests(unittest.TestCase):
 
     def test_support_snapshot_excludes_secrets_paths_hosts_and_raw_errors(self):
         specs = {'comfy': {'kind': 'git', 'repo_dir': '/private/workspace'}, 'invoke': {}}
-        gpus = lambda: [{'name': 'NVIDIA A40', 'mem_total': 46068, 'token': 'SECRET', 'host': 'private-host'}]
+        gpus = lambda: [{'name': 'NVIDIA A40', 'mem_total': 46068 * 1024 * 1024, 'token': 'SECRET', 'host': 'private-host'}]
         with patch.object(diagnostics, 'command', return_value='comfy RUNNING pid 12 https://SECRET\ninvoke STOPPED SECRET'), \
              patch.object(diagnostics, 'installed_version', return_value='a' * 40):
             data = diagnostics.snapshot(gpus, specs, 'supervisorctl', lambda: {'revision': 'b' * 40, 'built_at': None})
@@ -32,7 +32,7 @@ class DiagnosticsTests(unittest.TestCase):
         for forbidden in ('SECRET', '/private', 'private-host', 'https://', 'pid 12'):
             self.assertNotIn(forbidden, encoded)
         self.assertEqual(data['services'][1]['state'], 'STOPPED')
-        self.assertIn('NVIDIA A40', data['summary'])
+        self.assertIn('NVIDIA A40 (46068 MiB)', data['summary'])
 
     def test_service_versions_are_local_and_reject_unexpected_output(self):
         with patch.object(diagnostics, 'command', return_value='https://user:secret@example.com') as cmd:
@@ -78,6 +78,25 @@ class ActivityTests(unittest.TestCase):
         self.assertEqual(data['unavailable'], ['Downloads'])
         self.assertEqual(data['items'], [{'id': 'legacy'}])
 
+    def test_old_active_runs_are_not_hidden_by_newer_history(self):
+        queue = Mock()
+        queue.root.exists.return_value = True
+        queue.lock = threading.RLock()
+        queue.paused = False
+        complete = dict(spec={'output_name': 'Finished'}, status='succeeded', created_at='2026-09-20T01:00:00Z')
+        queue.list.return_value = [dict(complete, id=str(i)) for i in range(110)] + [
+            dict(complete, id='active', status='running')]
+        queue.logs.return_value = ['steps: 25%|']
+        downloads = Mock()
+        downloads.list_jobs.return_value = {'jobs': []}
+        app = FastAPI()
+        app.include_router(activity.create_router(queue, downloads, lambda: []))
+        with TestClient(app) as client:
+            items = client.get('/api/activity').json()['items']
+        self.assertEqual(len(items), 101)
+        self.assertEqual(items[0]['id'], 'training:active')
+        self.assertEqual(items[0]['progress'], 25)
+
     def test_diffusion_pipe_completion_records_actual_exit_result(self):
         from apps.Portal import dpipe_api
         saved = dict(dpipe_api._last_activity)
@@ -92,3 +111,21 @@ class ActivityTests(unittest.TestCase):
             proc.stdout = io.BytesIO(b'')
             dpipe_api._read_stream(proc, 123)
             self.assertEqual(dpipe_api._last_activity['state'], 'stopped')
+
+
+class BuildMetadataTests(unittest.TestCase):
+    def test_built_identity_round_trips_and_filters_environment(self):
+        import os
+        import subprocess
+        import sys
+        script = Path(__file__).resolve().parents[1] / 'scripts/write-build-info.py'
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'build-info.json'
+            env = dict(os.environ, BUILD_REVISION='a' * 40, BUILD_DATE='2026-09-20T10:00:00Z', HF_TOKEN='SECRET')
+            subprocess.run([sys.executable, str(script), str(path)], env=env, check=True)
+            self.assertEqual(diagnostics.build_identity(path), {'revision': 'a' * 40, 'built_at': '2026-09-20T10:00:00Z'})
+            self.assertNotIn('SECRET', path.read_text())
+            env.update(BUILD_REVISION='unknown', BUILD_DATE='unknown')
+            subprocess.run([sys.executable, str(script), str(path)], env=env, check=True)
+            self.assertIsNone(diagnostics.build_identity(path)['revision'])
+            self.assertIsNotNone(diagnostics.build_identity(path)['built_at'])

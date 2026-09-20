@@ -1,6 +1,6 @@
 # Building LoRA Pilot
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-09-20_
 
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
 
@@ -13,6 +13,12 @@ gh workflow run publish-docker.yml -R vavo/lora-pilot --ref main -f publish_late
 ```
 
 Wait for the workflow to finish and verify the Docker Hub manifest before pulling the new image. Push-triggered builds retain their existing publication behavior. Publishing an image does not replace the running container or validate training on its GPU.
+
+## Identify the running image
+
+GitHub Actions passes the source commit and UTC build date into the image's final layer. ControlPilot reads `/opt/pilot/build-info.json` to show that identity and include it in copied diagnostics. Updating a mutable `dev` or `latest` tag does not change the identity of an already running container.
+
+For a local source build, pass `BUILD_REVISION` as the full commit hash and optionally `BUILD_DATE` as a UTC timestamp such as `2026-09-20T10:00:00Z`. For example, `make build BUILD_REVISION="$(git rev-parse HEAD)"` records the checked-out commit. Build from a clean checkout if you want that commit to describe the complete source. Without a supplied revision, the commit is reported as unknown. An unspecified build date uses the final layer's creation time, which can be retained when that layer is reused from cache.
 
 ## Build a release tag
 

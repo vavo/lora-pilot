@@ -1,7 +1,7 @@
 const sections = ["dashboard", "services", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
 const viewCache = {};
 let currentSection = null;
-const initialSection = new URLSearchParams(window.location.search).get("open") === "comfyui" ? "comfyui" : "dashboard";
+const initialSection = new URLSearchParams(window.location.search).get("open") === "comfyui" ? "comfyui" : (sections.includes(location.hash.slice(1)) ? location.hash.slice(1) : "dashboard");
 let controlPilotUnlocked = false;
 window.controlPilotSettings = window.controlPilotSettings || null;
 const viewMap = {
@@ -170,6 +170,7 @@ async function loadSection(section) {
   contentEl.innerHTML = viewCache[section];
   // run initializer
   currentSection = section;
+  history.replaceState(null, "", `#${section}`);
   window.scrollTo(0, 0);
   viewMap[section].init();
   contentEl.querySelectorAll("[data-nav-icon]").forEach(target => {

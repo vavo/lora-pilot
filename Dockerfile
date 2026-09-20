@@ -180,6 +180,11 @@ COPY CHANGELOG /opt/pilot/CHANGELOG
 COPY apps /opt/pilot/apps
 COPY docs /opt/pilot/docs
 
+# Identity changes only the final layer, keeping dependency caches reusable.
+ARG BUILD_REVISION=unknown
+ARG BUILD_DATE=unknown
+RUN /opt/venvs/core/bin/python /opt/pilot/write-build-info.py
+
 EXPOSE 7878 8888 8443 5555 6666 9090 4444 8675
 
 ENTRYPOINT ["/usr/bin/tini","-s","--"]

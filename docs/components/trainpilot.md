@@ -20,6 +20,14 @@ When you add a run, ControlPilot saves its configuration and records the dataset
 
 At launch, ControlPilot makes a private copy of the dataset inside the run's history directory. This keeps the trainer's staging and cache files away from your source collection. It is not a version-control system for datasets, and edits during the copy should still be avoided.
 
+## Pick up where you left off
+
+Your unfinished dataset choice, model family, profile and LoRA name are saved in this browser as you edit them. Navigate to Models, check another page or refresh, then return to Guided training to resume the setup. **Clear draft** removes the saved choices and resets the form. Adding a run to the queue clears the submitted draft; the run itself remains in persistent history.
+
+Choosing **Train a LoRA** from Datasets deliberately takes precedence over the draft's previous dataset and name. If a saved dataset has disappeared, ControlPilot restores the other choices and asks you to choose a dataset before training. Opening a completed run from an activity notice shows that result without replacing your unfinished choices.
+
+Drafts belong to this browser and site address. They do not follow you to another device or a different pod URL, and clearing browser data removes them. They contain form choices and, when using an earlier run's settings, a reference to that run. Configuration text and credentials are not copied into the draft. If browser storage is blocked, ControlPilot explains that the setup cannot be saved.
+
 ## Choose an experiment size
 
 **Quick test**, **Balanced**, and **Extended** map to `quick_test`, `regular`, and `high_quality`. Longer training can help, but it can also teach the model to repeat your examples too closely. Start small enough that you can afford to learn something from the result.

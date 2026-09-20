@@ -6,6 +6,8 @@ TAG ?= dev-amd64
 FULL_IMAGE := $(IMAGE):$(TAG)
 CONTAINER ?= lp-test
 PLATFORM ?= linux/amd64
+BUILD_REVISION ?= unknown
+BUILD_DATE ?= unknown
 CUDA_PROFILE ?= cu130
 ifeq ($(filter $(CUDA_PROFILE),cu128 cu130),)
 $(error CUDA_PROFILE must be cu128 or cu130)
@@ -89,6 +91,8 @@ export JUPYTER_TOKEN := $(or $(JUPYTER_TOKEN),$(shell openssl rand -hex 16))
 export CODE_SERVER_PASSWORD := $(or $(CODE_SERVER_PASSWORD),$(shell openssl rand -hex 16))
 
 DOCKER_BUILD_ARGS = \
+	--build-arg BUILD_REVISION="$(BUILD_REVISION)" \
+	--build-arg BUILD_DATE="$(BUILD_DATE)" \
 	--build-arg CUDA_BASE_IMAGE="$(CUDA_BASE_IMAGE)" \
 	--build-arg CUDA_PROFILE="$(CUDA_PROFILE)" \
 	--build-arg INSTALL_GPU_STACK=$(INSTALL_GPU_STACK) \

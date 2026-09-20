@@ -1,4 +1,4 @@
-/* Activity lives outside the page loader; only the current tab polls. */
+/* Activity lives outside the page loader and survives section changes. */
 function createActivityTracker(storage, now = Date.now) {
   const key = 'lora-pilot.activity.v1';
   const active = new Set(['queued', 'running', 'stopping']);

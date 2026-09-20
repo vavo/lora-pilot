@@ -1,6 +1,6 @@
 # API Reference
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-09-20_
 
 ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 
@@ -11,6 +11,12 @@ ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 - OpenAPI UI: disabled (`docs_url=None`, `redoc_url=None`)
 - CORS: `allow_origins=["*"]`
 - `/api/*` responses get no-cache headers from middleware
+
+## Workspace status API
+
+`GET /api/build` returns `revision` and `built_at` from the image's embedded metadata. Missing or invalid fields are `null`. `GET /api/diagnostics` returns the build identity, allowlisted GPU and service fields, a collection timestamp and a plain-text `summary` suitable for copying. These endpoints use the same ControlPilot authentication policy as other API routes and do not contact remote version indexes.
+
+`GET /api/activity` returns `items`, `paused` and `unavailable`. Each item identifies its kind, state, creation time, display label, optional progress percentage and destination section. Guided training entries also identify their run. A source failure is reported in `unavailable` while other sources remain available. Responses exclude raw logs and configuration. Progress can be `null` when the source has not reported a usable percentage.
 
 ## Service Management API
 

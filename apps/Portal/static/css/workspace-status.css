@@ -16,5 +16,6 @@
 .workspace-diagnostics textarea { width:100%; min-height:300px; box-sizing:border-box; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; font:13px/1.6 monospace; resize:vertical; }
 .main.main--mediapilot { display:flex; flex-direction:column; }
 .main.main--mediapilot #content { flex:1; min-height:0; }
+.main.main--mediapilot .mediapilot-shell { height:100%; min-height:0; }
 .main.main--mediapilot .workspace-bar { flex-shrink:0; margin:12px; }
 @media(max-width:768px) { .workspace-bar { top:80px; padding:10px; } .workspace-status-row { align-items:flex-start; gap:10px; } .workspace-activity summary { font-size:13px; } .workspace-build { font-size:12px; } }

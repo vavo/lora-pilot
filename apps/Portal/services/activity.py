@@ -29,7 +29,11 @@ def create_router(training, downloads, other_training):
                 training.start()
                 with training.lock:
                     paused = training.paused
-                    for run in training.list()[:100]:
+                    runs = training.list()
+                    active = {'queued', 'running', 'stopping'}
+                    visible = [run for run in runs if run['status'] in active]
+                    visible += [run for run in runs if run['status'] not in active][:100]
+                    for run in visible:
                         items.append(dict(id='training:' + run['id'], kind='training', run_id=run['id'],
                             label=run['spec']['output_name'], state=run['status'], created_at=run['created_at'],
                             progress=progress(training.logs(run['id'])) if run['status'] == 'running' else None,
