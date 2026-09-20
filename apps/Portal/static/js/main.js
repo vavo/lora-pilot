@@ -220,6 +220,7 @@ function setAuthGateVisible(visible, message = "") {
 
 window.showControlPilotLogin = function (message = "ControlPilot password required") {
   controlPilotUnlocked = false;
+  window.workspaceStatus.stop();
   setAuthGateVisible(true, message);
 };
 
@@ -394,6 +395,7 @@ if (authLoginBtn && !authLoginBtn.dataset.bound) {
       });
       controlPilotUnlocked = true;
       setAuthGateVisible(false);
+      window.workspaceStatus.start();
       initShutdownNotice();
       loadSection(currentSection || initialSection);
     } catch (e) {
@@ -421,6 +423,7 @@ window.addEventListener("resize", updateSidebarNavTooltips);
   const unlocked = await initControlPilotAuth();
   if (!unlocked) return;
   await window.refreshControlPilotSettings();
+  window.workspaceStatus.start();
   initShutdownNotice();
   loadSection(initialSection);
 })();

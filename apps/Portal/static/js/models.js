@@ -425,6 +425,7 @@
   window.initModels = async function () {
     window.stopModels();
     const epoch = generation;
+    if (window.pendingModelDownloads) { tab = "downloads"; query = ""; window.pendingModelDownloads = false; }
     if (!window.returningToModels && window.matchMedia("(max-width: 1000px)").matches) familyId = null;
     window.returningToModels = false;
     $("models-search").value = query;

@@ -3,6 +3,7 @@ window.trainingWorkspace = (() => {
   let epoch = 0, timer = null, selected = null, current = null, paused = false;
   let comparisonError = '';
   let comparisonFormRun = null;
+  let draft = null, preferSetup = false;
   let sourceRun = null, preflightEpoch = 0, comparisonBusy = false, historySignature = '';
   const $ = id => document.getElementById(id);
   const api = (path, body) => fetchJson(`/api/training${path}`, body === undefined ? {} : {
@@ -20,6 +21,24 @@ window.trainingWorkspace = (() => {
     return { dataset_name: $('tp-dataset')?.value || 'preflight', output_name: $('tp-output')?.value || 'preview',
       family: $('tp-family')?.value || 'sdxl', profile: $('tp-profile')?.value || 'regular',
       toml_path: $('tp-toml')?.value || '', source_run_id: sourceRun };
+  }
+  function saveDraft() {
+    try {
+      draft.save({...spec(), dataset_name: $('tp-dataset').value, output_name: $('tp-output').value});
+      $('tp-draft-status').textContent = 'Draft saved in this browser.';
+    } catch { $('tp-draft-status').textContent = 'Browser storage is unavailable. Keep this page open to retain your setup.'; }
+  }
+  function applyDraft(value, explicitDataset) {
+    $('tp-family').value = value.family; $('tp-profile').value = value.profile;
+    document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.checked = input.value === value.profile);
+    if (!explicitDataset) {
+      $('tp-dataset').value = value.dataset_name;
+      $('tp-output').value = normalizeOutputName(value.output_name);
+    }
+    sourceRun = value.source_run_id;
+    updateEpochExample($('tp-output').value);
+    $('tp-draft-status').textContent = !explicitDataset && value.dataset_name && !$('tp-dataset').value
+      ? 'Draft restored. Its dataset is unavailable; choose a dataset before training.' : 'Draft restored from this browser.';
   }
   function formState() {
     const family = spec().family;
@@ -138,6 +157,7 @@ window.trainingWorkspace = (() => {
         const id = selected;
         const run = await api(`/runs/${id}`);
         if (generation !== epoch || id !== selected || !$('tp-page')) return;
+        if (preferSetup) tpDismissedRunId = id;
         renderCurrent(run);
         if (run.status === 'succeeded' && !comparisonBusy) {
           try {
@@ -166,6 +186,9 @@ window.trainingWorkspace = (() => {
     try {
       if (!await ensureTrainpilotModelsPresent(request.toml_path)) return;
       const run = await api('/runs', request);
+      try { draft.clear(); } catch {}
+      preferSetup = false;
+      if ($('tp-draft-status')) $('tp-draft-status').textContent = 'Run queued. The submitted draft has been cleared.';
       selected = run.id; tpDismissedRunId = null; refresh();
     } catch (error) { showTpError(`Could not queue training: ${error.message || error}`); }
     finally { tpStarting = false; if ($('tp-page')) syncTpActions(); }
@@ -174,13 +197,13 @@ window.trainingWorkspace = (() => {
     const control = event.target.closest('[data-run-action]'); if (!control) return;
     const id = control.dataset.runId; control.disabled = true;
     try {
-      if (control.dataset.runAction === 'view') { selected = id; comparisonError = ''; tpDismissedRunId = null; }
+      if (control.dataset.runAction === 'view') { preferSetup = false; selected = id; comparisonError = ''; tpDismissedRunId = null; }
       if (control.dataset.runAction === 'settings') {
         const run = await api(`/runs/${id}`);
         $('tp-family').value = run.spec.family; $('tp-dataset').value = run.spec.dataset_name;
         $('tp-output').value = run.spec.output_name; $('tp-profile').value = run.spec.profile;
         document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.checked = input.value === run.spec.profile);
-        sourceRun = id;
+        sourceRun = id; preferSetup = true; saveDraft();
         tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData);
         preflight(); $('tp-setup').scrollIntoView({ block: 'start', behavior: 'smooth' });
       }
@@ -233,14 +256,33 @@ window.trainingWorkspace = (() => {
       if ($('tp-page')) { $('tp-compare-generate').disabled = false; $('tp-compare-open').disabled = false; refresh(); }
     }
   }
-  async function init() {
+  async function init(explicitDataset) {
     const generation = ++epoch;
+    const linkedRun = window.pendingTrainingRun;
+    if (linkedRun) { selected = linkedRun; window.pendingTrainingRun = null; tpDismissedRunId = null; }
     comparisonFormRun = null;
     historySignature = ''; sourceRun = null;
+    preferSetup = !!explicitDataset && !linkedRun;
+    try {
+      draft = createTrainingDraft(window.localStorage);
+      const saved = draft.read();
+      if (saved) { applyDraft(saved, explicitDataset); preferSetup = !linkedRun; }
+    } catch { $('tp-draft-status').textContent = 'Saved draft could not be read. You can still set up training.'; }
+    if (explicitDataset) saveDraft();
+    $('tp-fields').addEventListener('input', saveDraft);
+    $('tp-fields').addEventListener('change', saveDraft);
+    $('tp-clear-draft').onclick = () => {
+      try {
+        draft.clear();
+        applyDraft({family:'sdxl', profile:'regular', dataset_name:'', output_name:'', source_run_id:null});
+        $('tp-draft-status').textContent = 'Draft cleared.';
+        preferSetup = true; preflight();
+      } catch { $('tp-draft-status').textContent = 'Browser storage is unavailable; the saved draft could not be cleared.'; }
+    };
     $('tp-family').onchange = () => { sourceRun = null; preflight(); };
-    $('tp-current-defaults').onclick = () => { sourceRun = null; preflight(); };
+    $('tp-current-defaults').onclick = () => { sourceRun = null; saveDraft(); preflight(); };
     $('tp-history-list').onclick = historyAction;
-    $('tp-new-run').onclick = () => { tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData); $('tp-setup').hidden = false; $('tp-setup').scrollIntoView({block:'start'}); };
+    $('tp-new-run').onclick = () => { preferSetup = true; tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData); $('tp-setup').hidden = false; $('tp-setup').scrollIntoView({block:'start'}); };
     $('tp-queue-pause').onclick = async () => {
       try { await api('/queue', {paused: !paused}); refresh(); }
       catch (error) { showTpError(error.message || String(error)); }

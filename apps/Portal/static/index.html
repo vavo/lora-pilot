@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoRA Pilot ControlPilot</title>
   <link rel="stylesheet" href="/css/ui.css?v=20260204d" />
+  <link rel="stylesheet" href="/css/workspace-status.css?v=20260920b" />
   <style>
     :root {
       color-scheme: light;
@@ -334,6 +335,11 @@
         <button class="secondary" id="shutdown-notice-view" type="button" title="Open Dashboard">View</button>
         <button id="shutdown-notice-cancel" type="button" title="Cancel scheduled shutdown">Cancel</button>
       </div>
+      <div id="workspace-bar" class="workspace-bar" hidden>
+        <div class="workspace-status-row"><button id="workspace-build" class="workspace-build" type="button" aria-label="Build identity and diagnostics">Build unknown</button>
+          <details id="workspace-activity" class="workspace-activity"><summary id="workspace-activity-label">Activity · Checking…</summary><div id="workspace-activity-list" class="workspace-activity-list"></div></details></div>
+        <div id="workspace-notice" class="workspace-notice" role="status" hidden><span id="workspace-notice-text"></span><button id="workspace-notice-view" type="button">View task</button><button id="workspace-notice-dismiss" class="secondary" type="button">Dismiss</button></div>
+      </div>
       <div id="content"></div>
     </div>
   </div>
@@ -409,15 +415,22 @@
     }
   </script>
   
+  <dialog id="workspace-diagnostics" class="workspace-diagnostics" aria-labelledby="diagnostics-title">
+    <h2 id="diagnostics-title">Build &amp; diagnostics</h2><p>Build identity, GPU and local service versions. This summary excludes credentials, URLs, paths, dataset names and logs.</p>
+    <textarea id="diagnostics-summary" readonly aria-label="Sanitized support summary"></textarea>
+    <p id="diagnostics-status" role="status"></p><div class="row gap-12"><button id="diagnostics-copy" type="button" disabled>Copy diagnostics</button><button id="diagnostics-close" class="secondary" type="button">Close</button></div>
+  </dialog>
+  <script src="/js/workspace-status.js?v=20260920b"></script>
   <script src="/js/utils.js?v=20260204d"></script>
   <script src="/js/dashboard.js?v=20260919a"></script>
   <script src="/js/services.js?v=20260905a"></script>
   <script src="/js/model-catalog.js?v=20260907b"></script>
-  <script src="/js/models.js?v=20260919a"></script>
+  <script src="/js/models.js?v=20260920b"></script>
   <script src="/js/datasets.js?v=20260919a"></script>
   <script src="/js/comfyui.js?v=20260920a"></script>
-  <script src="/js/trainpilot.js?v=20260920a"></script>
-  <script src="/js/training-workspace.js?v=20260920a"></script>
+  <script src="/js/trainpilot.js?v=20260920b"></script>
+  <script src="/js/training-draft.js?v=20260920b"></script>
+  <script src="/js/training-workspace.js?v=20260920b"></script>
   <script src="/js/dpipe.js?v=20260204d"></script>
   <script src="/js/copilot-global.js?v=20260905a"></script>
   <script src="/js/settings.js?v=20260919a"></script>
@@ -426,6 +439,6 @@
   <script src="/js/support.js?v=20260204d"></script>
   <script src="/js/tagpilot.js?v=20260204d"></script>
   <script src="/js/mediapilot.js?v=20260210a"></script>
-  <script src="/js/main.js?v=20260919a"></script>
+  <script src="/js/main.js?v=20260920b"></script>
 </body>
 </html>

@@ -1,0 +1,20 @@
+.workspace-bar { position:sticky; top:0; z-index:25; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:20px; font-size:14px; }
+.workspace-bar[hidden], .workspace-notice[hidden] { display:none; }
+.workspace-status-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.workspace-build { background:none; color:var(--muted); white-space:nowrap; padding:4px 0; text-decoration:underline; text-underline-offset:3px; }
+.workspace-activity { min-width:0; }
+.workspace-activity summary { cursor:pointer; overflow-wrap:anywhere; }
+.workspace-activity-list { position:absolute; top:100%; right:0; width:460px; max-width:100%; box-sizing:border-box; max-height:55vh; overflow:auto; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px; box-shadow:0 8px 20px #0002; }
+.workspace-job { display:flex; justify-content:space-between; gap:16px; border-bottom:1px solid var(--border); padding:12px 0; }
+.workspace-job button { text-align:left; overflow-wrap:anywhere; min-width:0; }
+.workspace-job span { flex-shrink:0; color:var(--muted); }
+.workspace-notice { display:flex; flex-wrap:wrap; align-items:center; gap:12px; border-top:1px solid var(--border); margin-top:10px; padding-top:10px; }
+.workspace-notice span { flex:1; min-width:120px; overflow-wrap:anywhere; }
+.workspace-notice button { font-size:13px; }
+.workspace-diagnostics { width:650px; max-width:calc(100vw - 40px); max-height:85vh; overflow:auto; box-sizing:border-box; padding:24px; border:1px solid var(--border); border-radius:14px; background:var(--card); color:var(--text); }
+.workspace-diagnostics::backdrop { background:#0007; }
+.workspace-diagnostics textarea { width:100%; min-height:300px; box-sizing:border-box; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px; font:13px/1.6 monospace; resize:vertical; }
+.main.main--mediapilot { display:flex; flex-direction:column; }
+.main.main--mediapilot #content { flex:1; min-height:0; }
+.main.main--mediapilot .workspace-bar { flex-shrink:0; margin:12px; }
+@media(max-width:768px) { .workspace-bar { top:80px; padding:10px; } .workspace-status-row { align-items:flex-start; gap:10px; } .workspace-activity summary { font-size:13px; } .workspace-build { font-size:12px; } }

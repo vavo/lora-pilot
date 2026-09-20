@@ -9,8 +9,9 @@ window.initTrainpilot = async function () {
   const page = document.getElementById('tp-page');
   tpStatusKnown = false;
   bindTpControls();
+  const explicitDataset = window.pendingTrainDataset;
   await loadTpDatasets();
-  if (page && page === document.getElementById('tp-page')) window.trainingWorkspace.init();
+  if (page && page === document.getElementById('tp-page')) window.trainingWorkspace.init(explicitDataset);
 };
 
 function bindTpControls() {
