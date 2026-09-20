@@ -51,6 +51,9 @@ try:
     from .services.comfy import create_router as create_comfy_router  # type: ignore
     from .services.comfy_access import read_policy, token_matches  # type: ignore
     from .services.training_api import create_router as create_training_router
+    from .services.diagnostics import create_router as create_diagnostics_router
+    from .services.activity import create_router as create_activity_router, progress as activity_progress
+    from .services.model_downloads import ModelPullQueue
     from .services import gpu_guard
 except (ImportError, ValueError):
     try:
@@ -61,6 +64,9 @@ except (ImportError, ValueError):
         from services.comfy import create_router as create_comfy_router  # type: ignore
         from services.comfy_access import read_policy, token_matches  # type: ignore
         from services.training_api import create_router as create_training_router
+        from services.diagnostics import create_router as create_diagnostics_router
+        from services.activity import create_router as create_activity_router, progress as activity_progress
+        from services.model_downloads import ModelPullQueue
         from services import gpu_guard
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
@@ -70,6 +76,9 @@ except (ImportError, ValueError):
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
         from apps.Portal.services.comfy_access import read_policy, token_matches  # type: ignore
         from apps.Portal.services.training_api import create_router as create_training_router
+        from apps.Portal.services.diagnostics import create_router as create_diagnostics_router
+        from apps.Portal.services.activity import create_router as create_activity_router, progress as activity_progress
+        from apps.Portal.services.model_downloads import ModelPullQueue
         from apps.Portal.services import gpu_guard
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
@@ -1067,10 +1076,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+_model_downloads = ModelPullQueue(lambda: _read_secret_env_var("HF_TOKEN"), timeout=MODEL_PULL_TIMEOUT_SECONDS)
 app.include_router(create_models_router(
     MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR,
     token_reader=lambda: _read_secret_env_var("HF_TOKEN"),
-    pull_timeout=MODEL_PULL_TIMEOUT_SECONDS,
+    pull_timeout=MODEL_PULL_TIMEOUT_SECONDS, queue=_model_downloads,
 ))
 app.include_router(dpipe_router)
 app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilot_cookie_authenticated,
@@ -3902,6 +3912,38 @@ _training_router, _training_queue = create_training_router(
     _legacy_training_conflicts,
 )
 app.include_router(_training_router)
+
+
+def _other_training_activity():
+    items = []
+    with _tp_lock:
+        if _tp_run_id:
+            running = _tp_proc is not None and _tp_proc.poll() is None
+            state = 'running' if running else 'stopped' if _tp_run_details.get('stopped') else 'succeeded' if _tp_exit_code == 0 else 'failed'
+            items.append(dict(id='legacy:' + _tp_run_id, kind='training', label='Legacy TrainPilot',
+                state=state, created_at=_tp_run_details.get('started_at'),
+                progress=activity_progress(list(_tp_logs)) if running else None, section='trainpilot'))
+    try:
+        from . import dpipe_api
+    except ImportError:
+        import dpipe_api
+    with dpipe_api._proc_lock:
+        if dpipe_api._last_activity:
+            item = dict(dpipe_api._last_activity)
+            item['progress'] = activity_progress(list(dpipe_api._logs.get(item.pop('pid'), ())))
+            items.append(item)
+    return items
+
+
+_diagnostic_specs = {name: SERVICE_UPDATE_SPECS.get(name, {}) for name in SERVICES}
+_diagnostic_specs.update({
+    'controlpilot': {'kind': 'build'}, 'copilot': {'kind': 'build'},
+    'jupyter': {'kind': 'pip', 'python_bin': '/opt/venvs/core/bin/python', 'package': 'jupyterlab'},
+    'code-server': {'kind': 'code-server'},
+})
+app.include_router(create_diagnostics_router(get_gpus, _diagnostic_specs, SUPERVISORCTL))
+app.include_router(create_activity_router(_training_queue, _model_downloads, _other_training_activity))
+
 
 
 # Static assets

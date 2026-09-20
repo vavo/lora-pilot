@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import threading
+import time
 
 try:
     from .services import gpu_guard
@@ -113,6 +114,7 @@ _proc_lock = threading.Lock()
 _start_lock = threading.Lock()
 _procs: dict[int, subprocess.Popen] = {}
 _logs: dict[int, deque[str]] = {}
+_last_activity: dict = {}
 _LOG_MAX = 2000
 
 
@@ -136,9 +138,11 @@ def _read_stream(proc: subprocess.Popen, pid: int):
         with _proc_lock:
             _deque_for(pid).append(line.rstrip("\n"))
     proc.stdout.close()
-    proc.wait()
+    code = proc.wait()
     with _proc_lock:
         _procs.pop(pid, None)
+        if _last_activity.get('pid') == pid and _last_activity.get('state') != 'stopped':
+            _last_activity['state'] = 'succeeded' if code == 0 else 'failed'
 
 
 def _resolve_diffpipe_dir() -> Path:
@@ -611,6 +615,10 @@ def _start_training(req: TrainRequest):
     pid = proc.pid
     with _proc_lock:
         _procs[pid] = proc
+        started = time.time()
+        _last_activity.clear()
+        _last_activity.update(id=f'dpipe:{pid}:{started}', kind='training', label='Diffusion Pipe',
+                              state='running', created_at=started, pid=pid, section='dpipe')
         _logs.pop(pid, None)
         _deque_for(pid)
     threading.Thread(target=_read_stream, args=(proc, pid), daemon=True).start()
@@ -632,6 +640,9 @@ def stop_training(pid: Optional[int] = None):
             _procs.pop(pid, None)
         return {"status": "stopped", "detail": "Process already exited."}
     try:
+        with _proc_lock:
+            if _last_activity.get('pid') == pid:
+                _last_activity['state'] = 'stopped'
         os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         try:
             proc.wait(timeout=5)
