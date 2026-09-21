@@ -4,6 +4,10 @@ Guided training now offers direct checkpoint downloads for finished runs, includ
 
 Recognized training and model-download failures now explain useful next actions, while preserving technical details. Storage has a new usage overview and a reviewed cleanup flow for individual checkpoints, private dataset snapshots, and training caches from finished guided runs. Cleanup requires explicit selection and confirmation, rechecks file identity and workload status, and protects original datasets, shared models, linked files, and run history. General application caches and other tools' outputs remain outside cleanup scope.
 
+Updated the documentation home and ControlPilot guide for downloads, timing, history filters, and Storage. Added a product roadmap that separates implemented work from delivery verification and proposed priorities, plus an ideas document for exploratory features. Both are linked from the documentation home.
+
+The September 21 implementation through source commit e70a86b passed 229 Python tests and 8 frontend tests, with local browser checks for desktop, mobile, light, and dark layouts. Cleanup checks used disposable files. The local Docker build check was blocked by a stopped Docker daemon; that implementation task did not publish a new image or validate training on a live GPU.
+
 ControlPilot now shows image build identity and offers Copy diagnostics with the commit, build date, detected GPU memory and installed service versions. The support summary excludes credentials, URLs, workspace paths, dataset names and logs. New builds embed their identity in the final image layer; older images report unavailable metadata as unknown.
 
 A global activity bar keeps guided training, legacy TrainPilot, managed Diffusion Pipe and model downloads visible across pages. Completion and failure notices link back to the run or Downloads view. Temporary status failures retain the last known activity and identify it as stale.
@@ -27,7 +31,7 @@ Guided training now brings the dataset, LoRA name, profile, and run summary into
 
 Models now opens Settings directly on Connections and returns to the selected catalog family. The Hugging Face token control distinguishes saved credentials from a new entry without revealing saved secrets.
 
-Added a dataset preview endpoint, caption-coverage API fields, completed-run metadata, and regression coverage for preview path safety, caption matching, result states, and file movement. All 178 tests passed during implementation. Desktop, mobile, and both themes were checked locally with sample data; a fresh image build and live GPU rehearsal remain unverified.
+Added a dataset preview endpoint, caption-coverage API fields, completed-run metadata, and regression coverage for preview path safety, caption matching, result states, and file movement. That earlier UI batch passed 178 tests and local browser checks with sample data. The September 21 validation record above covers the subsequent implementation.
 
 Updated the ControlPilot, dataset, training, and API documentation to match this workflow. Local QA reports, browser-test output, downloaded models, and environment overrides stay outside version control; the bundled model manifest and environment examples remain trackable.
 

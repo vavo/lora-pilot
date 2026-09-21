@@ -12,6 +12,12 @@ The September 21 additions bring checkpoint downloads, searchable and paginated 
 
 This section also records the Settings redesign, the Models HTTP 500 fix, and repaired documentation images. These are source changes awaiting a release. A changelog entry does not establish that a Docker image contains the change or that training has passed on a target GPU.
 
+## Implementation and delivery status
+
+The September 21 implementation through `e70a86b` passed 229 Python tests and 8 frontend tests. Local browser checks covered checkpoint downloads, history filters, progress estimates, reviewed cleanup, mobile layout, and both themes. Cleanup checks used disposable files. The local Docker build check could not reach a running daemon; that task did not publish a new image or validate a training run on a live GPU.
+
+The documentation home now links to a [product roadmap](../product/roadmap.md) and [ideas document](../product/ideas.md). The roadmap records implemented behavior and proposed priorities; ideas remain exploratory. Neither document promises that an installed image contains a source change.
+
 ## Published release notes
 
 Read the [v2.5.8 release notes](../releases/v2.5.8.md) for the Models catalog, workflow installation review, backend extraction, and runtime fixes. That GitHub release compares against [v2.5.4](../releases/v2.5.4.md) and includes the intervening v2.5.5 through v2.5.7 changelog entries, which did not have separate GitHub releases. Earlier entries remain in the root history.

@@ -10,7 +10,7 @@ Open ControlPilot through your pod's exposed port `7878`, or visit `http://local
 
 The Dashboard puts four starting points ahead of the hardware details: prepare a dataset, train a LoRA, generate with ComfyUI, or explore your outputs. Its compact status strip shows the detected GPU, free workspace storage, and service availability. Expand **Hardware details** when you need resource readings, or **Scheduled shutdown** when you want to configure the existing timer.
 
-The sidebar follows the same journey. **Prepare** contains Datasets, Caption images, and Models. **Train** contains Guided training and Advanced training. **Create** opens ComfyUI and the Gallery, while **Manage** holds Services and Settings. Docs and Support sit below these groups. The Light and Dark controls remain at the bottom of the menu, including on mobile.
+The sidebar follows the same journey. **Prepare** contains Datasets, Caption images, and Models. **Train** contains Guided training and Advanced training. **Create** opens ComfyUI and the Gallery, while **Manage** holds Services, Storage, and Settings. Docs and Support sit below these groups. The Light and Dark controls remain at the bottom of the menu, including on mobile.
 
 ## Know what is running
 
@@ -48,9 +48,13 @@ You can prepare another run while one is training. The queue dispatches one guid
 
 **Training queue & history** keeps run status, configuration snapshots, logs, and output locations on your persistent volume. **View run** opens its details, **Use settings** fills a new setup from the saved configuration, and **Repeat run** queues another experiment against the current dataset. A server restart marks formerly running jobs interrupted and pauses pending work for inspection. It does not automatically resume checkpoints or recreate the result of a process it no longer owns.
 
-A successful run shows saved files and their location. **Copy to LoRA library** makes copies under `/workspace/models/loras/ControlPilot/<run-id>` while preserving the originals. **Try my LoRA** sends a native-node workflow to ComfyUI and displays images generated with the same prompt and seed, with and without the chosen LoRA. You can also open the prepared graph in ComfyUI without generating immediately.
+Search the full history by LoRA or dataset name, filter by model family or status, and move through results with **Previous** and **Next**. Each page shows up to 50 matching runs. Filtering the list leaves the selected run open so you can inspect it while finding another experiment.
 
-A failed or stopped run keeps its status and logs rather than showing a success screen. Any saved checkpoints remain in its output directory. For model families or controls outside these guided recipes, open the relevant trainer described in the [training workflows guide](training-workflows.md).
+The selected run shows elapsed time from launch, including preparation. Startup and cache preparation have their own stage labels. A remaining-time estimate appears only after enough recent trainer progress is available; it disappears when the progress becomes stale. Treat it as an estimate, since checkpoint saves and changing workload conditions can affect the finish time.
+
+A successful run shows saved files and their location. **Download** saves an individual checkpoint to your computer while keeping the workspace copy. **Copy to LoRA library** makes copies under `/workspace/models/loras/ControlPilot/<run-id>` while preserving the originals. **Try my LoRA** sends a native-node workflow to ComfyUI and displays images generated with the same prompt and seed, with and without the chosen LoRA. You can also open the prepared graph in ComfyUI without generating immediately.
+
+A failed or stopped run keeps its status and logs rather than showing a success screen. Any saved checkpoints remain in its output directory and can be downloaded after the run stops. Recognized failures offer an explanation and a relevant next action, such as checking Hugging Face access or opening Storage. Expand **Technical details** to inspect the underlying message. For model families or controls outside these guided recipes, open the relevant trainer described in the [training workflows guide](training-workflows.md).
 
 ## Keep preparation, generation, and review connected
 

@@ -1,115 +1,43 @@
-# LoRA Pilot Documentation
+# LoRA Pilot documentation
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-21_
 
-Welcome to the comprehensive documentation for LoRA Pilot, your all-in-one Stable Diffusion workspace. This documentation covers everything from initial setup to advanced configuration and development.
+Start with a folder of images and a result you want to create. LoRA Pilot brings dataset preparation, training, and generation into a shared workspace, so you can follow an experiment through to its saved checkpoints and comparison images. These guides explain the choices along the way and show where to look when a tool needs attention.
 
-## v2.5.8 release
+## Start your first experiment
 
-Read the [v2.5.8 release notes](releases/v2.5.8.md) for the Models catalog, video workflow installation, access protection, and startup fixes. The notes include upgrade steps and the failed Docker publishing run. Use the [source-tag build instructions](development/building.md#build-a-release-tag) to build this version.
+Use the [installation guide](getting-started/installation.md) and [system requirements](getting-started/system-requirements.md) to prepare your machine or pod, then follow [First Run](getting-started/first-run.md). Open [ControlPilot](user-guide/control-pilot.md) to prepare a dataset, choose a guided training profile, or open a tool you already know. The [installation troubleshooting guide](getting-started/troubleshooting.md) covers problems that appear before you reach the workspace.
 
-## Documentation Structure
+If the terminology is new, begin with [Stable Diffusion 101](getting-started/stable-diffusion-101/README.md). Continue through [Datasets 101](getting-started/datasets-101/README.md), [LoRA Training 101](getting-started/loRA-training-101/README.md), and [Inference 101](getting-started/inference-101/README.md) as those topics become relevant to your project. You can learn the underlying concepts while working toward an image you want to make.
 
-### 🎓 Beginner Path
+## Prepare, train, and inspect the result
 
-New to AI and LoRA training? Follow our structured learning path from zero to proficiency.
+The [dataset preparation guide](user-guide/dataset-preparation.md) covers image collections and captions. [TagPilot](components/tagpilot.md) provides the captioning workspace, and [model management](user-guide/model-management.md) explains how to get the weights your chosen task requires.
 
-- [Stable Diffusion 101](getting-started/stable-diffusion-101/README.md) - **Start Here** - Learn generation fundamentals and prompting basics
-- [Datasets 101](getting-started/datasets-101/README.md) - **Step 2** - Master dataset creation, collection, and quality standards
-- [LoRA Training 101](getting-started/loRA-training-101/README.md) - **Step 3** - Learn LoRA methods, parameters, and training workflows
-- [Inference 101](getting-started/inference-101/README.md) - **Step 4** - Master inference stacks, workflow types, and practical generation loops
+[TrainPilot](components/trainpilot.md) takes you through guided SDXL or FLUX.1 dev training, persistent history, checkpoint downloads, and a comparison with the base model. Search previous runs by LoRA or dataset name and inspect the configuration that reached the trainer. For more control, use the [training workflows guide](user-guide/training-workflows.md) with the dedicated guides for [Kohya SS](components/kohya-ss.md), [AI Toolkit](components/ai-toolkit.md), and [Diffusion Pipe](components/diffusion-pipe.md).
 
-###  Getting Started
-New to LoRA Pilot? Start here for installation and first-run guidance.
-- [Installation Guide](getting-started/installation.md) - Complete setup instructions
-- [System Requirements](getting-started/system-requirements.md) - Hardware and software requirements
-- [First Run](getting-started/first-run.md) - Initial configuration and setup
-- [Troubleshooting](getting-started/troubleshooting.md) - Common installation issues
+The [inference guide](user-guide/inference.md) connects saved models to generation. Learn [ComfyUI](components/comfyui.md) when you want to build or inspect a graph, or explore [InvokeAI](components/invokeai.md) for its generation workspace. The [workflow types guide](getting-started/inference-101/workflow-types.md) explains where image editing, video, and refinement fit. [MediaPilot](components/mediapilot.md) helps you review saved outputs in the Gallery.
 
-### 👥 User Guide
-Learn how to use LoRA Pilot's features and workflows.
-- [ControlPilot](user-guide/control-pilot.md) - Main web interface
-- [Training Workflows](user-guide/training-workflows.md) - Training with Kohya and AI Toolkit
-- [Model Management](user-guide/model-management.md) - Download and manage models
-- [Dataset Preparation](user-guide/dataset-preparation.md) - Create and tag datasets
-- [Inference](user-guide/inference.md) - Using ComfyUI and InvokeAI
-- [Workflow Types](getting-started/inference-101/workflow-types.md) - Choosing text-to-image, image-to-image, inpainting, video, and refinement workflows
+## Keep the workspace understandable
 
-### 🧩 Components
-Detailed guides for each LoRA Pilot component.
-- [Kohya SS](components/kohya-ss.md) - Battle-tested LoRA trainer
-- [AI Toolkit](components/ai-toolkit.md) - Modern training stack
-- [Diffusion Pipe](components/diffusion-pipe.md) - Scalable training pipeline
-- [ComfyUI](components/comfyui.md) - Node-based inference
-- [InvokeAI](components/invokeai.md) - Dedicated inference stack
-- [TrainPilot](components/trainpilot.md) - Guided Kohya automation
-- [TagPilot](components/tagpilot.md) - Dataset tagging tool
-- [MediaPilot](components/mediapilot.md) - Image management
-- [Copilot Sidecar](components/copilot-sidecar.md) - GitHub Copilot integration
+[ControlPilot](user-guide/control-pilot.md) covers build diagnostics, global activity, unfinished training drafts, service controls, and Settings. Its Storage page shows category usage and offers reviewed cleanup of eligible files from finished guided runs. Read the cleanup explanation before removing checkpoints you may still want to download or compare.
 
-### ⚙️ Configuration
-Configure LoRA Pilot for your specific needs.
-- [Environment Variables](configuration/environment-variables.md) - Complete reference
-- [Docker Compose](configuration/docker-compose.md) - Container configurations
-- [Models Manifest](configuration/models-manifest.md) - Model configuration
-- [Supervisor](configuration/supervisor.md) - Service management
-- [Custom Setup](configuration/custom-setup.md) - Advanced configurations
+Models, datasets, settings, and outputs use the persistent workspace. Image-owned application code follows the container image. The [file structure reference](reference/file-structure.md) explains that boundary; persistence depends on retaining the workspace volume. For a failure, start with [troubleshooting](reference/troubleshooting.md) or the [debugging guide](development/debugging.md). The [Copilot Sidecar guide](components/copilot-sidecar.md) describes the optional assistant integration.
 
-### 💻 Development
-For developers who want to contribute or extend LoRA Pilot.
-- [Architecture](development/architecture.md) - System design and components
-- [Building](development/building.md) - Build from source
-- [Contributing](development/contributing.md) - Contribution guidelines
-- [Debugging](development/debugging.md) - Debugging guide
-- [API Reference](development/api-reference.md) - Complete API documentation
+## Configure and deploy
 
-###  Deployment
-Deploy LoRA Pilot in production environments.
-- [Production](deployment/production.md) - Production deployment
-- [Cloud Platforms](deployment/cloud-platforms.md) - Cloud deployment options
-- [Windows Installer](deployment/windows-installer.md) - Creating Windows installers
-- [Performance Tuning](deployment/performance-tuning.md) - Optimization guides
+Use [environment variables](configuration/environment-variables.md) and [Docker Compose](configuration/docker-compose.md) to understand runtime settings. The [models manifest](configuration/models-manifest.md) defines catalog entries, while [Supervisor](configuration/supervisor.md) manages service processes. [Custom setup](configuration/custom-setup.md) covers changes you want to preserve across starts.
 
-### 📖 Reference
-Quick reference materials and troubleshooting.
-- [CLI Commands](reference/cli-commands.md) - Command-line interface
-- [File Structure](reference/file-structure.md) - Directory structure reference
-- [Supported Models](reference/supported-models.md) - Compatible model families
-- [Troubleshooting](reference/troubleshooting.md) - Common issues and solutions
-- [Changelog](reference/changelog.md) - Version history
+For a hosted workspace, consult [cloud platforms](deployment/cloud-platforms.md) and [production deployment](deployment/production.md). [Performance tuning](deployment/performance-tuning.md) helps you investigate resource use. The [Windows installer guide](deployment/windows-installer.md) covers that packaging path separately.
 
-##  Quick Start
+## Build integrations and contribute
 
-1. **Install Docker Desktop** - [Installation Guide](getting-started/installation.md)
-2. **Clone and Run** - [First Run](getting-started/first-run.md)
-3. **Access ControlPilot** - [User Guide](user-guide/control-pilot.md)
-4. **Start Training** - [Training Workflows](user-guide/training-workflows.md)
+Read the [architecture](development/architecture.md) before changing how the tools fit together. [Building](development/building.md) describes image creation, and the [API reference](development/api-reference.md) documents ControlPilot requests, including training history and reviewed storage cleanup. The [CLI reference](reference/cli-commands.md) covers terminal entry points. Follow the [contribution guide](development/contributing.md) for code or documentation changes.
 
-## 🏗️ What's in LoRA Pilot?
+## Follow product development
 
-LoRA Pilot bundles multiple AI tools into one integrated workspace:
+The [changelog](reference/changelog.md) records completed source changes and published releases. Read the [v2.5.8 release notes](releases/v2.5.8.md) for that version's scope and upgrade context. Current source documentation also describes later unreleased work; check the running build's commit before assuming a mutable Docker tag includes a feature.
 
-- **Training**: Kohya SS, AI Toolkit, Diffusion Pipe
-- **Inference**: ComfyUI, InvokeAI
-- **Management**: ControlPilot, Model Management, Dataset Tools
-- **Development**: JupyterLab, Code Server, API Access
+The [product roadmap](product/roadmap.md) separates implemented work, delivery verification, and proposed priorities. [Product ideas](product/ideas.md) explores possible additions without promising a release date. The September 21 source batch adds checkpoint downloads, actionable errors, training timing, searchable history, and reviewed storage cleanup. Image publication and live GPU validation for that batch remain separate delivery steps.
 
-Everything is orchestrated by supervisord and persists to `/workspace`, ensuring your work survives container restarts.
-
-## 🔗 External Resources
-
-- **GitHub Repository**: https://github.com/vavo/lora-pilot
-- **Docker Hub**: https://hub.docker.com/r/notrius/lora-pilot
-- **Community**: [Discussions on GitHub](https://github.com/vavo/lora-pilot/discussions)
-- **Issues**: [Bug Reports and Feature Requests](https://github.com/vavo/lora-pilot/issues)
-
-##  Contributing to Documentation
-
-Found an error or want to improve the documentation? Please see the [Contributing Guide](development/contributing.md) for guidelines on how to submit documentation updates.  
-*Documentation version: 2.2*
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+Visit the [GitHub repository](https://github.com/vavo/lora-pilot) for source, [Docker Hub](https://hub.docker.com/r/notrius/lora-pilot) for images, and [GitHub Discussions](https://github.com/vavo/lora-pilot/discussions) to discuss workflows. Report a reproducible problem through [Issues](https://github.com/vavo/lora-pilot/issues), including the running build identity and relevant sanitized details.
