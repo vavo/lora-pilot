@@ -1,24 +1,24 @@
 const sections = ["dashboard", "services", "storage", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
 const viewCache = {};
 let currentSection = null;
-let navigationGeneration = 0;
+let activeScreen = null;
 const initialSection = new URLSearchParams(window.location.search).get("open") === "comfyui" ? "comfyui" : (sections.includes(location.hash.slice(1)) ? location.hash.slice(1) : "dashboard");
 let controlPilotUnlocked = false;
 window.controlPilotSettings = window.controlPilotSettings || null;
 const viewMap = {
-  dashboard: { view: "/views/dashboard.html", init: () => window.initDashboard && window.initDashboard() },
-  storage: { view: "/views/storage.html", init: () => window.storagePage.init() },
-  services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
-  models: { view: "/views/models.html?v=20260907b", init: () => window.initModels && window.initModels() },
-  datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
-  mediapilot: { view: "/views/mediapilot.html?v=20260905a", init: () => window.initMediapilot && window.initMediapilot() },
-  comfyui: { view: "/views/comfyui.html", init: () => window.initComfyUI && window.initComfyUI() },
-  tagpilot: { view: "/views/tagpilot.html", init: () => window.initTagpilot && window.initTagpilot() },
-  trainpilot: { view: "/views/trainpilot.html", init: () => window.initTrainpilot && window.initTrainpilot() },
-  dpipe: { view: "/views/dpipe.html", init: () => window.initDpipe && window.initDpipe() },
-  docs: { view: "/views/docs.html", init: () => window.initDocs && window.initDocs() },
-  settings: { view: "/views/settings.html?v=20260916a", init: () => window.initSettings && window.initSettings() },
-  support: { view: "/views/support.html", init: () => window.initSupport && window.initSupport() },
+  dashboard: { view: "/views/dashboard.html", init: screen => window.initDashboard && window.initDashboard(screen), stop: () => window.stopDashboard?.() },
+  storage: { view: "/views/storage.html", init: screen => window.storagePage.init(screen), stop: () => window.storagePage.stop() },
+  services: { view: "/views/services.html", init: screen => window.initServices && window.initServices(screen), stop: () => window.stopServices?.() },
+  models: { view: "/views/models.html?v=20260907b", init: screen => window.initModels && window.initModels(screen), stop: () => window.stopModels?.() },
+  datasets: { view: "/views/datasets.html", init: screen => window.initDatasets && window.initDatasets(screen) },
+  mediapilot: { view: "/views/mediapilot.html?v=20260905a", init: screen => window.initMediapilot && window.initMediapilot(screen) },
+  comfyui: { view: "/views/comfyui.html", init: screen => window.initComfyUI && window.initComfyUI(screen), stop: () => window.stopComfyUI?.() },
+  tagpilot: { view: "/views/tagpilot.html", init: screen => window.initTagpilot && window.initTagpilot(screen) },
+  trainpilot: { view: "/views/trainpilot.html", init: screen => window.initTrainpilot && window.initTrainpilot(screen), stop: () => window.stopTpLogPoll?.() },
+  dpipe: { view: "/views/dpipe.html", init: screen => window.initDpipe && window.initDpipe(screen), stop: () => window.stopDpipeLog?.() },
+  docs: { view: "/views/docs.html", init: screen => window.initDocs && window.initDocs(screen) },
+  settings: { view: "/views/settings.html?v=20260916a", init: screen => window.initSettings && window.initSettings(screen) },
+  support: { view: "/views/support.html", init: screen => window.initSupport && window.initSupport(screen) },
 };
 
 const contentEl = document.getElementById("content");
@@ -148,46 +148,47 @@ async function loadSection(section) {
   if (!controlPilotUnlocked) return;
   if (!contentEl) return;
   if (!viewMap[section]) section = "dashboard";
-  const generation = ++navigationGeneration;
+  activeScreen?.dispose();
+  const screen = window.createScreenLifecycle();
+  activeScreen = screen;
+  currentSection = section;
+  screen.onCleanup(() => viewMap[section].stop?.());
   setCopilotSectionVisibility(section);
-  // cleanup timers when switching away
-  if (currentSection) {
-    if (currentSection === "models" && window.stopModels) window.stopModels();
-    if (currentSection === "dashboard" && window.stopDashboard) window.stopDashboard();
-    if (currentSection === "dpipe" && window.stopDpipeLog) window.stopDpipeLog();
-    if (currentSection === "storage") window.storagePage.stop();
-    if (currentSection === "trainpilot" && window.stopTpLogPoll) window.stopTpLogPoll();
-    if (currentSection === "comfyui" && window.stopComfyUI) window.stopComfyUI();
-  }
   document.querySelectorAll(".nav a").forEach(a => { a.classList.remove("active"); a.removeAttribute("aria-current"); });
   const active = document.querySelector(`.nav a[data-section="${section}"]`);
   if (active) { active.classList.add("active"); active.setAttribute("aria-current", "page"); }
   closeSidebar();
   try {
     if (!viewCache[section]) {
-      const res = await fetch(viewMap[section].view);
-      if (!res.ok) throw new Error('View unavailable');
-      const html = await res.text();
-      if (generation !== navigationGeneration || !controlPilotUnlocked) return;
+      const html = await screen.text(viewMap[section].view);
       viewCache[section] = html;
     }
   } catch (error) {
-    if (generation === navigationGeneration && controlPilotUnlocked) {
+    if (screen.active && controlPilotUnlocked) {
       contentEl.innerHTML = `<div class="card">Could not load ${section}. Select the page again to retry.</div>`;
     }
     return;
   }
-  if (generation !== navigationGeneration || !controlPilotUnlocked) return;
+  if (!screen.active || !controlPilotUnlocked) return;
   contentEl.innerHTML = viewCache[section];
   // run initializer
   currentSection = section;
   history.replaceState(null, "", `#${section}`);
   window.scrollTo(0, 0);
-  viewMap[section].init();
+  try {
+    await viewMap[section].init(screen);
+  } catch (error) {
+    if (screen.active) contentEl.textContent = `Could not initialize ${section}: ${error.message || error}`;
+    screen.dispose();
+    return false;
+  }
+  if (!screen.active) return;
+  // A successful mount is also the completion signal for navigation actions.
   contentEl.querySelectorAll("[data-nav-icon]").forEach(target => {
     const icon = document.querySelector(`.nav [data-section="${target.dataset.navIcon}"] .nav-icon`);
     if (icon) target.replaceChildren(icon.cloneNode(true));
   });
+  return screen.active;
 }
 
 function setCopilotSectionVisibility(section) {
@@ -211,8 +212,8 @@ contentEl?.addEventListener("click", async event => {
   const control = event.target.closest("[data-open-section]");
   if (!control) return;
   event.preventDefault();
-  await loadSection(control.dataset.openSection);
-  if (control.dataset.openUpload !== undefined) window.openUploadModal?.();
+  const mounted = await loadSection(control.dataset.openSection);
+  if (mounted && control.dataset.openUpload !== undefined) window.openUploadModal?.();
 });
 
 // expose for other modules
@@ -232,7 +233,7 @@ function setAuthGateVisible(visible, message = "") {
 
 window.showControlPilotLogin = function (message = "ControlPilot password required") {
   controlPilotUnlocked = false;
-  navigationGeneration++;
+  activeScreen?.dispose();
   window.workspaceStatus.stop();
   setAuthGateVisible(true, message);
 };

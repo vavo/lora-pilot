@@ -1,4 +1,4 @@
-window.initMediapilot = async function () {
+window.initMediapilot = async function (screen = window.createScreenLifecycle()) {
   const statusEl = document.getElementById("mediapilot-status");
   const iframe = document.getElementById("mediapilot-iframe");
   if (!statusEl || !iframe) return;
@@ -9,9 +9,7 @@ window.initMediapilot = async function () {
   iframe.src = "about:blank";
 
   try {
-    const res = await fetch("/api/mediapilot/status", { cache: "no-store" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const status = await res.json();
+    const status = await screen.json("/api/mediapilot/status", { cache: "no-store" });
     if (!status.available) {
       statusEl.style.display = "block";
       statusEl.textContent = `MediaPilot is not available. ${status.error || ""}`.trim();
@@ -20,6 +18,7 @@ window.initMediapilot = async function () {
     iframe.src = targetSrc;
     iframe.style.display = "";
   } catch (err) {
+    if (!screen.active) return;
     statusEl.style.display = "block";
     statusEl.textContent = `MediaPilot status check failed: ${err?.message || err}`;
   }

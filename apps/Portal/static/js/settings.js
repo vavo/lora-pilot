@@ -1,4 +1,4 @@
-window.initSettings = async function () {
+window.initSettings = async function (screen = window.createScreenLifecycle()) {
   const els = {
     passwordEnabled: document.getElementById("settings-password-enabled"),
     passwordInput: document.getElementById("settings-password"),
@@ -105,17 +105,19 @@ window.initSettings = async function () {
     comfy.token.value = "";
     comfy.status.textContent = "Applying…";
     try {
-      const result = await fetchJson(url, { method, headers: { "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      const result = await screen.json(url, { method, headers: { "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
       await refresh('comfy');
       if (result.token) {
         comfy.token.value = result.token;
         comfy["token-result"].hidden = false;
       }
     } catch (error) {
+      if (!screen.active) return;
       // A failed service start can still leave the protection policy applied.
-      try { await refresh('comfy'); } catch (_) { /* Preserve the original error. */ }
+      try { await refresh('comfy'); } catch (_) { if (!screen.active) return; /* Preserve the original error. */ }
       comfy.status.textContent = settingsError(error);
     } finally {
+      if (!screen.active) return;
       comfy.save.disabled = false;
       comfy.generate.disabled = false;
     }
@@ -129,6 +131,7 @@ window.initSettings = async function () {
       await navigator.clipboard.writeText(comfy.token.value);
       comfy["token-status"].textContent = "Token copied.";
     } catch (_) {
+      if (!screen.active) return;
       comfy.token.select();
       comfy["token-status"].textContent = "Token selected. Copy it manually.";
     }
@@ -137,10 +140,11 @@ window.initSettings = async function () {
   async function refresh(section = 'all') {
     const updates = name => section === 'all' || section === name;
     const [settings, hf, copilot] = await Promise.all([
-      fetchJson("/api/settings"),
-      fetchJson("/api/hf-token"),
-      fetchJson("/api/copilot/token"),
+      screen.json("/api/settings"),
+      screen.json("/api/hf-token"),
+      screen.json("/api/copilot/token"),
     ]);
+    screen.check();
     window.controlPilotSettings = settings || {};
     if (updates('comfy')) renderComfy(settings.comfy_access || {}, settings.password_enabled);
     if (updates('password') && els.passwordEnabled) els.passwordEnabled.checked = !!(settings && settings.password_enabled);
@@ -201,7 +205,7 @@ window.initSettings = async function () {
     const password = els.passwordInput?.value || "";
     if (els.passwordStatus) els.passwordStatus.textContent = "Saving...";
     try {
-      await fetchJson("/api/settings/password", {
+      await screen.json("/api/settings/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled, password }),
@@ -211,6 +215,7 @@ window.initSettings = async function () {
       }
       await refresh('password');
     } catch (e) {
+      if (!screen.active) return;
       if (els.passwordStatus) els.passwordStatus.textContent = settingsError(e);
     }
   }
@@ -224,7 +229,7 @@ window.initSettings = async function () {
     }
     if (statusEl) statusEl.textContent = clear ? "Clearing..." : "Saving...";
     try {
-      await fetchJson(url, {
+      await screen.json(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -232,6 +237,7 @@ window.initSettings = async function () {
       if (statusEl) statusEl.textContent = successText;
       return true;
     } catch (e) {
+      if (!screen.active) return;
       if (statusEl) statusEl.textContent = e.message || String(e);
       return false;
     }
@@ -241,7 +247,7 @@ window.initSettings = async function () {
     const password = ((els.mediapilotInput && els.mediapilotInput.value) || "").trim();
     if (els.mediapilotStatus) els.mediapilotStatus.textContent = password ? "Saving..." : "Clearing...";
     try {
-      const res = await fetchJson("/api/settings/mediapilot/password", {
+      const res = await screen.json("/api/settings/mediapilot/password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -253,6 +259,7 @@ window.initSettings = async function () {
       }
       await refresh('mediapilot');
     } catch (e) {
+      if (!screen.active) return;
       if (els.mediapilotStatus) els.mediapilotStatus.textContent = e.message || String(e);
     }
   }
@@ -268,7 +275,7 @@ window.initSettings = async function () {
     };
     const allowAllUrls = !!els.copilotAllowUrls?.checked;
     try {
-      const res = await fetchJson("/api/settings/ui", {
+      const res = await screen.json("/api/settings/ui", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(ui),
@@ -277,7 +284,7 @@ window.initSettings = async function () {
       if (typeof window.applyControlPilotUiSettings === "function") {
         window.applyControlPilotUiSettings(res);
       }
-      const copilot = await fetchJson("/api/settings/copilot-defaults", {
+      const copilot = await screen.json("/api/settings/copilot-defaults", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ allow_all_urls: allowAllUrls }),
@@ -287,8 +294,10 @@ window.initSettings = async function () {
       }
       els.uiStatus.textContent = "Preferences saved.";
     } catch (e) {
+      if (!screen.active) return;
       els.uiStatus.textContent = (appearanceSaved ? "Appearance saved. Copilot preferences were not saved: " : "Could not save preferences: ") + settingsError(e);
     } finally {
+      if (!screen.active) return;
       els.uiSave.disabled = false;
     }
   }
@@ -296,7 +305,7 @@ window.initSettings = async function () {
   async function saveShutdownDefaults() {
     if (els.shutdownStatus) els.shutdownStatus.textContent = "Saving...";
     try {
-      await fetchJson("/api/settings/shutdown-defaults", {
+      await screen.json("/api/settings/shutdown-defaults", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -311,6 +320,7 @@ window.initSettings = async function () {
         await refresh('shutdown');
       }
     } catch (e) {
+      if (!screen.active) return;
       if (els.shutdownStatus) els.shutdownStatus.textContent = e.message || String(e);
     }
   }
@@ -318,7 +328,7 @@ window.initSettings = async function () {
   async function saveJupyterSettings() {
     if (els.jupyterStatus) els.jupyterStatus.textContent = "Saving and restarting Jupyter...";
     try {
-      await fetchJson("/api/settings/jupyter", {
+      await screen.json("/api/settings/jupyter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -329,6 +339,7 @@ window.initSettings = async function () {
       if (els.jupyterStatus) els.jupyterStatus.textContent = "Jupyter settings saved and service restarted.";
       await refresh('jupyter');
     } catch (e) {
+      if (!screen.active) return;
       if (els.jupyterStatus) els.jupyterStatus.textContent = e.message || String(e);
     }
   }
@@ -341,8 +352,9 @@ window.initSettings = async function () {
     els.logout.dataset.bound = "1";
     els.logout.addEventListener("click", async () => {
       try {
-        await fetchJson("/api/settings/auth/logout", { method: "POST" });
+        await screen.json("/api/settings/auth/logout", { method: "POST" });
       } catch (e) {
+        if (!screen.active) return;
         // Ignore and show login either way.
       }
       if (typeof window.showControlPilotLogin === "function") {
@@ -353,33 +365,49 @@ window.initSettings = async function () {
   if (els.hfSave && !els.hfSave.dataset.bound) {
     els.hfSave.dataset.bound = "1";
     els.hfSave.addEventListener("click", async () => {
-      if (!await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN saved.")) return;
-      await refresh('hf');
+      try {
+        if (!await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN saved.")) return;
+        await refresh('hf');
+      } catch (error) {
+        if (screen.active) els.hfStatus.textContent = settingsError(error);
+      }
     });
   }
   if (els.hfClear && !els.hfClear.dataset.bound) {
     els.hfClear.dataset.bound = "1";
     els.hfClear.addEventListener("click", async () => {
-      if (!await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN cleared.", true)) return;
-      await refresh('hf');
+      try {
+        if (!await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN cleared.", true)) return;
+        await refresh('hf');
+      } catch (error) {
+        if (screen.active) els.hfStatus.textContent = settingsError(error);
+      }
     });
   }
   if (els.copilotSave && !els.copilotSave.dataset.bound) {
     els.copilotSave.dataset.bound = "1";
     els.copilotSave.addEventListener("click", async () => {
-      if (!await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token saved.")) return;
-      await fetchJson("/api/settings/copilot/restart", { method: "POST" });
-      if (els.copilotStatus) els.copilotStatus.textContent = "Copilot token saved and sidecar restarted.";
-      await refresh('copilot');
+      try {
+        if (!await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token saved.")) return;
+        await screen.json("/api/settings/copilot/restart", { method: "POST" });
+        if (els.copilotStatus) els.copilotStatus.textContent = "Copilot token saved and sidecar restarted.";
+        await refresh('copilot');
+      } catch (error) {
+        if (screen.active) els.copilotStatus.textContent = settingsError(error);
+      }
     });
   }
   if (els.copilotClear && !els.copilotClear.dataset.bound) {
     els.copilotClear.dataset.bound = "1";
     els.copilotClear.addEventListener("click", async () => {
-      if (!await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token cleared.", true)) return;
-      await fetchJson("/api/settings/copilot/restart", { method: "POST" });
-      if (els.copilotStatus) els.copilotStatus.textContent = "Copilot token cleared and sidecar restarted.";
-      await refresh('copilot');
+      try {
+        if (!await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token cleared.", true)) return;
+        await screen.json("/api/settings/copilot/restart", { method: "POST" });
+        if (els.copilotStatus) els.copilotStatus.textContent = "Copilot token cleared and sidecar restarted.";
+        await refresh('copilot');
+      } catch (error) {
+        if (screen.active) els.copilotStatus.textContent = settingsError(error);
+      }
     });
   }
   if (els.mediapilotSave && !els.mediapilotSave.dataset.bound) {
@@ -402,6 +430,7 @@ window.initSettings = async function () {
   try {
     await refresh();
   } catch (e) {
+    if (!screen.active) return;
     const error = document.getElementById("settings-load-error");
     error.hidden = false;
     error.textContent = "Could not load settings: " + settingsError(e);

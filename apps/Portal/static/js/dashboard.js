@@ -1,42 +1,26 @@
+let dashboardScreen = null;
 const DASHBOARD_POLL_MS = 8000;
-let dashboardPollTimer = null;
 
 window.stopDashboard = function () {
-  if (dashboardPollTimer) {
-    clearInterval(dashboardPollTimer);
-    dashboardPollTimer = null;
-  }
+  dashboardScreen?.dispose();
   if (shutdownTimer) {
     clearInterval(shutdownTimer);
     shutdownTimer = null;
   }
 };
 
-window.initDashboard = async function () {
+window.initDashboard = async function (screen = window.createScreenLifecycle()) {
+  dashboardScreen = screen;
   const status = document.getElementById("telemetry-status");
   const content = document.getElementById("telemetry-content");
   if (!status || !content) return;
 
   applyShutdownDefaults();
   bindShutdownInputs();
-  if (dashboardPollTimer) {
-    clearInterval(dashboardPollTimer);
-    dashboardPollTimer = null;
-  }
 
   status.textContent = "Loading telemetry...";
   content.classList.add("is-hidden");
-  await Promise.all([refreshDashboardTelemetry(), refreshDashboardServices()]);
-
-  dashboardPollTimer = setInterval(() => {
-    if (!document.getElementById("telemetry-status")) {
-      clearInterval(dashboardPollTimer);
-      dashboardPollTimer = null;
-      return;
-    }
-    refreshDashboardTelemetry();
-    refreshDashboardServices();
-  }, DASHBOARD_POLL_MS);
+  screen.poll(() => Promise.all([refreshDashboardTelemetry(), refreshDashboardServices()]), DASHBOARD_POLL_MS);
 };
 
 function applyShutdownDefaults() {
@@ -50,15 +34,18 @@ function applyShutdownDefaults() {
 }
 
 async function refreshDashboardTelemetry() {
+  const screen = dashboardScreen;
+  if (!screen?.active) return;
   const status = document.getElementById("telemetry-status");
   const content = document.getElementById("telemetry-content");
   if (!status || !content) return;
 
   try {
     const [data, history] = await Promise.all([
-      fetchJson("/api/telemetry"),
-      fetchJson("/api/telemetry/history").catch(() => null),
+      screen.json("/api/telemetry"),
+      screen.json("/api/telemetry/history").catch(() => null),
     ]);
+    screen.check();
 
     const gpuSummary = document.getElementById("dash-summary-gpu");
     const storageSummary = document.getElementById("dash-summary-storage");
@@ -90,6 +77,7 @@ async function refreshDashboardTelemetry() {
     status.textContent = "";
     content.classList.remove("is-hidden");
   } catch (e) {
+    if (!screen.active) return;
     status.textContent = `Telemetry unavailable: ${e.message || e}`;
     for (const id of ["dash-summary-gpu", "dash-summary-storage"]) {
       const el = document.getElementById(id);
@@ -98,15 +86,18 @@ async function refreshDashboardTelemetry() {
     renderTelemetryFallback();
     content.classList.remove("is-hidden");
   }
-  updateShutdownStatus();
+  await updateShutdownStatus();
 }
 
 async function refreshDashboardServices() {
+  const screen = dashboardScreen;
+  if (!screen?.active) return;
   try {
-    const services = await fetchJson("/api/services");
+    const services = await screen.json("/api/services");
     const el = document.getElementById("dash-summary-services");
     if (el) el.textContent = `${services.filter(s => s.running).length} running`;
   } catch {
+    if (!screen.active) return;
     const el = document.getElementById("dash-summary-services");
     if (el) el.textContent = "Status unavailable";
   }
@@ -369,6 +360,8 @@ function setCountdownDigits(totalSeconds) {
 }
 
 async function scheduleShutdown() {
+  const screen = dashboardScreen;
+  if (!screen?.active) return;
   const hoursEl = document.getElementById("shutdown-hours");
   const minsEl = document.getElementById("shutdown-mins");
   const secsEl = document.getElementById("shutdown-secs");
@@ -386,7 +379,7 @@ async function scheduleShutdown() {
   }
   
   try {
-    const response = await fetchJson('/api/shutdown/schedule', {
+    const response = await screen.json('/api/shutdown/schedule', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ value: totalSeconds, unit: "seconds" })
@@ -396,13 +389,16 @@ async function scheduleShutdown() {
       updateShutdownStatus();
     }
   } catch (error) {
+    if (!screen.active) return;
     alert('Failed to schedule shutdown: ' + error.message);
   }
 }
 
 async function cancelShutdown() {
+  const screen = dashboardScreen;
+  if (!screen?.active) return;
   try {
-    const response = await fetchJson('/api/shutdown/cancel', {
+    const response = await screen.json('/api/shutdown/cancel', {
       method: 'POST'
     });
     
@@ -414,13 +410,16 @@ async function cancelShutdown() {
       updateShutdownStatus();
     }
   } catch (error) {
+    if (!screen.active) return;
     alert('Failed to cancel shutdown: ' + error.message);
   }
 }
 
 async function updateShutdownStatus() {
+  const screen = dashboardScreen;
+  if (!screen?.active) return;
   try {
-    const status = await fetchJson('/api/shutdown/status');
+    const status = await screen.json('/api/shutdown/status');
     const summary = document.getElementById("dash-shutdown-summary");
     if (summary) summary.textContent = status.error ? "Shutdown failed — view details" : status.scheduled ? `Scheduled for ${status.shutdown_time || "later"}` : "No shutdown scheduled";
     if (status.error) document.getElementById("shutdown-details")?.setAttribute("open", "");
@@ -452,7 +451,9 @@ async function updateShutdownStatus() {
         const currentRemaining = Math.max(0, initialRemaining - elapsed);
         updateCountdown(currentRemaining);
       }, 1000);
-      
+      const countdown = shutdownTimer;
+      screen.onCleanup(() => clearInterval(countdown));
+
       updateCountdown(initialRemaining);
     } else {
       setShutdownScheduledUI(false);
@@ -464,6 +465,8 @@ async function updateShutdownStatus() {
     }
     
   } catch (error) {
+
+    if (!screen.active) return;
     const summary = document.getElementById("dash-shutdown-summary");
     if (summary) summary.textContent = "Schedule unavailable";
   }

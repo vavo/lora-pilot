@@ -1,17 +1,19 @@
-let tpLogTimer = null;
-let tpPollGeneration = 0;
+let tpScreen = null;
 let tpStarting = false, tpRunning = false, tpStopping = false, tpMoving = false;
 let tpStatusKnown = false, tpDismissedRunId = null, tpLastData = null;
 let tpDatasets = [];
 const tpProfiles = { quick_test: "Quick test", regular: "Balanced", high_quality: "Extended" };
 
-window.initTrainpilot = async function () {
+window.initTrainpilot = async function (screen = window.createScreenLifecycle()) {
+  tpScreen = screen;
+  tpStarting = false; tpMoving = false;
   const page = document.getElementById('tp-page');
   tpStatusKnown = false;
   bindTpControls();
   const explicitDataset = window.pendingTrainDataset;
   await loadTpDatasets();
-  if (page && page === document.getElementById('tp-page')) window.trainingWorkspace.init(explicitDataset);
+    if (!screen.active) return;
+  if (page && page === document.getElementById('tp-page')) await window.trainingWorkspace.init(explicitDataset, screen);
 };
 
 function bindTpControls() {
@@ -143,7 +145,9 @@ function waitForModelPoll(ms, signal) {
 }
 
 async function ensureTrainpilotModelsPresent(request, signal) {
-  const check = await fetchJson("/api/training/preflight", {
+  const screen = tpScreen;
+  if (!screen?.active) return;
+  const check = await screen.json("/api/training/preflight", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request), signal,
@@ -177,9 +181,9 @@ async function ensureTrainpilotModelsPresent(request, signal) {
     const modelName = m.model_name;
     const prefix = `${i + 1}/${downloadable.length}`;
     setModelDownloadUI(null, `${prefix} Starting ${modelName}…`);
-    await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/start`, { method: "POST", signal });
+    await screen.json(`/api/models/${encodeURIComponent(modelName)}/pull/start`, { method: "POST", signal });
     while (true) {
-      const st = await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/status`, {signal});
+      const st = await screen.json(`/api/models/${encodeURIComponent(modelName)}/pull/status`, {signal});
       if (st && st.state === "running") {
         const pct = (typeof st.progress_pct === "number") ? st.progress_pct : null;
         const label = st.last_line ? `${prefix} ${st.last_line}` : `${prefix} Downloading ${modelName}…`;
@@ -208,10 +212,12 @@ async function ensureTrainpilotModelsPresent(request, signal) {
 }
 
 async function loadTpDatasets() {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   const sel = document.getElementById("tp-dataset");
   if (!sel) return;
   try {
-    tpDatasets = await fetchJson("/api/datasets");
+    tpDatasets = await screen.json("/api/datasets");
     if (!sel.isConnected) return;
     sel.replaceChildren();
     if (!tpDatasets.length) sel.add(new Option("No datasets yet", ""));
@@ -228,6 +234,7 @@ async function loadTpDatasets() {
     if (tpDatasets.length) changed();
     else updateTpSummary();
   } catch (error) {
+    if (!screen.active) return;
     if (sel.isConnected) {
       sel.replaceChildren(new Option("Datasets unavailable", ""));
       showTpError(`Could not load datasets: ${error.message || error}`);
@@ -272,6 +279,8 @@ function syncTpActions() {
 }
 
 async function refreshTpPreflight() {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   return window.trainingWorkspace?.preflight();
 }
 
@@ -285,6 +294,8 @@ window.openDatasets = function (evt) {
 };
 
 window.openTrainpilotTensorBoard = async function () {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   const statusEl = document.getElementById("tp-tensorboard-status");
   const status = (msg) => {
     if (!statusEl) return;
@@ -292,27 +303,32 @@ window.openTrainpilotTensorBoard = async function () {
   };
   try {
     await window.openTensorBoard("trainpilot", {
+      screen,
       label: "TrainPilot",
       onError: status,
       allowUnavailable: false,
     });
     status("");
   } catch (e) {
+    if (!screen.active) return;
     status(e.message || e);
   }
 };
 
 window.refreshTrainpilotTensorBoardStatus = async function () {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   const statusEl = document.getElementById("tp-tensorboard-status");
   if (!statusEl) return;
   try {
-    const tb = await window.getTensorBoardSourceStatus("trainpilot", { force: false });
+    const tb = await window.getTensorBoardSourceStatus("trainpilot", { force: false, screen });
     if (tb && tb.ready) {
       statusEl.textContent = "TensorBoard: run logs detected";
     } else {
       statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
     }
   } catch (e) {
+    if (!screen.active) return;
     statusEl.textContent = "TensorBoard: unavailable";
   }
 };
@@ -320,9 +336,7 @@ window.refreshTrainpilotTensorBoardStatus = async function () {
 window.startTrainPilot = () => window.trainingWorkspace.submit();
 window.stopTrainPilot = () => window.trainingWorkspace.stopRun();
 window.stopTpLogPoll = function () {
-  tpPollGeneration++;
-  clearTimeout(tpLogTimer);
-  tpLogTimer = null;
+  tpScreen?.dispose();
   window.trainingWorkspace?.stop();
 };
 
@@ -371,6 +385,8 @@ function renderTpResult(data) {
 }
 
 async function moveTrainpilotLoras() {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   return window.trainingWorkspace.publish();
 }
 
@@ -400,6 +416,8 @@ function updateEpochExample(name) {
 
 // TOML Config Modal Functions
 window.showTomlConfig = async function () {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   const modal = document.getElementById("toml-modal");
   const content = document.getElementById("toml-content");
   const pathEl = document.getElementById("toml-modal-path");
@@ -415,7 +433,7 @@ window.showTomlConfig = async function () {
   
   try {
     // Fetch TOML content from backend
-    const data = await fetchJson("/api/trainpilot/toml");
+    const data = await screen.json("/api/trainpilot/toml");
     
     if (data.content) {
       content.className = "";
@@ -432,12 +450,15 @@ window.showTomlConfig = async function () {
       content.textContent = "Configuration file not found or empty.";
     }
   } catch (error) {
+    if (!screen.active) return;
     content.className = "toml-loading";
     content.textContent = `Error loading configuration: ${error.message}`;
   }
 };
 
 window.saveTomlConfig = async function () {
+  const screen = tpScreen;
+  if (!screen?.active) return;
   const editor = document.getElementById("toml-editor");
   const saveBtn = document.getElementById("toml-save-btn");
   const saveStatus = document.getElementById("toml-save-status");
@@ -446,7 +467,7 @@ window.saveTomlConfig = async function () {
   if (saveBtn) saveBtn.disabled = true;
   if (saveStatus) saveStatus.textContent = "Saving...";
   try {
-    const data = await fetchJson("/api/trainpilot/toml", {
+    const data = await screen.json("/api/trainpilot/toml", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
@@ -460,8 +481,10 @@ window.saveTomlConfig = async function () {
     if (pathLabel && data.path) pathLabel.textContent = data.path;
     if (modalPath && data.path) modalPath.textContent = data.path;
   } catch (error) {
+    if (!screen.active) return;
     if (saveStatus) saveStatus.textContent = error.message || String(error);
   } finally {
+    if (!screen.active) return;
     if (saveBtn) saveBtn.disabled = false;
   }
 };

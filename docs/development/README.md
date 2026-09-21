@@ -1,6 +1,6 @@
 # Development
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-21_
 
 A change in LoRA Pilot can improve an entire creative session. A clearer download error helps someone get a model into ComfyUI. A reliable dataset save protects the work they will train on. A corrected startup path lets them return to the same workspace tomorrow. The development work connects those moments across tools with different runtimes and requirements.
 
@@ -29,3 +29,5 @@ Run `make build-check` for the build configuration checks and `python3 -m unitte
 Choose runtime validation according to the change. A documentation edit needs accurate instructions and working links. A Models page fix needs the affected responses and a populated browser view. A GPU dependency change needs evidence from the installed environment on suitable hardware. Record the boundary you tested so a passing unit suite does not imply a generation run you have not performed.
 
 Use [contributing](contributing.md) for the contribution process, while treating the current build files and test entry points here as the authority for executable commands. Keep a change focused enough that another reader can connect the original problem, the correction, and the result you verified. Return to [configuration](../configuration/README.md) for runtime settings or the [documentation home](../README.md) to follow the user-facing workflow your change supports.
+
+The [screen lifecycle guide](screen-lifecycle.md) explains how ControlPilot owns requests, prevents stale responses, and cleans up work when users navigate between pages.

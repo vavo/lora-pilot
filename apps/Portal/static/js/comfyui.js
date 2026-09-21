@@ -1,5 +1,5 @@
+let comfyScreen = null;
 let comfyWebSocket = null;
-let comfyStatusTimer = null;
 let comfyReconnectTimer = null;
 let comfyActive = false;
 let previewEnabled = true;
@@ -47,10 +47,6 @@ function persistPreviewPanelCollapsed(collapsed) {
 }
 
 function clearComfyTimers() {
-  if (comfyStatusTimer) {
-    clearInterval(comfyStatusTimer);
-    comfyStatusTimer = null;
-  }
   if (comfyReconnectTimer) {
     clearTimeout(comfyReconnectTimer);
     comfyReconnectTimer = null;
@@ -58,6 +54,7 @@ function clearComfyTimers() {
 }
 
 window.stopComfyUI = function () {
+  comfyScreen?.dispose();
   comfyActive = false;
   clearComfyTimers();
   comfyStatusFailures = 0;
@@ -78,7 +75,8 @@ window.stopComfyUI = function () {
   window.removeEventListener("resize", handleComfyUILayoutChange);
 };
 
-window.initComfyUI = function () {
+window.initComfyUI = function (screen = window.createScreenLifecycle()) {
+  comfyScreen = screen;
   const iframeEl = document.getElementById("comfy-iframe");
   if (!iframeEl) return;
   comfyActive = true;
@@ -106,13 +104,13 @@ window.initComfyUI = function () {
   window.addEventListener("resize", handleComfyUILayoutChange);
 
   updateConnectionStatus("connecting", "Connecting to ComfyUI...");
-  checkComfyUIStatus();
+  screen.poll(checkComfyUIStatus, 10000);
   connectWebSocket();
 
   clearComfyTimers();
-  comfyStatusTimer = setInterval(checkComfyUIStatus, 10000);
 
-  setTimeout(loadLastGeneratedImage, 2000);
+
+  screen.timeout(loadLastGeneratedImage, 2000);
 };
 
 function handleComfyUILayoutChange() {
@@ -125,9 +123,10 @@ function updateImageCount() {
 }
 
 async function checkComfyUIStatus() {
+  const screen = comfyScreen;
+  if (!screen?.active) return;
   try {
-    const response = await fetch("/api/comfy/status");
-    const status = await response.json();
+    const status = await screen.json("/api/comfy/status");
 
     const statusEl = document.getElementById("comfy-status");
     const portEl = document.getElementById("comfy-port");
@@ -161,6 +160,7 @@ async function checkComfyUIStatus() {
       if (!stillRetrying && iframeEl) iframeEl.src = "about:blank";
     }
   } catch (error) {
+    if (!screen.active) return;
     comfyStatusFailures += 1;
     const stillRetrying = comfyStatusFailures < COMFY_STATUS_FAILURE_THRESHOLD;
     const statusEl = document.getElementById("comfy-status");
@@ -193,10 +193,10 @@ function renderPlaceholder(container, message) {
 }
 
 async function loadLastGeneratedImage() {
+  const screen = comfyScreen;
+  if (!screen?.active) return;
   try {
-    const response = await fetch("/api/comfy/latest-image");
-    if (!response.ok) return;
-    const data = await response.json();
+    const data = await screen.json("/api/comfy/latest-image");
     if (typeof data.image_count === "number") {
       imageCount = data.image_count;
       updateImageCount();
@@ -205,6 +205,7 @@ async function loadLastGeneratedImage() {
       displayLastImage(data.image);
     }
   } catch (error) {
+    if (!screen.active) return;
     if (!lastGeneratedImage) {
       showPlaceholder("No images generated yet");
     }
@@ -255,6 +256,8 @@ function showPlaceholder(message) {
 }
 
 function connectWebSocket() {
+  const screen = comfyScreen;
+  if (!screen?.active) return;
   if (!comfyActive || !isComfyViewMounted()) return;
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   const wsUrl = `${protocol}//${window.location.host}/ws/comfy`;
@@ -268,12 +271,15 @@ function connectWebSocket() {
 
   try {
     comfyWebSocket = new WebSocket(wsUrl);
+    const socket = comfyWebSocket;
 
     comfyWebSocket.onopen = function () {
+      if (!screen.active || socket !== comfyWebSocket) return;
       updateConnectionStatus("connected", "Connected to ComfyUI");
     };
 
     comfyWebSocket.onmessage = function (event) {
+      if (!screen.active || socket !== comfyWebSocket) return;
       if (!previewEnabled) return;
 
       try {
@@ -293,12 +299,14 @@ function connectWebSocket() {
     };
 
     comfyWebSocket.onclose = function () {
+      if (!screen.active || socket !== comfyWebSocket) return;
       updateConnectionStatus("disconnected", "Disconnected from ComfyUI");
       if (!comfyActive || !isComfyViewMounted()) return;
-      comfyReconnectTimer = setTimeout(connectWebSocket, 3000);
+      comfyReconnectTimer = screen.timeout(connectWebSocket, 3000);
     };
 
     comfyWebSocket.onerror = function (error) {
+      if (!screen.active || socket !== comfyWebSocket) return;
       updateConnectionStatus("disconnected", "Connection error");
       // Comfy websocket errors are often transient when the service restarts.
     };

@@ -1,13 +1,13 @@
 /* Persistent guided runs and comparison controls. */
 window.trainingWorkspace = (() => {
-  let epoch = 0, timer = null, selected = null, current = null, paused = false;
+  let trainingScreen = null, selected = null, current = null, paused = false;
   let historySearch = '', historyFamily = '', historyState = '', offset = 0, filterTimer;
   let comparisonError = '', preparation = null;
   let comparisonFormRun = null;
   let draft = null, preferSetup = false;
-  let sourceRun = null, preflightEpoch = 0, comparisonBusy = false, historySignature = '';
+  let sourceRun = null, comparisonBusy = false, historySignature = '';
   const $ = id => document.getElementById(id);
-  const api = (path, body) => fetchJson(`/api/training${path}`, body === undefined ? {} : {
+  const api = (screen, path, body) => screen.json(`/api/training${path}`, body === undefined ? {} : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   const familyName = family => family === 'flux1' ? 'FLUX.1 dev · Kohya' : 'SDXL · Kohya';
@@ -54,20 +54,21 @@ window.trainingWorkspace = (() => {
     updateTpSummary();
   }
   async function preflight() {
-    if (!$('tp-page')) return;
+    if (!trainingScreen?.active || !$('tp-page')) return;
     formState();
-    const generation = ++preflightEpoch;
+    const screen = trainingScreen.latest("preflight");
     $('tp-check-model').textContent = 'Checking model requirements…';
     try {
-      const result = await api('/preflight', spec());
-      if (generation !== preflightEpoch || !$('tp-page')) return;
+      const result = await api(screen, '/preflight', spec());
+      if (!screen.active || !$('tp-page')) return;
       $('tp-check-model').textContent = result.missing.length
         ? `Missing ${result.missing.length} model file(s). You can download them before queuing.` : 'Required model files found';
       $('tp-check-model').classList.toggle('verified', !result.missing.length);
       $('tp-check-service').textContent = result.conflicts.length
         ? `The queue will wait: ${result.conflicts.join(' ')}` : 'No GPU conflicts detected. Checked again before launch.';
     } catch (error) {
-      if (generation === preflightEpoch && $('tp-check-model')) $('tp-check-model').textContent = `Model check unavailable: ${error.message || error}`;
+      if (!screen.active) return;
+      if (screen.active && $('tp-check-model')) $('tp-check-model').textContent = `Model check unavailable: ${error.message || error}`;
     }
   }
   function compatible(run) {
@@ -164,62 +165,70 @@ window.trainingWorkspace = (() => {
       img.src = item.url; figure.append(img, element('figcaption', item.label)); images.append(figure);
     }
   }
-  async function poll(generation) {
+  async function poll(screen) {
     try {
-      const data = await api(`/runs?${new URLSearchParams({search:historySearch, family:historyFamily, status:historyState, offset:String(offset)})}`);
-      if (generation !== epoch || !$('tp-page')) return;
+      const data = await api(screen, `/runs?${new URLSearchParams({search:historySearch, family:historyFamily, status:historyState, offset:String(offset)})}`);
+      if (!screen.active || !$('tp-page')) return;
       if (!selected && data.runs.length) selected = data.active_id || data.runs[0].id;
       if (offset && !data.runs.length && data.total) { offset = 0; refresh(); return; }
       renderHistory(data); tpStatusKnown = true;
       if (selected) {
         const id = selected;
-        const run = await api(`/runs/${id}`);
-        if (generation !== epoch || id !== selected || !$('tp-page')) return;
+        const run = await api(screen, `/runs/${id}`);
+        if (!screen.active || id !== selected || !$('tp-page')) return;
         if (preferSetup) tpDismissedRunId = id;
         renderCurrent(run);
         if (run.status === 'succeeded' && !comparisonBusy) {
           try {
-            const comparison = await api(`/runs/${id}/comparison`);
-            if (generation === epoch && selected === id && $('tp-page')) renderComparison(comparison);
+            const comparison = await api(screen, `/runs/${id}/comparison`);
+            if (screen.active && selected === id && $('tp-page')) renderComparison(comparison);
           } catch (error) {
-            if (generation === epoch && $('tp-compare-status')) $('tp-compare-status').textContent = error.message || String(error);
+            if (!screen.active) return;
+            if (screen.active && $('tp-compare-status')) $('tp-compare-status').textContent = error.message || String(error);
           }
         }
       } else { $('tp-status').textContent = 'Ready to set up your first run'; syncTpActions(); }
     } catch (error) {
-      if (generation === epoch && $('tp-queue-status')) {
+      if (!screen.active) return;
+      if (screen.active && $('tp-queue-status')) {
         $('tp-queue-status').textContent = `History unavailable: ${error.message || error}. Retrying…`;
         tpStatusKnown = false; syncTpActions();
       }
-    } finally {
-      if (generation === epoch) timer = setTimeout(() => poll(generation), 3000);
     }
   }
-  function refresh() { if (!$('tp-page')) return; clearTimeout(timer); epoch++; poll(epoch); }
+  function refresh() {
+    if (!trainingScreen?.active) return;
+    const screen = trainingScreen.latest('history');
+    screen.poll(() => poll(screen), 3000);
+  }
   async function submit() {
+    const screen = trainingScreen;
+    if (!screen?.active) return;
     if (tpStarting || !tpStatusKnown) return;
     const request = spec();
     if (!$('tp-dataset').value || !$('tp-output').value.trim()) { showTpError('Choose a dataset and give your LoRA a name.'); return; }
-    const controller = new AbortController(); preparation = controller;
+    const controller = screen.latest("preparation"); preparation = controller;
     tpStarting = true; syncTpActions(); showTpError('');
     try {
       if (!await ensureTrainpilotModelsPresent(request, controller.signal)) return;
       controller.signal.throwIfAborted();
-      const run = await api('/runs', request);
+      const run = await api(screen, '/runs', request);
       try { draft.clear(); } catch {}
       preferSetup = false;
       if ($('tp-draft-status')) $('tp-draft-status').textContent = 'Run queued. The submitted draft has been cleared.';
       selected = run.id; tpDismissedRunId = null; refresh();
-    } catch (error) { if (!controller.signal.aborted) showTpError(`Could not queue training: ${error.message || error}`); }
-    finally { if (preparation === controller) preparation = null; clearModelDownloadUI(); tpStarting = false; if ($('tp-page')) syncTpActions(); }
+    } catch (error) { if (!screen.active) return; if (!controller.signal.aborted) showTpError(`Could not queue training: ${error.message || error}`); }
+    finally { if (!screen.active) return; if (preparation === controller) preparation = null; clearModelDownloadUI(); tpStarting = false; if ($('tp-page')) syncTpActions(); }
   }
   async function historyAction(event) {
+    const screen = trainingScreen;
+    if (!screen?.active) return;
     const control = event.target.closest('[data-run-action]'); if (!control) return;
     const id = control.dataset.runId; control.disabled = true;
     try {
       if (control.dataset.runAction === 'view') { preferSetup = false; selected = id; comparisonError = ''; tpDismissedRunId = null; }
       if (control.dataset.runAction === 'settings') {
-        const run = await api(`/runs/${id}`);
+        const run = await api(screen, `/runs/${id}`);
         $('tp-family').value = run.spec.family; $('tp-dataset').value = run.spec.dataset_name;
         $('tp-output').value = run.spec.output_name; $('tp-profile').value = run.spec.profile;
         document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.checked = input.value === run.spec.profile);
@@ -229,37 +238,43 @@ window.trainingWorkspace = (() => {
       }
       if (control.dataset.runAction === 'repeat') {
         if (!confirm('Queue a new run using this saved configuration? It uses the dataset as it exists now.')) return;
-        const run = await api(`/runs/${id}/repeat`, {}); selected = run.id; tpDismissedRunId = null;
+        const run = await api(screen, `/runs/${id}/repeat`, {}); selected = run.id; tpDismissedRunId = null;
       }
       if (control.dataset.runAction === 'cancel') {
         if (!confirm('Stop or cancel this run? Already saved files remain in your workspace.')) return;
-        await api(`/runs/${id}/cancel`, {});
+        await api(screen, `/runs/${id}/cancel`, {});
       }
       refresh();
-    } catch (error) { showTpError(error.message || String(error)); }
-    finally { control.disabled = false; }
+    } catch (error) { if (!screen.active) return; showTpError(error.message || String(error)); }
+    finally { if (!screen.active) return; control.disabled = false; }
   }
   async function stopRun() {
+    const screen = trainingScreen;
+    if (!screen?.active) return;
     if (!current || !confirm('Stop this run? Saved checkpoints remain in your workspace.')) return;
-    try { await api(`/runs/${current.id}/cancel`, {}); refresh(); }
-    catch (error) { showTpError(error.message || String(error)); }
+    try { await api(screen, `/runs/${current.id}/cancel`, {}); refresh(); }
+    catch (error) { if (!screen.active) return; showTpError(error.message || String(error)); }
   }
   async function publish() {
+    const screen = trainingScreen;
+    if (!screen?.active) return;
     if (!current || tpMoving) return;
     tpMoving = true; renderTpResult(tpLastData);
     try {
-      await api(`/runs/${current.id}/library`, {});
+      await api(screen, `/runs/${current.id}/library`, {});
       $('tp-move-status').textContent = 'Copied to your library. Original run files remain saved.'; refresh();
-    } catch (error) { $('tp-move-status').textContent = error.message || String(error); }
-    finally { tpMoving = false; if (tpLastData) renderTpResult(tpLastData); }
+    } catch (error) { if (!screen.active) return; $('tp-move-status').textContent = error.message || String(error); }
+    finally { if (!screen.active) return; tpMoving = false; if (tpLastData) renderTpResult(tpLastData); }
   }
   async function compare(open = false) {
+    const screen = trainingScreen;
+    if (!screen?.active) return;
     if (!current || comparisonBusy) return;
     const request = { artifact: $('tp-compare-artifact').value, prompt: $('tp-compare-prompt').value.trim(), seed: Number($('tp-compare-seed').value), strength: Number($('tp-compare-strength').value) };
     if (!request.prompt) { $('tp-compare-status').textContent = 'Enter a prompt, including your trigger word.'; $('tp-compare-prompt').focus(); return; }
     const id = current.id; comparisonError = ''; comparisonBusy = true; renderComparison({status: 'submitting'});
     try {
-      const result = await api(`/runs/${id}/comparison${open ? '/prepare' : ''}`, request);
+      const result = await api(screen, `/runs/${id}/comparison${open ? '/prepare' : ''}`, request);
       if (open) {
         window.pendingComfyWorkflow = result.workflow;
         window.loadSection('comfyui');
@@ -269,15 +284,18 @@ window.trainingWorkspace = (() => {
         $('tp-compare-download').hidden = false;
       }
     } catch (error) {
+      if (!screen.active) return;
       comparisonError = error.message || String(error);
       if ($('tp-compare-status')) $('tp-compare-status').textContent = comparisonError;
     } finally {
+      if (!screen.active) return;
       comparisonBusy = false;
       if ($('tp-page')) { $('tp-compare-generate').disabled = false; $('tp-compare-open').disabled = false; refresh(); }
     }
   }
-  async function init(explicitDataset) {
-    const generation = ++epoch;
+  async function init(explicitDataset, screen = window.createScreenLifecycle()) {
+    trainingScreen = screen;
+    comparisonBusy = false; tpStarting = false; tpMoving = false;
     const linkedRun = window.pendingTrainingRun;
     if (linkedRun) { selected = linkedRun; window.pendingTrainingRun = null; tpDismissedRunId = null; }
     comparisonFormRun = null;
@@ -287,7 +305,7 @@ window.trainingWorkspace = (() => {
       draft = createTrainingDraft(window.localStorage);
       const saved = draft.read();
       if (saved) { applyDraft(saved, explicitDataset); preferSetup = !linkedRun; }
-    } catch { $('tp-draft-status').textContent = 'Saved draft could not be read. You can still set up training.'; }
+    } catch { if (!screen.active) return; $('tp-draft-status').textContent = 'Saved draft could not be read. You can still set up training.'; }
     if (explicitDataset) saveDraft();
     $('tp-fields').addEventListener('input', saveDraft);
     $('tp-fields').addEventListener('change', saveDraft);
@@ -303,31 +321,31 @@ window.trainingWorkspace = (() => {
     $('tp-current-defaults').onclick = () => { sourceRun = null; saveDraft(); preflight(); };
     $('tp-history-search').value = historySearch; $('tp-history-family').value = historyFamily; $('tp-history-state').value = historyState;
     const filter = () => { historySearch = $('tp-history-search').value; historyFamily = $('tp-history-family').value; historyState = $('tp-history-state').value; offset = 0; historySignature = ''; refresh(); };
-    $('tp-history-search').oninput = () => { clearTimeout(filterTimer); filterTimer = setTimeout(filter, 250); };
+    $('tp-history-search').oninput = () => { clearTimeout(filterTimer); filterTimer = screen.timeout(filter, 250); };
     $('tp-history-family').onchange = filter; $('tp-history-state').onchange = filter;
     $('tp-history-prev').onclick = () => { offset = Math.max(0, offset - 50); refresh(); };
     $('tp-history-next').onclick = () => { offset += 50; refresh(); };
     $('tp-history-list').onclick = historyAction;
     $('tp-new-run').onclick = () => { preferSetup = true; tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData); $('tp-setup').hidden = false; $('tp-setup').scrollIntoView({block:'start'}); };
     $('tp-queue-pause').onclick = async () => {
-      try { await api('/queue', {paused: !paused}); refresh(); }
-      catch (error) { showTpError(error.message || String(error)); }
+      try { await api(screen, '/queue', {paused: !paused}); refresh(); }
+      catch (error) { if (!screen.active) return; showTpError(error.message || String(error)); }
     };
     $('tp-compare-reset').onclick = async () => {
       if (!current || !confirm('Check ComfyUI for an earlier result before resetting. The ComfyUI queue must be empty.')) return;
-      try { await api(`/runs/${current.id}/comparison/reset`, {}); comparisonError = ''; refresh(); }
-      catch (error) { comparisonError = error.message || String(error); $('tp-compare-status').textContent = comparisonError; }
+      try { await api(screen, `/runs/${current.id}/comparison/reset`, {}); comparisonError = ''; refresh(); }
+      catch (error) { if (!screen.active) return; comparisonError = error.message || String(error); $('tp-compare-status').textContent = comparisonError; }
     };
     $('tp-compare-generate').onclick = () => compare(false);
     $('tp-compare-open').onclick = () => compare(true);
     try {
-      const config = await fetchJson('/api/trainpilot/toml');
-      if (generation !== epoch || !$('tp-page')) return;
+      const config = await screen.json('/api/trainpilot/toml');
+      if (!screen.active || !$('tp-page')) return;
       $('tp-toml').value = config.path;
       $('toml-config-path').textContent = config.path;
-    } catch (error) { if (generation === epoch) showTpError(`SDXL configuration unavailable: ${error.message || error}`); }
-    if (generation === epoch && $('tp-page')) { preflight(); refresh(); }
+    } catch (error) { if (!screen.active) return; if (screen.active) showTpError(`SDXL configuration unavailable: ${error.message || error}`); }
+    if (screen.active && $('tp-page')) { preflight(); refresh(); }
   }
-  function stop() { preparation?.abort(); clearTimeout(filterTimer); epoch++; preflightEpoch++; clearTimeout(timer); timer = null; }
+  function stop() { trainingScreen?.dispose(); clearTimeout(filterTimer); preparation = null; }
   return {init, stop, spec, preflight, submit, stopRun, publish};
 })();

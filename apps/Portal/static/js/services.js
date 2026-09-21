@@ -1,7 +1,12 @@
+let servicesScreen = null;
 const serviceVersions = {};
 const serviceUpdatePollers = {};
 
-window.initServices = async function () {
+window.initServices = async function (screen = window.createScreenLifecycle()) {
+  servicesScreen = screen;
+  screen.onCleanup(() => {
+    for (const name of Object.keys(serviceUpdatePollers)) stopServiceUpdatePolling(name);
+  });
   await loadServices();
 };
 
@@ -124,10 +129,12 @@ function renderServiceUpdateStatus(name, status) {
   buttonEl.disabled = false;
 }
 
-async function fetchServiceUpdateStatus(name) {
+async function fetchServiceUpdateStatus(name, screen = servicesScreen) {
+  if (!screen?.active) return;
   try {
-    return await fetchJson(`/api/services/${encodeURIComponent(name)}/update/status`);
+    return await screen.json(`/api/services/${encodeURIComponent(name)}/update/status`);
   } catch (e) {
+    if (!screen.active) return;
     return null;
   }
 }
@@ -135,32 +142,36 @@ async function fetchServiceUpdateStatus(name) {
 function stopServiceUpdatePolling(name) {
   const poller = serviceUpdatePollers[name];
   if (!poller) return;
-  clearInterval(poller);
+  poller.dispose();
   delete serviceUpdatePollers[name];
 }
 
 async function startServiceUpdatePolling(name) {
-  if (serviceUpdatePollers[name]) return;
-  const tick = async () => {
-    const status = await fetchServiceUpdateStatus(name);
-    if (!status) return null;
-    renderServiceUpdateStatus(name, status);
-    if (status.state !== "running") {
-      stopServiceUpdatePolling(name);
-      if (status.state === "done") await loadServices();
+  const screen = servicesScreen;
+  if (!screen?.active || serviceUpdatePollers[name]) return;
+  const polling = screen.latest(`update:${name}`);
+  serviceUpdatePollers[name] = polling;
+  polling.poll(async () => {
+    try {
+      const status = await polling.json(`/api/services/${encodeURIComponent(name)}/update/status`);
+      renderServiceUpdateStatus(name, status);
+      if (status.state !== "running") {
+        stopServiceUpdatePolling(name);
+        if (status.state === "done" && screen.active) await loadServices();
+      }
+    } catch (error) {
+      // A transient status failure must not stop watching a server-side update.
+      if (polling.active) renderServiceUpdateStatus(name, {state: "running", last_line: "Status unavailable; retrying…"});
     }
-    return status;
-  };
-  const first = await tick();
-  if (!first || first.state !== "running") return;
-  serviceUpdatePollers[name] = setInterval(() => {
-    tick().catch(() => {});
   }, 2000);
 }
 
-async function loadServiceVersions(services) {
+window.stopServices = function () { servicesScreen?.dispose(); };
+
+async function loadServiceVersions(services, screen) {
+  if (!screen?.active) return;
   try {
-    const versions = await fetchJson("/api/services/versions");
+    const versions = await screen.json("/api/services/versions");
     const byName = {};
     versions.forEach(info => {
       byName[info.name] = info;
@@ -169,7 +180,8 @@ async function loadServiceVersions(services) {
     services.forEach(svc => renderServiceVersion(svc.name, byName[svc.name] || null));
 
     const supported = services.filter(svc => !!(byName[svc.name] && byName[svc.name].update_supported));
-    const statuses = await Promise.all(supported.map(svc => fetchServiceUpdateStatus(svc.name)));
+    const statuses = await Promise.all(supported.map(svc => fetchServiceUpdateStatus(svc.name, screen)));
+    screen.check();
     statuses.forEach((status, index) => {
       const serviceName = supported[index].name;
       if (!status) return;
@@ -179,11 +191,14 @@ async function loadServiceVersions(services) {
       }
     });
   } catch (e) {
+    if (!screen.active) return;
     services.forEach(svc => renderServiceVersion(svc.name, null));
   }
 }
 
 async function loadServices() {
+  const screen = servicesScreen.latest("list");
+  if (!screen.active) return;
   const status = document.getElementById("svc-status");
   const list = document.getElementById("services-list");
   if (!status || !list) return;
@@ -191,7 +206,7 @@ async function loadServices() {
   list.classList.add("is-hidden");
   list.innerHTML = "";
   try {
-    const data = await fetchJson("/api/services");
+    const data = await screen.json("/api/services");
     data.forEach(svc => {
       const openUrl = serviceUrl(svc.name);
       const badge = stateBadge(svc);
@@ -254,25 +269,33 @@ async function loadServices() {
         refreshServiceTensorBoardStatus(svc.name).catch(() => {});
       }
     });
-    await loadServiceVersions(data);
+    await loadServiceVersions(data, screen);
+    if (!screen.active) return;
     status.textContent = "";
     list.classList.remove("is-hidden");
   } catch (e) {
+    if (!screen.active) return;
     status.textContent = `Error: ${e.message || e}`;
   }
 }
 
 window.serviceAction = async function (name, action) {
+  const screen = servicesScreen;
+  if (!screen?.active) return;
   try {
-    await fetchJson(`/api/services/${encodeURIComponent(name)}/${action}`, { method: "POST" });
+    await screen.json(`/api/services/${encodeURIComponent(name)}/${action}`, { method: "POST" });
     if (name === "copilot") window.dispatchEvent(new CustomEvent("copilot-service-action", { detail: action }));
     await loadServices();
+    if (!screen.active) return;
   } catch (e) {
+    if (!screen.active) return;
     alert(`Service action failed: ${e.message || e}`);
   }
 };
 
 window.startServiceUpdate = async function (name) {
+  const screen = servicesScreen;
+  if (!screen?.active) return;
   const info = serviceVersions[name] || null;
   const domId = serviceDomId(name);
   const buttonEl = document.getElementById(`svc-update-${domId}`);
@@ -283,14 +306,16 @@ window.startServiceUpdate = async function (name) {
   try {
     const payload = {};
     if (info && info.source === "pip" && info.latest) payload.target_version = info.latest;
-    const result = await fetchJson(`/api/services/${encodeURIComponent(name)}/update/start`, {
+    const result = await screen.json(`/api/services/${encodeURIComponent(name)}/update/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
     renderServiceUpdateStatus(name, result);
     await startServiceUpdatePolling(name);
+    if (!screen.active) return;
   } catch (e) {
+    if (!screen.active) return;
     renderServiceUpdateStatus(name, { state: "error", error: e.message || String(e) });
     alert(`Failed to start update: ${e.message || e}`);
     buttonEl.disabled = false;
@@ -298,26 +323,32 @@ window.startServiceUpdate = async function (name) {
 };
 
 window.toggleServiceAutostart = async function (name, toggle) {
+  const screen = servicesScreen;
+  if (!screen?.active) return;
   if (!toggle) return;
   const enabled = !!toggle.checked;
   toggle.disabled = true;
   try {
-    await fetchJson(`/api/services/${encodeURIComponent(name)}/settings/autostart`, {
+    await screen.json(`/api/services/${encodeURIComponent(name)}/settings/autostart`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled }),
     });
   } catch (e) {
+    if (!screen.active) return;
     toggle.checked = !enabled;
     alert(`Failed to update auto-start: ${e.message || e}`);
   } finally {
+    if (!screen.active) return;
     toggle.disabled = false;
   }
 };
 
 window.viewServiceLog = async function (name) {
+  const screen = servicesScreen;
+  if (!screen?.active) return;
   try {
-    const res = await fetchJson(`/api/services/${encodeURIComponent(name)}/log?lines=200`);
+    const res = await screen.json(`/api/services/${encodeURIComponent(name)}/log?lines=200`);
     const modal = document.getElementById("svc-log-modal");
     const title = document.getElementById("svc-log-title");
     const content = document.getElementById("svc-log-content");
@@ -325,11 +356,14 @@ window.viewServiceLog = async function (name) {
     if (content) content.textContent = res.log || "";
     if (modal) modal.classList.add("show");
   } catch (e) {
+    if (!screen.active) return;
     alert(`Failed to load log: ${e.message || e}`);
   }
 };
 
 window.openServiceTensorBoard = async function (name) {
+  const screen = servicesScreen;
+  if (!screen?.active) return;
   const source = serviceTensorBoardSource(name);
   if (!source) return;
   const domId = serviceDomId(name);
@@ -340,30 +374,35 @@ window.openServiceTensorBoard = async function (name) {
   };
   try {
     await window.openTensorBoard(source, {
+      screen,
       label: serviceDisplayLabel(name),
       onError: setStatus,
       allowUnavailable: false,
     });
     setStatus("TensorBoard: opening...");
   } catch (e) {
+    if (!screen.active) return;
     setStatus(`TensorBoard: ${e.message || e}`);
   }
 };
 
 window.refreshServiceTensorBoardStatus = async function (name) {
+  const screen = servicesScreen;
+  if (!screen?.active) return;
   const source = serviceTensorBoardSource(name);
   if (!source) return;
   const domId = serviceDomId(name);
   const statusEl = document.getElementById(`svc-tensorboard-status-${domId}`);
   if (!statusEl) return;
   try {
-    const tb = await window.getTensorBoardSourceStatus(source, { force: false });
+    const tb = await window.getTensorBoardSourceStatus(source, { force: false, screen });
     if (tb && tb.ready) {
       statusEl.textContent = "TensorBoard: run logs detected";
       return;
     }
     statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
   } catch (e) {
+    if (!screen.active) return;
     statusEl.textContent = "TensorBoard: unavailable";
   }
 };

@@ -1,9 +1,9 @@
 (() => {
   let models = [], jobs = [], workflows = [];
   const selectedWorkflows = new Map();
-  let reviewPlan = null, reviewVersion = 0, reviewOptional = [], installing = false;
+  let reviewPlan = null, reviewOptional = [], installing = false;
   let tab = "catalog", task = "all", query = "", familyFilter = "all", familyId = "ltx25";
-  let timer = null, generation = 0, statusUnavailable = false;
+  let modelScreen = null, statusUnavailable = false;
   const starting = new Set();
   const $ = id => document.getElementById(id);
   const families = () => window.modelFamilies;
@@ -279,16 +279,16 @@
   }
   async function reviewInstallation(workflowId) {
     if (installing) return;
-    const version = ++reviewVersion;
+    const screen = modelScreen.latest("review");
     reviewPlan = null;
     const dialog = $("models-install-dialog"), body = $("models-install-body");
     if (!dialog.open) dialog.showModal();
     body.replaceChildren(element("p", "models-note", "Checking source access, file sizes and available storage…"));
     try {
-      const plan = await fetchJson(`/api/models/workflows/${encodeURIComponent(workflowId)}/plan`, {
+      const plan = await screen.json(`/api/models/workflows/${encodeURIComponent(workflowId)}/plan`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ optional: reviewOptional }),
       });
-      if (version !== reviewVersion || !dialog.open) return;
+      if (!screen.active || !dialog.open) return;
       reviewPlan = plan;
       const workflow = workflows.find(w => w.id === workflowId);
       body.replaceChildren(element("h4", "", `${families().find(f => f.id === workflow.family).title} · ${plan.title}`));
@@ -315,77 +315,84 @@
       start.disabled = !plan.can_install || !plan.download_bytes;
       body.append(start, button("Recheck installation", "recheck-workflow", workflowId, "models-text-button"));
     } catch (error) {
-      if (version !== reviewVersion || !dialog.open) return;
+      if (!screen.active) return;
+      if (!screen.active || !dialog.open) return;
       body.replaceChildren(element("p", "models-error", `Could not review installation: ${error.message || error}`), button("Retry checks", "recheck-workflow", workflowId));
     }
   }
   async function installWorkflow(control) {
     if (!reviewPlan?.can_install || installing) return;
     installing = true;
-    const epoch = generation;
+    const screen = modelScreen;
     const plan = reviewPlan, optional = [...reviewOptional];
     $("models-install-body").querySelectorAll("button,input").forEach(node => { node.disabled = true; });
     control.disabled = true; control.textContent = "Checking and starting…";
     try {
-      const result = await fetchJson(`/api/models/workflows/${encodeURIComponent(plan.workflow_id)}/install`, {
+      const result = await screen.json(`/api/models/workflows/${encodeURIComponent(plan.workflow_id)}/install`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ optional, plan_id: plan.plan_id }),
       });
-      if (epoch !== generation) return;
+      if (!screen.active) return;
       jobs = jobs.filter(j => !result.jobs.some(next => next.name === j.name)).concat(result.jobs);
       $("models-install-dialog").close();
       tab = "downloads"; render(); message(result.jobs.length ? "Missing files queued. Existing downloads are reused." : "All workflow files are already installed.");
     } catch (error) {
-      if (epoch !== generation) return;
+      if (!screen.active) return;
+      if (!screen.active) return;
       $("models-install-body").querySelectorAll("button,input").forEach(node => { node.disabled = false; });
       control.disabled = true;
       control.textContent = "Review required";
       $("models-install-body").append(element("p", "models-error", `Could not start: ${error.message || error}. Recheck installation to retry.`));
-    } finally { installing = false; }
+    } finally { if (screen.active) installing = false; }
   }
-  async function refresh(epoch) {
+  async function refresh() {
+    const screen = modelScreen.latest("catalog");
     try {
-      const [list, activity, catalog] = await Promise.all([fetchJson("/api/models"), fetchJson("/api/models/pulls"), fetchJson("/api/models/workflows")]);
-      if (epoch !== generation || !$("models-page")) return;
+      const [list, activity, catalog] = await Promise.all([screen.json("/api/models"), screen.json("/api/models/pulls"), screen.json("/api/models/workflows")]);
+      if (!screen.active || !$("models-page")) return;
       models = list; jobs = activity.jobs || []; workflows = catalog.workflows || [];
       message(""); render();
-    } catch (error) { if (epoch === generation) message(`Could not load models: ${error.message || error}`, true); }
+    } catch (error) { if (!screen.active) return; if (screen.active) message(`Could not load models: ${error.message || error}`, true); }
   }
-  async function poll(epoch) {
-    if (epoch !== generation || !$("models-page")) return;
+  async function poll(screen) {
+    if (!screen.active || !$("models-page")) return;
     try {
-      const activity = await fetchJson("/api/models/pulls");
-      if (epoch !== generation) return;
+      const activity = await screen.json("/api/models/pulls");
+      if (!screen.active) return;
       if (statusUnavailable) { statusUnavailable = false; message(""); }
       const next = activity.jobs || [];
-      if (!models.length) await refresh(epoch);
+      if (!models.length) await refresh();
+      if (!screen.active) return;
       if (JSON.stringify(next) !== JSON.stringify(jobs)) {
         const completed = next.some(j => j.state === "done" && jobFor(j.name)?.state !== "done");
         jobs = next;
-        if (completed) await refresh(epoch); else render();
+        if (completed) await refresh(); else render();
       }
     } catch (error) {
-      if (epoch === generation) { statusUnavailable = true; message(`Download status unavailable: ${error.message || error}. Retrying…`, true); }
+      if (!screen.active) return;
+      if (screen.active) { statusUnavailable = true; message(`Download status unavailable: ${error.message || error}. Retrying…`, true); }
     }
-    if (epoch === generation) timer = setTimeout(() => poll(epoch), 2500);
+
   }
   async function download(name) {
+    const screen = modelScreen;
     if (starting.has(name) || ["running", "queued"].includes(jobFor(name)?.state)) return;
     starting.add(name); render();
     try {
-      const job = await fetchJson(`/api/models/${encodeURIComponent(name)}/pull/start`, { method: "POST" });
+      const job = await screen.json(`/api/models/${encodeURIComponent(name)}/pull/start`, { method: "POST" });
       jobs = jobs.filter(j => j.name !== name).concat(job);
       message(`Started download: ${name}`);
-    } catch (error) { message(`Download could not start: ${error.message || error}`, true); }
-    finally { starting.delete(name); render(); }
+    } catch (error) { if (!screen.active) return; message(`Download could not start: ${error.message || error}`, true); }
+    finally { if (screen.active) { starting.delete(name); render(); } }
   }
   async function action(event) {
+    const screen = modelScreen;
     const control = event.target.closest("button[data-model-action]");
     if (!control) return;
     const value = control.dataset.modelValue;
     switch (control.dataset.modelAction) {
       case "tab": tab = value; render(); break;
-      case "refresh": await refresh(generation); break;
+      case "refresh": await refresh(); break;
       case "select":
         familyId = value; message(""); render();
         if (window.matchMedia("(max-width: 1000px)").matches) $("models-detail").scrollIntoView({ block: "start", behavior: "smooth" });
@@ -395,7 +402,7 @@
         await reviewInstallation(workflowFor(families().find(f => f.id === value)).id);
         break;
       case "install-workflow": await installWorkflow(control); break;
-      case "close-review": $("models-install-dialog").close(); break;
+      case "close-review": modelScreen.latest("review").dispose(); $("models-install-dialog").close(); break;
       case "recheck-workflow": await reviewInstallation(value); break;
       case "settings":
         $("models-install-dialog").close();
@@ -409,22 +416,22 @@
           const model = models.find(m => m.name === value);
           await navigator.clipboard.writeText(model.primary_path || model.target_path);
           control.textContent = "Copied";
-        } catch (error) { control.textContent = "Copy unavailable"; }
+        } catch (error) { if (!screen.active) return; control.textContent = "Copy unavailable"; }
         break;
       case "remove":
         if (!confirm(`Remove downloaded files for ${value}? Workflows using these files will need them downloaded again.`)) return;
         control.disabled = true;
         try {
-          await fetchJson(`/api/models/${encodeURIComponent(value)}/delete`, { method: "POST" });
-          await refresh(generation);
-        } catch (error) { message(`Remove failed: ${error.message || error}`, true); control.disabled = false; }
+          await screen.json(`/api/models/${encodeURIComponent(value)}/delete`, { method: "POST" });
+          await refresh();
+        } catch (error) { if (!screen.active) return; message(`Remove failed: ${error.message || error}`, true); control.disabled = false; }
         break;
     }
   }
-  window.stopModels = function () { generation++; reviewVersion++; $("models-install-dialog")?.close(); clearTimeout(timer); timer = null; };
-  window.initModels = async function () {
-    window.stopModels();
-    const epoch = generation;
+  window.stopModels = function () { modelScreen?.dispose(); $("models-install-dialog")?.close(); };
+  window.initModels = async function (screen = window.createScreenLifecycle()) {
+    modelScreen = screen;
+    installing = false; starting.clear();
     if (window.pendingModelDownloads) { tab = "downloads"; query = ""; window.pendingModelDownloads = false; }
     if (!window.returningToModels && window.matchMedia("(max-width: 1000px)").matches) familyId = null;
     window.returningToModels = false;
@@ -444,7 +451,7 @@
     $("models-search").addEventListener("input", event => { query = event.target.value.trim().toLowerCase(); render(); });
     document.querySelectorAll("[data-model-tab]").forEach(b => b.onclick = () => { tab = b.dataset.modelTab; render(); });
     message("Loading models…");
-    await refresh(epoch);
-    if (epoch === generation) timer = setTimeout(() => poll(epoch), 2500);
+    await refresh();
+    if (screen.active) screen.poll(() => poll(screen), 2500);
   };
 })();

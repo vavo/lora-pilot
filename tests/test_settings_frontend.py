@@ -49,14 +49,16 @@ class Element {
         getElementById: get,
         querySelectorAll: selector => selector.includes('settings-theme') ? radios : tabs,
       },
-      URL, location: { origin: 'http://localhost' },
+      AbortController, URL, location: { origin: 'http://localhost' },
       fetchJson: async (url, options) => {
-        if (!options) return url === '/api/settings' ? {theme: 'light', comfy_access: {}} : {set: true};
+        if (!options?.method) return url === '/api/settings' ? {theme: 'light', comfy_access: {}} : {set: true};
         requests.push([url, JSON.parse(options.body)]);
         if (url === failure) throw new Error('{"detail":"Service unavailable"}');
         return JSON.parse(options.body);
       },
     };
+    context.window.fetchJson = context.fetchJson;
+    vm.runInNewContext(fs.readFileSync('apps/Portal/static/js/screen-lifecycle.js', 'utf8'), context);
     vm.runInNewContext(fs.readFileSync('apps/Portal/static/js/settings.js', 'utf8'), context);
     await context.window.initSettings();
     assert.equal(get('settings-panel-connections').hidden, false);

@@ -1,10 +1,10 @@
 window.storagePage = (() => {
-  let epoch=0, data=null, selected=new Set(), plan=null, busy=false;
+  let storageScreen=null, data=null, selected=new Set(), plan=null, busy=false;
   const bytes=value=>value===0?'0 B':formatBytes(value);
   const files=count=>`${count} ${count===1?'file':'files'}`;
   const $=id=>document.getElementById(id);
   const node=(tag,text,cls='')=>{const el=document.createElement(tag);el.textContent=text;el.className=cls;return el;};
-  const api=(path,body)=>fetchJson(`/api/storage${path}`,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const api=(screen,path,body)=>screen.json(`/api/storage${path}`,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   function selection(){
     const items=data?.candidates.filter(item=>selected.has(item.id)) || [];
     $('storage-selected').textContent=items.length?`${items.length} ${items.length===1?'item':'items'} selected · about ${bytes(items.reduce((sum,item)=>sum+item.reclaim_bytes,0))} reclaimable`:'No files selected.';
@@ -26,40 +26,41 @@ window.storagePage = (() => {
     selection();
   }
   async function scan(message=''){
-    const generation=++epoch;busy=true;
+    const screen=storageScreen.latest("operation");busy=true;
     $('storage-scan').disabled=true;$('storage-review').disabled=true;$('storage-status').textContent='Scanning workspace storage…';$('storage-error').replaceChildren();
     try{
-      const result=await api('');if(generation!==epoch || !$('storage-page'))return;
+      const result=await api(screen,'');if(!screen.active || !$('storage-page'))return;
       data=result;selected=new Set();plan=null;
       $('storage-disk').textContent=`${bytes(data.disk.free)} free of ${bytes(data.disk.total)}`;
       $('storage-categories').replaceChildren(...data.categories.map(item=>{const card=node('div','','journey-surface');card.append(node('strong',item.name),node('p',bytes(item.size_bytes)));return card;}));
       $('storage-status').textContent=[message,...data.warnings].filter(Boolean).join(' ') || 'Scan complete. Review items below to choose what to remove.';
       busy=false;render();
-    }catch(error){if(generation===epoch && $('storage-page')){$('storage-error').replaceChildren(taskError(error.message));$('storage-status').textContent='Storage scan unavailable.';data=null;$('storage-items').replaceChildren();}}
-    finally{if(generation===epoch && $('storage-page')){busy=false;$('storage-scan').disabled=false;selection();}}
+    }catch(error){if(screen.active && $('storage-page')){$('storage-error').replaceChildren(taskError(error.message));$('storage-status').textContent='Storage scan unavailable.';data=null;$('storage-items').replaceChildren();}}
+    finally{if(screen.active && $('storage-page')){busy=false;$('storage-scan').disabled=false;selection();}}
   }
   async function review(){
     if(busy)return;busy=true;
-    const generation=epoch;$('storage-review').disabled=true;$('storage-error').replaceChildren();
+    const screen=storageScreen.latest("operation");$('storage-review').disabled=true;$('storage-error').replaceChildren();
     try{
-      const result=await api('/preview',{ids:[...selected]});if(generation!==epoch || !$('storage-page'))return;
-      plan=result;$('storage-review-total').textContent=`${files(plan.file_count)} · about ${bytes(plan.reclaim_bytes)} reclaimable. This preview expires in five minutes.`;
+      const result=await api(screen,'/preview',{ids:[...selected]});if(!screen.active || !$('storage-page'))return;
+      plan=result;$('storage-cancel').disabled=false;$('storage-confirm-check').disabled=false;$('storage-review-total').textContent=`${files(plan.file_count)} · about ${bytes(plan.reclaim_bytes)} reclaimable. This preview expires in five minutes.`;
       $('storage-review-items').replaceChildren(...plan.items.map(item=>node('p',`${item.label}: ${files(item.file_count)} · ${bytes(item.size_bytes)}`)));
       $('storage-confirm-check').checked=false;$('storage-confirm').disabled=true;$('storage-confirm-status').textContent='';$('storage-review-dialog').showModal();
-    }catch(error){if(generation===epoch && $('storage-page'))$('storage-error').replaceChildren(taskError(error.message));}
-    finally{if(generation===epoch && $('storage-page')){busy=false;selection();}}
+    }catch(error){if(screen.active && $('storage-page'))$('storage-error').replaceChildren(taskError(error.message));}
+    finally{if(screen.active && $('storage-page')){busy=false;selection();}}
   }
   async function remove(){
     if(!plan || !$('storage-confirm-check').checked)return;
-    const generation=epoch, token=plan.token;plan=null;
+    const screen=storageScreen.latest("operation"), token=plan.token;plan=null;
     $('storage-confirm').disabled=true;$('storage-cancel').disabled=true;$('storage-confirm-check').disabled=true;$('storage-confirm-status').textContent='Rechecking files and removing your selection…';
     try{
-      const result=await api('/cleanup',{token});if(generation!==epoch || !$('storage-page'))return;
+      const result=await api(screen,'/cleanup',{token});if(!screen.active || !$('storage-page'))return;
       $('storage-review-dialog').close();await scan(`${result.message} ${files(result.removed_files)} removed; estimated reclaimed size ${bytes(result.estimated_reclaimed_bytes)}.`);
-    }catch(error){if(generation===epoch && $('storage-page')){$('storage-confirm-status').textContent=`${error.message} Close this review and scan again before retrying.`;}}
-    finally{if($('storage-page')){$('storage-cancel').disabled=false;$('storage-confirm-check').disabled=false;}}
+    }catch(error){if(screen.active && $('storage-page')){$('storage-confirm-status').textContent=`${error.message} Close this review and scan again before retrying.`;}}
+    finally{if(screen.active && $('storage-page')){$('storage-cancel').disabled=false;$('storage-confirm-check').disabled=false;}}
   }
-  function init(){
+  function init(screen = window.createScreenLifecycle()){
+    storageScreen=screen;busy=false;data=null;plan=null;selected=new Set();
     $('storage-scan').onclick=()=>scan();$('storage-search').oninput=()=>{if(data)render();};$('storage-filter').onchange=()=>{if(data)render();};
     $('storage-review').onclick=review;$('storage-confirm').onclick=remove;
     $('storage-cancel').onclick=()=>{$('storage-review-dialog').close();plan=null;};
@@ -67,6 +68,6 @@ window.storagePage = (() => {
     $('storage-review-dialog').oncancel=event=>{if($('storage-cancel').disabled)event.preventDefault();};
     scan();
   }
-  function stop(){epoch++;if($('storage-review-dialog')?.open)$('storage-review-dialog').close();}
+  function stop(){storageScreen?.dispose();if($('storage-review-dialog')?.open)$('storage-review-dialog').close();}
   return {init,stop};
 })();

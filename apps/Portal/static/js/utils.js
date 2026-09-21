@@ -9,6 +9,7 @@ window.formatBytes = function (bytes) {
 
 window.fetchJson = async function (url, opts = {}) {
   const res = await fetch(url, opts);
+  opts.signal?.throwIfAborted();
   if (!res.ok) {
     if (res.status === 401 && typeof window.showControlPilotLogin === "function") {
       window.showControlPilotLogin("ControlPilot password required");
@@ -23,6 +24,7 @@ window.fetchJson = async function (url, opts = {}) {
     throw new Error('Unexpected server response. Expected JSON; check the connection and retry.');
   }
   const text = await res.text();
+  opts.signal?.throwIfAborted();
   try {
     return JSON.parse(text);
   } catch {
@@ -62,11 +64,12 @@ const _tbStatusCache = {
 };
 
 window.getTensorBoardStatus = async function (opts = {}) {
+  opts.screen?.check();
   const force = Boolean(opts.force);
   const now = Date.now();
   if (!force && _tbStatusCache.data && _tbStatusCache.expiresAt > now) return _tbStatusCache.data;
 
-  const data = await fetchJson("/api/tensorboard/status");
+  const data = await (opts.screen ? opts.screen.json("/api/tensorboard/status") : fetchJson("/api/tensorboard/status"));
   _tbStatusCache.data = data || {};
   _tbStatusCache.expiresAt = now + 5_000;
   return data;
@@ -74,12 +77,14 @@ window.getTensorBoardStatus = async function (opts = {}) {
 
 window.getTensorBoardSourceStatus = async function (source, opts = {}) {
   const payload = await window.getTensorBoardStatus(opts);
+  opts.screen?.check();
   if (!payload || typeof payload !== "object") return null;
   return payload.sources && payload.sources[source] ? payload.sources[source] : null;
 };
 
 window.openTensorBoard = async function (source, opts = {}) {
   const tb = await window.getTensorBoardSourceStatus(source, opts);
+  opts.screen?.check();
   const label = typeof opts.label === "string" && opts.label ? opts.label : "TensorBoard";
   if (!tb) {
     if (typeof opts.onError === "function") {
@@ -103,6 +108,7 @@ window.openTensorBoard = async function (source, opts = {}) {
   }
 
   const payload = await window.getTensorBoardStatus(opts);
+  opts.screen?.check();
   const tbUrl = window.buildPortUrl(payload.port || 4444);
   if (!tbUrl) return false;
   window.open(tbUrl, "_blank", "noopener,noreferrer");

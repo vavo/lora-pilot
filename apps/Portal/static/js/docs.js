@@ -69,8 +69,10 @@ const ALLOWED_ATTRS = {
 };
 
 let currentDocSource = "";
+let docsScreen = null;
 
-window.initDocs = async function () {
+window.initDocs = async function (screen = window.createScreenLifecycle()) {
+  docsScreen = screen;
   const nodes = getDocsNodes();
   if (!nodes) return;
   const { content, tabReadme, tabDocumentation, tabChangelog } = nodes;
@@ -104,7 +106,8 @@ function normalizeDocsTab(kind) {
   return "readme";
 }
 
-async function loadDocsTab(kind) {
+async function loadDocsTab(kind, fragment = "") {
+  const screen = docsScreen.latest("document");
   const nodes = getDocsNodes();
   if (!nodes) return;
   const { status, content, tabReadme, tabDocumentation, tabChangelog } = nodes;
@@ -119,18 +122,21 @@ async function loadDocsTab(kind) {
   content.classList.add("is-hidden");
 
   try {
-    const data = await fetchJson(tabConfig.url);
+    const data = await screen.json(tabConfig.url);
     const raw = data.content || "No docs found.";
     const source = data.source || tabConfig.defaultSource;
     renderDocIntoContent(content, raw, source);
     status.textContent = "";
     content.classList.remove("is-hidden");
+    if (fragment) screen.timeout(() => applyFragmentNavigation(fragment, content), 0);
   } catch (error) {
+    if (!screen.active) return;
     status.textContent = `Error: ${error.message || error}`;
   }
 }
 
 async function loadDocsPath(path, fragment = "") {
+  const screen = docsScreen.latest("document");
   const nodes = getDocsNodes();
   if (!nodes) return;
   const { status, content, tabReadme, tabDocumentation, tabChangelog } = nodes;
@@ -144,16 +150,15 @@ async function loadDocsPath(path, fragment = "") {
 
   try {
     const apiPath = path.startsWith("docs/") ? path.slice(5) : path;
-    const data = await fetchJson(`/api/docs/file?path=${encodeURIComponent(apiPath)}`);
+    const data = await screen.json(`/api/docs/file?path=${encodeURIComponent(apiPath)}`);
     const raw = data.content || "No docs found.";
     const source = data.source || path;
     renderDocIntoContent(content, raw, source);
     status.textContent = "";
     content.classList.remove("is-hidden");
-    if (fragment) {
-      requestAnimationFrame(() => applyFragmentNavigation(fragment, content));
-    }
+    if (fragment) screen.timeout(() => applyFragmentNavigation(fragment, content), 0);
   } catch (error) {
+    if (!screen.active) return;
     status.textContent = `Error: ${error.message || error}`;
   }
 }
@@ -171,15 +176,7 @@ function onDocsContentClick(event) {
   if (tab) {
     event.preventDefault();
     const fragment = anchor.getAttribute("data-doc-fragment") || "";
-    void (async () => {
-      await loadDocsTab(tab);
-      if (fragment) {
-        const nodes = getDocsNodes();
-        if (nodes) {
-          requestAnimationFrame(() => applyFragmentNavigation(fragment, nodes.content));
-        }
-      }
-    })();
+    void loadDocsTab(tab, fragment);
     return;
   }
 

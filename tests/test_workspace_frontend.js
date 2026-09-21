@@ -75,7 +75,8 @@ test('only a successful queue submission clears the unfinished draft', async () 
       return {runs:[],paused:false,conflicts:[],active_id:null};
     },
   });
-  for(const file of ['training-draft','training-workspace'])vm.runInContext(fs.readFileSync(`apps/Portal/static/js/${file}.js`,'utf8'),page);
+  page.window.fetchJson = page.fetchJson;
+  for(const file of ['screen-lifecycle','training-draft','training-workspace'])vm.runInContext(fs.readFileSync(`apps/Portal/static/js/${file}.js`,'utf8'),page);
   await page.window.trainingWorkspace.init();
   assert.equal(node('tp-output').value,'Monday');
   await page.window.trainingWorkspace.submit();

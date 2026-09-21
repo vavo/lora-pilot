@@ -1,12 +1,17 @@
+let datasetsScreen = null;
 let dsSelectedName = null;
 let dsUploading = false;
 
-window.initDatasets = async function () {
+window.initDatasets = async function (screen = window.createScreenLifecycle()) {
+  datasetsScreen = screen;
+  dsUploading = false;
   wireUpload();
   await loadDatasets();
 };
 
 async function loadDatasets() {
+  const screen = datasetsScreen.latest("list");
+  if (!screen?.active) return;
   const status = document.getElementById("ds-status");
   const list = document.getElementById("ds-list");
   const table = document.getElementById("ds-table");
@@ -15,7 +20,7 @@ async function loadDatasets() {
   list.innerHTML = "";
   if (table) table.classList.add("is-hidden");
   try {
-    const data = await fetchJson("/api/datasets");
+    const data = await screen.json("/api/datasets");
     const count = document.getElementById("ds-count");
     if (count) count.textContent = `${data.length} dataset${data.length === 1 ? "" : "s"}`;
     document.getElementById("ds-next").hidden = true;
@@ -100,10 +105,11 @@ async function loadDatasets() {
         if (!ok) return;
         status.textContent = "Deleting...";
         try {
-          await fetchJson(`/api/datasets/${encodeURIComponent(name)}`, { method: "DELETE" });
+          await screen.json(`/api/datasets/${encodeURIComponent(name)}`, { method: "DELETE" });
           status.textContent = "Deleted.";
           await loadDatasets();
         } catch (e) {
+          if (!screen.active) return;
           status.textContent = `Error: ${e.message || e}`;
         }
       });
@@ -119,7 +125,7 @@ async function loadDatasets() {
         
         status.textContent = "Renaming...";
         try {
-          await fetchJson(`/api/datasets/${encodeURIComponent(name)}`, {
+          await screen.json(`/api/datasets/${encodeURIComponent(name)}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: newName.trim() })
@@ -127,6 +133,7 @@ async function loadDatasets() {
           status.textContent = "Renamed.";
           await loadDatasets();
         } catch (e) {
+          if (!screen.active) return;
           status.textContent = `Error: ${e.message || e}`;
         }
       });
@@ -135,6 +142,7 @@ async function loadDatasets() {
     status.textContent = "";
     showDatasetNextStep(data.find(d => d.name === dsSelectedName) || data[0]);
   } catch (e) {
+    if (!screen.active) return;
     status.textContent = `Error: ${e.message || e}`;
   }
 }
@@ -156,12 +164,14 @@ function datasetActionButton(label, variant, action, datasetName) {
 }
 
 window.createDatasetPrompt = async function () {
+  const screen = datasetsScreen;
+  if (!screen?.active) return;
   const name = prompt("Name your dataset", "");
   if (name === null) return;
   const status = document.getElementById("ds-status");
   if (status) status.textContent = "Creating...";
   try {
-    const created = await fetchJson("/api/datasets/create", {
+    const created = await screen.json("/api/datasets/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name }),
@@ -169,12 +179,16 @@ window.createDatasetPrompt = async function () {
     dsSelectedName = created.name || created.path?.split("/").pop();
     if (status) status.textContent = "Created.";
     await loadDatasets();
+    if (!screen.active) return;
   } catch (e) {
+    if (!screen.active) return;
     if (status) status.textContent = `Error: ${e.message || e}`;
   }
 };
 
 async function uploadDatasetFile(file) {
+  const screen = datasetsScreen;
+  if (!screen?.active) return;
   const status = document.getElementById("ds-upload-status");
   const bar = document.getElementById("ds-upload-bar");
   if (bar) bar.style.width = "0%";
@@ -192,8 +206,12 @@ async function uploadDatasetFile(file) {
   try {
     const response = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      const unlink = screen.onCleanup(() => xhr.abort());
+      xhr.onloadend = unlink;
+      xhr.onabort = () => reject(new DOMException('Screen left', 'AbortError'));
       xhr.open("POST", "/api/datasets/upload");
       xhr.upload.onprogress = (e) => {
+        if (!screen.active) return;
         if (e.lengthComputable && bar) {
           const pct = Math.round((e.loaded / e.total) * 100);
           bar.style.width = `${pct}%`;
@@ -207,23 +225,29 @@ async function uploadDatasetFile(file) {
       xhr.onerror = () => reject("Upload failed");
       xhr.send(fd);
     });
+    screen.check();
     const uploaded = JSON.parse(response);
     dsSelectedName = uploaded.extracted_to?.split("/").pop();
     if (status) status.textContent = "Uploaded.";
     dsUploading = false;
     closeUploadModal();
     await loadDatasets();
+    if (!screen.active) return;
   } catch (e) {
+    if (!screen.active) return;
     let message = e.message || String(e);
     try { message = JSON.parse(message).detail || message; } catch {}
     if (status) status.textContent = `Upload failed: ${message}. Choose a ZIP to retry.`;
   } finally {
+    if (!screen.active) return;
     dsUploading = false;
     if (input) input.disabled = false;
   }
 }
 
 window.uploadDataset = async function () {
+  const screen = datasetsScreen;
+  if (!screen?.active) return;
   const fileInput = document.getElementById("ds-zip");
   if (!fileInput || !fileInput.files || !fileInput.files.length) return;
   const file = fileInput.files[0];

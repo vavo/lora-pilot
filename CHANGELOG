@@ -1,5 +1,7 @@
 Unreleased (September 21st 2026)
 
+ControlPilot screens now share one lifecycle for request cancellation, stale-response protection, cleanup, and serial polling. Leaving a screen or opening the password gate cancels its pending browser work. Docs tabs, training preflight, and other competing reads discard superseded responses, while workspace activity continues across navigation. Cancelling browser work does not cancel backend jobs already accepted. Added a developer guide and regression coverage for these boundaries.
+
 Guided training now offers direct checkpoint downloads for finished runs, including checkpoints saved before a failure or stop. History supports name and dataset search, model-family and status filters, and pagination across all saved runs. Selected runs show elapsed time, preparation stages, and cautious remaining-time estimates from fresh trainer progress.
 
 Recognized training and model-download failures now explain useful next actions, while preserving technical details. Storage has a new usage overview and a reviewed cleanup flow for individual checkpoints, private dataset snapshots, and training caches from finished guided runs. Cleanup requires explicit selection and confirmation, rechecks file identity and workload status, and protects original datasets, shared models, linked files, and run history. General application caches and other tools' outputs remain outside cleanup scope.

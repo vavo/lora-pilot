@@ -11,8 +11,9 @@ class ComparisonBridgeTests(unittest.TestCase):
         script = r'''
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 let page = {}, complete, initialized = 0;
-const context = {window:{addEventListener(){},trainingWorkspace:{init(){ initialized++; }}}, document:{getElementById(){return page}}};
+const context = {AbortController, window:{addEventListener(){},trainingWorkspace:{init(){ initialized++; }}}, document:{getElementById(){return page}}};
 vm.createContext(context);
+vm.runInContext(fs.readFileSync(require('path').join(require('path').dirname(process.argv[1]), 'screen-lifecycle.js'), 'utf8'), context);
 vm.runInContext(fs.readFileSync(process.argv[1], 'utf8'), context);
 context.bindTpControls = () => {};
 context.loadTpDatasets = () => new Promise(resolve => { complete = resolve; });

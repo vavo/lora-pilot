@@ -1,4 +1,5 @@
-let dpLogTimer = null, dpGeneration = 0, dpStarting = false;
+let dpScreen = null;
+let dpStarting = false;
 const DP_STORAGE_KEY = "dpipeSettings";
 const DP_SENSITIVE_FIELDS = new Set([
   "dp-wandb-key",
@@ -42,7 +43,9 @@ const DP_FIELDS = [
   "dp-wandb-key",
 ];
 
-window.initDpipe = function () {
+window.initDpipe = function (screen = window.createScreenLifecycle()) {
+  dpScreen = screen;
+  dpStarting = false;
   const status = document.getElementById("dp-status");
   if (status) status.textContent = "Checking training status…";
   loadDpipeSettings();
@@ -61,6 +64,8 @@ window.initDpipe = function () {
 };
 
 window.openDpipeTensorBoard = async function () {
+  const screen = dpScreen;
+  if (!screen?.active) return;
   const statusEl = document.getElementById("dp-tensorboard-status");
   const setStatus = (msg) => {
     if (!statusEl) return;
@@ -68,20 +73,23 @@ window.openDpipeTensorBoard = async function () {
   };
   try {
     await window.openTensorBoard("diffpipe", {
+      screen,
       label: "Diffusion Pipe",
       onError: setStatus,
       allowUnavailable: false,
     });
     setStatus("");
   } catch (e) {
+    if (!screen.active) return;
     setStatus(e.message || e);
   }
 };
 
 window.startDpipe = async function () {
+  const screen = dpScreen;
+  if (!screen?.active) return;
   if (dpStarting) return;
   dpStarting = true;
-  const generation = dpGeneration;
   const status = document.getElementById("dp-status");
   const controls = [...DP_FIELDS.map(id => document.getElementById(id)), document.getElementById('dp-start')].filter(Boolean);
   const disabled = controls.map(control => control.disabled);
@@ -134,12 +142,12 @@ window.startDpipe = async function () {
       wandb_tracker_name: val("dp-wandb-proj"),
       wandb_api_key: val("dp-wandb-key"),
     };
-    const validate = await fetchJson("/dpipe/train/validate", {
+    const validate = await screen.json("/dpipe/train/validate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(modelPaths),
     });
-    if (generation !== dpGeneration) return;
+    if (!screen.active) return;
     if (validate && validate.missing && validate.missing.length) {
       const missingList = validate.missing.map(m => `${m.field}: ${m.path}`).join("\n");
       if (status) status.textContent = "Missing model files";
@@ -153,7 +161,7 @@ window.startDpipe = async function () {
       }
       return;
     }
-    await fetchJson("/dpipe/train/start", {
+    await screen.json("/dpipe/train/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -161,21 +169,26 @@ window.startDpipe = async function () {
     if (status) status.textContent = "Running...";
     refreshDpipeTensorBoardStatus().catch(() => {});
   } catch (e) {
+    if (!screen.active) return;
     if (status) status.textContent = `Error: ${e.message || e}`;
   } finally {
+    if (!screen.active) return;
     dpStarting = false;
     controls.forEach((control, index) => { control.disabled = disabled[index]; });
   }
 };
 
 window.stopDpipe = async function () {
+  const screen = dpScreen;
+  if (!screen?.active) return;
   const status = document.getElementById("dp-status");
   if (status) status.textContent = "Stopping...";
   try {
-    await fetchJson("/dpipe/train/stop", { method: "POST" });
+    await screen.json("/dpipe/train/stop", { method: "POST" });
     if (status) status.textContent = "Stopped.";
     refreshDpipeTensorBoardStatus().catch(() => {});
   } catch (e) {
+    if (!screen.active) return;
     if (status) status.textContent = `Error: ${e.message || e}`;
   }
 };
@@ -241,50 +254,46 @@ function renderDpipeState(activity) {
 }
 
 function startLogPoll() {
-  window.stopDpipeLog();
-  const generation = dpGeneration;
-  const poll = async () => {
+  const screen = dpScreen;
+  screen.poll(async () => {
     const pre = document.getElementById("dp-logs");
-    if (!pre || generation !== dpGeneration) return;
+    if (!pre) return;
     try {
-      const data = await fetchJson("/dpipe/train/logs?limit=500");
-      if (generation !== dpGeneration) return;
+      const data = await screen.json("/dpipe/train/logs?limit=500");
       pre.textContent = normalizeDpipeLines(data).join("\n");
       renderDpipeState(data.activity);
     } catch (error) {
-      if (generation === dpGeneration && !dpStarting) {
+      if (screen.active && !dpStarting) {
         const status = document.getElementById('dp-status');
         if (status) status.textContent = 'Training status unavailable. Retrying…';
         const start = document.getElementById('dp-start');
         if (start) start.disabled = true;
       }
-    } finally {
-      if (generation === dpGeneration) dpLogTimer = setTimeout(poll, 2000);
     }
-  };
-  poll();
-  refreshDpipeTensorBoardStatus().catch(() => {});
+  }, 2000);
 }
 
 window.refreshDpipeTensorBoardStatus = async function () {
+  const screen = dpScreen;
+  if (!screen?.active) return;
   const statusEl = document.getElementById("dp-tensorboard-status");
   if (!statusEl) return;
   try {
-    const tb = await window.getTensorBoardSourceStatus("diffpipe", { force: false });
+    const tb = await window.getTensorBoardSourceStatus("diffpipe", { force: false, screen });
     if (tb && tb.ready) {
       statusEl.textContent = "TensorBoard: run logs detected";
     } else {
       statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
     }
   } catch (e) {
+    if (!screen.active) return;
     statusEl.textContent = "TensorBoard: unavailable";
   }
 };
 
 window.stopDpipeLog = function () {
-  dpGeneration++;
-  if (dpLogTimer) clearTimeout(dpLogTimer);
-  dpLogTimer = null;
+  dpScreen?.dispose();
+
 };
 
 function normalizeDpipeLines(data) {

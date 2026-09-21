@@ -7,6 +7,11 @@ function extract(name, start, end) {
   const text=read(name), a=text.indexOf(start), b=text.indexOf(end,a+start.length);
   assert.ok(a>=0 && b>a); return text.slice(a,b);
 }
+function lifecycle(page) {
+  Object.assign(page, {AbortController, DOMException});
+  page.window.fetchJson = page.fetchJson;
+  vm.runInContext(read('screen-lifecycle'), page);
+}
 function dom() {
   const nodes=new Map();
   const node=id=>{
@@ -20,10 +25,11 @@ function dom() {
 
 test('the latest navigation wins even when older fetches finish later',async()=>{
   const pending={},links=['models','datasets'].map(name=>({name,classList:{remove(){},add(){page.highlight=name;}},removeAttribute(){},setAttribute(){}}));
-  const page=vm.createContext({navigationGeneration:0,controlPilotUnlocked:true,contentEl:{innerHTML:'',querySelectorAll:()=>[]},currentSection:'dashboard',viewCache:{},
+  const page=vm.createContext({activeScreen:null,controlPilotUnlocked:true,contentEl:{innerHTML:'',querySelectorAll:()=>[]},currentSection:'dashboard',viewCache:{},
     viewMap:{models:{view:'models',init(){}},datasets:{view:'datasets',init(){}}},window:{stopDashboard(){},scrollTo(){}},
     document:{querySelectorAll:()=>links,querySelector:s=>links.find(l=>s.includes(l.name))},history:{replaceState(a,b,hash){page.hash=hash;}},
     setCopilotSectionVisibility(){},closeSidebar(){},fetch:path=>new Promise(resolve=>pending[path]=resolve)});
+  lifecycle(page);
   vm.runInContext(extract('main','async function loadSection(section) {','\nfunction setCopilotSectionVisibility'),page);
   const first=page.loadSection('models'),last=page.loadSection('datasets');
   pending.datasets({ok:true,text:async()=>'DATASETS'});await last;
@@ -45,6 +51,7 @@ test('saving a credential or shutdown defaults preserves edits in other settings
   const {node,document}=dom();const themes=[{value:'dark',checked:false},{value:'light',checked:true}];document.querySelectorAll=s=>s.includes('settings-theme')?themes:[];
   const page=vm.createContext({window:{refreshControlPilotSettings(){throw Error('Must not reset appearance');}},document,URL,location:{origin:'http://localhost'},
     fetchJson:async path=>path==='/api/settings'?{theme:'light',shutdown_default_hours:0,comfy_access:{}}:{set:true}});
+  lifecycle(page);
   vm.runInContext(read('settings'),page);await page.window.initSettings();
   themes[0].checked=true;themes[1].checked=false;node('settings-shutdown-hours').value='6';node('settings-copilot-token').value='unfinished';node('settings-hf-token').value='fixture';
   await node('settings-hf-save').handlers.click();assert.equal(node('settings-hf-token').value,'');
@@ -60,7 +67,9 @@ function advancedPage() {
       if(path.endsWith('validate'))return new Promise(resolve=>finish=resolve);
       return{};
     }});
+  lifecycle(page);
   vm.runInContext(read('dpipe'),page);
+  vm.runInContext('dpScreen = window.createScreenLifecycle()', page);
   return {page,node,requests,finish:()=>finish({missing:[]})};
 }
 test('advanced training submits a single captured configuration and suppresses duplicate starts',async()=>{
@@ -81,7 +90,9 @@ test('advanced training renders running and terminal state with matching actions
 test('lost download jobs fail with recovery guidance instead of polling forever',async()=>{
   const page=vm.createContext({window:{addEventListener(){}},document:{},confirm:()=>true,alert(){},setTimeout,clearTimeout,DOMException,
     fetchJson:async path=>path.endsWith('preflight')?{missing:[{model_name:'fixture'}]}:{state:'idle'}});
-  vm.runInContext(read('trainpilot'),page);page.setModelDownloadUI=()=>{};
+  lifecycle(page);
+  vm.runInContext(read('trainpilot'),page);
+  vm.runInContext('tpScreen = window.createScreenLifecycle()', page);page.setModelDownloadUI=()=>{};
   await assert.rejects(page.ensureTrainpilotModelsPresent({},new AbortController().signal),/Download status was lost/);
 });
 test('cancelling training preparation interrupts the polling delay',async()=>{
@@ -96,4 +107,15 @@ test('JSON API helper rejects invalid content and accepts explicit no-content re
   response={ok:true,status:204};assert.equal(await page.window.fetchJson('/api/test'),null);
   response={ok:true,status:200,headers:{get:()=> 'application/problem+json; charset=utf-8'},text:async()=>'{"ok":true}'};
   assert.equal((await page.window.fetchJson('/api/test')).ok,true);
+});
+
+test('a late Settings refresh cannot replace preferences from a new visit', async()=>{
+  const {document}=dom();let finish;const old=new Promise(resolve=>finish=resolve);
+  const page=vm.createContext({window:{},document,URL,location:{origin:'http://localhost'},fetchJson:path=>path==='/api/settings'?old:Promise.resolve({set:true})});
+  lifecycle(page);vm.runInContext(read('settings'),page);
+  const first=page.window.createScreenLifecycle(), pending=page.window.initSettings(first);
+  first.dispose();page.window.fetchJson=async path=>path==='/api/settings'?{theme:'dark',comfy_access:{}}:{set:true};
+  await page.window.initSettings(page.window.createScreenLifecycle());
+  finish({theme:'light',comfy_access:{}});await pending;
+  assert.equal(page.window.controlPilotSettings.theme,'dark');
 });
