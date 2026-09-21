@@ -355,7 +355,7 @@ function renderTpResult(data) {
   document.getElementById("tp-result-profile").textContent = tpProfiles[data.run?.profile] || "Custom";
   document.getElementById("tp-result-finished").textContent = data.run?.finished_at ? new Date(data.run.finished_at).toLocaleString() : "Completed";
   const files = data.artifacts || [];
-  document.getElementById("tp-result-count").textContent = files.length ? `${files.length} checkpoint${files.length === 1 ? "" : "s"} ${data.moved ? "copied to your LoRA library" : "saved in your workspace"}.` : "No new LoRA files found. Check the logs and output folder.";
+  document.getElementById("tp-result-count").textContent = files.length ? `${files.length} checkpoint${files.length === 1 ? "" : "s"} ${data.moved ? "moved to your LoRA library" : "saved in your workspace"}.` : "No new LoRA files found. Check the logs and output folder.";
   const list = document.getElementById("tp-result-files");
   const signature = JSON.stringify([data.run_id, files]);
   if (list.dataset.files !== signature) {
@@ -377,11 +377,14 @@ function renderTpResult(data) {
   }
   document.getElementById("tp-result-path").textContent = (data.moved ? data.lora_destination : data.output_dir) || "Unavailable";
   document.getElementById("tp-result-destination").textContent = data.lora_destination || "";
-  document.getElementById("tp-result-instructions").textContent = data.moved ? "A copy is in your shared LoRA library. Your original run files remain saved." : "Copy the trained files to your shared LoRA folder, or generate a comparison below.";
+  document.getElementById("tp-result-instructions").textContent = data.moved ? "Your checkpoints are in the shared LoRA library. You can still download and compare them here." : "Move checkpoints to your shared LoRA folder to free the original location, or copy them to keep both.";
   if (data.moved && !tpMoving) document.getElementById("tp-move-status").textContent = "Your LoRA files are ready in the shared library.";
   const button = document.getElementById("tp-move-loras");
   button.disabled = tpMoving || data.moved || !data.move_available;
-  button.textContent = tpMoving ? "Copying files…" : data.moved ? "Copied to LoRA library" : "Copy to LoRA library";
+  button.textContent = tpMoving === 'move' ? "Moving files…" : data.moved ? "Moved to LoRA library" : "Move to LoRA library";
+  const copy = document.getElementById("tp-copy-loras");
+  copy.disabled = !!tpMoving || data.moved || !data.move_available;
+  copy.textContent = tpMoving === 'copy' ? "Copying files…" : "Copy to LoRA library";
 }
 
 async function moveTrainpilotLoras() {

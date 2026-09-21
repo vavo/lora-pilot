@@ -171,10 +171,10 @@
 .tp-compare-fields { display:grid; grid-template-columns:2fr 1fr 1fr; gap:16px; }
 .tp-comparison { border-top:1px solid var(--border); padding-top:24px; }
 .tp-comparison textarea { box-sizing:border-box; width:100%; resize:vertical; }
-.tp-compare-images { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
+.tp-compare-images { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap:16px; }
 .tp-compare-images figure { margin:0; min-width:0; }
 .tp-compare-images img { width:100%; display:block; border-radius:10px; }
-.tp-compare-images figcaption { padding:10px 0; font-weight:600; }
+.tp-compare-images figcaption { padding:10px 0; font-weight:600; overflow-wrap:anywhere; }
 @media(max-width:768px) {
   .tp-history-heading, .tp-history-row { align-items:stretch; flex-direction:column; }
   .tp-history-actions { flex-shrink:1; }

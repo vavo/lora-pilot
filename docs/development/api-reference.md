@@ -154,10 +154,10 @@ The guided interface uses `/api/training`. These routes follow ControlPilot auth
 | `GET` | `/api/training/runs/{id}` | Returns status, artifacts, timing, saved configuration, effective configuration when available, and up to 500 recent log lines. |
 | `POST` | `/api/training/runs/{id}/cancel` | Cancels a queued run or stops a currently managed process. |
 | `POST` | `/api/training/runs/{id}/repeat` | Queues a new run using saved configuration and the current dataset. |
-| `POST` | `/api/training/runs/{id}/library` | Copies successful artifacts into a per-run LoRA library directory without removing originals. |
-| `POST` | `/api/training/runs/{id}/comparison/prepare` | Copies the selected artifact, checks live ComfyUI node/model availability, and saves a comparison graph without queueing it. |
+| `POST` | `/api/training/runs/{id}/library` | Copies successful artifacts by default; `{"action":"move"}` removes originals after all library destinations are verified. Moved files remain accessible through the run. |
+| `POST` | `/api/training/runs/{id}/comparison/prepare` | Publishes selected or all checkpoints, checks live ComfyUI nodes/models, and saves the comparison graph without queueing it. |
 | `GET` | `/api/training/runs/{id}/comparison/workflow` | Downloads the prepared API-format workflow JSON. |
-| `POST` | `/api/training/runs/{id}/comparison` | Prepares and submits the paired comparison to ComfyUI. |
+| `POST` | `/api/training/runs/{id}/comparison` | Prepares and submits the baseline plus requested checkpoints to ComfyUI. |
 | `GET` | `/api/training/runs/{id}/comparison` | Returns persisted comparison state and result image URLs. |
 | `POST` | `/api/training/runs/{id}/comparison/reset` | Explicitly resets comparison tracking only when the ComfyUI queue is empty. |
 
@@ -169,7 +169,7 @@ Preflight and run creation accept `dataset_name`, `output_name`, `family`, `prof
 
 Run creation returns the new record and UUID. Each run has a separate output directory. The queue accepts at most 50 active or waiting runs and returns HTTP 409 when full. Missing models fail before queueing. A dataset changed since queueing fails at launch, with an explanation saved in the record. After a restart, interrupted processes are not automatically resumed and pending dispatch remains paused. Only one ControlPilot worker can own the queue for a workspace.
 
-Comparison requests contain `artifact`, `prompt`, and optional `seed` and `strength`. Seeds range from zero to `4294967295`; strength ranges from zero to two. A successful training record and saved artifact are required. Active managed training and duplicate or unconfirmed comparison submissions return HTTP 409. A lost submission response is persisted as `unknown`, requiring inspection and an explicit reset before retrying. Resetting tracking does not cancel a ComfyUI job or remove its outputs.
+Comparison requests contain `prompt` and either `artifact` for one checkpoint or `all_checkpoints: true` for every saved checkpoint, with optional `seed` and `strength`. All-checkpoint comparisons support up to 64 saved files and return images in baseline, training checkpoint, then final-file order, with filename labels. Seeds range from zero to `4294967295`; strength ranges from zero to two. A successful training record and saved artifact are required. Active managed training and duplicate or unconfirmed comparison submissions return HTTP 409. A lost submission response is persisted as `unknown`, requiring inspection and an explicit reset before retrying. Resetting tracking does not cancel a ComfyUI job or remove its outputs.
 
 ## Reviewed storage cleanup API
 

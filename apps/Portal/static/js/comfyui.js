@@ -80,6 +80,27 @@ window.initComfyUI = function (screen = window.createScreenLifecycle()) {
   const iframeEl = document.getElementById("comfy-iframe");
   if (!iframeEl) return;
   comfyActive = true;
+  const handoff = window.pendingComfyWorkflow;
+  const handoffEl = document.getElementById('comfy-workflow-status');
+  if (handoff) {
+    handoffEl.hidden = false;
+    const message = document.getElementById('comfy-workflow-message');
+    message.textContent = 'Opening your prepared comparison workflow…';
+    document.getElementById('comfy-workflow-download').href = `/api/training/runs/${handoff.runId}/comparison/workflow`;
+    let acknowledged = false;
+    const receive = event => {
+      if (event.source !== iframeEl.contentWindow || event.origin !== new URL(iframeEl.src).origin
+          || event.data?.type !== 'controlpilot-comparison' || event.data.token !== handoff.token) return;
+      acknowledged = true;
+      message.textContent = event.data.error ? `Workflow could not open: ${event.data.error}. Download it and open it in ComfyUI.` : 'Comparison workflow loaded. Review it in ComfyUI before running.';
+      if (!event.data.error && window.pendingComfyWorkflow === handoff) window.pendingComfyWorkflow = null;
+    };
+    window.addEventListener('message', receive);
+    screen.onCleanup(() => window.removeEventListener('message', receive));
+    screen.timeout(() => {
+      if (!acknowledged) message.textContent = 'ComfyUI has not confirmed loading the workflow. Download it and open it manually, or restart ComfyUI to load the updated integration.';
+    }, 45000);
+  }
 
   const toggleBtn = document.getElementById("preview-toggle");
   const clearBtn = document.getElementById("clear-preview");
@@ -144,8 +165,8 @@ async function checkComfyUIStatus() {
       if (iframeEl && (!iframeEl.src || iframeEl.src === "about:blank")) {
         let target = getComfyUIUrl(comfyPort);
         if (window.pendingComfyWorkflow) {
-          target += '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify(window.pendingComfyWorkflow));
-          window.pendingComfyWorkflow = null;
+          const pending = window.pendingComfyWorkflow;
+          target += '#' + new URLSearchParams({'controlpilot-comparison': JSON.stringify(pending.workflow), 'controlpilot-token': pending.token});
         }
         iframeEl.src = target;
       }

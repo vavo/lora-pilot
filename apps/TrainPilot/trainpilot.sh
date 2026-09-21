@@ -69,6 +69,7 @@ ensure_sdxl_tokenizer() {
   echo "CLIP tokenizer missing; downloading tokenizer files to the Hugging Face cache."
   HF_HOME="${HF_HOME}" TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}" HF_TOKEN="${HF_TOKEN:-}" \
     "${PYTHON_BIN}" - <<'PY'
+import os
 from huggingface_hub import hf_hub_download
 
 repo_id = "openai/clip-vit-large-patch14"
@@ -80,7 +81,7 @@ for filename in (
     "tokenizer_config.json",
     "vocab.json",
 ):
-    hf_hub_download(repo_id=repo_id, filename=filename)
+    hf_hub_download(repo_id=repo_id, filename=filename, cache_dir=os.environ["TRANSFORMERS_CACHE"])
 PY
 
   HF_HOME="${HF_HOME}" TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE}" \
@@ -312,6 +313,8 @@ while :; do
         toml_set "$COPIED_TOML" "mixed_precision" "str" "fp16"
         toml_set "$COPIED_TOML" "full_bf16" "raw" "false"
       fi
+
+      toml_set "$COPIED_TOML" "no_half_vae" "raw" "true"
 
       # Force PyTorch SDPA (no xformers / no mem-eff)
       toml_set "$COPIED_TOML" "xformers" "raw" "false"

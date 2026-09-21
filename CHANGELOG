@@ -1,5 +1,9 @@
 Unreleased (September 21st 2026)
 
+Training results now offer distinct Move and Copy actions for the LoRA library. Moving verifies all destinations before removing originals, and moved checkpoints remain available for downloads and comparisons. Try my LoRA defaults to a labeled grid with the base model first, each saved checkpoint in training order, and the final file. The ComfyUI handoff captures its workflow before initial graph restoration clears the URL fragment and confirms loading, with a manual download fallback.
+
+SDXL tokenizer preflight now downloads into the cache used by Transformers. SDXL profiles keep VAE encoding in full precision to prevent invalid latents seen in Quick Test runs.
+
 The collapsed sidebar now uses sun and moon icons for theme selection. Mobile navigation keeps the theme controls visible while the page links scroll. The build and activity bar can be minimized with its close control and reopened from an activity icon beside Copilot. This browser remembers the choice, and the icon indicates active work or pending completion notices while the bar is hidden.
 
 ControlPilot screens now share one lifecycle for request cancellation, stale-response protection, cleanup, and serial polling. Leaving a screen or opening the password gate cancels its pending browser work. Docs tabs, training preflight, and other competing reads discard superseded responses, while workspace activity continues across navigation. Cancelling browser work does not cancel backend jobs already accepted. Added a developer guide and regression coverage for these boundaries.

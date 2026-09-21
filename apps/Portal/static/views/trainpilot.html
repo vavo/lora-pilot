@@ -8,13 +8,13 @@
   <h3>Saved LoRA files</h3><p id="tp-result-count" class="journey-note"></p>
   <table class="tp-result-files"><thead><tr><th>Filename</th><th>Size</th><th>Download</th></tr></thead><tbody id="tp-result-files"></tbody></table>
   <div class="tp-result-path">Saved in <code id="tp-result-path"></code><button id="tp-copy-path" class="btn ghost" type="button">Copy path</button></div>
-  <div class="tp-result-next"><h3>Keep a copy in your LoRA library</h3><p id="tp-result-instructions">Copy the trained files to your shared LoRA folder. The original run files remain in place.</p>
-    <button id="tp-move-loras" class="btn primary" type="button">Copy to LoRA library</button>
+  <div class="tp-result-next"><h3>Add to your LoRA library</h3><p id="tp-result-instructions">Move checkpoints to your shared LoRA folder, or copy them to keep the originals as well.</p>
+    <div class="row wrap gap-12"><button id="tp-move-loras" class="btn primary" type="button">Move to LoRA library</button><button id="tp-copy-loras" class="btn ghost" type="button">Copy to LoRA library</button></div>
     <p class="journey-note">Destination: <code id="tp-result-destination"></code></p><p id="tp-move-status" class="status" role="status">You can do this later. Your files are already saved.</p>
   </div>
 <section class="tp-comparison" aria-labelledby="tp-compare-title">
-    <h3 id="tp-compare-title">Try my LoRA</h3><p class="journey-note">Compare the same prompt and seed with and without your LoRA. ComfyUI generates both images.</p>
-    <div class="tp-compare-fields"><div class="field"><label for="tp-compare-artifact">Saved checkpoint</label><select id="tp-compare-artifact" class="select"></select></div>
+    <h3 id="tp-compare-title">Try my LoRA</h3><p class="journey-note">Start with an image without LoRA, then compare every saved checkpoint in training order using the same prompt and seed. You can also choose a single checkpoint.</p>
+    <div class="tp-compare-fields"><div class="field"><label for="tp-compare-artifact">Checkpoints to compare</label><select id="tp-compare-artifact" class="select"></select></div>
     <div class="field"><label for="tp-compare-seed">Seed</label><input id="tp-compare-seed" class="input" type="number" min="0" max="4294967295" value="31337"></div>
     <div class="field"><label for="tp-compare-strength">LoRA strength</label><input id="tp-compare-strength" class="input" type="number" min="0" max="2" step="0.1" value="1"></div></div>
     <div class="field"><label for="tp-compare-prompt">Prompt, including your trigger word</label><textarea id="tp-compare-prompt" class="input" rows="3" placeholder="Describe the image you want to compare"></textarea></div>

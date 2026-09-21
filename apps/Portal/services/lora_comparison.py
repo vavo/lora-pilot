@@ -1,5 +1,6 @@
 """Native ComfyUI comparison graphs, checked against the running node registry."""
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -9,7 +10,8 @@ from pydantic import BaseModel, Field
 
 
 class ComparisonRequest(BaseModel):
-    artifact: str = Field(min_length=1, max_length=200)
+    artifact: str | None = Field(default=None, min_length=1, max_length=200)
+    all_checkpoints: bool = False
     prompt: str = Field(min_length=1, max_length=2000)
     seed: int = Field(default=31337, ge=0, le=2**32 - 1)
     strength: float = Field(default=1.0, ge=0, le=2)
@@ -24,6 +26,11 @@ def comfy(method, path, **kwargs):
             return response.json()
     except (httpx.HTTPError, ValueError):
         raise HTTPException(503, 'ComfyUI is unavailable. Start it in Services and try again.')
+
+
+def checkpoint_order(name):
+    match = re.search(r'(?:-step|-)(\d+)\.safetensors$', name)
+    return (0, int(match[1]), name) if match else (1, 0, name)
 
 
 def graph(run, request, lora_name, registry):
@@ -66,11 +73,17 @@ def graph(run, request, lora_name, registry):
                 vae = ['3', 2]
             else:
                 vae = add('3', 'VAELoader', vae_name=model_name('vae', 'vae'))
-    add('4', 'LoraLoader', model=model, clip=clip, lora_name=lora_name,
-        strength_model=request.strength, strength_clip=request.strength)
     latent = add('5', 'EmptySD3LatentImage' if flux else 'EmptyLatentImage', width=1024, height=1024, batch_size=1)
-    for prefix, branch_model, branch_clip, label in [('10', model, clip, 'without-lora'), ('20', ['4', 0], ['4', 1], 'with-lora')]:
-        base = int(prefix)
+    names = [lora_name] if isinstance(lora_name, str) else lora_name
+    for index, name in enumerate([None, *names]):
+        base = 10 + index * 10
+        branch_model, branch_clip = model, clip
+        label = 'Without LoRA' if name is None else Path(name).name
+        if name is not None:
+            loader = '4' if index == 1 else str(base + 6)
+            branch_model = add(loader, 'LoraLoader', model=model, clip=clip, lora_name=name,
+                               strength_model=request.strength, strength_clip=request.strength)
+            branch_clip = [loader, 1]
         positive = add(str(base), 'CLIPTextEncode', text=request.prompt, clip=branch_clip)
         negative = add(str(base + 1), 'CLIPTextEncode', text='', clip=branch_clip)
         if flux:
@@ -79,16 +92,23 @@ def graph(run, request, lora_name, registry):
                       latent_image=latent, seed=request.seed, steps=20, cfg=1.0 if flux else 7.0,
                       sampler_name='euler' if flux else 'dpmpp_2m', scheduler='simple' if flux else 'normal', denoise=1.0)
         image = add(str(base + 4), 'VAEDecode', samples=samples, vae=vae)
-        add(str(base + 5), 'SaveImage', images=image, filename_prefix=f'LoRA-Pilot/{run["id"]}/{label}')
+        add(str(base + 5), 'SaveImage', images=image, filename_prefix=f'LoRA-Pilot/{run["id"]}/{index:03d}')
+        nodes[str(base + 5)]['_meta'] = {'title': label}
     return nodes
 
 
-def result_images(history):
+def comparison_outputs(workflow):
+    return [dict(node_id=node_id, label=node['_meta']['title'])
+            for node_id, node in workflow.items() if node['class_type'] == 'SaveImage']
+
+
+def result_images(history, expected=None):
     images = []
-    for node, label in [('15', 'Without LoRA'), ('25', 'With LoRA')]:
-        outputs = history.get('outputs', {}).get(node, {}).get('images', [])
+    expected = expected or [dict(node_id='15', label='Without LoRA'), dict(node_id='25', label='With LoRA')]
+    for entry in expected:
+        outputs = history.get('outputs', {}).get(entry['node_id'], {}).get('images', [])
         if outputs:
             item = outputs[0]
-            images.append(dict(label=label, url='/proxy/comfy/view?' + urlencode({
+            images.append(dict(label=entry['label'], url='/proxy/comfy/view?' + urlencode({
                 'filename': item['filename'], 'subfolder': item.get('subfolder', ''), 'type': 'output'})))
     return images

@@ -95,6 +95,68 @@ class TrainingComparisonApiTests(unittest.TestCase):
         self.assertEqual(self.client.post(self.prefix + '/library').status_code, 409)
         self.assertEqual(partial.read_bytes(), b'incomplete user copy')
 
+    def test_move_keeps_downloads_comparisons_and_history_available(self):
+        with patch('apps.Portal.services.training_api.comfy', return_value=self.registry):
+            response = self.client.post(self.prefix + '/library', json={'action': 'move'})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertFalse(self.artifact.exists())
+            detail = self.client.get(self.prefix).json()
+            self.assertEqual(detail['artifacts'][0]['name'], self.artifact.name)
+            self.assertFalse(detail['artifacts'][0]['in_output'])
+            self.assertEqual(self.client.get(self.prefix + '/artifacts/' + self.artifact.name).content, b'lora fixture')
+            self.assertEqual(self.client.post(self.prefix + '/comparison/prepare', json=self.request).status_code, 200)
+            self.assertEqual(self.client.post(self.prefix + '/library', json={'action': 'move'}).status_code, 200)
+
+    def test_move_does_not_remove_any_original_when_a_destination_conflicts(self):
+        second = self.artifact.with_name('example-000001.safetensors')
+        second.write_bytes(b'epoch')
+        target = self.models / 'loras' / self.library_name
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b'keep user file')
+        response = self.client.post(self.prefix + '/library', json={'action': 'move'})
+        self.assertEqual(response.status_code, 409)
+        self.assertTrue(second.exists())
+        self.assertTrue(self.artifact.exists())
+        self.assertEqual(target.read_bytes(), b'keep user file')
+
+    def test_moved_library_symlink_is_not_served_or_used_for_comparison(self):
+        self.client.post(self.prefix + '/library', json={'action': 'move'})
+        target = self.models / 'loras' / self.library_name
+        target.unlink()
+        target.symlink_to(self.config)
+        self.assertEqual(self.client.get(self.prefix + '/artifacts/' + self.artifact.name).status_code, 404)
+        self.assertEqual(self.client.post(self.prefix + '/comparison/prepare', json=self.request).status_code, 400)
+
+    def test_all_checkpoints_have_independent_branches_and_labeled_ordered_results(self):
+        names = ['example-000010.safetensors', 'example-000002.safetensors', self.artifact.name]
+        for name in names[:-1]:
+            self.artifact.with_name(name).write_bytes(name.encode())
+        library = [f'ControlPilot/{self.run["id"]}/{name}' for name in names]
+        self.registry['LoraLoader']['input']['required']['lora_name'] = [library]
+        request = dict(prompt='portrait', seed=123, all_checkpoints=True)
+        def remote(method, path, **kwargs):
+            if path == 'object_info':
+                return self.registry
+            self.workflow = kwargs['json']['prompt']
+            return {'prompt_id': 'grid'}
+        with patch('apps.Portal.services.training_api.comfy', side_effect=remote):
+            response = self.client.post(self.prefix + '/comparison', json=request)
+        self.assertEqual(response.status_code, 200, response.text)
+        loaders = [node for node in self.workflow.values() if node['class_type'] == 'LoraLoader']
+        self.assertEqual([node['inputs']['lora_name'] for node in loaders], [library[1], library[0], library[2]])
+        for node in loaders:
+            self.assertEqual(node['inputs']['model'], ['1', 0])
+        samplers = [node for node in self.workflow.values() if node['class_type'] == 'KSampler']
+        self.assertEqual(len(samplers), 4)
+        self.assertEqual({node['inputs']['seed'] for node in samplers}, {123})
+        outputs = {key: {'images': [{'filename': key + '.png'}]} for key in ('15', '25', '35', '45')}
+        history = {'grid': {'status': {'completed': True}, 'outputs': outputs}}
+        with patch('apps.Portal.services.training_api.comfy', return_value=history):
+            result = self.client.get(self.prefix + '/comparison').json()
+        self.assertEqual(result['status'], 'succeeded')
+        self.assertEqual([image['label'] for image in result['images']],
+                         ['Without LoRA', names[1], names[0], names[2]])
+
     def test_comparison_rejects_traversal_and_symlinked_artifacts(self):
         secret = self.root / 'outside.safetensors'
         secret.write_bytes(b'outside the run')

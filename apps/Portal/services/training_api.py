@@ -5,6 +5,7 @@ import os
 import shutil
 import stat
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -14,12 +15,16 @@ from pydantic import BaseModel
 from . import gpu_guard
 from .training_timing import timing
 from .guided_training import GuidedTraining, TrainingRequest
-from .lora_comparison import ComparisonRequest, comfy, graph, result_images
+from .lora_comparison import ComparisonRequest, checkpoint_order, comparison_outputs, comfy, graph, result_images
 from .training_runs import TrainingRuns, under, write_json, now
 
 
 class QueueRequest(BaseModel):
     paused: bool
+
+
+class LibraryRequest(BaseModel):
+    action: Literal['copy', 'move'] = 'copy'
 
 
 def create_router(workspace, models, resolve_dataset, resolve_config, model_name, legacy_conflicts):
@@ -42,12 +47,25 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
     def ready():
         queue.start()
 
-    def artifacts(run):
+    def artifact_paths(run):
         output = under(workspace / 'outputs', Path(run['output_dir']))
-        if not output.is_dir():
-            return []
-        return [{'name': path.name, 'size_bytes': path.stat().st_size}
-                for path in sorted(output.glob('*.safetensors')) if path.is_file() and not path.is_symlink()]
+        library = under(models, models / 'loras/ControlPilot' / run['id'])
+        paths = {}
+        for name in run.get('library_files', []):
+            path = library / Path(name).name
+            if name == path.relative_to(models / 'loras').as_posix() and not path.is_symlink() and path.is_file():
+                paths[path.name] = under(library, path)
+        for path in output.glob('*.safetensors'):
+            if not path.is_symlink() and path.is_file():
+                paths[path.name] = under(output, path)
+        return paths
+
+    def artifacts(run):
+        paths = artifact_paths(run)
+        final_names = {run['spec']['output_name'] + '.safetensors', Path(run['output_dir']).name + '.safetensors'}
+        return [dict(name=name, size_bytes=paths[name].stat().st_size,
+                     in_output=paths[name].parent == Path(run['output_dir']))
+                for name in sorted(paths, key=lambda name: (name in final_names, checkpoint_order(name)))]
 
     def public(run, detail=False):
         data = {key: value for key, value in run.items() if key not in {'template', 'dataset_fingerprint', 'process_identity'}}
@@ -100,7 +118,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             if not selected:
                 raise HTTPException(404, 'Checkpoint not found')
             filename = selected['name']
-            path = under(workspace / 'outputs', Path(run['output_dir']) / filename)
+            path = artifact_paths(run)[filename]
             try:
                 fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
             except OSError:
@@ -178,7 +196,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         if selected is None or run['status'] != 'succeeded':
             raise HTTPException(400, 'Select a saved artifact from a successful training run')
         filename = selected['name']
-        source = under(workspace / 'outputs', Path(run['output_dir']) / filename)
+        source = artifact_paths(run)[filename]
         target_dir = under(models, models / 'loras' / 'ControlPilot' / run['id'])
         target_dir.mkdir(parents=True, exist_ok=True)
         target = under(target_dir, target_dir / filename)
@@ -200,10 +218,13 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             finally:
                 if created:
                     temporary.unlink(missing_ok=True)
-        return target.relative_to(models / 'loras').as_posix()
+        name = target.relative_to(models / 'loras').as_posix()
+        run['library_files'] = sorted(set(run.get('library_files', []) + [name]))
+        queue.save(run)
+        return name
 
     @router.post('/runs/{run_id}/library')
-    def publish_run(run_id: str):
+    def publish_run(run_id: str, req: LibraryRequest = LibraryRequest()):
         ready()
         with queue.lock:
             run = queue.get(run_id)
@@ -212,7 +233,12 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
                 raise HTTPException(400, 'No trained files are available')
             run['library_files'] = names
             queue.save(run)
-            return {'files': names, 'destination': str(models / 'loras/ControlPilot' / run_id)}
+            # Copy and validate every destination before removing any originals.
+            if req.action == 'move':
+                for item in artifacts(run):
+                    if item['in_output']:
+                        artifact_paths(run)[item['name']].unlink()
+            return {'files': names, 'action': req.action, 'destination': str(models / 'loras/ControlPilot' / run_id)}
 
     def comparison_file(run_id):
         return under(queue.directory(run_id), queue.directory(run_id) / 'comparison.json')
@@ -222,10 +248,15 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         ready()
         with queue.lock:
             run = queue.get(run_id)
-            name = publish_lora(run, req.artifact)
+            selected = [item['name'] for item in artifacts(run)] if req.all_checkpoints else [req.artifact]
+            if not selected or any(name is None for name in selected):
+                raise HTTPException(400, 'Select a checkpoint or compare all checkpoints')
+            if len(selected) > 64:
+                raise HTTPException(400, 'Compare a single checkpoint for runs with more than 64 saved files')
+            names = [publish_lora(run, name) for name in selected]
             # Refresh after publishing: loader dropdowns are the runtime source of truth.
             registry = comfy('GET', 'object_info')
-            prompt = graph(run, req, name, registry)
+            prompt = graph(run, req, names, registry)
             path = under(queue.directory(run_id), queue.directory(run_id) / 'comparison-workflow.json')
             write_json(path, prompt)
             return {'workflow': prompt}
@@ -252,14 +283,15 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
                 return data
             history = comfy('GET', 'history/' + data['prompt_id']).get(data['prompt_id'])
             if history:
-                data['images'] = result_images(history)
+                data['images'] = result_images(history, data.get('outputs'))
+                expected_count = len(data.get('outputs', [])) or 2
                 status = history.get('status', {})
                 if status.get('status_str') == 'error':
                     data.update(status='failed', error='ComfyUI generation failed. Inspect its execution log.')
                 elif status.get('completed'):
-                    data.update(status='succeeded' if len(data['images']) == 2 else 'failed')
-                    if len(data['images']) != 2:
-                        data['error'] = 'ComfyUI completed without both comparison images.'
+                    data.update(status='succeeded' if len(data['images']) == expected_count else 'failed')
+                    if len(data['images']) != expected_count:
+                        data['error'] = 'ComfyUI completed without all comparison images.'
             else:
                 jobs = comfy('GET', 'queue')
                 running = [item[1] for item in jobs.get('queue_running', [])]
@@ -293,7 +325,8 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             if blockers:
                 raise HTTPException(409, ' '.join(blockers))
             prompt = prepare_comparison(run_id, req)['workflow']
-            state = dict(status='submitting', created_at=now(), request=req.model_dump(), images=[])
+            state = dict(status='submitting', created_at=now(), request=req.model_dump(), images=[],
+                         outputs=comparison_outputs(prompt))
             write_json(comparison_file(run_id), state)
             try:
                 result = comfy('POST', 'prompt', json={'prompt': prompt, 'client_id': 'controlpilot-' + run_id})

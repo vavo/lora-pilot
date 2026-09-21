@@ -28,7 +28,7 @@ Datasets accepts ZIP archives containing images and optional matching captions. 
 
 When captions are missing, **Review captions** opens the selected collection in Caption images. A fully captioned collection offers **Train a LoRA**, carrying the dataset into Guided training. **Manage** keeps rename and delete actions separate from that next step. You can also create an empty dataset and add images through the existing captioning workspace.
 
-Guided training brings SDXL and FLUX.1 dev into the same setup flow. Choose a dataset, name the LoRA, and select a profile. A persistent queue and history keep the experiment available after a restart, while the result screen lets you copy checkpoints into the library and compare the LoRA against its base model. Read the [TrainPilot guide](../components/trainpilot.md) for the complete workflow.
+Guided training brings SDXL and FLUX.1 dev into the same setup flow. Choose a dataset, name the LoRA, and select a profile. A persistent queue and history keep the experiment available after a restart, while the result screen lets you move or copy checkpoints into the library and compare their progress against the base model. Read the [TrainPilot guide](../components/trainpilot.md) for the complete workflow.
 
 ## Connect model access without losing your place
 
@@ -54,7 +54,7 @@ Search the full history by LoRA or dataset name, filter by model family or statu
 
 The selected run shows elapsed time from launch, including preparation. Startup and cache preparation have their own stage labels. A remaining-time estimate appears only after enough recent trainer progress is available; it disappears when the progress becomes stale. Treat it as an estimate, since checkpoint saves and changing workload conditions can affect the finish time.
 
-A successful run shows saved files and their location. **Download** saves an individual checkpoint to your computer while keeping the workspace copy. **Copy to LoRA library** makes copies under `/workspace/models/loras/ControlPilot/<run-id>` while preserving the originals. **Try my LoRA** sends a native-node workflow to ComfyUI and displays images generated with the same prompt and seed, with and without the chosen LoRA. You can also open the prepared graph in ComfyUI without generating immediately.
+A successful run shows saved files and their location. **Download** saves an individual checkpoint to your computer while keeping the workspace copy. **Move to LoRA library** relocates checkpoints under `/workspace/models/loras/ControlPilot/<run-id>`, keeping downloads and comparisons available. **Copy to LoRA library** also preserves the originals. **Try my LoRA** displays a no-LoRA baseline followed by all saved checkpoints in training order, using the same prompt and seed. A single-checkpoint option is available for a smaller comparison. You can also open the prepared graph in ComfyUI without generating immediately.
 
 A failed or stopped run keeps its status and logs rather than showing a success screen. Any saved checkpoints remain in its output directory and can be downloaded after the run stops. Recognized failures offer an explanation and a relevant next action, such as checking Hugging Face access or opening Storage. Expand **Technical details** to inspect the underlying message. For model families or controls outside these guided recipes, open the relevant trainer described in the [training workflows guide](training-workflows.md).
 

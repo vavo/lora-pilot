@@ -12,9 +12,68 @@ class TrainPilotFrontendTests(unittest.TestCase):
         self.assertIn("ensure_sdxl_tokenizer()", text)
         self.assertIn('local_files_only=True', text)
         self.assertIn("from huggingface_hub import hf_hub_download", text)
-        self.assertIn("hf_hub_download(repo_id=repo_id, filename=filename)", text)
+        self.assertIn('cache_dir=os.environ["TRANSFORMERS_CACHE"]', text)
         self.assertNotIn('hf_bin="/opt/venvs/core/bin/hf"', text)
         self.assertIn("openai/clip-vit-large-patch14", text)
+
+    def test_tokenizer_download_is_visible_to_offline_validation(self):
+        import os
+        import subprocess
+        import sys
+
+        text = (ROOT / "apps/TrainPilot/trainpilot.sh").read_text(encoding="utf-8")
+        preflight = text.split("ensure_sdxl_tokenizer() {", 1)[1].split("\n}\n", 1)[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "huggingface_hub.py").write_text('''
+import os
+from pathlib import Path
+def hf_hub_download(repo_id, filename, cache_dir=None):
+    cache = Path(cache_dir or (Path(os.environ["HF_HOME"]) / "hub"))
+    cache.mkdir(parents=True, exist_ok=True)
+    (cache / filename).write_text("cached")
+''')
+            (root / "transformers.py").write_text('''
+import os
+from pathlib import Path
+class CLIPTokenizer:
+    @classmethod
+    def from_pretrained(cls, name, local_files_only):
+        assert local_files_only
+        cache = Path(os.environ["TRANSFORMERS_CACHE"])
+        for filename in ("vocab.json", "merges.txt", "tokenizer_config.json"):
+            if not (cache / filename).is_file():
+                raise OSError("Tokenizer missing from Transformers cache")
+''')
+            env = dict(os.environ, PYTHONPATH=str(root), PYTHON_BIN=sys.executable,
+                       HF_HOME=str(root / "hf-home"), TRANSFORMERS_CACHE=str(root / "transformers-cache"))
+            result = subprocess.run(["bash", "-c", "set -eu\ndie(){ echo \"$*\"; exit 1; }\n"
+                                     + "ensure_sdxl_tokenizer() {" + preflight
+                                     + "\n}\nensure_sdxl_tokenizer\nensure_sdxl_tokenizer"],
+                                    env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(result.stdout.count("downloading tokenizer files"), 1)
+
+    def test_sdxl_profiles_keep_vae_in_full_precision(self):
+        import os
+        import subprocess
+        import sys
+        import tomllib
+
+        script = (ROOT / "apps/TrainPilot/trainpilot.sh").read_text(encoding="utf-8")
+        overrides = script.split("      # precision override\n", 1)[1].split("      # Force PyTorch SDPA", 1)[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "effective.toml"
+            for precision in ("fp16", "bf16"):
+                with self.subTest(precision=precision):
+                    config.write_text('no_half_vae = false\n')
+                    subprocess.run(["bash", "-c", 'set -eu\nsource "$1"\nCOPIED_TOML="$2"\nprecision="$3"\n'
+                                    + overrides, "bash", str(ROOT / "apps/TrainPilot/helpers.sh"), str(config), precision],
+                                   env=dict(os.environ, PYTHON_BIN=sys.executable, SCRIPT_DIR=str(ROOT / "apps/TrainPilot")),
+                                   cwd=ROOT / "apps/TrainPilot", check=True)
+                    settings = tomllib.loads(config.read_text())
+                    self.assertTrue(settings["no_half_vae"])
+                    self.assertEqual(settings["mixed_precision"], precision)
 
     def test_move_loras_moves_only_current_run_artifacts(self):
         try:
@@ -116,7 +175,8 @@ vm.runInContext(fs.readFileSync('apps/Portal/static/js/trainpilot.js','utf8'), c
   assert.equal(get('tp-result-files').children[0].children[0].textContent,'<img onerror=bad>.safetensors');
   assert.equal(get('tp-move-loras').disabled,false);
   context.renderTpResult({...data, moved:true});
-  assert.equal(get('tp-move-loras').textContent,'Copied to LoRA library');
+  assert.equal(get('tp-move-loras').textContent,'Moved to LoRA library');
+  assert.equal(get('tp-copy-loras').disabled,true);
   assert.equal(get('tp-move-loras').disabled,true);
   assert.equal(get('tp-result-path').textContent,'/workspace/models/loras');
   vm.runInContext('tpDismissedRunId = "current"',context);

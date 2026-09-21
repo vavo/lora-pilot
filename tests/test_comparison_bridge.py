@@ -40,10 +40,11 @@ context.loadTpDatasets = () => new Promise(resolve => { complete = resolve; });
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const source = fs.readFileSync(process.argv[1], 'utf8').replace(/^import .*;\n/, '');
 let extension, loads = [], errors = [];
-const location = { hash: '', pathname: '/', search: '' };
+const initial = {'1': {class_type:'KSampler', inputs:{seed:42}}};
+const location = { hash: '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify(initial)), pathname: '/', search: '' };
 const listeners = {};
 const context = {
-  URLSearchParams, location,
+  URLSearchParams, URL, location, document:{referrer:''},
   app: { registerExtension(value) { extension = value; }, async loadApiJson(...args) { loads.push(args); } },
   window: { addEventListener(name, fn) { listeners[name] = fn; } },
   history: { replaceState() { location.hash = ''; } },
@@ -53,8 +54,8 @@ const context = {
 vm.runInNewContext(source, context);
 (async () => {
   extension.setup();
-  const graph = {'1': {class_type:'KSampler', inputs:{seed:42}}};
-  location.hash = '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify(graph));
+  // ComfyUI clears the initial fragment before the extension's graph hook.
+  location.hash = '';
   extension.afterConfigureGraph();
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(loads.length, 1);
@@ -67,6 +68,10 @@ vm.runInNewContext(source, context);
   assert.equal(loads.length, 1);
   assert.equal(errors.length, 1);
   assert.match(errors[0], /Unsupported comparison workflow/);
+  const grid = Object.fromEntries(Array.from({length:100}, (_,i) => [String(i), {class_type:'KSampler', inputs:{seed:42}}]));
+  location.hash = '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify(grid));
+  await listeners.hashchange();
+  assert.equal(loads.length, 2);
 })().catch(error => { console.error(error); process.exit(1); });
 '''
         result = subprocess.run(['node', '-e', script, str(bridge)], capture_output=True, text=True)

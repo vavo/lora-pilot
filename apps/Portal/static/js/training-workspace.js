@@ -76,7 +76,8 @@ window.trainingWorkspace = (() => {
       exit_code: run.status === 'succeeded' ? 0 : run.exit_code,
       run: { dataset: run.spec.dataset_name, profile: run.spec.profile, finished_at: run.finished_at,
         stopped: ['stopped', 'cancelled', 'interrupted'].includes(run.status) },
-      artifacts: run.artifacts || [], moved: !!run.library_files?.length, move_available: run.status === 'succeeded' && !!run.artifacts?.length,
+      artifacts: run.artifacts || [], moved: !!run.artifacts?.length && run.artifacts.every(file => file.in_output === false),
+      move_available: run.status === 'succeeded' && !!run.artifacts?.length,
       output_dir: run.output_dir, lora_destination: run.library_destination || 'Shared LoRA library',
       lines: run.lines || [] };
   }
@@ -137,8 +138,7 @@ window.trainingWorkspace = (() => {
     const signature = JSON.stringify(run.artifacts || []);
     if (choices.dataset.signature !== signature || choices.dataset.run !== run.id) {
       choices.dataset.signature = signature; choices.dataset.run = run.id;
-      choices.replaceChildren(...(run.artifacts || []).map(file => new Option(file.name, file.name)));
-      if (choices.options.length) choices.selectedIndex = choices.options.length - 1;
+      choices.replaceChildren(new Option('All checkpoints · baseline first', ''), ...(run.artifacts || []).map(file => new Option(file.name, file.name)));
     }
   }
   function renderComparison(data) {
@@ -147,13 +147,13 @@ window.trainingWorkspace = (() => {
       $('tp-compare-prompt').value = data.request?.prompt || '';
       $('tp-compare-seed').value = data.request?.seed ?? 31337;
       $('tp-compare-strength').value = data.request?.strength ?? 1;
-      if (data.request?.artifact) $('tp-compare-artifact').value = data.request.artifact;
+      $('tp-compare-artifact').value = data.request?.all_checkpoints ? '' : (data.request?.artifact || '');
     }
     const active = ['queued', 'running', 'submitting', 'unknown'].includes(data.status);
     $('tp-compare-generate').disabled = comparisonBusy || active || !current?.artifacts?.length;
     $('tp-compare-open').disabled = comparisonBusy || !current?.artifacts?.length;
     $('tp-compare-reset').hidden = !['unknown', 'submitting', 'unavailable'].includes(data.status);
-    $('tp-compare-status').textContent = data.error || comparisonError || ({ none: '', queued: 'Comparison queued in ComfyUI…', running: 'Generating both comparison images…', succeeded: 'Same prompt and seed. Only the LoRA branch changes.' }[data.status] ?? data.status);
+    $('tp-compare-status').textContent = data.error || comparisonError || ({ none: '', queued: 'Comparison queued in ComfyUI…', running: 'Generating the baseline and checkpoint images…', succeeded: 'Same prompt and seed. Baseline first, then each checkpoint in training order.' }[data.status] ?? data.status);
     const images = $('tp-compare-images');
     const signature = JSON.stringify(data.images || []);
     if (images.dataset.signature === signature) return;
@@ -263,14 +263,16 @@ window.trainingWorkspace = (() => {
     try { await api(screen, `/runs/${current.id}/cancel`, {}); refresh(); }
     catch (error) { if (!screen.active) return; showTpError(error.message || String(error)); }
   }
-  async function publish() {
+  async function publish(action = 'move') {
     const screen = trainingScreen;
     if (!screen?.active) return;
     if (!current || tpMoving) return;
-    tpMoving = true; renderTpResult(tpLastData);
+    const id = current.id;
+    tpMoving = action; renderTpResult(tpLastData);
     try {
-      await api(screen, `/runs/${current.id}/library`, {});
-      $('tp-move-status').textContent = 'Copied to your library. Original run files remain saved.'; refresh();
+      await api(screen, `/runs/${id}/library`, {action});
+      if (current?.id !== id) return;
+      $('tp-move-status').textContent = action === 'move' ? 'Moved to your library. Downloads and comparisons still work here.' : 'Copied to your library. Original run files remain saved.'; refresh();
     } catch (error) { if (!screen.active) return; $('tp-move-status').textContent = error.message || String(error); }
     finally { if (!screen.active) return; tpMoving = false; if (tpLastData) renderTpResult(tpLastData); }
   }
@@ -278,13 +280,14 @@ window.trainingWorkspace = (() => {
     const screen = trainingScreen;
     if (!screen?.active) return;
     if (!current || comparisonBusy) return;
-    const request = { artifact: $('tp-compare-artifact').value, prompt: $('tp-compare-prompt').value.trim(), seed: Number($('tp-compare-seed').value), strength: Number($('tp-compare-strength').value) };
+    const artifact = $('tp-compare-artifact').value;
+    const request = { artifact: artifact || null, all_checkpoints: !artifact, prompt: $('tp-compare-prompt').value.trim(), seed: Number($('tp-compare-seed').value), strength: Number($('tp-compare-strength').value) };
     if (!request.prompt) { $('tp-compare-status').textContent = 'Enter a prompt, including your trigger word.'; $('tp-compare-prompt').focus(); return; }
     const id = current.id; comparisonError = ''; comparisonBusy = true; renderComparison({status: 'submitting'});
     try {
       const result = await api(screen, `/runs/${id}/comparison${open ? '/prepare' : ''}`, request);
       if (open) {
-        window.pendingComfyWorkflow = result.workflow;
+        window.pendingComfyWorkflow = {workflow: result.workflow, runId: id, token: crypto.randomUUID()};
         window.loadSection('comfyui');
       } else if ($('tp-page') && current.id === id) {
         renderComparison(result);
@@ -346,6 +349,7 @@ window.trainingWorkspace = (() => {
     };
     $('tp-compare-generate').onclick = () => compare(false);
     $('tp-compare-open').onclick = () => compare(true);
+    $('tp-copy-loras').onclick = () => publish('copy');
     try {
       const config = await screen.json('/api/trainpilot/toml');
       if (!screen.active || !$('tp-page')) return;

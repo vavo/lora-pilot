@@ -20,7 +20,7 @@ Use Pause queue to hold the next launch, Cancel to remove a waiting run, or Stop
 
 Each run keeps its settings and logs in persistent history, with a unique output directory. View run opens its details. Use settings prepares a new experiment from that configuration. Repeat run queues it again against the current dataset. A ControlPilot restart preserves history, marks previously running jobs interrupted, and pauses pending work for inspection.
 
-After success, **Copy to LoRA library** preserves the original checkpoints while making copies available to ComfyUI. **Try my LoRA** generates the same prompt and seed with and without the selected LoRA and shows both images. You can also open the prepared graph in ComfyUI without queueing it. Read the [TrainPilot guide](../components/trainpilot.md) for profile values, storage paths, and recovery behavior.
+After success, **Move to LoRA library** relocates checkpoints into the shared library while keeping them accessible from the run. **Copy to LoRA library** preserves the originals as well. **Try my LoRA** generates a grid with a no-LoRA baseline followed by every saved checkpoint in training order, all using the same prompt and seed. You can also select a single checkpoint for a two-image comparison. You can also open the prepared graph in ComfyUI without queueing it. Read the [TrainPilot guide](../components/trainpilot.md) for profile values, storage paths, and recovery behavior.
 
 ## Automate the guided queue
 

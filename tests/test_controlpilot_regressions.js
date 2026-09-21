@@ -155,3 +155,23 @@ test('View run opens configuration and logs for queued runs without starting ano
   assert.ok(focused && scrolled && refreshed);assert.equal(control.disabled,false);
   assert.match(node('tp-run-config').textContent,/Loading/);
 });
+
+test('Comfy workflow stays pending until its own frame confirms loading and listeners are cleaned up',()=>{
+  const {node,document}=dom(), listeners={}, cleanups=[], timers=[];
+  const handoff={runId:'a'.repeat(32),token:'handoff-token',workflow:{}};
+  const frame=node('comfy-iframe');frame.src='https://example.test/comfy/';frame.contentWindow={};
+  const page=vm.createContext({URL,document,window:{pendingComfyWorkflow:handoff,
+    addEventListener(type,fn){listeners[type]=fn;},removeEventListener(type,fn){assert.equal(listeners[type],fn);delete listeners[type];}},
+    screen:{onCleanup(fn){cleanups.push(fn);},timeout(fn){timers.push(fn);}},iframeEl:frame});
+  vm.runInContext(extract('comfyui','  const handoff = window.pendingComfyWorkflow;','\n  const toggleBtn'),page);
+  const event={source:frame.contentWindow,origin:'https://example.test',data:{type:'controlpilot-comparison',token:'handoff-token',error:null}};
+  listeners.message({...event,source:{}});
+  listeners.message({...event,origin:'https://untrusted.test'});
+  listeners.message({...event,data:{...event.data,token:'old-handoff'}});
+  assert.equal(page.window.pendingComfyWorkflow,handoff);
+  listeners.message(event);
+  assert.equal(page.window.pendingComfyWorkflow,null);
+  assert.match(node('comfy-workflow-message').textContent,/workflow loaded/);
+  timers[0]();assert.match(node('comfy-workflow-message').textContent,/workflow loaded/);
+  cleanups[0]();assert.equal(listeners.message,undefined);
+});
