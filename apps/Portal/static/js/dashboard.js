@@ -52,7 +52,13 @@ async function refreshDashboardTelemetry() {
     if (gpuSummary) gpuSummary.textContent = data.gpus?.length
       ? data.gpus.map(g => `${g.name}${g.mem_total ? ` · ${formatBytes(g.mem_total)}` : ""}`).join(", ") : "No GPU detected";
     const disk = data.disks?.at(-1);
-    if (storageSummary) storageSummary.textContent = disk?.total > 0 ? `${formatBytes(disk.free)} free` : "Unavailable";
+    if (storageSummary) {
+      storageSummary.textContent = typeof disk?.free === "number"
+        ? `${disk.estimated ? "About " : ""}${formatBytes(disk.free)} free`
+        : disk?.total > 0 ? `${formatBytes(disk.total)} capacity · usage unavailable`
+        : typeof disk?.used === "number" ? `${formatBytes(disk.used)} used · capacity unavailable` : "Capacity unavailable";
+      storageSummary.title = disk?.note || "";
+    }
     const hostEl = document.getElementById("t-host");
     const uptimeEl = document.getElementById("t-uptime");
     if (hostEl) hostEl.textContent = data.host || "n/a";
@@ -152,7 +158,7 @@ function renderDisks(data) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  if (typeof data.workspace_data_used_bytes === "number") {
+  if (typeof data.workspace_data_used_bytes === "number" && data.disks?.at(-1)?.capacity_source !== "unknown" && data.disks?.at(-1)?.capacity_source !== "configured") {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>/workspace (data)</td>
@@ -164,8 +170,19 @@ function renderDisks(data) {
 
   (data.disks || []).forEach((d) => {
     const tr = document.createElement("tr");
-    const bar = `<div class="bar-wrap"><div class="bar-fill disk-bar"></div></div>`;
-    tr.innerHTML = `<td>${d.mount}</td><td>${formatBytes(d.used)} / ${formatBytes(d.total)} (${d.pct}%)</td><td>${bar}</td>`;
+    const mount = document.createElement("td");
+    mount.textContent = d.mount;
+    const usage = document.createElement("td");
+    const used = typeof d.used === "number" ? formatBytes(d.used) : "Usage unavailable";
+    usage.textContent = d.total > 0
+      ? `${used} / ${formatBytes(d.total)}${typeof d.pct === "number" ? ` (${d.estimated ? "about " : ""}${d.pct}%)` : ""}`
+      : `${used} · capacity unavailable`;
+    const detail = document.createElement("td");
+    detail.className = "dash-disk-meta";
+    if (typeof d.pct === "number") detail.innerHTML = '<div class="bar-wrap"><div class="bar-fill disk-bar"></div></div>';
+    else detail.textContent = d.note || "Storage information unavailable";
+    tr.title = d.note || "";
+    tr.append(mount, usage, detail);
     const diskBar = tr.querySelector(".disk-bar");
     if (diskBar) diskBar.style.width = `${d.pct}%`;
     tbody.appendChild(tr);

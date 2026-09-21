@@ -3,7 +3,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from fastapi import HTTPException
 from apps.Portal.services.storage import Storage
 
@@ -40,6 +40,17 @@ class StorageTests(unittest.TestCase):
 
     def ids(self):
         return [item['id'] for item in self.storage.inventory()['candidates']]
+
+    def test_unknown_capacity_does_not_block_reviewed_cleanup(self):
+        self.storage.measure_usage = lambda path: 52 * 1024**3
+        with patch('apps.Portal.services.storage_capacity.shared_workspace', return_value=True), \
+                patch.dict(os.environ, WORKSPACE_STORAGE_CAPACITY_GB=''):
+            data = self.storage.inventory()
+            self.assertIsNone(data['disk']['total'])
+            self.assertEqual(data['disk']['used'], 52 * 1024**3)
+            self.assertFalse(data['warnings'])
+            plan = self.storage.preview([data['candidates'][0]['id']])
+            self.assertTrue(plan['token'])
 
     def test_inventory_and_explicit_selection_preserve_everything_else(self):
         data = self.storage.inventory()

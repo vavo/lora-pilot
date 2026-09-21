@@ -55,6 +55,7 @@ try:
     from .services.activity import create_router as create_activity_router, progress as activity_progress
     from .services.model_downloads import ModelPullQueue
     from .services.storage import create_router as create_storage_router
+    from .services.storage_capacity import workspace_capacity
     from .services import gpu_guard
 except (ImportError, ValueError):
     try:
@@ -69,6 +70,7 @@ except (ImportError, ValueError):
         from services.activity import create_router as create_activity_router, progress as activity_progress
         from services.model_downloads import ModelPullQueue
         from services.storage import create_router as create_storage_router
+        from services.storage_capacity import workspace_capacity
         from services import gpu_guard
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
@@ -82,6 +84,7 @@ except (ImportError, ValueError):
         from apps.Portal.services.activity import create_router as create_activity_router, progress as activity_progress
         from apps.Portal.services.model_downloads import ModelPullQueue
         from apps.Portal.services.storage import create_router as create_storage_router
+        from apps.Portal.services.storage_capacity import workspace_capacity
         from apps.Portal.services import gpu_guard
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
@@ -360,11 +363,14 @@ class HfTokenRequest(BaseModel):
 
 class DiskUsage(BaseModel):
     mount: str
-    total: int
-    used: int
-    free: int
-    pct: int
+    total: Optional[int]
+    used: Optional[int]
+    free: Optional[int]
+    pct: Optional[int]
     alert: bool
+    capacity_source: str = "filesystem"
+    estimated: bool = False
+    note: str = ""
 
 
 class GPUInfo(BaseModel):
@@ -2958,7 +2964,7 @@ def _du_bytes(path: str) -> int:
     raise RuntimeError("du failed or timed out")
 
 
-def workspace_data_used_bytes(path: str) -> int:
+def workspace_data_used_bytes(path: str) -> Optional[int]:
     """
     Cached du result to keep /api/telemetry from turning into a space heater.
     """
@@ -2971,10 +2977,10 @@ def workspace_data_used_bytes(path: str) -> int:
         _WS_DU_CACHE["val"] = val
         return int(val)
     except Exception:
-        # Best effort: return last known value if available, otherwise 0.
+        # Preserve an unavailable measurement instead of reporting an empty workspace.
         if _WS_DU_CACHE["val"] is not None:
             return int(_WS_DU_CACHE["val"])
-        return 0
+        return None
 
 def disk_usage(path: str) -> DiskUsage:
     # Ask df about the path itself. This preserves a distinct /workspace
@@ -3255,8 +3261,7 @@ def telemetry():
     root_du = disk_usage("/")
     disks = [root_du]
 
-    # Always include a /workspace entry using raw stats
-    # Always include a /workspace entry using mount-aware stats
+    # Read the mount itself; shared filesystem totals are filtered below.
     try:
         WORKSPACE_ROOT.mkdir(parents=True, exist_ok=True)
         disks.append(disk_usage(str(WORKSPACE_ROOT)))
@@ -3264,10 +3269,10 @@ def telemetry():
         disks.append(
             DiskUsage(
                 mount=str(WORKSPACE_ROOT),
-                total=0,
-                used=0,
-                free=0,
-                pct=0,
+                total=None,
+                used=None,
+                free=None,
+                pct=None,
                 alert=False,
             )
         )
@@ -3278,7 +3283,9 @@ def telemetry():
     try:
         ws_data_used = workspace_data_used_bytes(ws_path)
     except Exception:
-        ws_data_used = 0
+        ws_data_used = None
+
+    disks[-1] = DiskUsage(**workspace_capacity(ws_path, disks[-1].model_dump(), ws_data_used))
 
     gpus = get_gpus()
     return Telemetry(
@@ -3954,7 +3961,7 @@ def _storage_conflicts():
     return _legacy_training_conflicts() + gpu_guard.conflicts() + (['Service update in progress'] if updates else [])
 
 
-app.include_router(create_storage_router(WORKSPACE_ROOT, MODELS_DIR, _training_queue, _model_downloads, _storage_conflicts))
+app.include_router(create_storage_router(WORKSPACE_ROOT, MODELS_DIR, _training_queue, _model_downloads, _storage_conflicts, workspace_data_used_bytes))
 
 
 

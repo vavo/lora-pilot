@@ -18,6 +18,12 @@ If you only care about the knobs that usually matter:
 | Diffusion Pipe behavior | `DIFFPIPE_CONFIG`, `DIFFPIPE_NUM_GPUS`, `DIFFPIPE_LOGDIR`, `DIFFPIPE_TENSORBOARD` |
 | Media/Tag sync behavior | `MEDIAPILOT_SYNC_ON_BOOT`, `MEDIAPILOT_FORCE_ENV_DEFAULTS`, `TAGPILOT_SYNC_ON_BOOT` |
 
+## Workspace storage capacity
+
+ControlPilot suppresses shared network filesystem totals because they can describe the storage cluster rather than your allocation. Without a known allocation, Dashboard and Storage show measured workspace usage and mark capacity as unavailable. Container disk statistics remain separate.
+
+Set `WORKSPACE_STORAGE_CAPACITY_GB` to your workspace allocation when the provider does not expose it through filesystem statistics. The value uses 1,073,741,824 bytes per GB, matching ControlPilot’s display units. For example, `WORKSPACE_STORAGE_CAPACITY_GB=100` displays a 100 GB allocation. Remaining space is an estimate based on cached workspace file sizes, not a provider quota reading; snapshots, open deleted files, and other provider accounting can differ. Update this setting when resizing the volume. Leave it unset for a dedicated filesystem whose reported capacity is already correct.
+
 ## Inspect Effective Values
 
 ```bash

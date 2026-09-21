@@ -1,5 +1,7 @@
 Unreleased (September 21st 2026)
 
+Dashboard and Storage no longer present a shared network filesystem or RunPod host bind mount as the workspace allocation. Unknown volume capacity is labeled explicitly; an optional WORKSPACE_STORAGE_CAPACITY_GB setting provides a configured capacity with estimated remaining space. Failed usage measurements no longer appear as an empty workspace.
+
 Training results now offer distinct Move and Copy actions for the LoRA library. Moving verifies all destinations before removing originals, and moved checkpoints remain available for downloads and comparisons. Try my LoRA defaults to a labeled grid with the base model first, each saved checkpoint in training order, and the final file. The ComfyUI handoff captures its workflow before initial graph restoration clears the URL fragment and confirms loading, with a manual download fallback.
 
 SDXL tokenizer preflight now downloads into the cache used by Transformers. SDXL profiles keep VAE encoding in full precision to prevent invalid latents seen in Quick Test runs.

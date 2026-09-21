@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from .gpu_guard import LAUNCH_LOCK
 from .training_runs import ACTIVE
+from .storage_capacity import workspace_capacity
 
 
 class Selection(BaseModel):
@@ -48,10 +49,11 @@ def parent_fd(root, relative):
 
 
 class Storage:
-    def __init__(self, workspace, models, training, downloads, conflicts):
+    def __init__(self, workspace, models, training, downloads, conflicts, measure_usage=lambda path: None):
         self.root = Path(workspace).resolve()
         self.models = Path(models).resolve()
         self.training, self.downloads, self.conflicts = training, downloads, conflicts
+        self.measure_usage = measure_usage
         self.plans = {}
         self.lock = RLock()
 
@@ -134,7 +136,8 @@ class Storage:
                     reclaim_bytes=sum(f['reclaim_bytes'] for f in files), fingerprint=fingerprint, files=files))
         disk = shutil.disk_usage(self.root)
         return dict(categories=[dict(name=name, size_bytes=size) for name, size in totals.items()],
-                    disk=dict(total=disk.total, free=disk.free, used=disk.used),
+                    disk=workspace_capacity(self.root, dict(total=disk.total, free=disk.free, used=disk.used),
+                                            self.measure_usage(str(self.root))),
                     warnings=list(dict.fromkeys(warnings)), candidates=candidates)
 
     @staticmethod
@@ -209,9 +212,9 @@ class Storage:
                         message='Selected files removed. Original datasets, shared models and run history were kept.')
 
 
-def create_router(workspace, models, training, downloads, conflicts):
+def create_router(workspace, models, training, downloads, conflicts, measure_usage=lambda path: None):
     router = APIRouter(prefix='/api/storage')
-    storage = Storage(workspace, models, training, downloads, conflicts)
+    storage = Storage(workspace, models, training, downloads, conflicts, measure_usage)
 
     @router.get('')
     def inventory():

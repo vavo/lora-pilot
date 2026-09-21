@@ -31,7 +31,11 @@ window.storagePage = (() => {
     try{
       const result=await api(screen,'');if(!screen.active || !$('storage-page'))return;
       data=result;selected=new Set();plan=null;
-      $('storage-disk').textContent=`${bytes(data.disk.free)} free of ${bytes(data.disk.total)}`;
+      $('storage-disk').textContent=typeof data.disk.free==='number'
+        ? `${data.disk.estimated?'About ':''}${bytes(data.disk.free)} free of ${bytes(data.disk.total)}`
+        : data.disk.total>0 ? `${bytes(data.disk.total)} capacity · usage unavailable`
+        : `${typeof data.disk.used==='number'?`${bytes(data.disk.used)} used · `:''}capacity unavailable`;
+      $('storage-disk').title=data.disk.note || '';
       $('storage-categories').replaceChildren(...data.categories.map(item=>{const card=node('div','','journey-surface');card.append(node('strong',item.name),node('p',bytes(item.size_bytes)));return card;}));
       $('storage-status').textContent=[message,...data.warnings].filter(Boolean).join(' ') || 'Scan complete. Review items below to choose what to remove.';
       busy=false;render();
