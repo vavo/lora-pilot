@@ -180,3 +180,19 @@
   .tp-history-actions { flex-shrink:1; }
   .tp-compare-fields, .tp-compare-images { grid-template-columns:1fr; }
 }
+
+/* Keep theme controls reachable while the navigation list scrolls. */
+.theme-icon { display:none; width:20px; height:20px; flex-shrink:0; }
+@media (min-width:769px) {
+  .sidebar.compact .theme-label { display:none; }
+  .sidebar.compact .theme-icon { display:block; }
+  .sidebar.compact .theme-segments button { display:flex; align-items:center; justify-content:center; min-height:40px; }
+  .sidebar.compact #theme-toggle { padding:3px; }
+}
+@media (max-width:768px) {
+  .sidebar, .sidebar.compact { width:260px; min-width:260px; max-width:260px; height:100dvh; padding:80px 18px max(18px, env(safe-area-inset-bottom)); }
+  .sidebar.compact .nav a { justify-content:flex-start; padding:9px 12px; }
+  .sidebar.compact .nav a .nav-label { display:inline; }
+  .sidebar .theme-segments button { min-height:44px; }
+  .sidebar.compact #theme-toggle { padding:3px; }
+}

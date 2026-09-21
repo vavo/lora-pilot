@@ -28,6 +28,18 @@ function createActivityTracker(storage, now = Date.now) {
 window.workspaceStatus = (() => {
   const $ = id => document.getElementById(id);
   let tracker, timer, epoch = 0, last = [], notices = [], signature = '';
+  let minimized = false, preferenceLoaded = false;
+  const preferenceKey = 'lora-pilot.workspace-minimized.v1';
+  function setMinimized(value, save = true) {
+    minimized = value;
+    $('workspace-bar').hidden = minimized;
+    $('workspace-restore').hidden = !minimized;
+    $('workspace-activity').open = false;
+    if (save) {
+      try { window.localStorage.setItem(preferenceKey, String(minimized)); } catch {}
+      (minimized ? $('workspace-restore') : $('workspace-minimize')).focus({preventScroll:true});
+    }
+  }
   const text = (tag, value, className = '') => {
     const el = document.createElement(tag); el.textContent = value; el.className = className; return el;
   };
@@ -46,6 +58,12 @@ window.workspaceStatus = (() => {
     const pct = Number.isFinite(lead?.progress) ? ` · ${lead.progress}%` : '';
     $('workspace-activity-label').textContent = message || (active.length
       ? `${active.length} active · ${lead.label}${pct}` : 'Activity · Idle');
+    const restore = $('workspace-restore');
+    restore.dataset.busy = String(active.length > 0);
+    restore.dataset.attention = String(notices.length > 0);
+    const noticeSummary = notices[0] ? ` · ${notices[0].label}: ${stateLabel[notices[0].state] || notices[0].state}` : '';
+    restore.title = `Show build and activity · ${$('workspace-activity-label').textContent}${noticeSummary}`;
+    restore.setAttribute('aria-label', restore.title);
     const next = JSON.stringify([items, notices, message]);
     if (signature === next) return;
     signature = next;
@@ -103,7 +121,13 @@ window.workspaceStatus = (() => {
       try { storage = window.sessionStorage; } catch { storage = {getItem:()=>null, setItem(){}}; }
       tracker = createActivityTracker(storage);
     }
-    $('workspace-bar').hidden = false;
+    if (!preferenceLoaded) {
+      try { minimized = window.localStorage.getItem(preferenceKey) === 'true'; } catch {}
+      preferenceLoaded = true;
+    }
+    setMinimized(minimized, false);
+    $('workspace-minimize').onclick = () => setMinimized(true);
+    $('workspace-restore').onclick = () => setMinimized(false);
     $('workspace-build').onclick = showDiagnostics;
     $('diagnostics-close').onclick = () => $('workspace-diagnostics').close();
     $('diagnostics-copy').onclick = async () => {
@@ -127,6 +151,7 @@ window.workspaceStatus = (() => {
   function stop() {
     epoch++; clearTimeout(timer);
     if ($('workspace-bar')) $('workspace-bar').hidden = true;
+    if ($('workspace-restore')) $('workspace-restore').hidden = true;
     if ($('workspace-diagnostics')?.open) $('workspace-diagnostics').close();
   }
   return {start, stop};

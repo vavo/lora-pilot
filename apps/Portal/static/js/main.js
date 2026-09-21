@@ -42,6 +42,8 @@ let shutdownNoticePollTimer = null;
 function closeSidebar() {
   sidebar?.classList.remove("open");
   overlay?.classList.remove("show");
+  document.body.classList.remove("navigation-open");
+  burger?.setAttribute("aria-expanded", "false");
 }
 
 function setTheme(mode) {
@@ -363,6 +365,9 @@ if (burger) {
   burger.addEventListener("click", () => {
     sidebar?.classList.toggle("open");
     overlay?.classList.toggle("show");
+    const open = !!sidebar?.classList.contains("open");
+    document.body.classList.toggle("navigation-open", open);
+    burger.setAttribute("aria-expanded", String(open));
   });
 }
 if (overlay) overlay.addEventListener("click", closeSidebar);

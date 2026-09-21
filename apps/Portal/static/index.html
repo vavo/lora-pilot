@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LoRA Pilot ControlPilot</title>
   <link rel="stylesheet" href="/css/ui.css?v=20260204d" />
-  <link rel="stylesheet" href="/css/workspace-status.css?v=20260921a" />
+  <link rel="stylesheet" href="/css/workspace-status.css?v=20260921d" />
   <style>
     :root {
       color-scheme: light;
@@ -225,14 +225,14 @@
       .shutdown-notice { justify-content: space-between; }
     }
   </style>
-  <link rel="stylesheet" href="/css/journey.css?v=20260920a" />
+  <link rel="stylesheet" href="/css/journey.css?v=20260921d" />
 </head>
 <body>
   <div class="topbar">
     <div class="topbar-brand">
       <img id="top-logo" src="/logo.svg" alt="LoRA Pilot" class="topbar-logo">
     </div>
-    <button class="burger" id="burger">&#9776;</button>
+    <button class="burger" id="burger" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false">&#9776;</button>
   </div>
   <div class="layout">
     <div class="overlay" id="overlay"></div>
@@ -321,7 +321,7 @@
             <span class="nav-label">Support</span>
           </a>
 </div></nav></div>
-<div class="sidebar-footer"><div id="theme-toggle" class="theme-segments" role="group" aria-label="Color theme"><button type="button" data-theme-choice="light" aria-pressed="true">Light</button><button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button></div>
+<div class="sidebar-footer"><div id="theme-toggle" class="theme-segments" role="group" aria-label="Color theme"><button type="button" data-theme-choice="light" aria-pressed="true" aria-label="Light" title="Light theme"><svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg><span class="theme-label">Light</span></button><button type="button" data-theme-choice="dark" aria-pressed="false" aria-label="Dark" title="Dark theme"><svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 13.1A8.5 8.5 0 0 1 10.9 3.5a8.5 8.5 0 1 0 9.6 9.6Z"/></svg><span class="theme-label">Dark</span></button></div>
       <button id="sidebar-compact-toggle" class="sidebar-compact-toggle" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M14 7l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -338,13 +338,17 @@
       </div>
       <div id="workspace-bar" class="workspace-bar" hidden>
         <div class="workspace-status-row"><button id="workspace-build" class="workspace-build" type="button" aria-label="Build identity and diagnostics">Build unknown</button>
-          <details id="workspace-activity" class="workspace-activity"><summary id="workspace-activity-label">Activity · Checking…</summary><div id="workspace-activity-list" class="workspace-activity-list"></div></details></div>
+          <details id="workspace-activity" class="workspace-activity"><summary id="workspace-activity-label">Activity · Checking…</summary><div id="workspace-activity-list" class="workspace-activity-list"></div></details>
+          <button id="workspace-minimize" class="workspace-minimize" type="button" title="Minimize build and activity" aria-label="Minimize build and activity" aria-controls="workspace-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
         <div id="workspace-notice" class="workspace-notice" role="status" hidden><span id="workspace-notice-text"></span><button id="workspace-notice-view" type="button">View task</button><button id="workspace-notice-dismiss" class="secondary" type="button">Dismiss</button></div>
       </div>
       <div id="content"></div>
     </div>
   </div>
 
+  <button id="workspace-restore" class="workspace-fab" type="button" aria-label="Show build and activity" aria-controls="workspace-bar" title="Show build and activity" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg><span class="workspace-fab-dot" aria-hidden="true"></span>
+  </button>
   <!-- Global Copilot drawer (persists across subpages) -->
   <button id="copilot-fab" class="btn primary fab-btn" title="Copilot chat">
     🤖
@@ -421,7 +425,7 @@
     <textarea id="diagnostics-summary" readonly aria-label="Sanitized support summary"></textarea>
     <p id="diagnostics-status" role="status"></p><div class="row gap-12"><button id="diagnostics-copy" type="button" disabled>Copy diagnostics</button><button id="diagnostics-close" class="secondary" type="button">Close</button></div>
   </dialog>
-  <script src="/js/workspace-status.js?v=20260921a"></script>
+  <script src="/js/workspace-status.js?v=20260921d"></script>
   <script src="/js/utils.js?v=20260921c"></script>
   <script src="/js/screen-lifecycle.js?v=20260921c"></script>
   <script src="/js/dashboard.js?v=20260921c"></script>
@@ -443,6 +447,6 @@
   <script src="/js/support.js?v=20260204d"></script>
   <script src="/js/tagpilot.js?v=20260204d"></script>
   <script src="/js/mediapilot.js?v=20260921c"></script>
-  <script src="/js/main.js?v=20260921c"></script>
+  <script src="/js/main.js?v=20260921d"></script>
 </body>
 </html>

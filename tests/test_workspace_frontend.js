@@ -99,3 +99,31 @@ test('timing labels avoid estimates when the trainer has not reported one',()=>{
   assert.equal(context.trainingTimeLabel({stage:'Preparing caches',elapsed_seconds:70,remaining_seconds:null}),'Preparing caches · 1m 10s elapsed');
   assert.match(context.trainingTimeLabel({stage:'Training',elapsed_seconds:400,remaining_seconds:90}),/about 1m 30s remaining/);
 });
+
+test('workspace minimization persists, preserves activity notices, and hides controls when locked', async()=>{
+  const preferences=storage();let activity=[{id:'job',kind:'training',state:'running',section:'dpipe',label:'Fixture training',created_at:1}];
+  const createPage=()=>{
+    const nodes=new Map();const get=id=>{
+      if(!nodes.has(id))nodes.set(id,{hidden:false,dataset:{},textContent:'',attributes:{},replaceChildren(){},append(){},focus(){},setAttribute(key,value){this.attributes[key]=value;}});
+      return nodes.get(id);
+    };
+    let nextPoll;
+    const page=vm.createContext({window:{localStorage:preferences,sessionStorage:storage()},document:{getElementById:get,createElement:get},
+      setTimeout:callback=>{nextPoll=callback;return 1;},clearTimeout(){},
+      fetchJson:async path=>path==='/api/build'?{revision:'fixture'}:{items:activity},
+    });
+    vm.runInContext(fs.readFileSync('apps/Portal/static/js/workspace-status.js','utf8'),page);
+    return {page,get,poll:()=>nextPoll()};
+  };
+  const first=createPage();first.page.window.workspaceStatus.start();await new Promise(resolve=>setImmediate(resolve));
+  first.get('workspace-minimize').onclick();assert.equal(first.get('workspace-bar').hidden,true);assert.equal(first.get('workspace-restore').hidden,false);
+  activity=[{...activity[0],state:'failed'}];await first.poll();
+  assert.equal(first.get('workspace-bar').hidden,true);assert.equal(first.get('workspace-restore').dataset.attention,'true');
+  assert.match(first.get('workspace-restore').attributes['aria-label'],/Failed/);
+  first.page.window.workspaceStatus.stop();assert.equal(first.get('workspace-restore').hidden,true);
+  const reloaded=createPage();reloaded.page.window.workspaceStatus.start();await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(reloaded.get('workspace-bar').hidden,true);assert.equal(reloaded.get('workspace-restore').hidden,false);
+  reloaded.get('workspace-restore').onclick();assert.equal(reloaded.get('workspace-bar').hidden,false);assert.equal(reloaded.get('workspace-restore').hidden,true);
+  assert.equal(preferences.getItem('lora-pilot.workspace-minimized.v1'),'false');
+  reloaded.page.window.workspaceStatus.stop();
+});
