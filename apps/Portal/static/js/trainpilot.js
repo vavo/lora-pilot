@@ -241,7 +241,7 @@ function updateTpSummary() {
 
 function showTpError(message) {
   const el = document.getElementById("tp-error");
-  if (el) { el.textContent = message; el.hidden = !message; }
+  if (el) { el.replaceChildren(...(message ? [taskError(message)] : [])); el.hidden = !message; }
 }
 
 function syncTpActions() {
@@ -330,7 +330,7 @@ function renderTpResult(data) {
   const files = data.artifacts || [];
   document.getElementById("tp-result-count").textContent = files.length ? `${files.length} checkpoint${files.length === 1 ? "" : "s"} ${data.moved ? "copied to your LoRA library" : "saved in your workspace"}.` : "No new LoRA files found. Check the logs and output folder.";
   const list = document.getElementById("tp-result-files");
-  const signature = JSON.stringify(files);
+  const signature = JSON.stringify([data.run_id, files]);
   if (list.dataset.files !== signature) {
     list.dataset.files = signature;
     list.replaceChildren();
@@ -338,6 +338,12 @@ function renderTpResult(data) {
       const row = document.createElement("tr");
       for (const value of [file.name, formatBytes(file.size_bytes)]) {
         const cell = document.createElement("td"); cell.textContent = value; row.append(cell);
+      }
+      if (/^[a-f0-9]{32}$/.test(data.run_id)) {
+        const cell = document.createElement('td'), link = document.createElement('a');
+        link.textContent = 'Download'; link.className = 'journey-link';
+        link.href = `/api/training/runs/${data.run_id}/artifacts/${encodeURIComponent(file.name)}`;
+        cell.append(link); row.append(cell);
       }
       list.append(row);
     });

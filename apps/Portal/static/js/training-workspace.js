@@ -1,6 +1,7 @@
 /* Persistent guided runs and comparison controls. */
 window.trainingWorkspace = (() => {
   let epoch = 0, timer = null, selected = null, current = null, paused = false;
+  let historySearch = '', historyFamily = '', historyState = '', offset = 0, filterTimer;
   let comparisonError = '';
   let comparisonFormRun = null;
   let draft = null, preferSetup = false;
@@ -81,7 +82,10 @@ window.trainingWorkspace = (() => {
   function renderHistory(data) {
     paused = data.paused;
     $('tp-queue-pause').textContent = paused ? 'Resume queue' : 'Pause queue';
-    const waiting = data.runs.filter(run => run.status === 'queued').length;
+    const waiting = data.queued_count ?? data.runs.filter(run => run.status === 'queued').length;
+    const total = data.total ?? data.runs.length;
+    $('tp-history-count').textContent = total ? `${offset + 1}–${Math.min(offset + data.runs.length, total)} of ${total} matching runs` : 'No matching runs';
+    $('tp-history-prev').disabled = offset === 0; $('tp-history-next').disabled = offset + data.runs.length >= total;
     $('tp-queue-status').textContent = paused ? `Queue paused · ${waiting} waiting. Resume when you are ready.`
       : data.conflicts.length && waiting ? `Waiting · ${data.conflicts.join(' ')}`
       : data.active_id ? `Training in progress · ${waiting} waiting` : `${waiting} waiting · queue ready`;
@@ -89,14 +93,14 @@ window.trainingWorkspace = (() => {
     if (signature === historySignature) return;
     historySignature = signature;
     const list = $('tp-history-list'); list.replaceChildren();
-    if (!data.runs.length) list.append(element('p', 'Your first training run will appear here.', 'journey-note'));
+    if (!data.runs.length) list.append(element('p', historySearch || historyFamily || historyState ? 'No runs match these filters.' : 'Your first training run will appear here.', 'journey-note'));
     for (const run of data.runs) {
       const row = element('article', '', 'tp-history-row');
       row.classList.toggle('selected', run.id === selected);
       const info = element('div', '', 'tp-history-info');
       info.append(element('strong', run.spec.output_name), element('span', `${familyName(run.spec.family)} · ${run.spec.dataset_name} · ${tpProfiles[run.spec.profile]}`, 'journey-note'));
       info.append(element('span', `${run.status} · ${new Date(run.created_at).toLocaleString()}`, 'tp-run-state'));
-      if (run.error) info.append(element('p', run.error, 'status'));
+      if (run.error) info.append(taskError(run.error));
       const actions = element('div', '', 'tp-history-actions');
       actions.append(button('View run', 'view', run.id), button('Use settings', 'settings', run.id));
       if (!['queued', 'running', 'stopping'].includes(run.status)) actions.append(button('Repeat run', 'repeat', run.id));
@@ -111,6 +115,19 @@ window.trainingWorkspace = (() => {
     $('tp-run-config').textContent = run.effective_config || run.config_text || 'No saved configuration.';
     $('tp-status').textContent = run.error || `${run.spec.output_name}: ${run.status}`;
     renderTpResult(tpLastData);
+    $('tp-run-timing').textContent = trainingTimeLabel(run.timing);
+    const errorBox = $('tp-run-error');
+    if (errorBox.dataset.error !== (run.error || '')) { errorBox.dataset.error = run.error || ''; errorBox.replaceChildren(...(run.error ? [taskError(run.error + '\n' + lines.slice(-30).join('\n'))] : [])); }
+    const downloads = $('tp-checkpoint-downloads');
+    const downloadSignature = JSON.stringify([run.id, run.status, run.artifacts]);
+    if (downloads.dataset.signature !== downloadSignature) {
+      downloads.dataset.signature = downloadSignature; downloads.replaceChildren();
+      if (!['queued','running','stopping','succeeded'].includes(run.status)) for (const file of run.artifacts || []) {
+        const link = element('a', `Download ${file.name}`, 'journey-link');
+        link.href = `/api/training/runs/${run.id}/artifacts/${encodeURIComponent(file.name)}`;
+        downloads.append(element('p', 'Saved checkpoint'), link);
+      }
+    }
     $('tp-compare-download').href = `/api/training/runs/${run.id}/comparison/workflow`;
     $('tp-compare-download').hidden = !run.comparison_workflow;
     updateProgressUI(findLatestProgress(lines), tpRunning, run.status === 'succeeded');
@@ -149,9 +166,10 @@ window.trainingWorkspace = (() => {
   }
   async function poll(generation) {
     try {
-      const data = await api('/runs');
+      const data = await api(`/runs?${new URLSearchParams({search:historySearch, family:historyFamily, status:historyState, offset:String(offset)})}`);
       if (generation !== epoch || !$('tp-page')) return;
       if (!selected && data.runs.length) selected = data.active_id || data.runs[0].id;
+      if (offset && !data.runs.length && data.total) { offset = 0; refresh(); return; }
       renderHistory(data); tpStatusKnown = true;
       if (selected) {
         const id = selected;
@@ -281,6 +299,12 @@ window.trainingWorkspace = (() => {
     };
     $('tp-family').onchange = () => { sourceRun = null; preflight(); };
     $('tp-current-defaults').onclick = () => { sourceRun = null; saveDraft(); preflight(); };
+    $('tp-history-search').value = historySearch; $('tp-history-family').value = historyFamily; $('tp-history-state').value = historyState;
+    const filter = () => { historySearch = $('tp-history-search').value; historyFamily = $('tp-history-family').value; historyState = $('tp-history-state').value; offset = 0; historySignature = ''; refresh(); };
+    $('tp-history-search').oninput = () => { clearTimeout(filterTimer); filterTimer = setTimeout(filter, 250); };
+    $('tp-history-family').onchange = filter; $('tp-history-state').onchange = filter;
+    $('tp-history-prev').onclick = () => { offset = Math.max(0, offset - 50); refresh(); };
+    $('tp-history-next').onclick = () => { offset += 50; refresh(); };
     $('tp-history-list').onclick = historyAction;
     $('tp-new-run').onclick = () => { preferSetup = true; tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData); $('tp-setup').hidden = false; $('tp-setup').scrollIntoView({block:'start'}); };
     $('tp-queue-pause').onclick = async () => {
@@ -302,6 +326,6 @@ window.trainingWorkspace = (() => {
     } catch (error) { if (generation === epoch) showTpError(`SDXL configuration unavailable: ${error.message || error}`); }
     if (generation === epoch && $('tp-page')) { preflight(); refresh(); }
   }
-  function stop() { epoch++; preflightEpoch++; clearTimeout(timer); timer = null; }
+  function stop() { clearTimeout(filterTimer); epoch++; preflightEpoch++; clearTimeout(timer); timer = null; }
   return {init, stop, spec, preflight, submit, stopRun, publish};
 })();

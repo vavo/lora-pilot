@@ -1,12 +1,12 @@
 <div class="journey-page" id="tp-page">
 <header class="journey-heading"><h2 id="tp-heading">Train your LoRA</h2><p id="tp-subheading">Choose your images and a training profile. TrainPilot handles the setup.</p></header>
-<p id="tp-error" class="status" role="alert" hidden></p>
+<div id="tp-error" class="status" role="alert" hidden></div>
 <div id="tp-completion-steps" class="tp-completion-steps" hidden><span><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Training finished</span><span id="tp-files-saved"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Files saved</span></div>
 <section id="tp-result" class="journey-surface" hidden aria-labelledby="tp-result-title">
   <h3 id="tp-result-title">Training result</h3>
   <dl class="tp-result-summary"><div><dt>Dataset</dt><dd id="tp-result-dataset"></dd></div><div><dt>Profile</dt><dd id="tp-result-profile"></dd></div><div><dt>Finished</dt><dd id="tp-result-finished"></dd></div></dl>
   <h3>Saved LoRA files</h3><p id="tp-result-count" class="journey-note"></p>
-  <table class="tp-result-files"><thead><tr><th>Filename</th><th>Size</th></tr></thead><tbody id="tp-result-files"></tbody></table>
+  <table class="tp-result-files"><thead><tr><th>Filename</th><th>Size</th><th>Download</th></tr></thead><tbody id="tp-result-files"></tbody></table>
   <div class="tp-result-path">Saved in <code id="tp-result-path"></code><button id="tp-copy-path" class="btn ghost" type="button">Copy path</button></div>
   <div class="tp-result-next"><h3>Keep a copy in your LoRA library</h3><p id="tp-result-instructions">Copy the trained files to your shared LoRA folder. The original run files remain in place.</p>
     <button id="tp-move-loras" class="btn primary" type="button">Copy to LoRA library</button>
@@ -50,7 +50,15 @@
   <div class="tp-history-heading"><div><h3 id="tp-history-title">Training queue &amp; history</h3><p class="journey-note">Runs, configuration snapshots and logs stay in your workspace.</p></div><button id="tp-new-run" class="btn ghost" type="button">New training setup</button></div>
   <div class="row wrap gap-12"><button id="tp-queue-pause" class="btn ghost" type="button">Pause queue</button><a href="#services" onclick="loadSection('services'); return false" class="journey-link">Manage GPU services</a></div>
   <p id="tp-queue-status" class="status" role="status"></p><p class="journey-note">Jobs wait for detected GPU workloads. Tools started outside ControlPilot can still compete for memory. Pausing leaves the current run running.</p>
-  <div id="tp-history-list" class="tp-history-list"></div>
+  <div class="row wrap gap-12" style="margin:16px 0">
+<label>Search runs<input id="tp-history-search" class="input" type="search" placeholder="LoRA or dataset name" /></label>
+<label>Model family<select id="tp-history-family" class="select"><option value="">All families</option><option value="sdxl">SDXL</option><option value="flux1">FLUX.1 dev</option></select></label>
+<label>Status<select id="tp-history-state" class="select"><option value="">All statuses</option><option>queued</option><option>running</option><option>succeeded</option><option>failed</option><option>stopped</option><option>cancelled</option><option>interrupted</option><option>stopping</option></select></label>
+</div>
+<p id="tp-history-count" class="journey-note"></p>
+<div id="tp-history-list" class="tp-history-list"></div>
+  <div class="row gap-12"><button id="tp-history-prev" class="btn ghost" type="button">Previous</button><button id="tp-history-next" class="btn ghost" type="button">Next</button></div>
+  <p id="tp-run-timing" class="journey-note" role="status"></p><div id="tp-run-error"></div><div id="tp-checkpoint-downloads"></div>
   <details class="tp-disclosure"><summary>Selected run configuration</summary><pre id="tp-run-config" class="log-box mono mono-sm">Select a run to inspect its saved configuration.</pre></details>
 </section>
 <details id="tp-diagnostics" class="tp-disclosure"><summary>Logs &amp; diagnostics</summary><div><button class="btn ghost" type="button" onclick="openTrainpilotTensorBoard()">Open TensorBoard</button><p id="tp-tensorboard-status" class="journey-note"></p><pre id="tp-logs" class="log-box mono mono-sm"></pre></div></details>

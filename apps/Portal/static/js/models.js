@@ -107,7 +107,7 @@
     } else {
       actions.append(button(job?.state === "error" ? "Retry download" : "Download", "download", model.name, "btn primary"));
     }
-    if (job?.state === "error") info.append(element("p", "models-error", job.error || job.last_line || "Download failed. Retry when ready."));
+    if (job?.state === "error") info.append(taskError(job.error || job.last_line || "Download failed. Retry when ready."));
     row.append(info, actions);
     return row;
   }
@@ -158,7 +158,7 @@
       const labels = { queued: "Queued", running: "Downloading", done: "Download complete", error: "Download failed" };
       info.append(element("small", "", labels[job.state] || job.state));
       if (job.state === "running") info.append(progress(job));
-      if (job.state === "error") info.append(element("p", "models-error", job.error || job.last_line || "Unknown download error"));
+      if (job.state === "error") info.append(taskError(job.error || job.last_line || "Unknown download error"));
       const details = element("details");
       details.dataset.modelDetails = job.name;
       details.append(element("summary", "", "Download details"), element("code", "models-path", job.last_line || "Waiting for output…"));

@@ -3,13 +3,15 @@ import json
 import filecmp
 import os
 import shutil
+import stat
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from . import gpu_guard
+from .training_timing import timing
 from .guided_training import GuidedTraining, TrainingRequest
 from .lora_comparison import ComparisonRequest, comfy, graph, result_images
 from .training_runs import TrainingRuns, under, write_json, now
@@ -53,6 +55,8 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             data['comparison_workflow'] = (queue.directory(run['id']) / 'comparison-workflow.json').is_file()
             data['artifacts'] = artifacts(run)
             data['lines'] = queue.logs(run['id'])
+            log = queue.directory(run['id']) / 'run.log'
+            data['timing'] = timing(run, data['lines'], log.stat().st_mtime if log.is_file() else None)
             data['config_text'] = under(queue.directory(run['id']), queue.directory(run['id']) / 'template.toml').read_text()
             output = under(workspace / 'outputs', Path(run['output_dir']))
             effective = output / f'{output.name}.toml' if run['spec']['family'] == 'sdxl' else queue.directory(run['id']) / 'effective.toml'
@@ -71,11 +75,47 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         queue.close()
 
     @router.get('/runs')
-    def list_runs():
+    def list_runs(search: str = Query('', max_length=200), family: str = '', status: str = '',
+                  offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
         ready()
         with queue.lock:
-            return {'runs': [public(run) for run in queue.list()[:100]], 'paused': queue.paused,
-                    'conflicts': queue.reason, 'active_id': queue.current}
+            runs = queue.list()
+            term = search.strip().casefold()
+            matching = [run for run in runs if (not family or run['spec']['family'] == family)
+                        and (not status or run['status'] == status)
+                        and (not term or term in (run['spec']['output_name'] + ' ' + run['spec']['dataset_name']).casefold())]
+            return {'runs': [public(run) for run in matching[offset:offset + limit]], 'paused': queue.paused,
+                    'conflicts': queue.reason, 'active_id': queue.current, 'total': len(matching),
+                    'queued_count': sum(run['status'] == 'queued' for run in runs)}
+
+    @router.get('/runs/{run_id}/artifacts/{filename}')
+    def download_artifact(run_id: str, filename: str):
+        ready()
+        with queue.lock:
+            run = queue.get(run_id)
+            if run['status'] in {'queued', 'running', 'stopping'}:
+                raise HTTPException(409, 'Wait for training to stop before downloading a checkpoint')
+            if not any(item['name'] == filename for item in artifacts(run)):
+                raise HTTPException(404, 'Checkpoint not found')
+            path = under(workspace / 'outputs', Path(run['output_dir']) / filename)
+            try:
+                fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            except OSError:
+                raise HTTPException(404, 'Checkpoint unavailable')
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode):
+                os.close(fd)
+                raise HTTPException(400, 'Checkpoint must be a regular file')
+            stream = os.fdopen(fd, 'rb')
+        def chunks():
+            try:
+                while data := stream.read(1024 * 1024):
+                    yield data
+            finally:
+                stream.close()
+        from urllib.parse import quote
+        return StreamingResponse(chunks(), media_type='application/octet-stream', headers={
+            'Content-Length': str(info.st_size), 'Content-Disposition': "attachment; filename*=UTF-8''" + quote(filename, safe='')})
 
     @router.post('/preflight')
     def preflight(req: TrainingRequest):

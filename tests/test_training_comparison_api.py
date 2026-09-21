@@ -50,6 +50,31 @@ class TrainingComparisonApiTests(unittest.TestCase):
         self.library_name = f'ControlPilot/{self.run["id"]}/{self.artifact.name}'
         self.registry['LoraLoader']['input']['required']['lora_name'] = [[self.library_name]]
 
+    def test_checkpoint_download_is_contained_and_refuses_active_runs(self):
+        response = self.client.get(self.prefix + '/artifacts/' + self.artifact.name)
+        self.assertEqual(response.content, b'lora fixture')
+        self.assertIn('attachment;', response.headers['content-disposition'])
+        outside = self.root / 'outside.safetensors'
+        outside.write_bytes(b'private')
+        (self.artifact.parent / 'link.safetensors').symlink_to(outside)
+        self.assertEqual(self.client.get(self.prefix + '/artifacts/link.safetensors').status_code, 404)
+        self.assertEqual(self.client.get(self.prefix + '/artifacts/%2E%2E%2Foutside.safetensors').status_code, 404)
+        self.run['status'] = 'running'
+        self.queue.save(self.run)
+        self.assertEqual(self.client.get(self.prefix + '/artifacts/' + self.artifact.name).status_code, 409)
+
+    def test_history_search_filters_and_pagination_include_older_runs(self):
+        for index in range(105):
+            run = dict(self.run, id=f'{index:032x}', spec=dict(self.spec, output_name=f'portrait-{index}', family='flux1'))
+            directory = self.queue.directory(run['id'])
+            directory.mkdir(exist_ok=True)
+            self.queue.save(run)
+        result = self.client.get('/api/training/runs?search=portrait&family=flux1&status=succeeded&offset=100').json()
+        self.assertEqual(result['total'], 105)
+        self.assertEqual(len(result['runs']), 5)
+        self.assertEqual(self.client.get('/api/training/runs?search=not-found').json()['total'], 0)
+        self.assertEqual(self.client.get('/api/training/runs?offset=-1').status_code, 422)
+
     def test_library_copy_keeps_originals_and_refuses_collisions(self):
         result = self.client.post(self.prefix + '/library')
         self.assertEqual(result.status_code, 200, result.text)
