@@ -1,10 +1,10 @@
 /* Known failures get a next action; unfamiliar failures retain their details. */
 function taskAdvice(message) {
   const text = String(message || '');
-  if (/out of memory|cuda.*alloc|CUBLAS_STATUS_ALLOC_FAILED/i.test(text)) return {title:'GPU memory is exhausted.',help:'Review batch size and model settings, and stop GPU workloads you do not need.',action:'Review training settings',section:'trainpilot'};
+  if (/out of memory|cuda.*alloc|CUBLAS_STATUS_ALLOC_FAILED/i.test(text)) return {title:'GPU memory is exhausted.',help:'Review batch size and model settings, and stop GPU workloads you do not need.',action:'Open guided training',section:'trainpilot'};
   if (/no space left|disk quota|insufficient.*space|not enough.*space/i.test(text)) return {title:'Workspace storage is full.',help:'Review storage usage before retrying.',action:'Open storage',section:'storage'};
   if (/gated|401|403|unauthorized|access.*(?:denied|restricted)|repository not found/i.test(text)) return {title:'Model access could not be verified.',help:'Check your Hugging Face token and accept any access agreement on the model’s page.',action:'Check Hugging Face access',section:'settings'};
-  if (/required model.*(?:missing|removed)|model.*not found|checkpoint.*not found/i.test(text)) return {title:'A required model is missing.',help:'Check the required files in Models, then retry.',action:'Open Models',section:'models'};
+  if (/missing training models|required model.*(?:missing|removed)|model.*not found|checkpoint.*not found/i.test(text)) return {title:'A required model is missing.',help:'Check the required files in Models, then retry.',action:'Open Models',section:'models'};
   if (/ModuleNotFoundError|No module named|ImportError/i.test(text)) return {title:'A service dependency could not be loaded.',help:'Check the affected service and its logs before retrying.',action:'Open Services',section:'services'};
   return {title:'The task could not finish.',help:'Review the technical details before retrying.'};
 }

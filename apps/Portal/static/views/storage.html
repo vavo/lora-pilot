@@ -1,0 +1,22 @@
+<div id="storage-page" class="journey-page">
+<header class="journey-heading"><h2>Storage</h2><p>See what uses your workspace and review what you can remove.</p></header>
+<div class="row wrap gap-12"><button id="storage-scan" type="button" class="btn ghost">Refresh storage</button><span id="storage-disk" class="journey-note"></span></div>
+<p id="storage-status" role="status"></p><div id="storage-error"></div>
+<div id="storage-categories" class="storage-categories"></div>
+<p class="journey-note">Category totals are file sizes, excluding symbolic links and duplicate hard links. Free space describes the workspace filesystem; configured model storage may use another mount.</p>
+<section class="journey-surface">
+<h3>Review cleanup</h3>
+<p>Choose individual checkpoints or the private dataset copies and training caches from finished runs. Nothing is selected automatically. Deleted checkpoints will no longer be available to download or compare from that run.</p>
+<p class="journey-note">Original datasets, shared models, general application caches and run history stay protected here. Manage other outputs in <a href="#mediapilot" onclick="loadSection('mediapilot');return false">Gallery</a> and installed models in <a href="#models" onclick="loadSection('models');return false">Models</a>. Stop other workloads before cleanup.</p>
+<div class="row wrap gap-12"><label>Find cleanup items<input id="storage-search" type="search" class="input" placeholder="Run or checkpoint name" /></label><label>Type<select id="storage-filter" class="select"><option value="">All types</option><option>Checkpoint</option><option>Dataset snapshot</option><option>Training caches</option></select></label></div>
+<p id="storage-count" class="journey-note"></p><div id="storage-items"></div>
+<div class="row wrap gap-12 storage-actions"><span id="storage-selected" class="journey-note">No files selected.</span><button id="storage-review" class="btn primary" type="button" disabled>Review selected cleanup</button></div>
+</section>
+<dialog id="storage-review-dialog" class="workspace-diagnostics" aria-labelledby="storage-review-title">
+<h2 id="storage-review-title">Confirm cleanup</h2><p id="storage-review-total"></p><div id="storage-review-items"></div>
+<p>Removal is permanent. The list above was checked against current files and workloads. ControlPilot checks it again before removing anything. Empty folders may remain.</p>
+<label class="storage-ack"><input id="storage-confirm-check" type="checkbox" /> I have reviewed this selection and want to permanently remove these files.</label>
+<p id="storage-confirm-status" role="status"></p>
+<div class="row wrap gap-12"><button id="storage-confirm" type="button" class="btn danger" disabled>Remove selected files</button><button id="storage-cancel" type="button" class="btn ghost">Keep files</button></div>
+</dialog>
+</div>

@@ -1,6 +1,6 @@
 # ControlPilot
 
-_Last updated: 2026-09-20_
+_Last updated: 2026-09-21_
 
 ControlPilot brings the path from a folder of images to a usable LoRA into one workspace. Start with your dataset, prepare captions, choose a training profile, and bring the result into ComfyUI. Models, service controls, and detailed logs remain close when you need them.
 
@@ -57,6 +57,14 @@ A failed or stopped run keeps its status and logs rather than showing a success 
 **Caption images** opens TagPilot for image and caption editing. Use its workspace save action before returning to training, then check the caption coverage in Datasets. A complete caption count tells you that matching nonempty files exist; it cannot tell you whether their descriptions are useful.
 
 **ComfyUI** opens the generation workspace. **Gallery** opens MediaPilot to review saved media. Both use the shared workspace, which lets you prepare a dataset, train an adaptation, and inspect generated results without copying files between containers. For file work outside these views, use the JupyterLab or code-server link in Services.
+
+## Make room for the next experiment
+
+Open **Storage** under Manage to see the space used by models, original datasets, private training snapshots, outputs, and application caches. The free-space reading describes the workspace filesystem. Category totals describe file sizes and exclude symbolic links and duplicate hard links, so they are not a complete breakdown of every byte on the disk. A separately mounted model directory can contribute to the category total without consuming workspace space.
+
+Cleanup starts with your selection. Choose a checkpoint, a finished run's private dataset snapshot, or its training caches, then choose **Review selected cleanup**. The preview shows the selected groups, file count, and estimated reclaimable space. Removing a checkpoint makes it unavailable for download or comparison from that run. **Keep files** closes the preview without removing anything. Removal requires an explicit acknowledgment and cannot be undone here.
+
+ControlPilot rechecks files and workload status before removal. Active or queued training, model downloads, GPU work, and unavailable workload checks block cleanup. A preview expires after five minutes, and changed files require a fresh review. Original datasets, shared models, linked files, and run metadata remain protected. General application caches and outputs from other tools are visible in the overview but are not cleanup candidates; use Models or Gallery for their existing management actions. Empty directories may remain, and filesystem snapshots or other mounts can make actual reclaimed space differ from the estimate.
 
 ## Set workspace defaults and access
 

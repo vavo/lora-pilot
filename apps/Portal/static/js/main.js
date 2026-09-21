@@ -1,4 +1,4 @@
-const sections = ["dashboard", "services", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
+const sections = ["dashboard", "services", "storage", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
 const viewCache = {};
 let currentSection = null;
 const initialSection = new URLSearchParams(window.location.search).get("open") === "comfyui" ? "comfyui" : (sections.includes(location.hash.slice(1)) ? location.hash.slice(1) : "dashboard");
@@ -6,6 +6,7 @@ let controlPilotUnlocked = false;
 window.controlPilotSettings = window.controlPilotSettings || null;
 const viewMap = {
   dashboard: { view: "/views/dashboard.html", init: () => window.initDashboard && window.initDashboard() },
+  storage: { view: "/views/storage.html", init: () => window.storagePage.init() },
   services: { view: "/views/services.html", init: () => window.initServices && window.initServices() },
   models: { view: "/views/models.html?v=20260907b", init: () => window.initModels && window.initModels() },
   datasets: { view: "/views/datasets.html", init: () => window.initDatasets && window.initDatasets() },
@@ -152,6 +153,7 @@ async function loadSection(section) {
     if (currentSection === "models" && window.stopModels) window.stopModels();
     if (currentSection === "dashboard" && window.stopDashboard) window.stopDashboard();
     if (currentSection === "dpipe" && window.stopDpipeLog) window.stopDpipeLog();
+    if (currentSection === "storage") window.storagePage.stop();
     if (currentSection === "trainpilot" && window.stopTpLogPoll) window.stopTpLogPoll();
     if (currentSection === "comfyui" && window.stopComfyUI) window.stopComfyUI();
   }

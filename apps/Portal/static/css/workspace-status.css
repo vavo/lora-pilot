@@ -19,3 +19,17 @@
 .main.main--mediapilot .mediapilot-shell { height:100%; min-height:0; }
 .main.main--mediapilot .workspace-bar { flex-shrink:0; margin:12px; }
 @media(max-width:768px) { .workspace-bar { top:80px; padding:10px; } .workspace-status-row { align-items:flex-start; gap:10px; } .workspace-activity summary { font-size:13px; } .workspace-build { font-size:12px; } }
+.storage-categories { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin:20px 0; }
+.storage-categories .journey-surface { padding:16px; margin:0; }
+.storage-categories p { font-size:22px; margin:10px 0 0; }
+.storage-item { display:flex; align-items:flex-start; gap:12px; padding:14px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.storage-item span { min-width:0; overflow-wrap:anywhere; }
+.storage-item strong,.storage-item small { display:block; }
+.storage-item small { color:var(--muted); margin-top:6px; }
+.storage-item input,.storage-ack input { flex-shrink:0; width:18px; height:18px; }
+.storage-actions { margin-top:20px; }
+.storage-ack { display:flex; gap:12px; margin:20px 0; }
+.task-error { border-left:3px solid var(--accent); padding:12px; margin:12px 0; overflow-wrap:anywhere; }
+.task-error p { margin:8px 0; }
+.task-error details { margin-top:10px; }
+#storage-page .input, #storage-page .select, #tp-history-search { max-width:100%; box-sizing:border-box; }

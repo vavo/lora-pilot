@@ -1,6 +1,6 @@
 # TrainPilot
 
-_Last updated: 2026-09-20_
+_Last updated: 2026-09-21_
 
 A useful training experiment should leave you with more than a file named `final_final`. It should tell you what you trained, which settings you used, and what changed in the result. Guided training brings that whole loop into ControlPilot: prepare a run, keep its history, and compare your LoRA with the original model.
 
@@ -52,7 +52,13 @@ When something owns the GPU, the queue explains what it detected. **Manage GPU s
 
 History survives browser reloads and ControlPilot restarts. After a restart, previously running jobs become **interrupted** and pending work remains paused for inspection. A child training process may still be alive, so check its logs and processes before repeating it. ControlPilot does not pretend it can reconstruct a process's exit result after losing ownership.
 
-The history covers runs created through the new guided queue. Older terminal runs and the legacy `/api/trainpilot/start` API are not imported automatically. The interface displays the latest 100 records, while saved history remains on the workspace volume.
+The history covers runs created through the new guided queue. Older terminal runs and the legacy `/api/trainpilot/start` API are not imported automatically. Search by LoRA or dataset name, narrow the results by model family or status, and use Previous and Next to browse history in pages of 50. Filters search the full saved history, not just the page on screen. The selected run stays open while you search.
+
+## Understand progress without guessing
+
+The selected run shows elapsed time from launch, including preparation. Its stage distinguishes trainer startup, cache preparation, training, and stopping. An approximate remaining time appears only after the trainer reports at least ten steps and thirty seconds of progress. Stale or missing progress hides the estimate; startup does not receive an invented countdown.
+
+Recognized failures explain the next useful action. A model access error points to Connections, a missing model points to Models, and a full disk points to Storage. GPU memory and dependency errors offer guidance and the relevant workspace page. Technical details stay available for diagnosis; the message is a starting point, not an automatic repair.
 
 ## Know which configuration reached the trainer
 
@@ -64,7 +70,7 @@ The SDXL launcher is `/opt/pilot/apps/TrainPilot/trainpilot.sh`. FLUX invokes Ko
 
 ## See what your LoRA changes
 
-A successful run shows the saved checkpoints and their location. **Copy to LoRA library** copies them into `/workspace/models/loras/ControlPilot/<run-id>`, preserving the original output files. An existing identical copy can be reused; a different file at the destination produces a conflict instead of being overwritten.
+A successful run shows the saved checkpoints and their location. **Download** saves an individual checkpoint to your computer. Failed, stopped, cancelled, and interrupted runs also offer any checkpoints they saved. Downloads become available after training stops; they do not remove the workspace copy. **Copy to LoRA library** copies them into `/workspace/models/loras/ControlPilot/<run-id>`, preserving the original output files. An existing identical copy can be reused; a different file at the destination produces a conflict instead of being overwritten.
 
 In **Try my LoRA**, choose a checkpoint and enter a prompt containing your trigger word. **Generate comparison** asks ComfyUI to create two images using the same base model, prompt, seed, sampling settings, and dimensions. One branch uses your LoRA at the selected strength. The two images appear together so you can judge the change directly.
 

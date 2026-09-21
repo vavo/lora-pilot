@@ -148,10 +148,10 @@ The guided interface uses `/api/training`. These routes follow ControlPilot auth
 | Method | Path | Behavior |
 |---|---|---|
 | `POST` | `/api/training/preflight` | Checks recipe model files and reports detected GPU conflicts. |
-| `GET` | `/api/training/runs` | Returns the latest 100 run summaries, queue pause state, conflicts, and active run ID. |
+| `GET` | `/api/training/runs` | Returns filtered, paginated run summaries, total matches, queued count, pause state, conflicts, and active run ID. |
 | `POST` | `/api/training/runs` | Saves a configuration snapshot and queues a uniquely identified run. |
 | `POST` | `/api/training/queue` | Accepts `{"paused":true}` or `false`; pausing does not stop current work. |
-| `GET` | `/api/training/runs/{id}` | Returns status, artifacts, saved configuration, effective configuration when available, and up to 500 recent log lines. |
+| `GET` | `/api/training/runs/{id}` | Returns status, artifacts, timing, saved configuration, effective configuration when available, and up to 500 recent log lines. |
 | `POST` | `/api/training/runs/{id}/cancel` | Cancels a queued run or stops a currently managed process. |
 | `POST` | `/api/training/runs/{id}/repeat` | Queues a new run using saved configuration and the current dataset. |
 | `POST` | `/api/training/runs/{id}/library` | Copies successful artifacts into a per-run LoRA library directory without removing originals. |
@@ -161,11 +161,23 @@ The guided interface uses `/api/training`. These routes follow ControlPilot auth
 | `GET` | `/api/training/runs/{id}/comparison` | Returns persisted comparison state and result image URLs. |
 | `POST` | `/api/training/runs/{id}/comparison/reset` | Explicitly resets comparison tracking only when the ComfyUI queue is empty. |
 
+The run listing accepts `search` (LoRA or dataset name, up to 200 characters), `family`, `status`, `offset`, and `limit` (default 50, maximum 100). Filtering happens before pagination. `total` counts matching records, while `queued_count` counts all queued runs independently of the filters. Run detail includes `timing.stage`, `elapsed_seconds`, and `remaining_seconds`; unavailable durations are null.
+
+`GET /api/training/runs/{id}/artifacts/{filename}` streams an eligible checkpoint as an attachment. Queued or active runs return HTTP 409; missing or linked checkpoints are excluded. The endpoint does not move or publish the file.
+
 Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path`. Supported families are `sdxl` and `flux1`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family; the chosen profile is applied to the new run.
 
 Run creation returns the new record and UUID. Each run has a separate output directory. The queue accepts at most 50 active or waiting runs and returns HTTP 409 when full. Missing models fail before queueing. A dataset changed since queueing fails at launch, with an explanation saved in the record. After a restart, interrupted processes are not automatically resumed and pending dispatch remains paused. Only one ControlPilot worker can own the queue for a workspace.
 
 Comparison requests contain `artifact`, `prompt`, and optional `seed` and `strength`. Seeds range from zero to `4294967295`; strength ranges from zero to two. A successful training record and saved artifact are required. Active managed training and duplicate or unconfirmed comparison submissions return HTTP 409. A lost submission response is persisted as `unknown`, requiring inspection and an explicit reset before retrying. Resetting tracking does not cancel a ComfyUI job or remove its outputs.
+
+## Reviewed storage cleanup API
+
+`GET /api/storage` returns category sizes, workspace filesystem capacity, warnings, and eligible cleanup candidates. Candidates have opaque IDs, display labels, file counts, logical sizes, and estimated reclaimable sizes. Only private files from terminal guided runs are eligible. The scan ignores linked files and protects original datasets, shared models, and run history.
+
+`POST /api/storage/preview` accepts `{"ids":["candidate-id"]}` with one to 200 unique candidate IDs. It checks workload status and the current selection, then returns a review token, selected items, file count, and estimated reclaimable bytes. The token expires after five minutes and exists only in the current ControlPilot process.
+
+After the user explicitly confirms the review, `POST /api/storage/cleanup` accepts `{"token":"review-token"}`. It consumes the token once and repeats workload, selection, and file identity checks before removal. Stale previews, changed files, or workload conflicts return HTTP 409. A successful response reports `complete`, `removed_files`, `estimated_reclaimed_bytes`, and a message. If a filesystem change or removal error occurs partway through, `complete` is false and the counts describe only files already removed; scan again before retrying. Cleanup is permanent and preserves run records, original datasets, and shared model files. These routes use the same authentication as the rest of ControlPilot.
 
 ## Legacy TrainPilot API
 

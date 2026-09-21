@@ -8,6 +8,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 
 from . import gpu_guard
@@ -95,8 +96,10 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             run = queue.get(run_id)
             if run['status'] in {'queued', 'running', 'stopping'}:
                 raise HTTPException(409, 'Wait for training to stop before downloading a checkpoint')
-            if not any(item['name'] == filename for item in artifacts(run)):
+            selected = next((item for item in artifacts(run) if item['name'] == filename), None)
+            if not selected:
                 raise HTTPException(404, 'Checkpoint not found')
+            filename = selected['name']
             path = under(workspace / 'outputs', Path(run['output_dir']) / filename)
             try:
                 fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
@@ -114,7 +117,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             finally:
                 stream.close()
         from urllib.parse import quote
-        return StreamingResponse(chunks(), media_type='application/octet-stream', headers={
+        return StreamingResponse(chunks(), background=BackgroundTask(stream.close), media_type='application/octet-stream', headers={
             'Content-Length': str(info.st_size), 'Content-Disposition': "attachment; filename*=UTF-8''" + quote(filename, safe='')})
 
     @router.post('/preflight')

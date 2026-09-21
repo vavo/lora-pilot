@@ -61,7 +61,7 @@ test('only a successful queue submission clears the unfinished draft', async () 
   const submitted={family:'sdxl',profile:'regular',dataset_name:'portraits',output_name:'Monday',source_run_id:null};
   context.createTrainingDraft(store).save(submitted);
   let rejectSubmission=true;
-  const page=vm.createContext({window:{localStorage:store},document:{getElementById:node,querySelectorAll:()=>[],createElement:tag=>node(tag)},
+  const page=vm.createContext({URLSearchParams,window:{localStorage:store},document:{getElementById:node,querySelectorAll:()=>[],createElement:tag=>node(tag)},
     tpStarting:false,tpStatusKnown:true,tpDismissedRunId:null,
     setTimeout:()=>1,clearTimeout(){},normalizeOutputName:v=>v,updateEpochExample(){},updateTpSummary(){},syncTpActions(){},showTpError(){},
     ensureTrainpilotModelsPresent:async()=>true,
@@ -83,4 +83,18 @@ test('only a successful queue submission clears the unfinished draft', async () 
   rejectSubmission=false;
   await page.window.trainingWorkspace.submit();
   assert.equal(context.createTrainingDraft(store).read(),null);
+});
+
+vm.runInContext(fs.readFileSync('apps/Portal/static/js/task-feedback.js','utf8'),context);
+test('failure advice offers the correct action and leaves unknown failures unclassified',()=>{
+  assert.equal(context.taskAdvice('CUDA out of memory').section,'trainpilot');
+  assert.equal(context.taskAdvice('No space left on device').section,'storage');
+  assert.equal(context.taskAdvice('403 Forbidden gated repo').section,'settings');
+  assert.equal(context.taskAdvice('A required model was removed').section,'models');
+  assert.equal(context.taskAdvice('No module named torch').section,'services');
+  assert.equal(context.taskAdvice('Unexpected exit 7').section,undefined);
+});
+test('timing labels avoid estimates when the trainer has not reported one',()=>{
+  assert.equal(context.trainingTimeLabel({stage:'Preparing caches',elapsed_seconds:70,remaining_seconds:null}),'Preparing caches · 1m 10s elapsed');
+  assert.match(context.trainingTimeLabel({stage:'Training',elapsed_seconds:400,remaining_seconds:90}),/about 1m 30s remaining/);
 });

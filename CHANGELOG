@@ -1,4 +1,8 @@
-Unreleased (September 20th 2026)
+Unreleased (September 21st 2026)
+
+Guided training now offers direct checkpoint downloads for finished runs, including checkpoints saved before a failure or stop. History supports name and dataset search, model-family and status filters, and pagination across all saved runs. Selected runs show elapsed time, preparation stages, and cautious remaining-time estimates from fresh trainer progress.
+
+Recognized training and model-download failures now explain useful next actions, while preserving technical details. Storage has a new usage overview and a reviewed cleanup flow for individual checkpoints, private dataset snapshots, and training caches from finished guided runs. Cleanup requires explicit selection and confirmation, rechecks file identity and workload status, and protects original datasets, shared models, linked files, and run history. General application caches and other tools' outputs remain outside cleanup scope.
 
 ControlPilot now shows image build identity and offers Copy diagnostics with the commit, build date, detected GPU memory and installed service versions. The support summary excludes credentials, URLs, workspace paths, dataset names and logs. New builds embed their identity in the final image layer; older images report unavailable metadata as unknown.
 

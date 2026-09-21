@@ -118,3 +118,14 @@ class StorageTests(unittest.TestCase):
         self.storage.plans[plan['token']]['expires'] = 0
         with self.assertRaises(HTTPException): self.storage.cleanup(plan['token'])
         self.assertTrue(self.checkpoint.exists())
+
+    def test_linked_ancestor_is_excluded_and_blocks_preview(self):
+        config = self.root / 'config'
+        moved = self.root / 'moved-config'
+        config.rename(moved)
+        config.symlink_to(moved, target_is_directory=True)
+        data = self.storage.inventory()
+        self.assertTrue(data['warnings'])
+        self.assertFalse(any(item['category'] == 'Dataset snapshot' for item in data['candidates']))
+        with self.assertRaises(HTTPException): self.storage.preview(self.ids())
+        self.assertTrue((moved / 'training' / self.run_id / 'images/image.png').exists())

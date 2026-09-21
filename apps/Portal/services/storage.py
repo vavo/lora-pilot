@@ -65,7 +65,7 @@ class Storage:
         def failed(error):
             warnings.append('Some files could not be read. Cleanup is unavailable until the scan is complete.')
         for category, root in roots:
-            if root.is_symlink():
+            if root.is_symlink() or (self.root in root.parents and any(parent.is_symlink() for parent in root.parents if parent != self.root and self.root in parent.parents)):
                 warnings.append(f'{category} is linked; its contents are protected and excluded from totals.')
                 continue
             if not root.exists():
@@ -90,7 +90,7 @@ class Storage:
                             seen.add(inode)
                         records.append(dict(path=path, category=category, fingerprint=identity(info),
                                             size_bytes=info.st_size, reclaim_bytes=getattr(info, 'st_blocks', 0) * 512))
-                    except OSError as error:
+                    except (OSError, RuntimeError) as error:
                         failed(error)
         runs = self.training.list()
         candidates = []

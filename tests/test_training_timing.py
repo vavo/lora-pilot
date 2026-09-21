@@ -20,3 +20,6 @@ class TimingTests(unittest.TestCase):
         result = timing(run, ['steps: 99%| 99/100 [00:40<00:01]'], 100, clock=lambda:1000)
         self.assertEqual(result['elapsed_seconds'], 60)
         self.assertIsNone(result['remaining_seconds'])
+
+        del run['finished_at']
+        self.assertIsNone(timing(run, [], clock=lambda:1000)['elapsed_seconds'])

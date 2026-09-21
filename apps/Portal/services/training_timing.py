@@ -27,7 +27,8 @@ def timing(run, lines, updated=None, clock=time.time):
     started = timestamp(run.get('started_at'))
     ended = timestamp(run.get('finished_at'))
     active = run['status'] in {'running', 'stopping'}
-    result = dict(elapsed_seconds=max(0, int((current if active else ended or current) - started)) if started else None,
+    end = current if active else ended
+    result = dict(elapsed_seconds=max(0, int(end - started)) if started is not None and end is not None else None,
                   remaining_seconds=None, stage=run['status'])
     if not active:
         return result
