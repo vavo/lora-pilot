@@ -85,3 +85,11 @@ One comparison is a starting point. Try several prompts, views, and environments
 The terminal `trainpilot` command and the legacy `/api/trainpilot/*` endpoints remain available for SDXL. Their existing result and file-movement contracts remain separate from the new queue. Terminal queue mode still accepts `TOML:DATASET[:OUTPUT[:PROFILE]]` entries and is not a persistent ControlPilot queue.
 
 New integrations should use `/api/training/runs` and its history, queue, library, and comparison endpoints. The [API reference](../development/api-reference.md) describes the requests. The [training workflows guide](../user-guide/training-workflows.md) explains when to move from guided profiles to a trainer's full interface.
+
+## Recovering a stopped run
+
+Resume queue allows waiting jobs to start. It does not restart a stopped training process. In training history, Resume training restores the latest complete saved training state in a new run, keeping the original outputs and logs. Work after that save must be repeated.
+
+Older runs may have saved only LoRA weights. Continue from checkpoint loads those weights into a new run with a fresh optimizer and learning-rate schedule, then runs the full selected schedule again. The confirmation explains this before queuing. If no recovery point exists, Repeat run starts from the base model. Recovery requires the original dataset to remain unchanged.
+
+New guided runs save optimizer state with their periodic checkpoints, defaulting to a save every 200 steps when no step interval is configured. Recovery states use additional disk space; retention keeps recent step and epoch states. Stopping before the first save still requires starting again. If the queue is paused, the resumed run waits until you choose Resume queue.

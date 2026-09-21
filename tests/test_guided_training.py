@@ -1,4 +1,5 @@
 import io
+import json
 import tempfile
 import tomllib
 import unittest
@@ -38,6 +39,99 @@ class GuidedTrainingTests(unittest.TestCase):
         self.rid = 'a' * 32
         self.directory = self.root / 'config/training' / self.rid
         self.directory.mkdir(parents=True)
+
+    def checkpoint(self, path):
+        header = json.dumps({'weight': {'dtype': 'U8', 'shape': [1], 'data_offsets': [0, 1]}}).encode()
+        path.write_bytes(len(header).to_bytes(8, 'little') + header + b'x')
+
+    def stopped_run(self, family='flux1'):
+        run = self.recipe.prepare(dict(self.spec, family=family), self.rid, self.directory)
+        run.update(id=self.rid, status='stopped')
+        return run
+
+    def state(self, output, step):
+        path = output / f'portrait-step{step:08d}-state'
+        path.mkdir()
+        for name in ['optimizer.bin', 'scheduler.bin', 'random_states_0.pkl', 'model.safetensors']:
+            (path / name).write_bytes(b'fixture')
+        (path / 'train_state.json').write_text(json.dumps({'current_step': step}))
+        return path
+
+    def test_recovery_prefers_latest_complete_state_and_ignores_partial_saves(self):
+        run = self.stopped_run()
+        output = Path(run['output_dir'])
+        saved = self.state(output, 200)
+        incomplete = self.state(output, 400)
+        (incomplete / 'optimizer.bin').unlink()
+        self.checkpoint(output / 'portrait-step00000400.safetensors')
+        recovery = self.recipe.recovery(run)
+        self.assertEqual((recovery['mode'], recovery['step'], recovery['path']), ('state', 200, str(saved)))
+        (saved / 'model.safetensors').unlink()
+        self.assertEqual(self.recipe.recovery(run)['mode'], 'weights')
+
+    def test_recovery_rejects_truncated_checkpoints_and_symlinked_state(self):
+        run = self.stopped_run()
+        output = Path(run['output_dir'])
+        self.checkpoint(output / 'portrait-step00000002.safetensors')
+        partial = output / 'portrait-step00000010.safetensors'
+        self.checkpoint(partial)
+        partial.write_bytes(partial.read_bytes()[:-1])
+        state = self.state(output, 20)
+        (state / 'optimizer.bin').unlink()
+        (state / 'optimizer.bin').symlink_to(self.config)
+        self.assertTrue(self.recipe.recovery(run)['path'].endswith('00000002.safetensors'))
+        run['status'] = 'running'
+        self.assertIsNone(self.recipe.recovery(run))
+
+    def test_recovery_launch_passes_weights_or_state_for_both_families(self):
+        kohya = self.root / 'kohya'
+        (kohya / 'sd-scripts').mkdir(parents=True)
+        (kohya / 'sd-scripts/flux_train_network.py').touch()
+        run = self.stopped_run()
+        checkpoint = Path(run['output_dir']) / 'portrait.safetensors'
+        self.checkpoint(checkpoint)
+        state = self.state(Path(run['output_dir']), 200)
+        for family in ['sdxl', 'flux1']:
+            for mode, source in [('weights', checkpoint), ('state', state)]:
+                with self.subTest(family=family, mode=mode):
+                    run['spec']['family'] = family
+                    run['template'] = self.recipe.template(run['spec'])
+                    run['recovery'] = dict(mode=mode, path=str(source))
+                    with patch.dict('os.environ', KOHYA_ROOT=str(kohya)), patch('subprocess.Popen'):
+                        self.recipe.launch(run, io.BytesIO())
+                    effective = tomllib.loads((self.directory / 'effective.toml').read_text())
+                    self.assertTrue(effective['save_state'])
+                    self.assertEqual(effective['save_last_n_epochs_state'], 1)
+                    self.assertEqual(effective['resume' if mode == 'state' else 'network_weights'], str(source))
+                    if mode == 'state':
+                        self.assertTrue(effective['skip_until_initial_step'])
+
+    def test_resume_api_preserves_original_rejects_duplicates_and_changed_dataset(self):
+        self.addCleanup(setattr, gpu_guard, 'managed_conflicts', gpu_guard.managed_conflicts)
+        router, queue = create_router(self.root, self.models, self.resolve_dataset, lambda _: self.config, lambda _: 'base', lambda: [])
+        start = queue.start
+        queue.start = lambda: start(background=False)
+        self.addCleanup(queue.close)
+        app = FastAPI(); app.include_router(router)
+        with TestClient(app) as client:
+            original = client.post('/api/training/runs', json=self.spec).json()
+            rid = original['id']
+            old = queue.get(rid); old['status'] = 'stopped'; queue.save(old)
+            self.assertEqual(client.post(f'/api/training/runs/{rid}/resume').status_code, 409)
+            checkpoint = Path(old['output_dir']) / 'portrait-step00000200.safetensors'
+            self.checkpoint(checkpoint)
+            response = client.post(f'/api/training/runs/{rid}/resume')
+            self.assertEqual(response.status_code, 200, response.text)
+            new = response.json()
+            self.assertNotEqual(new['id'], rid)
+            self.assertNotEqual(new['output_dir'], old['output_dir'])
+            self.assertEqual(new['recovery']['mode'], 'weights')
+            self.assertTrue(checkpoint.is_file())
+            self.assertEqual(queue.get(rid)['status'], 'stopped')
+            self.assertEqual(client.post(f'/api/training/runs/{rid}/resume').status_code, 409)
+            queue.cancel(new['id'])
+            (self.dataset / 'a.txt').write_text('different captions')
+            self.assertEqual(client.post(f'/api/training/runs/{rid}/resume').status_code, 409)
 
     def test_flux_uses_separate_reviewed_recipe_and_exact_encoders(self):
         template = self.recipe.template(self.spec)

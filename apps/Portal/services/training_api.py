@@ -69,6 +69,8 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
 
     def public(run, detail=False):
         data = {key: value for key, value in run.items() if key not in {'template', 'dataset_fingerprint', 'process_identity'}}
+        recovery = recipe.recovery(run)
+        data['recovery_option'] = {key: value for key, value in recovery.items() if key != 'path'} if recovery else None
         if detail:
             data['library_destination'] = str(models / 'loras/ControlPilot' / run['id'])
             data['comparison_workflow'] = (queue.directory(run['id']) / 'comparison-workflow.json').is_file()
@@ -190,6 +192,26 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         with queue.lock:
             old = queue.get(run_id)
             return public(queue.submit(dict(old['spec'], _template=old['template'])))
+
+    @router.post('/runs/{run_id}/resume')
+    def resume_run(run_id: str):
+        ready()
+        with gpu_guard.LAUNCH_LOCK, queue.lock:
+            old = queue.get(run_id)
+            if queue.orphan_conflicts():
+                raise HTTPException(409, 'An interrupted training process is still running. Stop it before resuming.')
+            if any(run.get('recovery', {}).get('source_run_id') == run_id and run['status'] in {'queued', 'running', 'stopping'}
+                   for run in queue.list() if run.get('recovery')):
+                raise HTTPException(409, 'This run already has a queued or active continuation')
+            recovery = recipe.recovery(old)
+            if not recovery:
+                raise HTTPException(409, 'No saved training state or checkpoint is available. Use Repeat run to start again.')
+            dataset = recipe.resolve_dataset(old['spec']['dataset_name']).resolve()
+            if recipe.fingerprint(dataset, recipe.dataset_files(dataset)) != old['dataset_fingerprint']:
+                raise HTTPException(409, 'The dataset changed. Use Repeat run to train with the current dataset.')
+            recovery['source_run_id'] = run_id
+            return public(queue.submit(dict(old['spec'], _template=old['template'], _recovery=recovery,
+                                            _expected_fingerprint=old['dataset_fingerprint'])))
 
     def publish_lora(run, name):
         selected = next((item for item in artifacts(run) if item['name'] == name), None)

@@ -91,7 +91,7 @@ window.trainingWorkspace = (() => {
     $('tp-queue-status').textContent = paused ? `Queue paused · ${waiting} waiting. Resume when you are ready.`
       : data.conflicts.length && waiting ? `Waiting · ${data.conflicts.join(' ')}`
       : data.active_id ? `Training in progress · ${waiting} waiting` : `${waiting} waiting · queue ready`;
-    const signature = JSON.stringify(data.runs.map(run => [run.id, run.status, run.error, run.finished_at])) + selected;
+    const signature = JSON.stringify(data.runs.map(run => [run.id, run.status, run.error, run.finished_at, run.recovery_option])) + selected;
     if (signature === historySignature) return;
     historySignature = signature;
     const list = $('tp-history-list'); list.replaceChildren();
@@ -103,8 +103,15 @@ window.trainingWorkspace = (() => {
       info.append(element('strong', run.spec.output_name), element('span', `${familyName(run.spec.family)} · ${run.spec.dataset_name} · ${tpProfiles[run.spec.profile]}`, 'journey-note'));
       info.append(element('span', `${run.status} · ${new Date(run.created_at).toLocaleString()}`, 'tp-run-state'));
       if (run.error) info.append(taskError(run.error));
+      if (['stopped', 'interrupted'].includes(run.status) && !run.recovery_option) info.append(element('span', 'No saved recovery point. Repeat run starts again.', 'journey-note'));
+      if (run.recovery) info.append(element('span', run.recovery.mode === 'state' ? 'Resumed from saved training state' : 'Continued from checkpoint · fresh optimizer and schedule', 'journey-note'));
       const actions = element('div', '', 'tp-history-actions');
       actions.append(button('View run', 'view', run.id), button('Use settings', 'settings', run.id));
+      if (run.recovery_option) {
+        const resume = button(run.recovery_option.label, 'resume', run.id);
+        resume.dataset.recoveryMessage = run.recovery_option.message;
+        actions.append(resume);
+      }
       if (!['queued', 'running', 'stopping'].includes(run.status)) actions.append(button('Repeat run', 'repeat', run.id));
       else actions.append(button(run.status === 'queued' ? 'Cancel' : 'Stop', 'cancel', run.id));
       row.append(info, actions); list.append(row);
@@ -247,6 +254,12 @@ window.trainingWorkspace = (() => {
       if (control.dataset.runAction === 'repeat') {
         if (!confirm('Queue a new run using this saved configuration? It uses the dataset as it exists now.')) return;
         const run = await api(screen, `/runs/${id}/repeat`, {}); selected = run.id; tpDismissedRunId = null;
+      }
+      if (control.dataset.runAction === 'resume') {
+        if (!confirm(control.dataset.recoveryMessage)) return;
+        const run = await api(screen, `/runs/${id}/resume`, {});
+        selected = run.id; preferSetup = false; tpDismissedRunId = null;
+        historyState = ''; $('tp-history-state').value = ''; offset = 0;
       }
       if (control.dataset.runAction === 'cancel') {
         if (!confirm('Stop or cancel this run? Already saved files remain in your workspace.')) return;
