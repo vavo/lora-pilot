@@ -119,3 +119,23 @@ test('a late Settings refresh cannot replace preferences from a new visit', asyn
   finish({theme:'light',comfy_access:{}});await pending;
   assert.equal(page.window.controlPilotSettings.theme,'dark');
 });
+
+test('view-load errors render a text card and unsupported route names use Dashboard',async()=>{
+  for (const requested of ['models','<img src=x onerror=alert(1)>','%3Csvg%20onload=alert(1)%3E','__proto__','constructor']) {
+    let rendered, requestedView;
+    const content={querySelectorAll:()=>[],replaceChildren(node){rendered=node;}};
+    Object.defineProperty(content,'innerHTML',{set(){assert.fail('Failure messages must never use an HTML sink');}});
+    const page=vm.createContext({activeScreen:null,controlPilotUnlocked:true,contentEl:content,currentSection:null,viewCache:{},
+      viewMap:{dashboard:{view:'/views/dashboard.html',init(){}},models:{view:'/views/models.html',init(){}}},
+      window:{scrollTo(){}},document:{querySelectorAll:()=>[],querySelector:()=>null,createElement:()=>({})},
+      history:{replaceState(){}},setCopilotSectionVisibility(){},closeSidebar(){},
+      fetch:async path=>{requestedView=path;throw Error('<svg onload=alert(1)>');}});
+    lifecycle(page);
+    vm.runInContext(extract('main','async function loadSection(section) {','\nfunction setCopilotSectionVisibility'),page);
+    await page.loadSection(requested);
+    const route=requested==='models'?'models':'dashboard';
+    assert.equal(requestedView,`/views/${route}.html`);
+    assert.equal(rendered.className,'card');
+    assert.equal(rendered.textContent,`Could not load ${route}. Select the page again to retry.`);
+  }
+});

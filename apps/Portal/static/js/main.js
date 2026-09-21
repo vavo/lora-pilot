@@ -149,7 +149,7 @@ async function persistUiSettings() {
 async function loadSection(section) {
   if (!controlPilotUnlocked) return;
   if (!contentEl) return;
-  if (!viewMap[section]) section = "dashboard";
+  if (typeof section !== "string" || !Object.hasOwn(viewMap, section)) section = "dashboard";
   activeScreen?.dispose();
   const screen = window.createScreenLifecycle();
   activeScreen = screen;
@@ -167,7 +167,10 @@ async function loadSection(section) {
     }
   } catch (error) {
     if (screen.active && controlPilotUnlocked) {
-      contentEl.innerHTML = `<div class="card">Could not load ${section}. Select the page again to retry.</div>`;
+      const message = document.createElement("div");
+      message.className = "card";
+      message.textContent = `Could not load ${section}. Select the page again to retry.`;
+      contentEl.replaceChildren(message);
     }
     return;
   }
