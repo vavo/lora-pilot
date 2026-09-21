@@ -49,7 +49,7 @@
 <section class="journey-surface tp-history" aria-labelledby="tp-history-title">
   <div class="tp-history-heading"><div><h3 id="tp-history-title">Training queue &amp; history</h3><p class="journey-note">Runs, configuration snapshots and logs stay in your workspace.</p></div><button id="tp-new-run" class="btn ghost" type="button">New training setup</button></div>
   <div class="row wrap gap-12"><button id="tp-queue-pause" class="btn ghost" type="button">Pause queue</button><a href="#services" onclick="loadSection('services'); return false" class="journey-link">Manage GPU services</a></div>
-  <p id="tp-queue-status" class="status" role="status"></p><p class="journey-note">Jobs wait for detected GPU workloads. Tools started outside ControlPilot can still compete for memory. Pausing leaves the current run running.</p>
+  <p id="tp-queue-status" class="status" role="status"></p><p class="journey-note">Jobs wait for detected GPU workloads. Idle ComfyUI can still hold GPU memory; stop it in Services before training. Pausing leaves the current run running.</p>
   <div class="row wrap gap-12" style="margin:16px 0">
 <label>Search runs<input id="tp-history-search" class="input" type="search" placeholder="LoRA or dataset name" /></label>
 <label>Model family<select id="tp-history-family" class="select"><option value="">All families</option><option value="sdxl">SDXL</option><option value="flux1">FLUX.1 dev</option></select></label>

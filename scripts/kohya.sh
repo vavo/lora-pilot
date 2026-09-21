@@ -15,17 +15,13 @@ mkdir -p "$ROOT/logs" "$APP_ROOT"
 # Kohya imports pkg_resources through setup_common.py; keep this warning out of service logs.
 export PYTHONWARNINGS="${PYTHONWARNINGS:+${PYTHONWARNINGS},}ignore:pkg_resources is deprecated as an API:UserWarning"
 
-# Kohya sometimes tries to install Windows-specific torch requirements; neutralize them.
-WIN_REQ="/opt/pilot/repos/kohya_ss/requirements_pytorch_windows.txt"
-if [ -f "$WIN_REQ" ]; then
-  printf "# disabled by LoRA Pilot (use Kohya venv torch)\n" > "$WIN_REQ"
-fi
-
 /opt/venvs/kohya/bin/python - <<'PYTHON'
 from transformers import CLIPFeatureExtractor, Dinov2WithRegistersConfig
 PYTHON
 
 cd /opt/pilot/repos/kohya_ss
+# Dependencies are installed and checked when the image is built.
 exec /opt/venvs/kohya/bin/python -u kohya_gui.py \
+  --noverify \
   --listen "$HOST" \
   --server_port "$PORT"

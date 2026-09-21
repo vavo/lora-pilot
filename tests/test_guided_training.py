@@ -65,7 +65,7 @@ class GuidedTrainingTests(unittest.TestCase):
         kohya = self.root / 'kohya'
         (kohya / 'sd-scripts').mkdir(parents=True)
         (kohya / 'sd-scripts/flux_train_network.py').touch()
-        with patch.dict('os.environ', {'KOHYA_ROOT': str(kohya)}), patch('subprocess.Popen') as popen:
+        with patch.dict('os.environ', {'KOHYA_ROOT': str(kohya), 'HF_HUB_ENABLE_HF_TRANSFER': '1'}), patch('subprocess.Popen') as popen:
             self.recipe.launch(run, io.BytesIO())
         command = popen.call_args.args[0]
         self.assertEqual(command[:2], ['/opt/venvs/kohya/bin/python', '-u'])
@@ -78,6 +78,7 @@ class GuidedTrainingTests(unittest.TestCase):
         self.assertNotEqual(copied, self.dataset)
         self.assertEqual((copied / 'a.txt').read_text(), 'a portrait')
         self.assertTrue(popen.call_args.kwargs['start_new_session'])
+        self.assertEqual(popen.call_args.kwargs['env']['HF_HUB_ENABLE_HF_TRANSFER'], '0')
 
     def test_dataset_symlinks_and_models_outside_root_are_rejected(self):
         (self.dataset / 'escape.png').symlink_to(self.config)

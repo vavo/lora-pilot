@@ -226,7 +226,15 @@ window.trainingWorkspace = (() => {
     const control = event.target.closest('[data-run-action]'); if (!control) return;
     const id = control.dataset.runId; control.disabled = true;
     try {
-      if (control.dataset.runAction === 'view') { preferSetup = false; selected = id; comparisonError = ''; tpDismissedRunId = null; }
+      if (control.dataset.runAction === 'view') {
+        preferSetup = false; selected = id; comparisonError = ''; tpDismissedRunId = null;
+        $('tp-run-config').textContent = 'Loading saved run configuration…';
+        $('tp-logs').textContent = 'Loading run logs…';
+        const details = $('tp-run-config').closest('details');
+        details.open = true; $('tp-diagnostics').open = true;
+        details.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        details.querySelector('summary').focus({ preventScroll: true });
+      }
       if (control.dataset.runAction === 'settings') {
         const run = await api(screen, `/runs/${id}`);
         $('tp-family').value = run.spec.family; $('tp-dataset').value = run.spec.dataset_name;

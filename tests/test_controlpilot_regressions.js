@@ -139,3 +139,19 @@ test('view-load errors render a text card and unsupported route names use Dashbo
     assert.equal(rendered.textContent,`Could not load ${route}. Select the page again to retry.`);
   }
 });
+
+test('View run opens configuration and logs for queued runs without starting another run',async()=>{
+  const {node,document}=dom();let focused=false,scrolled=false,refreshed=false;
+  const details={open:false,scrollIntoView(){scrolled=true;},querySelector:()=>({focus(){focused=true;}})};
+  node('tp-run-config').closest=()=>details;
+  const page=vm.createContext({document,$:node,trainingScreen:{active:true},preferSetup:true,selected:null,
+    comparisonError:'old error',tpDismissedRunId:'previous',refresh(){refreshed=true;},
+    api(){assert.fail('Viewing a run must not mutate the training queue');}});
+  vm.runInContext(extract('training-workspace','  async function historyAction(event) {','\n  async function stopRun()'),page);
+  const control={dataset:{runAction:'view',runId:'queued-run'},disabled:false};
+  await page.historyAction({target:{closest:()=>control}});
+  assert.equal(page.selected,'queued-run');assert.equal(page.preferSetup,false);
+  assert.equal(details.open,true);assert.equal(node('tp-diagnostics').open,true);
+  assert.ok(focused && scrolled && refreshed);assert.equal(control.disabled,false);
+  assert.match(node('tp-run-config').textContent,/Loading/);
+});

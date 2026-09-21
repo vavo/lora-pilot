@@ -138,6 +138,7 @@ class GuidedTraining:
         python = os.environ.get('TRAINPILOT_PYTHON_BIN', '/opt/venvs/kohya/bin/python')
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
+        env['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
         if spec['family'] == 'flux1':
             subsets = sorted({str((images / p.relative_to(dataset)).parent) for p in files if p.suffix.lower() in IMAGE_EXTENSIONS})
             dataset_config = directory / 'dataset.toml'
