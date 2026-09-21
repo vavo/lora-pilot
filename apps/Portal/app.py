@@ -54,6 +54,7 @@ try:
     from .services.diagnostics import create_router as create_diagnostics_router
     from .services.activity import create_router as create_activity_router, progress as activity_progress
     from .services.model_downloads import ModelPullQueue
+    from .services.storage import create_router as create_storage_router
     from .services import gpu_guard
 except (ImportError, ValueError):
     try:
@@ -67,6 +68,7 @@ except (ImportError, ValueError):
         from services.diagnostics import create_router as create_diagnostics_router
         from services.activity import create_router as create_activity_router, progress as activity_progress
         from services.model_downloads import ModelPullQueue
+        from services.storage import create_router as create_storage_router
         from services import gpu_guard
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
@@ -79,6 +81,7 @@ except (ImportError, ValueError):
         from apps.Portal.services.diagnostics import create_router as create_diagnostics_router
         from apps.Portal.services.activity import create_router as create_activity_router, progress as activity_progress
         from apps.Portal.services.model_downloads import ModelPullQueue
+        from apps.Portal.services.storage import create_router as create_storage_router
         from apps.Portal.services import gpu_guard
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
@@ -3943,6 +3946,15 @@ _diagnostic_specs.update({
 })
 app.include_router(create_diagnostics_router(get_gpus, _diagnostic_specs, SUPERVISORCTL))
 app.include_router(create_activity_router(_training_queue, _model_downloads, _other_training_activity))
+
+
+def _storage_conflicts():
+    with _service_update_lock:
+        updates = any(job.state == 'running' for job in _service_update_jobs.values())
+    return _legacy_training_conflicts() + gpu_guard.conflicts() + (['Service update in progress'] if updates else [])
+
+
+app.include_router(create_storage_router(WORKSPACE_ROOT, MODELS_DIR, _training_queue, _model_downloads, _storage_conflicts))
 
 
 
