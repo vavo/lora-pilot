@@ -660,7 +660,8 @@ def training_logs(pid: Optional[int] = None, limit: int = 500):
     with _proc_lock:
         if pid is None:
             if not _procs and not _logs:
-                return {"pid": None, "lines": []}
+                return {"pid": None, "lines": [], "activity": dict(_last_activity)}
             pid = next(reversed(_procs)) if _procs else next(reversed(_logs))
         lines = list(_logs.get(pid, ()))[-limit:]
-    return {"pid": pid, "lines": lines}
+        activity = dict(_last_activity)
+    return {"pid": pid, "lines": lines, "activity": activity}

@@ -106,14 +106,14 @@ window.initSettings = async function () {
     comfy.status.textContent = "Applying…";
     try {
       const result = await fetchJson(url, { method, headers: { "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
-      await refresh();
+      await refresh('comfy');
       if (result.token) {
         comfy.token.value = result.token;
         comfy["token-result"].hidden = false;
       }
     } catch (error) {
       // A failed service start can still leave the protection policy applied.
-      try { await refresh(); } catch (_) { /* Preserve the original error. */ }
+      try { await refresh('comfy'); } catch (_) { /* Preserve the original error. */ }
       comfy.status.textContent = settingsError(error);
     } finally {
       comfy.save.disabled = false;
@@ -134,24 +134,25 @@ window.initSettings = async function () {
     }
   });
 
-  async function refresh() {
+  async function refresh(section = 'all') {
+    const updates = name => section === 'all' || section === name;
     const [settings, hf, copilot] = await Promise.all([
       fetchJson("/api/settings"),
       fetchJson("/api/hf-token"),
       fetchJson("/api/copilot/token"),
     ]);
     window.controlPilotSettings = settings || {};
-    renderComfy(settings.comfy_access || {}, settings.password_enabled);
-    if (els.passwordEnabled) els.passwordEnabled.checked = !!(settings && settings.password_enabled);
-    els.themes.forEach(input => { input.checked = input.value === (settings.theme === "dark" ? "dark" : "light"); });
-    if (els.sidebarCompact) els.sidebarCompact.checked = !!(settings && settings.sidebar_compact);
-    if (els.shutdownMode) els.shutdownMode.value = (settings && settings.shutdown_mode) || "";
-    if (els.shutdownHours) els.shutdownHours.value = String((settings && settings.shutdown_default_hours) ?? 0);
-    if (els.shutdownMins) els.shutdownMins.value = String((settings && settings.shutdown_default_mins) ?? 1);
-    if (els.shutdownSecs) els.shutdownSecs.value = String((settings && settings.shutdown_default_secs) ?? 0);
-    if (els.copilotAllowUrls) els.copilotAllowUrls.checked = !!(settings && settings.copilot_allow_all_urls);
-    if (els.jupyterOrigin) els.jupyterOrigin.value = (settings && settings.jupyter_allow_origin_pat) || "";
-    if (els.passwordInput) {
+    if (updates('comfy')) renderComfy(settings.comfy_access || {}, settings.password_enabled);
+    if (updates('password') && els.passwordEnabled) els.passwordEnabled.checked = !!(settings && settings.password_enabled);
+    if (updates('general')) els.themes.forEach(input => { input.checked = input.value === (settings.theme === "dark" ? "dark" : "light"); });
+    if (updates('general') && els.sidebarCompact) els.sidebarCompact.checked = !!(settings && settings.sidebar_compact);
+    if (updates('shutdown') && els.shutdownMode) els.shutdownMode.value = (settings && settings.shutdown_mode) || "";
+    if (updates('shutdown') && els.shutdownHours) els.shutdownHours.value = String((settings && settings.shutdown_default_hours) ?? 0);
+    if (updates('shutdown') && els.shutdownMins) els.shutdownMins.value = String((settings && settings.shutdown_default_mins) ?? 1);
+    if (updates('shutdown') && els.shutdownSecs) els.shutdownSecs.value = String((settings && settings.shutdown_default_secs) ?? 0);
+    if (updates('general') && els.copilotAllowUrls) els.copilotAllowUrls.checked = !!(settings && settings.copilot_allow_all_urls);
+    if (updates('jupyter') && els.jupyterOrigin) els.jupyterOrigin.value = (settings && settings.jupyter_allow_origin_pat) || "";
+    if (updates('password') && els.passwordInput) {
       els.passwordInput.value = "";
       els.passwordInput.placeholder = settings && settings.password_enabled
         ? "Enter new password to change it"
@@ -160,7 +161,7 @@ window.initSettings = async function () {
         ? "Password saved. Enter a new value only to replace it."
         : "Not configured.";
     }
-    if (els.hfInput) {
+    if (updates('hf') && els.hfInput) {
       els.hfInput.value = "";
       els.hfInput.placeholder = "Enter a new token";
       document.getElementById("settings-hf-saved").textContent = hf?.set ? "Token saved" : "No token saved";
@@ -168,14 +169,14 @@ window.initSettings = async function () {
         ? "Saved token is hidden. Enter a new token only to replace it."
         : "No token configured.";
     }
-    if (els.copilotInput) {
+    if (updates('copilot') && els.copilotInput) {
       els.copilotInput.value = "";
       els.copilotInput.placeholder = copilot && copilot.set ? "Copilot token saved" : "COPILOT_GITHUB_TOKEN";
       if (els.copilotStatus) els.copilotStatus.textContent = copilot && copilot.set
         ? "•••••••• saved. Enter a new token to replace it."
         : "Not configured.";
     }
-    if (els.mediapilotInput) {
+    if (updates('mediapilot') && els.mediapilotInput) {
       els.mediapilotInput.value = "";
       els.mediapilotInput.placeholder = settings && settings.mediapilot_password_set
         ? "Password set. Enter new value or leave empty to remove it"
@@ -184,7 +185,7 @@ window.initSettings = async function () {
         ? "•••••••• saved. Enter a new password to replace it."
         : "Not configured.";
     }
-    if (els.jupyterToken) {
+    if (updates('jupyter') && els.jupyterToken) {
       els.jupyterToken.value = "";
       els.jupyterToken.placeholder = settings && settings.jupyter_token_set
         ? "Token set. Enter new value or leave empty to regenerate"
@@ -208,7 +209,7 @@ window.initSettings = async function () {
       if (els.passwordStatus) {
         els.passwordStatus.textContent = enabled ? "Protection enabled." : "Protection disabled.";
       }
-      await refresh();
+      await refresh('password');
     } catch (e) {
       if (els.passwordStatus) els.passwordStatus.textContent = settingsError(e);
     }
@@ -219,7 +220,7 @@ window.initSettings = async function () {
     if (!clear && !token) {
       if (statusEl) statusEl.textContent = "Enter a token.";
       inputEl?.focus();
-      return;
+      return false;
     }
     if (statusEl) statusEl.textContent = clear ? "Clearing..." : "Saving...";
     try {
@@ -229,9 +230,10 @@ window.initSettings = async function () {
         body: JSON.stringify({ token }),
       });
       if (statusEl) statusEl.textContent = successText;
+      return true;
     } catch (e) {
       if (statusEl) statusEl.textContent = e.message || String(e);
-      throw e;
+      return false;
     }
   }
 
@@ -249,7 +251,7 @@ window.initSettings = async function () {
           ? "MediaPilot password saved."
           : "MediaPilot password cleared.";
       }
-      await refresh();
+      await refresh('mediapilot');
     } catch (e) {
       if (els.mediapilotStatus) els.mediapilotStatus.textContent = e.message || String(e);
     }
@@ -306,7 +308,7 @@ window.initSettings = async function () {
       });
       if (els.shutdownStatus) els.shutdownStatus.textContent = "Shutdown defaults saved.";
       if (typeof window.refreshControlPilotSettings === "function") {
-        await window.refreshControlPilotSettings();
+        await refresh('shutdown');
       }
     } catch (e) {
       if (els.shutdownStatus) els.shutdownStatus.textContent = e.message || String(e);
@@ -325,7 +327,7 @@ window.initSettings = async function () {
         }),
       });
       if (els.jupyterStatus) els.jupyterStatus.textContent = "Jupyter settings saved and service restarted.";
-      await refresh();
+      await refresh('jupyter');
     } catch (e) {
       if (els.jupyterStatus) els.jupyterStatus.textContent = e.message || String(e);
     }
@@ -351,33 +353,33 @@ window.initSettings = async function () {
   if (els.hfSave && !els.hfSave.dataset.bound) {
     els.hfSave.dataset.bound = "1";
     els.hfSave.addEventListener("click", async () => {
-      await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN saved.");
-      await refresh();
+      if (!await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN saved.")) return;
+      await refresh('hf');
     });
   }
   if (els.hfClear && !els.hfClear.dataset.bound) {
     els.hfClear.dataset.bound = "1";
     els.hfClear.addEventListener("click", async () => {
-      await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN cleared.", true);
-      await refresh();
+      if (!await saveToken("/api/hf-token", els.hfInput, els.hfStatus, "HF_TOKEN cleared.", true)) return;
+      await refresh('hf');
     });
   }
   if (els.copilotSave && !els.copilotSave.dataset.bound) {
     els.copilotSave.dataset.bound = "1";
     els.copilotSave.addEventListener("click", async () => {
-      await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token saved.");
+      if (!await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token saved.")) return;
       await fetchJson("/api/settings/copilot/restart", { method: "POST" });
       if (els.copilotStatus) els.copilotStatus.textContent = "Copilot token saved and sidecar restarted.";
-      await refresh();
+      await refresh('copilot');
     });
   }
   if (els.copilotClear && !els.copilotClear.dataset.bound) {
     els.copilotClear.dataset.bound = "1";
     els.copilotClear.addEventListener("click", async () => {
-      await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token cleared.", true);
+      if (!await saveToken("/api/copilot/token", els.copilotInput, els.copilotStatus, "Copilot token cleared.", true)) return;
       await fetchJson("/api/settings/copilot/restart", { method: "POST" });
       if (els.copilotStatus) els.copilotStatus.textContent = "Copilot token cleared and sidecar restarted.";
-      await refresh();
+      await refresh('copilot');
     });
   }
   if (els.mediapilotSave && !els.mediapilotSave.dataset.bound) {

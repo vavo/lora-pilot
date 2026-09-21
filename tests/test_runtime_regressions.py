@@ -88,6 +88,7 @@ class DiffusionPipeRunTests(unittest.TestCase):
         self.stack.enter_context(patch.object(dpipe, "_LOCAL_PATH_ROOTS", (self.root,)))
         self.stack.enter_context(patch.object(dpipe, "_procs", {}))
         self.stack.enter_context(patch.object(dpipe, "_logs", {}))
+        self.stack.enter_context(patch.object(dpipe, "_last_activity", {}))
         self.stack.enter_context(patch.object(dpipe, "_start_lock", threading.Lock()))
         dpipe._ensure_dirs()
         dpipe.DIFFPIPE_APP_DIR.mkdir()
@@ -133,14 +134,22 @@ class DiffusionPipeRunTests(unittest.TestCase):
         with patch.object(dpipe, "_resolve_deepspeed_bin", return_value=Path("/fake/deepspeed")):
             self.assertEqual(dpipe.start_training(self.request)["pid"], 123)
 
+    def test_logs_expose_the_same_activity_state_as_the_global_indicator(self):
+        dpipe._last_activity.update(state='running', pid=2)
+        self.assertEqual(dpipe.training_logs()['activity']['state'], 'running')
+        snapshot = dpipe.training_logs()['activity']
+        dpipe._last_activity['state'] = 'failed'
+        self.assertEqual(dpipe.training_logs()['activity']['state'], 'failed')
+        self.assertEqual(snapshot['state'], 'running')
+
     def test_logs_follow_active_then_latest_completed_run(self):
         dpipe._logs.update({1: deque(["old"]), 2: deque(["current"])})
         dpipe._procs[2] = object()
-        self.assertEqual(dpipe.training_logs(), {"pid": 2, "lines": ["current"]})
+        self.assertEqual(dpipe.training_logs(), {"pid": 2, "lines": ["current"], "activity": {}})
         self.assertEqual(dpipe.training_logs(pid=1)["lines"], ["old"])
         self.assertEqual(dpipe.training_logs(pid=999)["lines"], [])
         dpipe._procs.clear()
-        self.assertEqual(dpipe.training_logs(), {"pid": 2, "lines": ["current"]})
+        self.assertEqual(dpipe.training_logs(), {"pid": 2, "lines": ["current"], "activity": {}})
 
 
 @unittest.skipIf(portal is None, "Portal test dependencies unavailable")

@@ -1,4 +1,4 @@
-let dpLogTimer = null;
+let dpLogTimer = null, dpGeneration = 0, dpStarting = false;
 const DP_STORAGE_KEY = "dpipeSettings";
 const DP_SENSITIVE_FIELDS = new Set([
   "dp-wandb-key",
@@ -44,7 +44,7 @@ const DP_FIELDS = [
 
 window.initDpipe = function () {
   const status = document.getElementById("dp-status");
-  if (status) status.textContent = "";
+  if (status) status.textContent = "Checking training status…";
   loadDpipeSettings();
   bindDpipeSettings();
   const wandb = document.getElementById("dp-enable-wandb");
@@ -79,7 +79,13 @@ window.openDpipeTensorBoard = async function () {
 };
 
 window.startDpipe = async function () {
+  if (dpStarting) return;
+  dpStarting = true;
+  const generation = dpGeneration;
   const status = document.getElementById("dp-status");
+  const controls = [...DP_FIELDS.map(id => document.getElementById(id)), document.getElementById('dp-start')].filter(Boolean);
+  const disabled = controls.map(control => control.disabled);
+  controls.forEach(control => { control.disabled = true; });
   if (status) status.textContent = "Starting...";
   try {
     saveDpipeSettings();
@@ -89,24 +95,6 @@ window.startDpipe = async function () {
       llm_path: val("dp-llm"),
       clip_path: val("dp-clip"),
     };
-    const validate = await fetchJson("/dpipe/train/validate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(modelPaths),
-    });
-    if (validate && validate.missing && validate.missing.length) {
-      const missingList = validate.missing.map(m => `${m.field}: ${m.path}`).join("\n");
-      if (status) status.textContent = "Missing model files";
-      const go = confirm(`Missing model files:\n${missingList}\n\nOpen Models page to download?`);
-      if (go) {
-        if (window.loadSection) {
-          window.loadSection("models");
-        } else {
-          window.location.href = "/#models";
-        }
-      }
-      return;
-    }
     const payload = {
       dataset_path: val("dp-dataset"),
       config_dir: val("dp-config"),
@@ -146,6 +134,25 @@ window.startDpipe = async function () {
       wandb_tracker_name: val("dp-wandb-proj"),
       wandb_api_key: val("dp-wandb-key"),
     };
+    const validate = await fetchJson("/dpipe/train/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(modelPaths),
+    });
+    if (generation !== dpGeneration) return;
+    if (validate && validate.missing && validate.missing.length) {
+      const missingList = validate.missing.map(m => `${m.field}: ${m.path}`).join("\n");
+      if (status) status.textContent = "Missing model files";
+      const go = confirm(`Missing model files:\n${missingList}\n\nOpen Models page to download?`);
+      if (go) {
+        if (window.loadSection) {
+          window.loadSection("models");
+        } else {
+          window.location.href = "/#models";
+        }
+      }
+      return;
+    }
     await fetchJson("/dpipe/train/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -155,6 +162,9 @@ window.startDpipe = async function () {
     refreshDpipeTensorBoardStatus().catch(() => {});
   } catch (e) {
     if (status) status.textContent = `Error: ${e.message || e}`;
+  } finally {
+    dpStarting = false;
+    controls.forEach((control, index) => { control.disabled = disabled[index]; });
   }
 };
 
@@ -219,22 +229,41 @@ function saveDpipeSettings() {
   }
 }
 
+function renderDpipeState(activity) {
+  if (dpStarting) return;
+  const state = activity?.state || 'idle';
+  const labels = {idle:'No managed training run.', running:'Running…', succeeded:'Training completed.', failed:'Training failed. Review the logs.', stopped:'Training stopped.'};
+  const status = document.getElementById('dp-status');
+  if (status) status.textContent = labels[state] || state;
+  const start = document.getElementById('dp-start'), stop = document.getElementById('dp-stop');
+  if (start) start.disabled = state === 'running';
+  if (stop) stop.disabled = state !== 'running';
+}
+
 function startLogPoll() {
-  if (dpLogTimer) return;
+  window.stopDpipeLog();
+  const generation = dpGeneration;
   const poll = async () => {
     const pre = document.getElementById("dp-logs");
-    if (!pre) return;
+    if (!pre || generation !== dpGeneration) return;
     try {
       const data = await fetchJson("/dpipe/train/logs?limit=500");
-      const lines = normalizeDpipeLines(data);
-      pre.textContent = lines.join("\n");
-    } catch (e) {
-      // ignore when no logs yet
+      if (generation !== dpGeneration) return;
+      pre.textContent = normalizeDpipeLines(data).join("\n");
+      renderDpipeState(data.activity);
+    } catch (error) {
+      if (generation === dpGeneration && !dpStarting) {
+        const status = document.getElementById('dp-status');
+        if (status) status.textContent = 'Training status unavailable. Retrying…';
+        const start = document.getElementById('dp-start');
+        if (start) start.disabled = true;
+      }
+    } finally {
+      if (generation === dpGeneration) dpLogTimer = setTimeout(poll, 2000);
     }
   };
   poll();
   refreshDpipeTensorBoardStatus().catch(() => {});
-  dpLogTimer = setInterval(poll, 2000);
 }
 
 window.refreshDpipeTensorBoardStatus = async function () {
@@ -253,7 +282,8 @@ window.refreshDpipeTensorBoardStatus = async function () {
 };
 
 window.stopDpipeLog = function () {
-  if (dpLogTimer) clearInterval(dpLogTimer);
+  dpGeneration++;
+  if (dpLogTimer) clearTimeout(dpLogTimer);
   dpLogTimer = null;
 };
 

@@ -17,25 +17,16 @@ window.fetchJson = async function (url, opts = {}) {
     throw new Error(txt || res.statusText);
   }
   
-  // Handle empty responses or non-JSON content
-  const contentType = res.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    // Return empty object for non-JSON responses to avoid parsing errors
-    return {};
+  if (res.status === 204) return null;
+  const contentType = res.headers.get('content-type') || '';
+  if (!/^application\/(?:[\w.-]+\+)?json(?:\s*;|$)/i.test(contentType)) {
+    throw new Error('Unexpected server response. Expected JSON; check the connection and retry.');
   }
-  
   const text = await res.text();
-  if (!text.trim()) {
-    // Return empty object for empty responses
-    return {};
-  }
-  
   try {
     return JSON.parse(text);
-  } catch (e) {
-    console.warn('Failed to parse JSON response:', text, e);
-    // Return empty object instead of throwing
-    return {};
+  } catch {
+    throw new Error('Invalid JSON response from the server. Retry the request.');
   }
 };
 

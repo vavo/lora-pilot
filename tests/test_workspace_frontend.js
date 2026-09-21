@@ -61,7 +61,7 @@ test('only a successful queue submission clears the unfinished draft', async () 
   const submitted={family:'sdxl',profile:'regular',dataset_name:'portraits',output_name:'Monday',source_run_id:null};
   context.createTrainingDraft(store).save(submitted);
   let rejectSubmission=true;
-  const page=vm.createContext({URLSearchParams,window:{localStorage:store},document:{getElementById:node,querySelectorAll:()=>[],createElement:tag=>node(tag)},
+  const page=vm.createContext({URLSearchParams,AbortController,clearModelDownloadUI(){},window:{localStorage:store},document:{getElementById:node,querySelectorAll:()=>[],createElement:tag=>node(tag)},
     tpStarting:false,tpStatusKnown:true,tpDismissedRunId:null,
     setTimeout:()=>1,clearTimeout(){},normalizeOutputName:v=>v,updateEpochExample(){},updateTpSummary(){},syncTpActions(){},showTpError(){},
     ensureTrainpilotModelsPresent:async()=>true,

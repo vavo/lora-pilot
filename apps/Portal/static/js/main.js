@@ -1,6 +1,7 @@
 const sections = ["dashboard", "services", "storage", "models", "datasets", "mediapilot", "comfyui", "tagpilot", "trainpilot", "dpipe", "docs", "settings", "support"];
 const viewCache = {};
 let currentSection = null;
+let navigationGeneration = 0;
 const initialSection = new URLSearchParams(window.location.search).get("open") === "comfyui" ? "comfyui" : (sections.includes(location.hash.slice(1)) ? location.hash.slice(1) : "dashboard");
 let controlPilotUnlocked = false;
 window.controlPilotSettings = window.controlPilotSettings || null;
@@ -147,9 +148,10 @@ async function loadSection(section) {
   if (!controlPilotUnlocked) return;
   if (!contentEl) return;
   if (!viewMap[section]) section = "dashboard";
+  const generation = ++navigationGeneration;
   setCopilotSectionVisibility(section);
   // cleanup timers when switching away
-  if (currentSection && currentSection !== section) {
+  if (currentSection) {
     if (currentSection === "models" && window.stopModels) window.stopModels();
     if (currentSection === "dashboard" && window.stopDashboard) window.stopDashboard();
     if (currentSection === "dpipe" && window.stopDpipeLog) window.stopDpipeLog();
@@ -161,14 +163,21 @@ async function loadSection(section) {
   const active = document.querySelector(`.nav a[data-section="${section}"]`);
   if (active) { active.classList.add("active"); active.setAttribute("aria-current", "page"); }
   closeSidebar();
-  if (!viewCache[section]) {
-    const res = await fetch(viewMap[section].view);
-    if (!res.ok) {
-      contentEl.innerHTML = `<div class="card">Failed to load view: ${section}</div>`;
-      return;
+  try {
+    if (!viewCache[section]) {
+      const res = await fetch(viewMap[section].view);
+      if (!res.ok) throw new Error('View unavailable');
+      const html = await res.text();
+      if (generation !== navigationGeneration || !controlPilotUnlocked) return;
+      viewCache[section] = html;
     }
-    viewCache[section] = await res.text();
+  } catch (error) {
+    if (generation === navigationGeneration && controlPilotUnlocked) {
+      contentEl.innerHTML = `<div class="card">Could not load ${section}. Select the page again to retry.</div>`;
+    }
+    return;
   }
+  if (generation !== navigationGeneration || !controlPilotUnlocked) return;
   contentEl.innerHTML = viewCache[section];
   // run initializer
   currentSection = section;
@@ -223,6 +232,7 @@ function setAuthGateVisible(visible, message = "") {
 
 window.showControlPilotLogin = function (message = "ControlPilot password required") {
   controlPilotUnlocked = false;
+  navigationGeneration++;
   window.workspaceStatus.stop();
   setAuthGateVisible(true, message);
 };
@@ -396,6 +406,7 @@ if (authLoginBtn && !authLoginBtn.dataset.bound) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
+      await window.refreshControlPilotSettings();
       controlPilotUnlocked = true;
       setAuthGateVisible(false);
       window.workspaceStatus.start();

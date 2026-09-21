@@ -133,11 +133,20 @@ function clearModelDownloadUI() {
   text.textContent = "";
 }
 
-async function ensureTrainpilotModelsPresent(tomlPath) {
+function waitForModelPoll(ms, signal) {
+  return new Promise((resolve, reject) => {
+    signal?.throwIfAborted();
+    const abort = () => { clearTimeout(timer); reject(new DOMException('Preparation cancelled', 'AbortError')); };
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(); }, ms);
+    signal?.addEventListener('abort', abort, {once:true});
+  });
+}
+
+async function ensureTrainpilotModelsPresent(request, signal) {
   const check = await fetchJson("/api/training/preflight", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(window.trainingWorkspace.spec()),
+    body: JSON.stringify(request), signal,
   });
   const missing = (check && check.missing) ? check.missing : [];
   if (!missing.length) return true;
@@ -168,25 +177,29 @@ async function ensureTrainpilotModelsPresent(tomlPath) {
     const modelName = m.model_name;
     const prefix = `${i + 1}/${downloadable.length}`;
     setModelDownloadUI(null, `${prefix} Starting ${modelName}…`);
-    await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/start`, { method: "POST" });
+    await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/start`, { method: "POST", signal });
     while (true) {
-      const st = await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/status`);
+      const st = await fetchJson(`/api/models/${encodeURIComponent(modelName)}/pull/status`, {signal});
       if (st && st.state === "running") {
         const pct = (typeof st.progress_pct === "number") ? st.progress_pct : null;
         const label = st.last_line ? `${prefix} ${st.last_line}` : `${prefix} Downloading ${modelName}…`;
         setModelDownloadUI(pct, label);
-        await new Promise(r => setTimeout(r, 1000));
+        await waitForModelPoll(1000, signal);
         continue;
       }
       if (st && st.state === "done") {
         setModelDownloadUI(100, `${prefix} Downloaded ${modelName}`);
-        await new Promise(r => setTimeout(r, 350));
+        await waitForModelPoll(350, signal);
         break;
       }
       if (st && st.state === "error") {
         throw new Error(st.error || `Download failed: ${modelName}`);
       }
-      await new Promise(r => setTimeout(r, 1000));
+      if (st?.state !== 'queued') {
+        throw new Error('Download status was lost. Open Models > Downloads, check the files, and retry training.');
+      }
+      setModelDownloadUI(null, `${prefix} Waiting for ${modelName}…`);
+      await waitForModelPoll(1000, signal);
     }
   }
 

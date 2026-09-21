@@ -2,7 +2,7 @@
 window.trainingWorkspace = (() => {
   let epoch = 0, timer = null, selected = null, current = null, paused = false;
   let historySearch = '', historyFamily = '', historyState = '', offset = 0, filterTimer;
-  let comparisonError = '';
+  let comparisonError = '', preparation = null;
   let comparisonFormRun = null;
   let draft = null, preferSetup = false;
   let sourceRun = null, preflightEpoch = 0, comparisonBusy = false, historySignature = '';
@@ -200,16 +200,18 @@ window.trainingWorkspace = (() => {
     if (tpStarting || !tpStatusKnown) return;
     const request = spec();
     if (!$('tp-dataset').value || !$('tp-output').value.trim()) { showTpError('Choose a dataset and give your LoRA a name.'); return; }
+    const controller = new AbortController(); preparation = controller;
     tpStarting = true; syncTpActions(); showTpError('');
     try {
-      if (!await ensureTrainpilotModelsPresent(request.toml_path)) return;
+      if (!await ensureTrainpilotModelsPresent(request, controller.signal)) return;
+      controller.signal.throwIfAborted();
       const run = await api('/runs', request);
       try { draft.clear(); } catch {}
       preferSetup = false;
       if ($('tp-draft-status')) $('tp-draft-status').textContent = 'Run queued. The submitted draft has been cleared.';
       selected = run.id; tpDismissedRunId = null; refresh();
-    } catch (error) { showTpError(`Could not queue training: ${error.message || error}`); }
-    finally { tpStarting = false; if ($('tp-page')) syncTpActions(); }
+    } catch (error) { if (!controller.signal.aborted) showTpError(`Could not queue training: ${error.message || error}`); }
+    finally { if (preparation === controller) preparation = null; clearModelDownloadUI(); tpStarting = false; if ($('tp-page')) syncTpActions(); }
   }
   async function historyAction(event) {
     const control = event.target.closest('[data-run-action]'); if (!control) return;
@@ -326,6 +328,6 @@ window.trainingWorkspace = (() => {
     } catch (error) { if (generation === epoch) showTpError(`SDXL configuration unavailable: ${error.message || error}`); }
     if (generation === epoch && $('tp-page')) { preflight(); refresh(); }
   }
-  function stop() { clearTimeout(filterTimer); epoch++; preflightEpoch++; clearTimeout(timer); timer = null; }
+  function stop() { preparation?.abort(); clearTimeout(filterTimer); epoch++; preflightEpoch++; clearTimeout(timer); timer = null; }
   return {init, stop, spec, preflight, submit, stopRun, publish};
 })();
