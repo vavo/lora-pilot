@@ -29,8 +29,9 @@ class TrainingComparisonApiTests(unittest.TestCase):
         self.config.write_text(f'pretrained_model_name_or_path = "{base}"\nvae = "{base}"\n')
         self.spec = dict(dataset_name='1_example', output_name='example', family='sdxl', profile='regular')
         self.addCleanup(setattr, gpu_guard, 'managed_conflicts', gpu_guard.managed_conflicts)
+        self.legacy_conflicts = Mock(return_value=[])
         router, self.queue = create_router(self.root, self.models, lambda _: dataset,
-            lambda _: self.config, lambda _: 'base', lambda: [])
+            lambda _: self.config, lambda _: 'base', self.legacy_conflicts)
         start = self.queue.start
         self.queue.start = lambda: start(background=False)
         self.addCleanup(self.queue.close)
@@ -207,13 +208,43 @@ class TrainingComparisonApiTests(unittest.TestCase):
         with patch('apps.Portal.services.training_api.comfy', return_value={'queue_running': [], 'queue_pending': []}):
             self.assertEqual(self.client.post(self.prefix + '/comparison/reset').json()['status'], 'none')
 
-    def test_comparison_waits_for_managed_training(self):
+    def test_comparison_can_generate_during_managed_training(self):
         self.queue.proc = Mock()
         self.queue.proc.poll.return_value = None
-        with patch('apps.Portal.services.training_api.comfy') as remote:
-            self.assertEqual(self.client.post(self.prefix + '/comparison', json=self.request).status_code, 409)
-            remote.assert_not_called()
-        self.queue.proc = None
+        self.addCleanup(setattr, self.queue, 'proc', None)
+        def remote(method, path, **kwargs):
+            return self.registry if path == 'object_info' else {'prompt_id': 'concurrent'}
+        with patch('apps.Portal.services.training_api.comfy', side_effect=remote):
+            result = self.client.post(self.prefix + '/comparison', json=self.request)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['prompt_id'], 'concurrent')
+
+    def test_gpu_occupancy_is_advisory_and_does_not_block_serial_dispatch(self):
+        warnings = ['GPU workload: 12, python, 32986', 'ComfyUI has running or queued generation jobs.']
+        process = Mock(pid=99999999)
+        process.poll.return_value = None
+        with patch.object(gpu_guard, 'conflicts', return_value=warnings), patch.object(self.queue, 'launch', return_value=process) as launch:
+            preflight = self.client.post('/api/training/preflight', json=self.spec).json()
+            self.assertEqual(preflight['conflicts'], [])
+            self.assertEqual(preflight['warnings'], warnings)
+            first = self.client.post('/api/training/runs', json=self.spec).json()
+            second = self.client.post('/api/training/runs', json=self.spec).json()
+            self.queue.tick()
+            self.queue.tick()
+            self.assertEqual(self.queue.get(first['id'])['status'], 'running')
+            self.assertEqual(self.queue.get(second['id'])['status'], 'queued')
+            launch.assert_called_once()
+            preflight = self.client.post('/api/training/preflight', json=self.spec).json()
+            self.assertEqual(preflight['conflicts'], ['A guided training run is active.'])
+            self.assertEqual(preflight['warnings'], warnings)
+
+    def test_managed_trainer_still_blocks_dispatch(self):
+        run = self.client.post('/api/training/runs', json=self.spec).json()
+        self.legacy_conflicts.return_value = ['Diffusion Pipe training is active.']
+        with patch.object(self.queue, 'launch') as launch:
+            self.queue.tick()
+            launch.assert_not_called()
+            self.assertEqual(self.queue.get(run['id'])['status'], 'queued')
 
     def test_sdxl_use_settings_and_repeat_keep_saved_configuration(self):
         original = self.config.read_text()
@@ -227,7 +258,7 @@ class TrainingComparisonApiTests(unittest.TestCase):
 
 
 class GpuGuardTests(unittest.TestCase):
-    def test_gpu_processes_and_comfy_jobs_both_block_training(self):
+    def test_gpu_processes_and_comfy_jobs_are_reported_for_warnings_and_cleanup(self):
         response = Mock()
         response.json.return_value = {'queue_running': [[0, 'generation']], 'queue_pending': []}
         with patch('subprocess.run', return_value=Mock(returncode=0, stdout='12, python, 4096\n')), patch('httpx.Client') as client:
@@ -236,7 +267,7 @@ class GpuGuardTests(unittest.TestCase):
         self.assertTrue(any('4096' in reason for reason in reasons))
         self.assertTrue(any('ComfyUI' in reason for reason in reasons))
 
-    def test_stopped_comfy_and_empty_gpu_allow_training_but_unknown_gpu_does_not(self):
+    def test_unknown_gpu_is_reported_but_stopped_comfy_and_empty_gpu_are_not(self):
         with patch('subprocess.run', return_value=Mock(returncode=0, stdout='')) as gpu, patch('httpx.Client') as client:
             client.return_value.__enter__.return_value.get.side_effect = httpx.ConnectError('stopped')
             self.assertEqual(gpu_guard.conflicts(), [])

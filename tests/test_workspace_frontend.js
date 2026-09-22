@@ -67,7 +67,7 @@ test('only a successful queue submission clears the unfinished draft', async () 
     ensureTrainpilotModelsPresent:async()=>true,
     fetchJson:async(path,options)=>{
       if(path==='/api/trainpilot/toml')return {path:'/tmp/config.toml'};
-      if(path==='/api/training/preflight')return {missing:[],conflicts:[]};
+      if(path==='/api/training/preflight')return {missing:[],conflicts:[],warnings:['ComfyUI has running or queued generation jobs.']};
       if(path==='/api/training/runs' && options.method==='POST'){
         if(rejectSubmission)throw Error('queue unavailable');
         return {id:'a'.repeat(32)};
@@ -79,6 +79,10 @@ test('only a successful queue submission clears the unfinished draft', async () 
   for(const file of ['screen-lifecycle','training-draft','training-workspace'])vm.runInContext(fs.readFileSync(`apps/Portal/static/js/${file}.js`,'utf8'),page);
   await page.window.trainingWorkspace.init();
   assert.equal(node('tp-output').value,'Monday');
+  await page.window.trainingWorkspace.preflight();
+  assert.match(node('tp-check-service').textContent,/Ready to share the GPU with ComfyUI/);
+  assert.match(node('tp-check-service').textContent,/Advisory: ComfyUI/);
+  assert.doesNotMatch(node('tp-check-service').textContent,/queue will wait/);
   await page.window.trainingWorkspace.submit();
   assert.equal(context.createTrainingDraft(store).read().output_name,'Monday');
   rejectSubmission=false;

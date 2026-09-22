@@ -64,8 +64,10 @@ window.trainingWorkspace = (() => {
       $('tp-check-model').textContent = result.missing.length
         ? `Missing ${result.missing.length} model file(s). You can download them before queuing.` : 'Required model files found';
       $('tp-check-model').classList.toggle('verified', !result.missing.length);
-      $('tp-check-service').textContent = result.conflicts.length
-        ? `The queue will wait: ${result.conflicts.join(' ')}` : 'No GPU conflicts detected. Checked again before launch.';
+      const launchStatus = result.conflicts.length
+        ? `The queue will wait: ${result.conflicts.join(' ')}` : 'Ready to share the GPU with ComfyUI.';
+      $('tp-check-service').textContent = [launchStatus,
+        ...(result.warnings || []).map(warning => `Advisory: ${warning}`)].join(' ');
     } catch (error) {
       if (!screen.active) return;
       if (screen.active && $('tp-check-model')) $('tp-check-model').textContent = `Model check unavailable: ${error.message || error}`;

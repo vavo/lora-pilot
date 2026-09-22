@@ -1,12 +1,14 @@
 # Changelog
 
-_Last updated: 2026-09-21_
+_Last updated: 2026-09-22_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Current unreleased work
 
-The current entry adds persistent training history, a serial queue with GPU conflict checks, guided FLUX.1 dev training alongside SDXL, and a checkpoint comparison grid in ComfyUI. You can start from the Dashboard, inspect dataset previews and caption coverage, queue a run, then move or copy its saved LoRA files into the shared library. Moved checkpoints remain available for downloads and comparisons. The comparison begins with the base model without LoRA, followed by every saved checkpoint in training order. The ComfyUI handoff confirms that the prepared workflow loaded and keeps a manual download available. The grouped sidebar retains light and dark controls, and Models opens Connections without losing the selected catalog family.
+Training and ComfyUI can now use the GPU concurrently. GPU occupancy and unavailable telemetry are advisory during training preflight, while managed training jobs remain serialized. Try My LoRA comparisons can also run alongside training. Storage cleanup retains its workload protection.
+
+The current entry adds persistent training history, a serial queue with managed trainer conflict checks, guided FLUX.1 dev training alongside SDXL, and a checkpoint comparison grid in ComfyUI. You can start from the Dashboard, inspect dataset previews and caption coverage, queue a run, then move or copy its saved LoRA files into the shared library. Moved checkpoints remain available for downloads and comparisons. The comparison begins with the base model without LoRA, followed by every saved checkpoint in training order. The ComfyUI handoff confirms that the prepared workflow loaded and keeps a manual download available. The grouped sidebar retains light and dark controls, and Models opens Connections without losing the selected catalog family.
 
 The September 21 additions bring checkpoint downloads, searchable and paginated training history, actionable failure messages, and elapsed time with cautious estimates. The new Storage page shows category usage and offers explicit reviewed cleanup of private files from finished guided runs, with workload and file-change checks. Original datasets, shared models, and run history stay protected.
 

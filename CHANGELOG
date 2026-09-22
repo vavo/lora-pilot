@@ -1,4 +1,6 @@
-Unreleased (September 21st 2026)
+Unreleased (September 22nd 2026)
+
+Training and ComfyUI can now use the GPU concurrently. GPU occupancy and unavailable telemetry are advisory during training preflight, while managed training jobs remain serialized. Try My LoRA comparisons can also run alongside training. Storage cleanup retains its workload protection.
 
 Stopped guided training runs now offer Resume training when a saved optimizer state is available, or Continue from checkpoint for older weight-only saves. Continuations receive separate output folders and retain the original history. New guided runs save recovery state at checkpoint intervals. Queue resume still controls dispatch; it does not restart stopped runs.
 

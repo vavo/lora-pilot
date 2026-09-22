@@ -38,9 +38,9 @@ For FLUX.1 dev, the three profiles use 600, 1,200, and 2,400 steps, respectively
 
 ## Let the queue manage the next start
 
-Choose **Add to training queue**. You can prepare another run while one is training. ControlPilot dispatches one guided run at a time and checks for other managed trainers, NVIDIA compute processes, and running or pending ComfyUI jobs before each launch.
+Choose **Add to training queue**. You can prepare another run while one is training. ControlPilot dispatches one guided run at a time and waits for other managed trainers before each launch. ComfyUI and other GPU applications can run alongside training, including while ComfyUI is generating.
 
-When something owns the GPU, the queue explains what it detected. **Manage GPU services** takes you to the tools you can inspect or stop. ControlPilot does not automatically kill an unrelated workload. An idle application retaining GPU memory can also keep a run waiting. If GPU status cannot be checked, dispatch waits rather than assuming the GPU is free.
+GPU workloads and unavailable telemetry appear as advisory messages during preflight; they do not hold the training queue. There is no fixed VRAM cutoff because memory needs depend on your models, batch size, resolution, and training settings. Both workloads share the available memory. If either runs out of memory, reduce its settings or use **Manage GPU services** to stop the other workload. ControlPilot does not automatically stop ComfyUI or unload its models.
 
 **Pause queue** prevents the next launch while allowing the current run to continue. **Cancel** removes a waiting run from dispatch. **Stop** terminates a currently managed run and leaves already saved files in place. These checks coordinate ControlPilot-managed launches; another tool or terminal can still start a process after a check and compete for memory.
 
@@ -74,7 +74,7 @@ A successful run shows the saved checkpoints and their location. **Download** sa
 
 In **Try my LoRA**, enter a prompt containing your trigger word. **All checkpoints** creates a grid beginning with the base model without LoRA, followed by each saved epoch or step checkpoint in training order and the final file. Every image uses the same prompt, seed, sampling settings, and dimensions, and each checkpoint is applied independently at the selected strength. The filenames label the images so you can see where training improved the result or went too far. Choose a single checkpoint when you want a smaller, two-image comparison.
 
-The comparison checks the running ComfyUI node registry and available model choices before submission. It uses native nodes for SDXL and FLUX.1 dev. Start ComfyUI in Services if it is unavailable, and wait for managed training to finish before generating.
+The comparison checks the running ComfyUI node registry and available model choices before submission. It uses native nodes for SDXL and FLUX.1 dev. Start ComfyUI in Services if it is unavailable. Comparisons can generate alongside another training run and share the same GPU memory.
 
 **Open prepared workflow in ComfyUI** loads the same graph into the editor without starting generation. The image includes a small frontend extension for this handoff, and ControlPilot confirms when the workflow has loaded. If loading is not confirmed, it keeps a download link available rather than treating an empty editor as success. **Download workflow** also provides the prepared API-format JSON for manual loading. If a network interruption leaves submission uncertain, inspect ComfyUI before using the explicit reset action; the queue must be empty before resetting that state.
 

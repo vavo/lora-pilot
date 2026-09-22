@@ -32,7 +32,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
     workspace, models = Path(workspace).resolve(), Path(models).resolve()
     recipe = GuidedTraining(workspace, models, resolve_dataset, resolve_config, model_name)
     queue = TrainingRuns(under(workspace, workspace / 'config/training'), recipe.prepare, recipe.launch,
-                         lambda: legacy_conflicts() + gpu_guard.conflicts())
+                         legacy_conflicts)
 
     def managed_conflicts():
         reasons = legacy_conflicts()
@@ -150,7 +150,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
                 raise HTTPException(400, 'Saved configuration belongs to a different model family')
             config = old['template']
         checks = recipe.requirements(req.model_dump(), config)
-        return dict(checks, conflicts=managed_conflicts() + gpu_guard.conflicts(),
+        return dict(checks, conflicts=managed_conflicts(), warnings=gpu_guard.conflicts(),
                     note='FLUX.1 dev uses full-size weights and substantial GPU/system memory. Block swapping is enabled.'
                          if req.family == 'flux1' else 'SDXL uses the existing Kohya profiles.')
 
@@ -343,9 +343,6 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             current = comparison_status(run_id)
             if current['status'] in {'queued', 'running', 'submitting', 'unknown'}:
                 raise HTTPException(409, 'A comparison is active or its submission is unconfirmed. Check ComfyUI before retrying.')
-            blockers = managed_conflicts()
-            if blockers:
-                raise HTTPException(409, ' '.join(blockers))
             prompt = prepare_comparison(run_id, req)['workflow']
             state = dict(status='submitting', created_at=now(), request=req.model_dump(), images=[],
                          outputs=comparison_outputs(prompt))

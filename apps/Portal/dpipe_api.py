@@ -501,7 +501,7 @@ def start_training(req: TrainRequest):
     try:
         with gpu_guard.LAUNCH_LOCK:
             _ensure_single_run()
-            blockers = gpu_guard.managed_conflicts() + gpu_guard.conflicts()
+            blockers = gpu_guard.managed_conflicts()
             if blockers:
                 raise HTTPException(status_code=409, detail=" ".join(blockers))
             return _start_training(req)

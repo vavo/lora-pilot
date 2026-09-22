@@ -1,4 +1,4 @@
-"""Serialize ControlPilot launch checks; external tools remain advisory conflicts."""
+"""Serialize trainer launches and report GPU occupancy for warnings and storage safety."""
 import os
 import subprocess
 import threading
@@ -17,7 +17,7 @@ def conflicts():
              '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=5,
         )
         if result.returncode:
-            reasons.append('GPU status unavailable. Check the NVIDIA driver before resuming.')
+            reasons.append('GPU status unavailable. Check the NVIDIA driver.')
         else:
             for line in result.stdout.splitlines():
                 if line.strip():
@@ -34,5 +34,5 @@ def conflicts():
     except httpx.ConnectError:
         pass  # A stopped ComfyUI service cannot own queued work.
     except (httpx.HTTPError, ValueError, TypeError):
-        reasons.append('ComfyUI queue status unavailable. Check Services before resuming.')
+        reasons.append('ComfyUI queue status unavailable. Check Services.')
     return reasons

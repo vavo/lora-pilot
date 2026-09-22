@@ -3449,7 +3449,7 @@ def trainpilot_start(req: TrainPilotRequest):
     if not gpu_guard.LAUNCH_LOCK.acquire(blocking=False):
         raise HTTPException(status_code=409, detail="Another GPU job is starting")
     try:
-        blockers = gpu_guard.managed_conflicts() + gpu_guard.conflicts()
+        blockers = gpu_guard.managed_conflicts()
         if blockers:
             raise HTTPException(status_code=409, detail=" ".join(blockers))
         if not _tp_lock.acquire(blocking=False):

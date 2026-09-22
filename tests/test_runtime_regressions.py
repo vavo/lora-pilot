@@ -101,7 +101,7 @@ class DiffusionPipeRunTests(unittest.TestCase):
         self.spawn = self.stack.enter_context(patch.object(
             dpipe.subprocess, "Popen", return_value=SimpleNamespace(pid=123)))
         self.stack.enter_context(patch.object(dpipe, "_read_stream"))
-        self.stack.enter_context(patch.object(dpipe.gpu_guard, "conflicts", return_value=[]))
+        self.stack.enter_context(patch.object(dpipe.gpu_guard, "conflicts", return_value=["GPU workload: ComfyUI, 32986 MiB"]))
         self.stack.enter_context(patch.object(dpipe.gpu_guard, "managed_conflicts", return_value=[]))
 
     def test_overlapping_starts_reserve_before_writing_configs(self):
