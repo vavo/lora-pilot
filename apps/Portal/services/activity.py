@@ -6,12 +6,15 @@ from fastapi import APIRouter
 
 def progress(lines):
     for line in reversed(lines):
+        # Bound regex work and numeric conversion on trainer-controlled log records.
+        if len(line) > 1024:
+            continue
         if 'steps' not in line:
             continue
         match = re.search(r'(\d{1,3})%\|', line)
         if match:
             return min(100, int(match[1]))
-        match = re.search(r'(\d+)\s*/\s*(\d+)', line)
+        match = re.search(r'(?<!\d)(\d{1,12})\s{0,16}/\s{0,16}(\d{1,12})(?!\d)', line)
         if match and int(match[2]):
             return min(100, round(100 * int(match[1]) / int(match[2])))
     return None

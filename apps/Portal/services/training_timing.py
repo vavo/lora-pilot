@@ -33,12 +33,15 @@ def timing(run, lines, updated=None, clock=time.time):
     if not active:
         return result
     result['stage'] = 'Starting trainer'
-    if any(re.search(r'cach|encoding.*(?:latent|text)', line, re.I) for line in lines[-10:]):
+    if any(len(line) <= 1024 and re.search(r'cach|encoding.*(?:latent|text)', line, re.I) for line in lines[-10:]):
         result['stage'] = 'Preparing caches'
     for line in reversed(lines):
+        # Oversized log records are not progress; do not truncate them into valid input.
+        if len(line) > 1024:
+            continue
         if not re.search(r'\bsteps\s*:', line):
             continue
-        match = re.search(r'(\d+)\s*/\s*(\d+)\s*\[([\d:]+)<([\d:]+)', line)
+        match = re.search(r'(?<!\d)(\d{1,12})\s{0,16}/\s{0,16}(\d{1,12})\s{0,16}\[([\d:]{1,12})<([\d:]{1,12})(?![\d:])', line)
         if match:
             step, total = int(match[1]), int(match[2])
             elapsed, remaining = seconds(match[3]), seconds(match[4])
