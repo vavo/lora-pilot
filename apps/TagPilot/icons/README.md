@@ -1,0 +1,1 @@
+These icons are unmodified Feather v4.29.2 assets from https://github.com/feathericons/feather, distributed under the accompanying MIT license. TagPilot uses the same icon family as ControlPilot, with CSS masks to inherit the active theme.

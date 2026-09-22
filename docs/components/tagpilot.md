@@ -1,172 +1,61 @@
-# TagPilot
+# Caption images with TagPilot
 
-_Last updated: 2026-07-26_
+_Last updated: 2026-09-23_
 
-On RunPod, run the operational commands directly in the pod. Docker commands
-apply only when LoRA Pilot is running under Docker Compose on another host.
+A training image tells the model what something looks like. Its caption helps explain what it is looking at. TagPilot brings those two parts together, so you can move from a folder of photos to a dataset you understand and trust.
 
-TagPilot is the dataset preparation UI for LoRA Pilot. It is a browser-first tool for loading images, generating tags/captions, editing labels, and saving datasets into `/workspace/datasets`.
+Open **Caption images** under Prepare in ControlPilot. The workspace follows ControlPilot’s light or dark theme and keeps dataset actions, individual image tools, and export controls in one place. You can also open `/tagpilot/` directly on your ControlPilot address.
 
-##  Overview
+## Start with the images you already have
 
-TagPilot supports:
-- Upload individual images or full ZIP datasets
-- Duplicate detection (hash-based)
-- Manual tag editing and caption mode
-- Trigger-word prepending across the dataset
-- Crop and single-image tools (tag/caption/remove), including preview-modal crop access
-- Batch tagging/captioning with multiple AI providers
-- Export ZIP or save directly to workspace dataset folders
+Choose **Add photos** to select PNG, JPEG, or WebP images. You can include matching `.txt` files in the same selection; `portrait.jpg` and `portrait.txt` belong together. **Import dataset ZIP** adds an existing collection with its text files. Both actions add to the current session and skip images whose contents are already present.
 
-![TagPilot Dark Mode Edit View](../assets/images/controlpilot/controlpilot-tag-images-dark-edit-tags.png)
-![TagPilot Settings Modal with Model Dropdown](../assets/images/controlpilot/controlpilot-tag-images-dark-settings-model-dropdown.png)
-![TagPilot Tagging Settings Modal](../assets/images/controlpilot/controlpilot-tag-images-dark-tagging-settings-modal.png)
+Opening a dataset from ControlPilot’s Datasets page loads its saved images and annotations. The direct equivalent is `/tagpilot/?dataset=1_my_dataset`. Files remain in the browser while you edit, and changes reach your workspace only when you choose **Save to workspace**.
 
-##  Access
+The editor displays **50 images per page**. Page controls show the visible range and total image count. Moving between pages preserves your edits. Tag all, Caption all, trigger-word changes, the dataset tag viewer, saving, and exporting always operate on the complete collection.
 
-- **ControlPilot tab**: `TagPilot`
-- **Direct route**: `http://localhost:7878/tagpilot/`
-- **Open a dataset directly**:
-  - `http://localhost:7878/tagpilot/?dataset=1_my_dataset`
-  - The ControlPilot Datasets menu now opens TagPilot with `?dataset=<dataset_name>` so edits resume from previously saved images/tags.
+## Give each image the right description
 
-In LoRA Pilot, TagPilot is mounted under ControlPilot; you generally do not need a separate service/port.
+Every image has explicit **Tags** and **Caption** controls. These are two ways to edit the same annotation, rather than separate text files. Tags work well for concise descriptions such as clothing, lighting, or background. Caption mode gives you room for complete sentences.
 
-## 📁 Dataset Flow
+Type a tag and press Enter or comma to add it. Remove a chip to delete that tag from the image. The **Dataset tag viewer** counts tags across images in tag mode; removing a tag there removes it from every tagged image after confirmation. Caption prose is not included in that frequency list.
 
-### Load existing dataset
-TagPilot requests:
-- `GET /api/tagpilot/load?name=<dataset>`
+The **Trigger word** field applies the chosen phrase across the dataset. Changing it replaces the previous trigger while keeping the remaining text. Use a distinctive phrase that you can later include in your generation prompt.
 
-This loads files from:
-- `/workspace/datasets/1_<dataset_name>`
-- Dataset links coming from ControlPilot (for example from the Datasets list) keep the existing `dataset` query param and call the same endpoint, so tags/captions load automatically.
+Choose **Preview image** for a larger view. Previous and Next buttons, or the left and right arrow keys, move through the entire dataset, including across page boundaries. Navigation stops at the first and last image. Escape closes the preview. **Crop** works from either the image row or the preview and uses the aspect ratio and output width chosen in TagPilot settings.
 
-### Save to workspace
-The `Save to /workspace/datasets` action streams files to:
-- `POST /api/tagpilot/save-item?name=<dataset>`
+**Remove image** removes an image from the editing session. **Clear tags/captions** clears annotations while preserving the current trigger word. **Reset all** discards the session’s images, annotations, dataset name, and trigger after confirmation. These actions do not immediately delete saved workspace files; saving the edited dataset replaces the saved collection.
 
-Result:
-- Dataset folder: `/workspace/datasets/1_<dataset_name>`
-- ZIP copy: `/workspace/datasets/ZIPs/<dataset_name>.zip`
+## Let a model make the first pass
 
-### Export without saving
-- `Export as ZIP` creates a client-side download only.
+**Tag image** and **Caption image** process a single image. **Tag all** and **Caption all** open a dialog showing the selected model, image count, text limit, and trigger word before work begins.
 
-## 🤖 Auto Tag/Caption Providers
+Choose **Skip existing** to process only images with no text or just the trigger word. **Append** adds generated text to existing annotations. **Overwrite** replaces them. During processing, the dialog shows progress and a Stop control. Stopping prevents subsequent images from starting; an in-flight provider request can still finish.
 
-Configurable in TagPilot settings:
-- `Gemini`
-- `Grok`
-- `OpenAI`
-- `Claude`
-- `vLLM (OpenAI compatible)`
-- `DeepDanbooru`
-- `WD1.4` (via Replicate)
+TagPilot supports Gemini, Grok, OpenAI, Claude, and OpenAI-compatible vLLM endpoints for tags and captions. DeepDanbooru and WD1.4 provide additional tagging options. WD1.4 uses a Replicate API key, while DeepDanbooru does not require a key.
 
-Notes:
-- `Claude` and `vLLM` are configured directly in the TagPilot Settings modal and kept in the browser session storage for convenience.
-- `Gemini`, `Grok`, and `OpenAI` can still be managed from ControlPilot secrets settings.
-- Browser uploads for Gemini/Grok/OpenAI are normalized to JPEG/PNG where needed, and the backend infers image MIME type from the request, filename, and image bytes before provider calls.
-- Provider errors return JSON from ControlPilot instead of gateway-style HTML error pages.
-- WD1.4 requires a Replicate API key.
-- Batch operations support modes: `ignore`, `append`, `overwrite`.
+## Set defaults once, then concentrate on the dataset
 
-## OpenAI-Compatible vLLM Support
+**TagPilot settings** opens a dedicated settings screen inside Caption images. Tagging and captioning have independent provider choices, limits, and system prompts. Crop settings control aspect ratio and width. The same screen exposes DeepDanbooru and WD1.4 thresholds, provider credentials, and the vLLM connection.
 
-For OpenAI-compatible backends (`vLLM`, LM Studio, etc.), pick `vLLM OpenAI compatible` from the TagPilot model selectors and set:
+For vLLM or another OpenAI-compatible endpoint, enter the server URL and the exact model identifier it serves. Base URLs, `/v1`, and `/v1/chat/completions` URLs are accepted. Model presets fill the identifier field, which remains editable.
 
-- `vLLM endpoint URL`: set the full URL or base URL for `/v1` (TagPilot supports either `https://host/v1` or `https://host/v1/chat/completions`).
-- `vLLM model type`: enter the exact model identifier your endpoint serves (for example `Qwen/Qwen3-8B`).
-- `API key`: provided in the `Authorization: Bearer <token>` header when your server requires it.
+Choose **Save settings** to apply changes. Cancel, Close, or Back to Caption images discards unsaved settings changes without losing your dataset edits. Non-secret preferences persist in this browser. API keys entered in TagPilot remain only in the current page’s memory and are not written to browser storage; reloading the page clears them. Gemini, Grok, and OpenAI can also use credentials configured through ControlPilot’s server-side settings.
 
-The selected endpoint/model are saved in browser localStorage so they persist between TagPilot sessions.
+## Save a dataset you can train with
 
-## 🧰 Typical Workflow
+The **Dataset name** determines the ZIP filename and workspace save destination. **Export ZIP** downloads the complete collection with matching text files. **Save to workspace** writes the dataset beneath `/workspace/datasets`, using the existing `1_<name>` convention, and produces a ZIP copy under `/workspace/datasets/ZIPs`.
 
-1. Open TagPilot from ControlPilot.
-2. Upload images or a ZIP.
-3. Set `Trigger Word` and `Dataset Name`.
-4. Run `Tag All` or `Caption All` (optional).
-5. Manually fix tags in card editor or global tag viewer.
-6. Click `Save to /workspace/datasets`.
-7. Train with Kohya/AI Toolkit/TrainPilot using that dataset.
+Changing the name before saving creates or updates that destination. It does not rename or remove a previously saved folder. Use the Datasets page when you need to manage the saved folder itself.
 
-## ⌨️ Keyboard Shortcuts
+Edits are not automatically saved. Save or export before refreshing, leaving Caption images, or closing the browser. Once saved, the dataset is available to Guided training and the other training tools sharing your workspace.
 
-Shortcuts currently implemented in `apps/TagPilot/index.html`:
+## Integration and troubleshooting
 
-| Context | Shortcut | Action |
-|---|---|---|
-| Preview modal open | `ArrowLeft` / `ArrowRight` | Previous / next preview image |
-| Global | `Escape` | Close preview, cancel crop, and close tag/caption settings modals (when batch processing is not running) |
-| Tag input field (`Add tag...`) | `Enter` or `,` | Commit typed tag as a tag pill |
+ControlPilot serves TagPilot through its existing port, normally 7878. Loading uses `GET /api/tagpilot/load`; workspace saving streams files through `POST /api/tagpilot/save-item`. Gemini, Grok, and OpenAI generation uses `POST /api/tagpilot/generate`, which returns provider failures as structured API errors.
 
-Additional global navigation/edit shortcuts beyond the above are **Not found in repo**.
+If loading or saving fails, check the ControlPilot service log and available workspace storage. If generation fails, check the selected provider, its credentials and quota, and the model’s availability to that account. For vLLM, also check that the endpoint is reachable and the model identifier matches the running server.
 
-## 🔌 Integration Endpoints
+A provider smoke test is available inside the image as `/opt/pilot/tagpilot-provider-smoke.py --require-all`. It sends a tiny test image to configured OpenAI, Gemini, and Grok providers. Run it directly inside a RunPod pod. For a local checkout, the equivalent script is `scripts/tagpilot-provider-smoke.py`.
 
-| Endpoint | Method | Purpose |
-|---|---|---|
-| `/api/tagpilot/load` | `GET` | Load dataset files into TagPilot |
-| `/api/tagpilot/providers` | `GET` | Return Gemini/Grok/OpenAI configuration status without exposing keys |
-| `/api/tagpilot/providers/{provider}/key` | `POST` | Save a Gemini/Grok/OpenAI key to server-side secrets |
-| `/api/tagpilot/generate` | `POST` | Generate tags/captions from an uploaded image through Gemini/Grok/OpenAI through ControlPilot |
-| `/api/tagpilot/save` | `POST` | Save ZIP and extract to dataset dir |
-| `/api/tagpilot/save-item` | `POST` | Incremental save (used by UI) |
-| `/api/datasets` | `GET` | Dataset list used by ControlPilot/TrainPilot |
-
-## 🔐 Security Notes
-
-- Gemini, Grok, and OpenAI keys are server-side values in `/workspace/config/secrets.env` when using ControlPilot-managed providers.
-- Claude and vLLM keys entered in TagPilot are stored in browser session storage on the running machine.
-- Bootstrap preserves existing provider key lines when rewriting runtime secrets.
-- WD1.4 still uses a browser-session Replicate key.
-- Do not run TagPilot in shared browsers with persistent sessions if that is a problem for your workflow.
-
-## 🧪 Provider Smoke Test
-
-Inside the image, run:
-
-```bash
-/opt/pilot/tagpilot-provider-smoke.py --require-all
-```
-
-The script loads provider keys from `/workspace/config/secrets.env`, sends a tiny PNG to OpenAI, Gemini, and Grok, and reports whether the currently pinned provider APIs/models are reachable. Locally from the repo checkout, use `scripts/tagpilot-provider-smoke.py`.
-
-##  Troubleshooting
-
-### TagPilot opens but cannot load/save datasets
-- Confirm ControlPilot API is reachable at `http://localhost:7878`.
-- Check `controlpilot` logs:
-```bash
-supervisorctl status controlpilot
-tail -n 200 /workspace/logs/controlpilot.err.log
-```
-
-### Save to workspace fails mid-run
-- Ensure dataset name is valid (letters/numbers/`_`/`-` safest).
-- Check free disk space under `/workspace`.
-- Retry with smaller batch uploads if browser memory is tight.
-
-### Auto-tagging fails
-- Verify selected provider key and quota.
-- For WD1.4, confirm Replicate key and thresholds.
-- For Gemini/Grok/OpenAI, verify account model access.
-- For vLLM, verify endpoint URL and that model ID exists on the vLLM server.
-
-## Related
-
-- [Datasets 101](../getting-started/datasets-101/README.md)
-- [Training Workflows](../user-guide/training-workflows.md)
-- [TrainPilot](trainpilot.md)
-- [Section Index](README.md)
-- [Documentation Home](../README.md)
-
----
-
----
-
-## 📝 Feedback
-
-Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+Continue with [Datasets 101](../getting-started/datasets-101/README.md), [training workflows](../user-guide/training-workflows.md), or [TrainPilot](trainpilot.md).

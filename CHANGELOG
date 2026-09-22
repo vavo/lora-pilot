@@ -1,5 +1,7 @@
 Unreleased (September 22nd 2026)
 
+Caption images now brings TagPilot into ControlPilot’s light and dark design. Dataset actions, individual image tools, a dedicated settings screen, and bulk-processing choices remain visible and accessible. The editor shows 50 images per page, while bulk actions and export cover the whole dataset. Image previews now include Previous and Next controls with left/right arrow-key navigation across page boundaries. Photo imports also accept matching .txt annotations.
+
 Training and ComfyUI can now use the GPU concurrently. GPU occupancy and unavailable telemetry are advisory during training preflight, while managed training jobs remain serialized. Try My LoRA comparisons can also run alongside training. Storage cleanup retains its workload protection.
 
 Stopped guided training runs now offer Resume training when a saved optimizer state is available, or Continue from checkpoint for older weight-only saves. Continuations receive separate output folders and retain the original history. New guided runs save recovery state at checkpoint intervals. Queue resume still controls dispatch; it does not restart stopped runs.
