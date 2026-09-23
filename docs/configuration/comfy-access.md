@@ -1,6 +1,6 @@
 # ComfyUI access protection
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-23_
 
 You can open ComfyUI through the same browser login you use for ControlPilot while giving an API client a separate credential. LoRA Pilot's optional ComfyUI gateway supports that arrangement. You keep browser access convenient and can replace a client's token without changing the ControlPilot password.
 
@@ -12,7 +12,7 @@ Open **Settings** in ControlPilot and set a password under **Access Protection**
 
 Open ComfyUI through ControlPilot after the change. The protected address uses the ControlPilot origin with `/comfy/` appended, including on RunPod. Your browser reuses the ControlPilot session. Without a valid session, the gateway directs the browser to the ControlPilot login. Use HTTPS for remote access to that origin.
 
-With protection enabled, the launcher binds ComfyUI to `127.0.0.1`. Direct external access through port `5555`, or your configured Comfy port, is no longer the access path. Internal clients in the same container can continue using localhost, including MediaPilot.
+With protection enabled, ComfyUI checks a private internal credential before serving any HTTP request or accepting a WebSocket connection. That check also covers port `5555`, or your configured Comfy port, when a provider proxy forwards traffic to localhost. Opening the direct URL without that credential returns an access error. Use the gateway for browser login and external API tokens. ControlPilot and MediaPilot supply the internal credential automatically for their local requests.
 
 ## Give an API client its own token
 
@@ -24,7 +24,7 @@ For an HTTP client, send the token in the `Authorization` header and use the gat
 curl -H "Authorization: Bearer $COMFY_API_TOKEN"   "https://YOUR-CONTROLPILOT-HOST/comfy/system_stats"
 ```
 
-Use the same `/comfy/` prefix for routes such as `/prompt`, `/upload/image`, `/history`, and `/view`. The gateway forwards HTTP traffic, uploads, output downloads, and text or binary WebSocket messages. It removes the gateway credential and ControlPilot session cookie before forwarding the request to ComfyUI.
+Use the same `/comfy/` prefix for routes such as `/prompt`, `/upload/image`, `/history`, and `/view`. The gateway forwards HTTP traffic, uploads, output downloads, and text or binary WebSocket messages. It replaces the gateway credential and ControlPilot session cookie with a separate internal credential before forwarding the request to ComfyUI. That internal credential is never sent to a custom remote MediaPilot endpoint.
 
 WebSocket clients use `wss://YOUR-CONTROLPILOT-HOST/comfy/ws?clientId=YOUR_CLIENT_ID` and send the bearer header during the upgrade. Query-string tokens are not accepted. Check that your WebSocket client supports an authorization header before adapting it to the protected gateway.
 
@@ -34,13 +34,13 @@ Use **Replace API token** when a client needs a new credential. Replacement inva
 
 Authenticated browsers continue using their ControlPilot sessions after token revocation. A token is optional if you need only browser access. This gives you a way to stop an external integration without removing your own browser entry point.
 
-The protection policy lives at `/workspace/config/comfy-access.json` with file mode `0600`. Preserve the policy with the workspace and keep configuration backups private. The gateway controls external entry to ComfyUI; it does not restrict trusted processes inside the container or change the normal permissions of installed custom nodes.
+The protection policy lives at `/workspace/config/comfy-access.json` with file mode `0600`. Preserve the policy with the workspace and keep configuration backups private. The gateway and the native ComfyUI listener enforce external access together; it does not restrict trusted processes inside the container or change the normal permissions of installed custom nodes.
 
 ## Interpret a failed protection change
 
 If ControlPilot cannot stop ComfyUI, it leaves the policy unchanged. If it saves the new policy but ComfyUI then fails to start, it keeps that policy and reports the startup failure. Read the ComfyUI service log to resolve the launch problem rather than assuming that the failed restart restored the previous access mode.
 
-An unreadable or invalid policy blocks gateway access and prevents ComfyUI startup. The runtime does not fall back to a public listener in that state. Restore a valid policy from a private backup and inspect the service logs before restarting. The [debugging guide](../development/debugging.md) explains where to find those logs.
+An unreadable or invalid policy blocks gateway access and prevents ComfyUI startup. If a policy becomes unreadable while ComfyUI is running, new requests are denied. Startup also stops if an updated ComfyUI server is incompatible with the mandatory authentication installation. The runtime does not fall back to a public listener in that state. Restore a valid policy from a private backup and inspect the service logs before restarting. The [debugging guide](../development/debugging.md) explains where to find those logs.
 
 ## Return to direct access when that is your intended setup
 

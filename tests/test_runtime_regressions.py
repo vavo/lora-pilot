@@ -50,6 +50,19 @@ class MediaMoveTests(unittest.TestCase):
         self.destination = self.root / "outputs" / "saved" / "same.png"
         self.destination.parent.mkdir()
 
+    def test_comfy_local_credentials_and_remote_redirect_compatibility(self):
+        session = MagicMock()
+        session.post.return_value.status_code = 200
+        session.post.return_value.json.return_value = {'name': 'same.png', 'prompt_id': 'queued'}
+        for headers in [{}, {'X-LoRA-Pilot-Comfy-Internal': 'private-test-token'}]:
+            with patch.object(self.media, 'internal_headers', return_value=headers):
+                self.media.upload_image_to_comfy(session, self.source, 'same.png')
+                self.assertEqual(session.post.call_args.kwargs['headers'], headers)
+                self.assertEqual(session.post.call_args.kwargs['allow_redirects'], not bool(headers))
+                self.media.submit_workflow_to_comfy(session, {})
+                self.assertEqual(session.post.call_args.kwargs['headers'], headers)
+                self.assertEqual(session.post.call_args.kwargs['allow_redirects'], not bool(headers))
+
     def test_collision_preserves_both_images_and_metadata(self):
         self.destination.write_bytes(b"existing image")
         with self.assertRaises(self.media.HTTPException) as error:

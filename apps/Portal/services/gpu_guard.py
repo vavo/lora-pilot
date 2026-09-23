@@ -5,6 +5,8 @@ import threading
 
 import httpx
 
+from .comfy_access import internal_headers
+
 LAUNCH_LOCK = threading.RLock()
 managed_conflicts = lambda: []
 
@@ -26,7 +28,7 @@ def conflicts():
         reasons.append('GPU status unavailable. An NVIDIA GPU is required.')
     try:
         with httpx.Client(timeout=2, trust_env=False) as client:
-            response = client.get(f'http://127.0.0.1:{int(os.environ.get("COMFY_PORT", "5555"))}/queue')
+            response = client.get(f'http://127.0.0.1:{int(os.environ.get("COMFY_PORT", "5555"))}/queue', headers=internal_headers())
             response.raise_for_status()
             data = response.json()
             if data.get('queue_running') or data.get('queue_pending'):

@@ -8,6 +8,8 @@ import httpx
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
+from .comfy_access import internal_headers
+
 
 class ComparisonRequest(BaseModel):
     artifact: str | None = Field(default=None, min_length=1, max_length=200)
@@ -20,7 +22,7 @@ class ComparisonRequest(BaseModel):
 def comfy(method, path, **kwargs):
     try:
         with httpx.Client(timeout=30, trust_env=False) as client:
-            response = client.request(method, f'http://127.0.0.1:{int(os.environ.get("COMFY_PORT", "5555"))}/{path}', **kwargs)
+            response = client.request(method, f'http://127.0.0.1:{int(os.environ.get("COMFY_PORT", "5555"))}/{path}', headers=internal_headers(), **kwargs)
             if response.status_code >= 400:
                 raise HTTPException(400, 'ComfyUI rejected the comparison: ' + response.text[:1000])
             return response.json()

@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from apps.Portal.services.comfy_access import read_policy, token_matches
+from apps.Portal.services.comfy_access import read_policy, token_matches, internal_headers, INTERNAL_HEADER
 try:
     from fastapi.testclient import TestClient
     from apps.Portal import app as portal
@@ -53,7 +53,11 @@ class ComfyAccessTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.root = Path(self.tmp.name)
+        self.root = Path(self.tmp.name) / "config"
+        self.root.mkdir()
+        env = patch.dict(os.environ, {"WORKSPACE_ROOT": self.tmp.name, "CONTROLPILOT_SETTINGS_PATH": str(self.root / "settings.json")})
+        env.start()
+        self.addCleanup(env.stop)
         for name, value in [('CONFIG_DIR', self.root), ('CONTROLPILOT_SETTINGS_PATH', self.root / 'settings.json')]:
             patcher = patch.object(portal, name, value)
             patcher.start()
@@ -183,7 +187,9 @@ class ComfyAccessTests(unittest.TestCase):
             self.assertEqual(response.content, b'video-part')
             self.assertEqual(response.status_code, 206)
             self.assertEqual(response.headers['content-range'], 'bytes 0-9/20')
+            self.login()
             self.policy()
+            expected_internal = internal_headers()[INTERNAL_HEADER]
             for method in ['POST','PUT','PATCH','DELETE']:
                 response = self.client.request(method, '/comfy/api/prompt', content=b'payload',
                     headers={'Authorization':'Bearer test-token', 'Cookie':'private=value', 'Connection':'x-secret', 'x-secret':'hidden'})
@@ -193,6 +199,7 @@ class ComfyAccessTests(unittest.TestCase):
             self.assertEqual(response.status_code, 206)
         self.assertIn('filename=a%20b.mp4', seen[0][1])
         self.assertEqual(seen[1][3], b'payload')
+        self.assertEqual(seen[1][2][INTERNAL_HEADER.lower()], expected_internal)
         for _, _, headers, _ in seen:
             self.assertNotIn('authorization', headers)
             self.assertNotIn('cookie', headers)
@@ -201,6 +208,7 @@ class ComfyAccessTests(unittest.TestCase):
     def test_websocket_relays_binary_and_text_and_preserves_client_id(self):
         import asyncio
         from contextlib import asynccontextmanager
+        self.login()
         self.policy()
         urls = []
         class Upstream:
@@ -214,6 +222,7 @@ class ComfyAccessTests(unittest.TestCase):
                 await self.queue.put(message)
         @asynccontextmanager
         async def connect(url, **kwargs):
+            self.assertEqual(kwargs["additional_headers"], internal_headers())
             urls.append(url)
             yield Upstream()
         with patch('apps.Portal.services.comfy.websockets.connect', connect):

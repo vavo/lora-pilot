@@ -4,6 +4,7 @@ import os
 import re
 import secrets
 import shlex
+import sys
 import tempfile
 import zipfile
 from copy import deepcopy
@@ -22,6 +23,9 @@ from PIL import Image
 from pydantic import BaseModel
 import requests
 from starlette.background import BackgroundTask
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from Portal.services.comfy_access import internal_headers
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -830,10 +834,13 @@ def ensure_workflow_input_image(
 
 def upload_image_to_comfy(session: requests.Session, full_path: Path, filename: str) -> str:
     upload_url = f"{COMFY_API_URL}/upload/image"
+    headers = internal_headers(COMFY_API_URL)
     try:
         with full_path.open("rb") as handle:
             response = session.post(
                 upload_url,
+                headers=headers,
+                allow_redirects=not bool(headers),
                 data={"type": "input", "overwrite": "false"},
                 files={"image": (filename, handle)},
                 timeout=COMFY_REQUEST_TIMEOUT,
@@ -862,9 +869,12 @@ def upload_image_to_comfy(session: requests.Session, full_path: Path, filename: 
 
 def submit_workflow_to_comfy(session: requests.Session, workflow: Dict[str, Any]) -> str:
     prompt_url = f"{COMFY_API_URL}/prompt"
+    headers = internal_headers(COMFY_API_URL)
     try:
         response = session.post(
             prompt_url,
+            headers=headers,
+            allow_redirects=not bool(headers),
             json={"prompt": workflow},
             timeout=COMFY_REQUEST_TIMEOUT,
         )

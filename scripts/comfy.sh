@@ -96,7 +96,8 @@ mkdir -p \
   "$PIP_CACHE_DIR"
 
 # Read the same persisted access policy as ControlPilot before opening a listener.
-COMFY_LISTEN="$(/opt/venvs/core/bin/python /opt/pilot/apps/Portal/services/comfy_access.py "${WORKSPACE_ROOT}/config/comfy-access.json")"
+COMFY_LISTEN="$(/opt/venvs/core/bin/python /opt/pilot/apps/Portal/services/comfy_access.py "${WORKSPACE_ROOT}/config/comfy-access.json" --install "${COMFY_DIR}/server.py")"
+export PYTHONPATH="/opt/pilot/apps/Portal/services${PYTHONPATH:+:$PYTHONPATH}"
 
 # A workspace venv is opt-in; the bundled core environment remains the default.
 COMFY_VENV_PATH="${COMFY_VENV_PATH:-/opt/venvs/core}"

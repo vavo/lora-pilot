@@ -9,6 +9,8 @@ from starlette.background import BackgroundTask
 import httpx
 import websockets
 
+from .comfy_access import INTERNAL_HEADER, internal_headers
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +22,7 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
         if query:
             url += "?" + query
         try:
-            async with websockets.connect(url, max_size=None) as upstream:
+            async with websockets.connect(url, max_size=None, additional_headers=internal_headers()) as upstream:
                 await websocket.accept()
 
                 async def to_browser():
@@ -85,9 +87,10 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
                                 headers={"WWW-Authenticate": "Bearer", "Cache-Control": "no-store"})
         # Stream uploads and video responses; never forward ControlPilot credentials.
         excluded = {"host", "authorization", "cookie", "connection", "keep-alive", "proxy-authenticate",
-                    "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"}
+                    "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade", INTERNAL_HEADER.lower()}
         excluded.update(x.strip().lower() for x in request.headers.get("connection", "").split(","))
         headers = {k: v for k, v in request.headers.items() if k.lower() not in excluded}
+        headers.update(internal_headers())
         base = f"http://127.0.0.1:{os.environ.get('COMFY_PORT', '5555')}"
         url = base + "/" + path
         if request.url.query:
@@ -122,7 +125,7 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
         comfy_port = os.environ.get("COMFY_PORT", "5555")
         try:
             import requests
-            response = requests.get(f"http://localhost:{comfy_port}/system_stats", timeout=5)
+            response = requests.get(f"http://localhost:{comfy_port}/system_stats", headers=internal_headers(), timeout=5, allow_redirects=False)
             if response.status_code == 200:
                 return {"status": "running", "port": comfy_port,
                         "protected": bool(policy_reader and policy_reader()["enabled"])}
@@ -202,7 +205,9 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     comfy_url,
-                    headers={k: v for k, v in request.headers.items() if k.lower() != "host"},
+                    headers={**{k: v for k, v in request.headers.items()
+                                if k.lower() not in {"host", "authorization", "cookie", INTERNAL_HEADER.lower()}},
+                             **internal_headers()},
                     timeout=30.0,
                 )
                 return Response(

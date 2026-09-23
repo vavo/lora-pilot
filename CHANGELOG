@@ -1,4 +1,6 @@
-Unreleased (September 22nd 2026)
+Unreleased (September 23rd 2026)
+
+ComfyUI access protection now rejects unauthenticated requests at its native listener, including provider proxies reaching port 5555 through localhost. ControlPilot and MediaPilot authenticate their internal requests automatically. Browser login and external API tokens continue to use the ControlPilot gateway.
 
 Caption images now brings TagPilot into ControlPilot’s light and dark design. Dataset actions, individual image tools, a dedicated settings screen, and bulk-processing choices remain visible and accessible. The editor shows 50 images per page, while bulk actions and export cover the whole dataset. Image previews now include Previous and Next controls with left/right arrow-key navigation across page boundaries. Photo imports also accept matching .txt annotations.
 

@@ -128,7 +128,7 @@
       <input id="settings-comfy-enabled" class="svc-switch" type="checkbox" />
       <span>Protect ComfyUI and its API</span>
     </label>
-    <p class="settings-note">Set a ControlPilot password first. Applying a change restarts ComfyUI and interrupts running generations. Protected access uses the URL below; the direct ComfyUI port is closed to external connections.</p>
+    <p class="settings-note">Set a ControlPilot password first. Applying a change restarts ComfyUI and interrupts running generations. Protected access uses the URL below; unauthenticated requests to the direct ComfyUI port are blocked, including through a provider proxy.</p>
     <div class="settings-row">
       <button id="settings-comfy-save" class="btn primary" type="button">Apply protection</button>
       <span id="settings-comfy-status" class="status settings-status" role="status"></span>
