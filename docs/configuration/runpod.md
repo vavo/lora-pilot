@@ -24,7 +24,7 @@ If the allocation cannot be read, `WORKSPACE_STORAGE_CAPACITY_GB` remains availa
 
 **Current rate** is the hourly pod cost reported by RunPod. **Estimated session cost** multiplies that rate by the container uptime. It assumes the current rate applied throughout the session, so it is a planning estimate rather than an invoice.
 
-**Recorded today (UTC)** comes from RunPod's pod billing history, filtered to this pod from midnight UTC. The card separates GPU, CPU and disk charges. Billing can arrive after the activity it describes, and these records exclude separate network-volume charges. A missing permission or missing amount appears as unavailable, never as a zero-dollar bill. Billing reads are cached for five minutes.
+**Today (UTC)** comes from RunPod's pod billing history, filtered to this pod from midnight UTC. The compact spending summary sits alongside GPU, storage and service status, leaving the dashboard's main actions directly below. Billing can arrive after the activity it describes, and these records exclude separate network-volume charges. A missing permission or missing amount appears as unavailable, never as a zero-dollar bill. Billing reads are cached for five minutes.
 
 ## Schedule the intended shutdown
 

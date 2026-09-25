@@ -1,5 +1,7 @@
 Unreleased (September 25th 2026)
 
+The Dashboard keeps spending in the compact workspace overview, with the main dataset and training actions directly below. Storage usage now has a visual bar on the Dashboard, in Hardware details and on the Storage page. Unavailable capacity uses a distinct unknown state. Mount paths and billing explanations no longer occupy the dashboard.
+
 ControlPilot now uses RunPod REST v2 for scheduled pod shutdown, with backend-only credentials, eligibility checks and a fixed action for each countdown. Auto chooses the action from the actual workspace mount instead of volume environment hints. Failed RunPod requests never fall back to host shutdown.
 
 Dashboard and Storage can show the allocated persistent or network-volume capacity reported by RunPod alongside measured workspace usage. Whole-volume free space remains unknown. The Dashboard adds the current hourly rate, an estimated session cost and recorded pod charges for today in UTC. Volume and billing permissions are optional; unavailable features leave local tools usable. Provider responses are reduced to selected fields before reaching the browser.

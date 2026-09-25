@@ -120,6 +120,26 @@ window.setTensorBoardStatus = function (status) {
   _tbStatusCache.expiresAt = Date.now() + 5_000;
 };
 
+function renderStorageUsage(label, meter, disk) {
+  const valid = value => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  const total = valid(disk?.total) && disk.total > 0 ? disk.total : null;
+  const free = valid(disk?.free) ? disk.free : null;
+  const used = valid(disk?.used) ? disk.used : total !== null && free !== null ? Math.max(0, total - free) : null;
+  const bytes = value => value === 0 ? '0 B' : formatBytes(value);
+  const text = total !== null && free !== null
+    ? `${disk?.estimated ? 'About ' : ''}${bytes(free)} free of ${bytes(total)}`
+    : total !== null && used !== null ? `${bytes(used)} of ${bytes(total)} ${disk?.capacity_source === 'runpod' ? 'in workspace' : 'used'}`
+    : total !== null ? `${bytes(total)} capacity · usage unavailable`
+    : used !== null ? `${bytes(used)} used · capacity unavailable` : 'Storage unavailable';
+  if (label) label.textContent = text;
+  if (!meter) return;
+  const ratio = total !== null && used !== null ? Math.min(100, used / total * 100) : null;
+  meter.dataset.state = ratio === null ? 'unknown' : ratio >= 95 ? 'full' : ratio >= 80 ? 'high' : 'normal';
+  meter.setAttribute('role', 'img');
+  meter.setAttribute('aria-label', ratio === null ? text : `${text}; ${Math.round(ratio)}% of capacity`);
+  meter.querySelector('i').style.width = `${ratio ?? 0}%`;
+}
+
 window.sanitizeHttpUrl = function (rawUrl, opts = {}) {
   if (!rawUrl) return null;
   try {

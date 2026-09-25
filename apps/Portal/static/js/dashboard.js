@@ -35,24 +35,13 @@ async function refreshRunpod(screen) {
     screen.check();
     panel.hidden = !data.enabled;
     if (!data.enabled) return;
-    text("dash-runpod-status", data.available ? `${data.pod_id} · ${data.status}` : data.message || "RunPod information is unavailable.");
     text("dash-runpod-rate", data.available ? money(data.hourly_usd) + " / hour" : "Unavailable");
     text("dash-runpod-session", money(data.session_estimate_usd));
     text("dash-runpod-billed", data.billing?.available ? money(data.billing.total_usd) : "Unavailable");
-    text("dash-runpod-billing-note", data.billing?.available
-      ? `Recorded pod charges for ${data.billing.date_utc} (UTC). GPU ${money(data.billing.gpu_usd)}, CPU ${money(data.billing.cpu_usd)}, disk ${money(data.billing.disk_usd)}. Network-volume charges are separate. Billing can lag behind usage.`
-      : data.billing?.message ? `Billing: ${data.billing.message}` : "Billing requires a RunPod credential with billing access. Local workspace tools remain available.");
-    const storage = data.storage;
-    text("dash-runpod-storage", storage?.available
-      ? `${storage.kind === "network" ? "Network volume" : "Persistent volume"} · ${storage.size_gb} GB allocated at ${storage.mount}${storage.tier ? " · " + storage.tier.toLowerCase().replaceAll("_", " ") : ""}`
-      : storage?.message ? `Storage allocation: ${storage.message}` : "RunPod storage allocation is unavailable. Local usage is shown in Hardware details.");
   } catch (error) {
     if (!screen.active) return;
     if (!panel.hidden) {
-      text("dash-runpod-status", "RunPod information is temporarily unavailable.");
       for (const id of ["dash-runpod-rate", "dash-runpod-session", "dash-runpod-billed"]) text(id, "Unavailable");
-      text("dash-runpod-billing-note", "Refresh to try again. Local workspace tools remain available.");
-      text("dash-runpod-storage", "RunPod storage allocation is unavailable.");
     }
   }
 }
@@ -86,13 +75,7 @@ async function refreshDashboardTelemetry() {
     if (gpuSummary) gpuSummary.textContent = data.gpus?.length
       ? data.gpus.map(g => `${g.name}${g.mem_total ? ` · ${formatBytes(g.mem_total)}` : ""}`).join(", ") : "No GPU detected";
     const disk = data.disks?.at(-1);
-    if (storageSummary) {
-      storageSummary.textContent = typeof disk?.free === "number"
-        ? `${disk.estimated ? "About " : ""}${formatBytes(disk.free)} free`
-        : disk?.total > 0 ? `${formatBytes(disk.total)} capacity · ${typeof disk.used === "number" ? `${formatBytes(disk.used)} in workspace` : "usage unavailable"}`
-        : typeof disk?.used === "number" ? `${formatBytes(disk.used)} used · capacity unavailable` : "Capacity unavailable";
-      storageSummary.title = disk?.note || "";
-    }
+    renderStorageUsage(storageSummary, document.getElementById("dash-storage-meter"), disk);
     const hostEl = document.getElementById("t-host");
     const uptimeEl = document.getElementById("t-uptime");
     if (hostEl) hostEl.textContent = data.host || "n/a";
@@ -124,6 +107,7 @@ async function refreshDashboardTelemetry() {
       if (el) el.textContent = "Unavailable";
     }
     renderTelemetryFallback();
+    renderStorageUsage(document.getElementById("dash-summary-storage"), document.getElementById("dash-storage-meter"), null);
     content.classList.remove("is-hidden");
   }
   await updateShutdownStatus();
@@ -207,18 +191,14 @@ function renderDisks(data) {
     const mount = document.createElement("td");
     mount.textContent = d.mount;
     const usage = document.createElement("td");
-    const used = typeof d.used === "number" ? formatBytes(d.used) : "Usage unavailable";
-    usage.textContent = d.total > 0
-      ? `${used} / ${formatBytes(d.total)}${typeof d.pct === "number" ? ` (${d.estimated ? "about " : ""}${d.pct}%)` : ""}`
-      : `${used} · capacity unavailable`;
     const detail = document.createElement("td");
     detail.className = "dash-disk-meta";
-    if (typeof d.pct === "number") detail.innerHTML = '<div class="bar-wrap"><div class="bar-fill disk-bar"></div></div>';
-    else detail.textContent = d.note || "Storage information unavailable";
-    tr.title = d.note || "";
+    const meter = document.createElement("div");
+    meter.className = "storage-meter";
+    meter.append(document.createElement("i"));
+    renderStorageUsage(usage, meter, d);
+    detail.append(meter);
     tr.append(mount, usage, detail);
-    const diskBar = tr.querySelector(".disk-bar");
-    if (diskBar) diskBar.style.width = `${d.pct}%`;
     tbody.appendChild(tr);
   });
 }

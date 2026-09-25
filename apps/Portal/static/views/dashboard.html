@@ -90,23 +90,16 @@
 
 <div class="journey-page">
 <header class="journey-heading"><h2>Your workspace</h2><p>From your first images to a LoRA you can use.</p></header>
-<div class="journey-surface journey-summary">
+<div class="journey-surface journey-summary dash-overview">
   <div><strong>GPU</strong><span id="dash-summary-gpu">Loading…</span></div>
-  <div><strong>Workspace storage</strong><span id="dash-summary-storage">Loading…</span></div>
+  <div><strong>Workspace storage</strong><span id="dash-summary-storage">Loading…</span><div id="dash-storage-meter" class="storage-meter" data-state="unknown" role="img" aria-label="Storage usage unavailable"><i></i></div></div>
   <div><strong>Services</strong><span id="dash-summary-services">Loading…</span><a class="journey-link" href="#services" data-open-section="services">View services</a></div>
-</div>
-<section class="journey-surface" id="dash-runpod" hidden aria-labelledby="dash-runpod-heading">
-  <h3 id="dash-runpod-heading">Pod spending</h3>
-  <p class="journey-note" id="dash-runpod-status" role="status"></p>
-  <div class="journey-summary">
-    <div><strong>Current rate</strong><span id="dash-runpod-rate">Unavailable</span></div>
-    <div><strong>Estimated session cost</strong><span id="dash-runpod-session">Unavailable</span></div>
-    <div><strong>Recorded today (UTC)</strong><span id="dash-runpod-billed">Unavailable</span></div>
+  <div id="dash-runpod" hidden>
+    <strong>Pod spending</strong><span id="dash-runpod-rate">Unavailable</span>
+    <small><span id="dash-runpod-session">—</span> est. session</small>
+    <small><span id="dash-runpod-billed">—</span> today (UTC)</small>
   </div>
-  <p class="journey-note">Session estimate uses the current rate and container uptime. It is not an invoice and excludes separate network-volume charges.</p>
-  <p class="journey-note" id="dash-runpod-billing-note"></p>
-  <p id="dash-runpod-storage"></p>
-</section>
+</div>
 <section class="journey-surface dash-launcher"><h3>What would you like to do?</h3>
 <div class="dash-launch-row"><div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div><div><h4>Prepare a dataset</h4><p>Upload images and add captions for training.</p></div><a class="btn primary" href="#datasets" data-open-section="datasets" data-open-upload>Upload dataset</a></div>
 <div class="dash-launch-row"><div class="journey-icon" data-nav-icon="trainpilot" aria-hidden="true"></div><div><h4>Train a LoRA</h4><p>Choose a prepared dataset and a training profile.</p></div><a class="journey-link" href="#trainpilot" data-open-section="trainpilot">Open training</a></div>

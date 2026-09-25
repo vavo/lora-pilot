@@ -33,7 +33,6 @@
 .journey-page .field label, .tp-label { font-weight:650; font-size:16px; color:var(--text); }
 .journey-page .field { gap:10px; }
 .journey-note { color:var(--muted); font-size:14px; margin:8px 0 0; }
-#dash-runpod-status, #dash-runpod-storage { overflow-wrap:anywhere; }
 .journey-icon .nav-icon, .journey-icon .nav-icon svg { width:28px; height:28px; color:inherit; }
 .journey-icon { color:var(--journey-accent); flex-shrink:0; }
 .journey-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:24px; }
@@ -41,6 +40,21 @@
 .journey-summary > div:first-child { border:0; padding-left:0; }
 .journey-summary strong, .journey-summary span { display:block; }
 .journey-summary span { font-size:14px; color:var(--muted); margin-top:8px; overflow-wrap:anywhere; }
+.dash-overview:has(#dash-runpod:not([hidden])) { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.dash-overview > div { padding:0 18px; }
+#dash-runpod small { display:block; color:var(--muted); font-size:12px; margin-top:5px; }
+#dash-runpod small span { display:inline; font-size:inherit; margin:0; }
+.storage-meter { height:8px; margin-top:12px; border-radius:8px; overflow:hidden; background:var(--border); }
+.storage-meter > i { display:block; height:100%; width:0; border-radius:inherit; background:var(--journey-accent); }
+.storage-meter[data-state="high"] > i { background:#dc662c; }
+.storage-meter[data-state="full"] > i { background:#dc3545; }
+.storage-meter[data-state="unknown"] { background:repeating-linear-gradient(135deg,var(--border),var(--border) 4px,transparent 4px,transparent 8px); }
+.storage-capacity-summary { flex:1; min-width:220px; max-width:460px; }
+.dash-disk-meta .storage-meter { min-width:120px; margin:0; }
+@media (max-width:768px) {
+  .journey-summary.dash-overview, .dash-overview:has(#dash-runpod:not([hidden])) { grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+  .journey-summary.dash-overview > div { padding:0; border:0; }
+}
 .dash-launcher { margin-bottom:24px; }
 .dash-launch-row { display:flex; align-items:center; gap:22px; padding:24px 0; border-bottom:1px solid var(--border); }
 .dash-launch-row:last-child { border:0; padding-bottom:4px; }

@@ -1,6 +1,6 @@
 <div id="storage-page" class="journey-page">
 <header class="journey-heading"><h2>Storage</h2><p>See what uses your workspace and review what you can remove.</p></header>
-<div class="row wrap gap-12"><button id="storage-scan" type="button" class="btn ghost">Refresh storage</button><span id="storage-disk" class="journey-note"></span></div>
+<div class="row wrap gap-12"><button id="storage-scan" type="button" class="btn ghost">Refresh storage</button><div class="storage-capacity-summary"><span id="storage-disk" class="journey-note"></span><div id="storage-capacity-meter" class="storage-meter" data-state="unknown" role="img" aria-label="Storage usage unavailable"><i></i></div></div></div>
 <p id="storage-status" role="status"></p><div id="storage-error"></div>
 <div id="storage-categories" class="storage-categories"></div>
 <p class="journey-note">Category totals are file sizes, excluding symbolic links and duplicate hard links. Allocation comes from RunPod when available, with measured workspace usage and unknown whole-volume free space. A manually configured allocation estimates remaining space; shared filesystem totals stay hidden. Model storage may use another mount.</p>
