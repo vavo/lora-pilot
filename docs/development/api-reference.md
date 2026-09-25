@@ -247,9 +247,14 @@ Required input fields for `/dpipe/train/start` include:
 |---|---|---|
 | `GET` | `/api/telemetry` | Host/container/GPU snapshot |
 | `GET` | `/api/telemetry/history` | Query: `max_seconds` |
+| `GET` | `/api/runpod/status` | Selected current-pod fields, workspace allocation and optional UTC-day billing; credentials stay on the backend |
 | `POST` | `/api/shutdown/schedule` | Body: `{"value":30,"unit":"minutes"}` |
 | `POST` | `/api/shutdown/cancel` | Cancels pending shutdown |
 | `GET` | `/api/shutdown/status` | Pending schedule state |
+
+RunPod status returns `enabled: false` outside a pod. On RunPod, `available` describes pod access; `storage.available` and `billing.available` independently describe optional features. Missing permissions return sanitized reason codes and messages. Cost fields distinguish `hourly_usd`, `session_estimate_usd` and `billing.total_usd`. No raw provider response or credential is returned. Successful pod reads are cached for 60 seconds, while allocation and billing reads are cached for 300 seconds.
+
+Shutdown status includes the captured RunPod `action` and its storage `notice`. Scheduling reads the current pod before accepting the timer. Execution rechecks eligibility and sends one v2 action request without automatic retries. An accepted request is reported as `requested`, not proof that the pod has stopped.
 
 Shutdown `unit` must be one of:
 

@@ -284,7 +284,7 @@ class ShutdownFailureTests(unittest.TestCase):
                 for name, value in [("shutdown_scheduled", True), ("shutdown_time", 0),
                                     ("shutdown_state", "scheduled"), ("shutdown_error", None), ("shutdown_thread", None)]:
                     stack.enter_context(patch.object(shutdown, name, value))
-                stack.enter_context(patch.object(shutdown, "_runpod_shutdown_command", return_value=(["fake"], "stop", "fixture")))
+                stack.enter_context(patch.object(shutdown, "shutdown_plan", None))
                 run = stack.enter_context(patch.object(shutdown.subprocess, "run", side_effect=failure, return_value=SimpleNamespace(returncode=1)))
                 shutdown.shutdown_worker()
                 status = shutdown.get_shutdown_status()
@@ -300,7 +300,7 @@ class ShutdownFailureTests(unittest.TestCase):
             for name, value in [("shutdown_scheduled", True), ("shutdown_time", 0),
                                 ("shutdown_state", "scheduled"), ("shutdown_error", None), ("shutdown_thread", None)]:
                 stack.enter_context(patch.object(shutdown, name, value))
-            stack.enter_context(patch.object(shutdown, "_runpod_shutdown_command", return_value=(["fake"], "stop", "fixture")))
+            stack.enter_context(patch.object(shutdown, "shutdown_plan", None))
             def execute(*args, **kwargs):
                 self.assertEqual(shutdown.get_shutdown_status().state, "executing")
                 with self.assertRaises(portal.HTTPException):

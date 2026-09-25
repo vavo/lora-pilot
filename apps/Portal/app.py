@@ -46,6 +46,7 @@ except (ImportError, ValueError):
 try:
     from .services import models as models_service  # type: ignore
     from .services.models_api import create_router as create_models_router  # type: ignore
+    from .services.runpod import create_router as create_runpod_router
     from .services import shutdown as shutdown_service  # type: ignore
     from .services import tagpilot_ai as tagpilot_ai_service  # type: ignore
     from .services.comfy import create_router as create_comfy_router  # type: ignore
@@ -61,6 +62,7 @@ except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
         from services.models_api import create_router as create_models_router  # type: ignore
+        from services.runpod import create_router as create_runpod_router
         from services import shutdown as shutdown_service  # type: ignore
         from services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from services.comfy import create_router as create_comfy_router  # type: ignore
@@ -75,6 +77,7 @@ except (ImportError, ValueError):
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
         from apps.Portal.services.models_api import create_router as create_models_router  # type: ignore
+        from apps.Portal.services.runpod import create_router as create_runpod_router
         from apps.Portal.services import shutdown as shutdown_service  # type: ignore
         from apps.Portal.services import tagpilot_ai as tagpilot_ai_service  # type: ignore
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
@@ -1092,6 +1095,7 @@ app.include_router(create_models_router(
     pull_timeout=MODEL_PULL_TIMEOUT_SECONDS, queue=_model_downloads,
 ))
 app.include_router(dpipe_router)
+app.include_router(create_runpod_router(WORKSPACE_ROOT))
 app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilot_cookie_authenticated,
                                        gateway_checker=_comfy_gateway_authenticated, policy_reader=_comfy_policy))
 

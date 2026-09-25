@@ -1,10 +1,12 @@
 # Changelog
 
-_Last updated: 2026-09-22_
+_Last updated: 2026-09-25_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Current unreleased work
+
+The RunPod integration now uses REST v2 for shutdown, reads allocated workspace storage, and separates hourly cost, estimated session spending and recorded daily pod charges. Credentials remain on the backend. Volume and billing details are optional when permission is missing. See [RunPod integration](../configuration/runpod.md) for configuration and the limits of each figure.
 
 Training and ComfyUI can now use the GPU concurrently. GPU occupancy and unavailable telemetry are advisory during training preflight, while managed training jobs remain serialized. Try My LoRA comparisons can also run alongside training. Storage cleanup retains its workload protection.
 

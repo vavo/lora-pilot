@@ -1,6 +1,6 @@
 # Configuration
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-25_
 
 You may begin with the default setup and later want a different arrangement: models on a separate disk, a service on another port, or fewer applications starting with the container. LoRA Pilot gives you several places to make those changes. Knowing which one owns a setting helps you keep the next startup predictable.
 
@@ -13,6 +13,10 @@ The [Docker Compose guide](docker-compose.md) explains the standard, development
 For Compose, create `.env` from `.env.example` if you do not have one. Read the variables referenced by the Compose file you are using before adding values. Compose uses `.env` for substitution; an entry reaches the application only if the configuration passes it into the container. The [environment-variable reference](environment-variables.md) connects the available settings to their purpose.
 
 Use [custom setup](custom-setup.md) for image overrides, storage mounts, and port changes. After changing the selected image, environment, or mounts, apply the deployment configuration with Compose and verify the resulting service state. Restarting one application inside an existing container does not change that container's mounts or published ports.
+
+## Connect your RunPod deployment
+
+For a RunPod deployment, the [RunPod integration guide](runpod.md) explains backend credentials, allocated storage, spending figures and scheduled shutdown. Volume and billing details remain optional when the credential cannot read them.
 
 ## Save service preferences at the right level
 

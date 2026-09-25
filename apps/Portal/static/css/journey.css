@@ -33,6 +33,7 @@
 .journey-page .field label, .tp-label { font-weight:650; font-size:16px; color:var(--text); }
 .journey-page .field { gap:10px; }
 .journey-note { color:var(--muted); font-size:14px; margin:8px 0 0; }
+#dash-runpod-status, #dash-runpod-storage { overflow-wrap:anywhere; }
 .journey-icon .nav-icon, .journey-icon .nav-icon svg { width:28px; height:28px; color:inherit; }
 .journey-icon { color:var(--journey-accent); flex-shrink:0; }
 .journey-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:24px; }

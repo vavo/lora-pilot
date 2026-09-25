@@ -48,7 +48,7 @@ Use `nvidia-smi` to confirm system-level GPU visibility. If an error points to C
 
 For a missing-file error, inspect the exact path in the message. Models and user data belong under the persistent `/workspace` tree, while bundled code and assets belong under `/opt/pilot`. Confirm that the expected mount exists and that the service can read or write the relevant directory before changing permissions or redownloading files.
 
-Check credential settings without copying their values into bug reports. Bootstrap stores secrets in `/workspace/config/secrets.env`. For an unexpected scheduled RunPod shutdown, inspect `RUNPOD_POD_SHUTDOWN`, `RUNPOD_VOLUME_TYPE`, and `RUNPOD_NETWORK_VOLUME_ID` in the deployment configuration and compare them with the intended storage and shutdown behavior.
+Check credential settings without copying their values into bug reports. Bootstrap stores secrets in `/workspace/config/secrets.env`. For a scheduled RunPod shutdown, compare the action and notice in `/api/shutdown/status` with the intended behavior. New schedules use saved Settings, then `RUNPOD_POD_SHUTDOWN`, then workspace mounts reported by the v2 API. Check backend credential availability and permissions without printing the key; see [RunPod integration](../configuration/runpod.md).
 
 ## Make one correction and repeat the same action
 

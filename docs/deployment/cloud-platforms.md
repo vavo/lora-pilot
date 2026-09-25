@@ -1,6 +1,6 @@
 # Cloud Platforms
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-25_
 
 You can work on a laptop while a remote GPU handles the training or generation. LoRA Pilot packages the creative tools into the container you deploy there, and you reach their interfaces through the browser. The practical task is to keep the compute session connected to storage you can return to.
 
@@ -26,9 +26,9 @@ For a test of your setup, save a small project file under `/workspace`, confirm 
 
 ControlPilot can schedule a shutdown, but the action depends on configuration. On RunPod, the runtime first reads the saved `shutdown_mode` from ControlPilot settings. If none is set, it uses `RUNPOD_POD_SHUTDOWN`. Values such as `remove`, `terminate`, or `delete` select removal; `stop` or `halt` select stopping the pod.
 
-Without an explicit mode, the runtime uses `RUNPOD_VOLUME_TYPE` and `RUNPOD_NETWORK_VOLUME_ID` to select the action. A network-volume indicator selects removal, a local-storage indicator selects stop, and the remaining default is stop. Confirm those inputs against the actual deployment before scheduling the action.
+Without an explicit mode, ControlPilot reads the workspace mount through RunPod's v2 API. A matching network volume selects termination; other storage selects stop. The old volume environment hints no longer choose the action. The selected action stays fixed for that countdown, and its storage consequences appear in the shutdown panel.
 
-If the RunPod command is missing or fails, ControlPilot reports failure. It does not fall back to a host shutdown after a failed RunPod command. The local `shutdown -h now` path applies when the runtime has no RunPod pod ID. A status of `requested` means the command returned successfully; verify the final pod state in the provider console before treating the session as stopped.
+The [RunPod integration guide](../configuration/runpod.md) explains backend credentials and permissions. Missing credentials or an unreadable pod prevent scheduling. A failed RunPod action is reported without falling back to a host shutdown. The local `shutdown -h now` path applies when the runtime has no RunPod pod ID. A status of `requested` means the API accepted the request; verify the final pod state in the provider console before treating the session as stopped.
 
 ## Use a Docker host on another provider
 

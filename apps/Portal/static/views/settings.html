@@ -215,7 +215,7 @@
         <option value="stop">Stop pod</option>
         <option value="remove">Remove pod</option>
       </select>
-      <div class="tip">Auto chooses a shutdown mode based on storage. Removing a pod permanently deletes its container and local storage.</div>
+      <div class="tip">Auto uses the deployment override when set. Otherwise, a RunPod network volume backing the workspace selects termination; other storage selects stop. Removing a pod permanently deletes its container and local storage.</div>
     </div>
     <div class="field">
       <span class="settings-label">Default countdown</span>
@@ -229,5 +229,5 @@
     </div>
     <div id="settings-shutdown-status" class="status settings-status" role="status"></div>
 </section>
-</div><aside class="settings-aside"><section><h3>Set the default, not the timer</h3><p>These values prefill the Dashboard shutdown scheduler. Saving them does not schedule a shutdown.</p></section><section><h3>Choose storage carefully</h3><p>Stop keeps the pod available to restart. Remove deletes the pod and its local storage. Keep anything you need on a network volume or in a backup.</p></section></aside></div></section>
+</div><aside class="settings-aside"><section><h3>Set the default, not the timer</h3><p>These values prefill the Dashboard shutdown scheduler. Saving them does not schedule a shutdown.</p></section><section><h3>Choose storage carefully</h3><p>Shutdown uses RunPod API v2. Provide RUNPOD_API_KEY on the backend or use the injected RunPod CLI credential. Stop keeps the pod available to restart. Remove deletes the pod and its local storage. Keep anything you need on a network volume or in a backup.</p></section></aside></div></section>
 </div>

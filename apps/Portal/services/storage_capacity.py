@@ -4,6 +4,8 @@ import os
 import re
 from pathlib import Path
 
+from .runpod import workspace_allocation
+
 
 def shared_workspace(path):
     path = Path(path).resolve()
@@ -27,6 +29,12 @@ def shared_workspace(path):
 
 def workspace_capacity(path, disk, data_used):
     result = dict(disk, capacity_source='filesystem', estimated=False, note='')
+    allocation = workspace_allocation(path)
+    if allocation.get('available'):
+        # The API knows allocation, not total usage across all volume writers.
+        return dict(result, total=int(allocation['size_gb'] * 1024 ** 3), used=data_used,
+                    free=None, pct=None, alert=False, capacity_source='runpod', estimated=False,
+                    note='RunPod allocated capacity. Usage measures this workspace only; whole-volume free space is unavailable.')
     configured = os.environ.get('WORKSPACE_STORAGE_CAPACITY_GB', '').strip()
     if configured:
         try:

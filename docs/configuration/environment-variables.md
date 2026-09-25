@@ -1,6 +1,6 @@
 # Environment Variables
 
-_Last updated: 2026-09-08_
+_Last updated: 2026-09-25_
 
 This page documents environment variables currently used by LoRA Pilot runtime scripts, ControlPilot services, Docker Compose files, and Docker image build args.
 
@@ -21,6 +21,8 @@ If you only care about the knobs that usually matter:
 ## Workspace storage capacity
 
 ControlPilot suppresses shared network filesystem totals because they can describe the storage cluster rather than your allocation. Without a known allocation, Dashboard and Storage show measured workspace usage and mark capacity as unavailable. Container disk statistics remain separate.
+
+On RunPod, ControlPilot first reads allocation through the v2 API using backend credentials. API allocation takes precedence over the manual value below. It is shown beside measured workspace usage; whole-volume free space remains unknown. The [RunPod integration guide](runpod.md) explains permission requirements and the optional spending card.
 
 Set `WORKSPACE_STORAGE_CAPACITY_GB` to your workspace allocation when the provider does not expose it through filesystem statistics. The value uses 1,073,741,824 bytes per GB, matching ControlPilot’s display units. For example, `WORKSPACE_STORAGE_CAPACITY_GB=100` displays a 100 GB allocation. Remaining space is an estimate based on cached workspace file sizes, not a provider quota reading; snapshots, open deleted files, and other provider accounting can differ. Update this setting when resizing the volume. Leave it unset for a dedicated filesystem whose reported capacity is already correct.
 
@@ -189,8 +191,9 @@ Note:
 | Variable | Default | Used by |
 |---|---|---|
 | `RUNPOD_POD_SHUTDOWN` | auto-select | `remove/terminate/delete` or `stop/halt` |
-| `RUNPOD_VOLUME_TYPE` | auto-select | helps choose stop vs remove |
-| `RUNPOD_NETWORK_VOLUME_ID` | empty | if set, default action becomes `remove` |
+| `RUNPOD_API_KEY` | injected CLI credential fallback | backend-only bearer credential for v2 pod actions, allocation and optional billing reads |
+
+Auto selects termination only when the v2 pod response identifies a network volume backing the workspace; otherwise it selects stop. `RUNPOD_VOLUME_TYPE` and `RUNPOD_NETWORK_VOLUME_ID` no longer control that decision. Saved ControlPilot shutdown settings take precedence over the environment, and an active countdown retains its original action.
 
 ### MediaPilot Integration
 

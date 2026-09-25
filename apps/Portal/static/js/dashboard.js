@@ -21,7 +21,41 @@ window.initDashboard = async function (screen = window.createScreenLifecycle()) 
   status.textContent = "Loading telemetry...";
   content.classList.add("is-hidden");
   screen.poll(() => Promise.all([refreshDashboardTelemetry(), refreshDashboardServices()]), DASHBOARD_POLL_MS);
+  screen.poll(() => refreshRunpod(screen), 60000);
 };
+
+async function refreshRunpod(screen) {
+  const panel = document.getElementById("dash-runpod");
+  if (!panel) return;
+  const text = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  const money = value => typeof value === "number" && Number.isFinite(value)
+    ? new Intl.NumberFormat("en-US", {style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 3}).format(value) : "Unavailable";
+  try {
+    const data = await screen.json("/api/runpod/status");
+    screen.check();
+    panel.hidden = !data.enabled;
+    if (!data.enabled) return;
+    text("dash-runpod-status", data.available ? `${data.pod_id} · ${data.status}` : data.message || "RunPod information is unavailable.");
+    text("dash-runpod-rate", data.available ? money(data.hourly_usd) + " / hour" : "Unavailable");
+    text("dash-runpod-session", money(data.session_estimate_usd));
+    text("dash-runpod-billed", data.billing?.available ? money(data.billing.total_usd) : "Unavailable");
+    text("dash-runpod-billing-note", data.billing?.available
+      ? `Recorded pod charges for ${data.billing.date_utc} (UTC). GPU ${money(data.billing.gpu_usd)}, CPU ${money(data.billing.cpu_usd)}, disk ${money(data.billing.disk_usd)}. Network-volume charges are separate. Billing can lag behind usage.`
+      : data.billing?.message ? `Billing: ${data.billing.message}` : "Billing requires a RunPod credential with billing access. Local workspace tools remain available.");
+    const storage = data.storage;
+    text("dash-runpod-storage", storage?.available
+      ? `${storage.kind === "network" ? "Network volume" : "Persistent volume"} · ${storage.size_gb} GB allocated at ${storage.mount}${storage.tier ? " · " + storage.tier.toLowerCase().replaceAll("_", " ") : ""}`
+      : storage?.message ? `Storage allocation: ${storage.message}` : "RunPod storage allocation is unavailable. Local usage is shown in Hardware details.");
+  } catch (error) {
+    if (!screen.active) return;
+    if (!panel.hidden) {
+      text("dash-runpod-status", "RunPod information is temporarily unavailable.");
+      for (const id of ["dash-runpod-rate", "dash-runpod-session", "dash-runpod-billed"]) text(id, "Unavailable");
+      text("dash-runpod-billing-note", "Refresh to try again. Local workspace tools remain available.");
+      text("dash-runpod-storage", "RunPod storage allocation is unavailable.");
+    }
+  }
+}
 
 function applyShutdownDefaults() {
   const settings = window.controlPilotSettings || {};
@@ -55,7 +89,7 @@ async function refreshDashboardTelemetry() {
     if (storageSummary) {
       storageSummary.textContent = typeof disk?.free === "number"
         ? `${disk.estimated ? "About " : ""}${formatBytes(disk.free)} free`
-        : disk?.total > 0 ? `${formatBytes(disk.total)} capacity · usage unavailable`
+        : disk?.total > 0 ? `${formatBytes(disk.total)} capacity · ${typeof disk.used === "number" ? `${formatBytes(disk.used)} in workspace` : "usage unavailable"}`
         : typeof disk?.used === "number" ? `${formatBytes(disk.used)} used · capacity unavailable` : "Capacity unavailable";
       storageSummary.title = disk?.note || "";
     }
@@ -158,7 +192,7 @@ function renderDisks(data) {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  if (typeof data.workspace_data_used_bytes === "number" && data.disks?.at(-1)?.capacity_source !== "unknown" && data.disks?.at(-1)?.capacity_source !== "configured") {
+  if (typeof data.workspace_data_used_bytes === "number" && data.disks?.at(-1)?.capacity_source !== "unknown" && data.disks?.at(-1)?.capacity_source !== "configured" && data.disks?.at(-1)?.capacity_source !== "runpod") {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>/workspace (data)</td>
@@ -441,8 +475,10 @@ async function updateShutdownStatus() {
     if (summary) summary.textContent = status.error ? "Shutdown failed — view details" : status.scheduled ? `Scheduled for ${status.shutdown_time || "later"}` : "No shutdown scheduled";
     if (status.error) document.getElementById("shutdown-details")?.setAttribute("open", "");
     const subtitle = document.querySelector(".shutdown-subtitle");
-    const mode = window.controlPilotSettings?.shutdown_mode;
-    if (subtitle && mode) subtitle.textContent = mode === "stop" ? "Stop the pod at the scheduled time" : "Terminate the pod at the scheduled time";
+    const mode = status.action === "terminate" ? "remove" : status.action || window.controlPilotSettings?.shutdown_mode;
+    if (subtitle) subtitle.textContent = status.notice || (mode === "stop" ? "Stop the pod at the scheduled time" : mode === "remove" ? "Terminate the pod at the scheduled time" : "Auto selects stop or terminate from the workspace storage mount.");
+    if (summary && status.state === "requested") summary.textContent = status.action ? "Shutdown requested — confirm in RunPod" : "Shutdown requested";
+    if (summary && status.state === "executing") summary.textContent = "Requesting shutdown…";
     const timeSpan = document.getElementById('shutdown-time');
     const meta = document.getElementById("shutdown-meta");
     const errorEl = document.getElementById("shutdown-error");

@@ -114,6 +114,6 @@ test('leaving Dashboard during its initial refresh cannot resurrect a polling lo
   const {context,timers}=page({document:dom.document,fetchJson:()=>{const pending=deferred();requests.push(pending);return pending.promise;}});
   vm.runInContext(read('dashboard'),context);context.bindShutdownInputs=()=>{};
   const screen=context.createScreenLifecycle();await context.initDashboard(screen);
-  assert.equal(requests.length,3);screen.dispose();requests.forEach(request=>request.resolve({}));await flush();
-  assert.equal(timers.size,0);assert.equal(requests.length,3);
+  assert.equal(requests.length,4);screen.dispose();requests.forEach(request=>request.resolve({}));await flush();
+  assert.equal(timers.size,0);assert.equal(requests.length,4);
 });
