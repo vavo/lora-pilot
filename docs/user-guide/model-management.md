@@ -1,6 +1,6 @@
 # Model Management
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-09-26_
 
 A video workflow may depend on several downloads before you can generate a frame. The main model is only part of the setup; text encoders, VAEs, and other components each have a place in the workflow. ControlPilot's Models page lets you review those requirements together and see what you already have.
 
@@ -13,6 +13,10 @@ Open **Models** in ControlPilot. The **Catalog** view groups entries by model fa
 The review shows required files, installed files it can reuse, download sizes, destinations, available space, and source access. For LTX, the prompt enhancer is optional. Read the review before choosing **Download missing files**, especially if you are working with limited storage or a source that requires Hugging Face approval.
 
 The requirements come from the four bundled workflow graphs. If you edit a graph or import another version, check its requirements as a separate workflow. Other catalog families expose individual models and components; select the variants that match the tool and workflow you intend to use.
+
+![Models catalog preview with LTX-2.5 component requirements and installation status](../assets/images/home/models.png)
+
+*Catalog preview with illustrative data from [lorapilot.com](https://lorapilot.com/); available models and status depend on your workspace.*
 
 ## Follow the download through to completion
 

@@ -1,6 +1,6 @@
 # ControlPilot
 
-_Last updated: 2026-09-21_
+_Last updated: 2026-09-26_
 
 ControlPilot brings the path from a folder of images to a usable LoRA into one workspace. Start with your dataset, prepare captions, choose a training profile, and bring the result into ComfyUI. Models, service controls, and detailed logs remain close when you need them.
 
@@ -13,6 +13,10 @@ The Dashboard puts four starting points ahead of the hardware details: prepare a
 The sidebar follows the same journey. **Prepare** contains Datasets, Caption images, and Models. **Train** contains Guided training and Advanced training. **Create** opens ComfyUI and the Gallery, while **Manage** holds Services, Storage, and Settings. Docs and Support sit below these groups. The Light and Dark controls remain at the bottom of the menu, including on mobile. The collapsed desktop menu uses sun and moon icons for these choices.
 
 You can minimize the build and activity bar with its close control. An activity icon appears beside Copilot at the bottom right; select it to reopen the bar. This browser remembers your choice across pages and reloads. The icon marks active work and pending completion notices while the bar is minimized.
+
+![ControlPilot dashboard preview with workspace status and workflow shortcuts](../assets/images/home/dashboard.png)
+
+*Dashboard design preview from [lorapilot.com](https://lorapilot.com/); your installed image may show a different interface.*
 
 ## Know what is running
 
@@ -29,6 +33,10 @@ Datasets accepts ZIP archives containing images and optional matching captions. 
 When captions are missing, **Review captions** opens the selected collection in Caption images. A fully captioned collection offers **Train a LoRA**, carrying the dataset into Guided training. **Manage** keeps rename and delete actions separate from that next step. You can also create an empty dataset and add images through the existing captioning workspace.
 
 Guided training brings SDXL and FLUX.1 dev into the same setup flow. Choose a dataset, name the LoRA, and select a profile. A persistent queue and history keep the experiment available after a restart, while the result screen lets you move or copy checkpoints into the library and compare their progress against the base model. Read the [TrainPilot guide](../components/trainpilot.md) for the complete workflow.
+
+![Datasets preview showing ZIP upload and caption coverage](../assets/images/home/datasets.png)
+
+*Datasets design preview from [lorapilot.com](https://lorapilot.com/): review caption coverage before training.*
 
 ## Connect model access without losing your place
 
@@ -61,6 +69,10 @@ A failed or stopped run keeps its status and logs rather than showing a success 
 ## Keep preparation, generation, and review connected
 
 **Caption images** opens TagPilot for image and caption editing. Use its workspace save action before returning to training, then check the caption coverage in Datasets. A complete caption count tells you that matching nonempty files exist; it cannot tell you whether their descriptions are useful.
+
+![TagPilot caption editor with image previews, editable captions, and workspace save controls](../assets/images/home/caption-images.png)
+
+*Caption editor view from [lorapilot.com](https://lorapilot.com/). Save your edits to the workspace before returning to training.*
 
 **ComfyUI** opens the generation workspace. **Gallery** opens MediaPilot to review saved media. Both use the shared workspace, which lets you prepare a dataset, train an adaptation, and inspect generated results without copying files between containers. For file work outside these views, use the JupyterLab or code-server link in Services.
 

@@ -165,6 +165,10 @@ model:
 - **Completed Jobs**: View finished training results
 - **Configuration**: Create and edit training configs
 
+![AI Toolkit dashboard with GPU monitors and training queues](../assets/images/home/ai-toolkit-training.jpg)
+
+*Training dashboard from [lorapilot.com](https://lorapilot.com/); GPU readings and queued jobs show that example workspace.*
+
 #### Job Creation
 1. **Select Model**: Choose base model (FLUX.1, SDXL, etc.)
 2. **Configure Dataset**: Select dataset and settings

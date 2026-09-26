@@ -7,9 +7,13 @@ LoRA Pilot bundles dataset prep, model management, training, inference, and medi
 
 Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
+![ControlPilot dashboard with workspace status and dataset, training, generation, and gallery shortcuts](docs/assets/images/home/dashboard.png)
+
+*Dashboard design preview from [lorapilot.com](https://lorapilot.com/). Interfaces vary with the installed image.*
+
 ## Why LoRA Pilot
 - **Three proven LoRA trainer stacks** in one place: Kohya SS, AI Toolkit, and Diffusion Pipe (plus TrainPilot for quick Kohya setup).
-- **30+ training model families** without juggling five half-compatible environments.
+- **51 training model groups** without juggling five half-compatible environments.
 - **ComfyUI + InvokeAI for rendering** with shared models, persistent outputs, and built-in model pulling.
 - **Full SD lifecycle covered**: dataset tagging/prep, model/dataset management, training, inference tuning, and media review.
 - **One control panel for ops**: ControlPilot handles services, downloads, logs, docs, and runtime controls.
@@ -47,11 +51,30 @@ docker run --gpus all -p 7878:7878 -p 5555:5555 -p 6666:6666 -v /path/to/your/da
 ```
 *(This would pull the image and run Comfy UI, Kohya SS and ControlPilot services, exposing the ControlPilot dashboard on port 7878)*  
 
-## Supported training families
-Short version: it supports **SD1, SD2, SDXL, SD3, FLUX.1 (dev/schnell/kontext), Chroma, Lumina-Image 2.0, LTX/LTX2, HunyuanVideo, Wan2.1/Wan2.2, Cosmos, HiDream, Qwen-Image, Z-Image** and more for training, plus almost everything for inference.
+## Supported training models
 
-<img width="1465" height="830" alt="Control Pilot screenshot" src="https://github.com/user-attachments/assets/ad090402-6233-4e8c-965c-522d46321e8a"/>
-Screenshot from an earlier ControlPilot interface; the current source uses the workflow navigation described above.
+**All 51 model groups**, including their listed variants, from the [September 26 training inventory](https://lorapilot.com/lora-training/#supported-models):
+
+- **Images and editing (31):** FLUX.2 dev; FLUX.2 Klein base 4B/9B; FLUX.1 dev/schnell; FLUX.1 Kontext dev; Flex.1 alpha; Flex.2 preview; Qwen-Image/2512; Qwen-Image-Edit/2509/2511; Z-Image/Turbo/De-Turbo; Z-Image L2P; SD 1.4/1.5; SD 2.0/2.1; SDXL 1.0; SD3/3.5 Medium/3.5 Large; Anima Base v1.0; Lumina-Image 2.0; HunyuanImage 2.1; Chroma1 Base; Zeta-Chroma; HiDream I1 Full; HiDream E1-1; HiDream O1 Image; OmniGen2; ERNIE-Image; Nucleus-Image; Ideogram 4; PRX Pixel T2I; Krea 2 Raw/Turbo; Boogu-Image 0.1 Base/Edit; Mage-Flow Base/Edit-Base; Cosmos-Predict2 2B/14B.
+- **Video (12):** Wan 2.1 T2V 1.3B/14B; Wan 2.1 I2V 14B 480p/720p; Wan 2.2 T2V/I2V A14B; Wan 2.2 TI2V 5B; LTX-2/2.3/2.5; LTX-Video 0.9.x (through 0.9.8); HunyuanVideo; HunyuanVideo 1.5; Cosmos 1.0 Diffusion Text2World 7B/14B; MiniMax H3; MiniMax H3 Ref2VA; FastH3 Preview v0.2.
+- **Audio (2):** ACE-Step 1.5 Base; ACE-Step 1.5 XL Base.
+- **Advanced image configuration (6):** AuraFlow 0.3; PixArt-α XL-2/Σ XL-2; CogView4-6B; F-Lite Standard/Texture; Chroma1-Radiance (x0); Segmind SSD-1B/Vega.
+
+See the [full trainer compatibility tables](docs/reference/supported-models.md) for UI versus configuration paths, version restrictions, and setup notes. Cosmos 1.0 needs extra setup; the advanced entries need configuration outside the web UI. Guided TrainPilot recipes cover SDXL and FLUX.1 dev. Model weights download separately. Qwen-Image 2.1 and Ming-Image 0.1 Design require a trainer upgrade and are outside this count.
+
+## Explore the workspace
+
+### Find models and review their components
+
+![Models catalog preview with LTX-2.5 selected and required components listed](docs/assets/images/home/models.png)
+
+*Models catalog preview with illustrative data from [lorapilot.com](https://lorapilot.com/). See [model management](docs/user-guide/model-management.md) for the installation workflow.*
+
+### Follow training in AI Toolkit
+
+![AI Toolkit dashboard showing GPU monitors and training queues](docs/assets/images/home/ai-toolkit-training.jpg)
+
+*AI Toolkit training view from [lorapilot.com](https://lorapilot.com/). See the [AI Toolkit guide](docs/components/ai-toolkit.md) for job setup and monitoring.*
 
 Everything is orchestrated by **supervisord** and writes to **/workspace**, so reboots do not nuke your progress.
 
