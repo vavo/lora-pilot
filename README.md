@@ -38,19 +38,6 @@ In the current source, ControlPilot follows the work itself: upload a dataset, r
 
 These interface changes are **unreleased**. The [ControlPilot guide](docs/user-guide/control-pilot.md) describes the current source; check the [changelog](CHANGELOG) and the image you deploy before expecting the same screens on an existing pod.
 
-## Current release
-
-[LoRA Pilot v2.5.8](https://github.com/vavo/lora-pilot/releases/tag/v2.5.8) includes the Models workflow catalog, reviewed LTX-2.5/MiniMax H3 installation, optional ComfyUI access protection, and startup security fixes. See the [release notes and upgrade guidance](docs/releases/v2.5.8.md).
-
-The v2.5.8 Docker publishing run failed at startup. To use this release, [build from its source tag](docs/development/building.md#build-a-release-tag). The `stable` and `latest` image tags do not establish which GitHub release an image contains.
-
-**Quick Start with a published image:**
-```bash
-docker pull notrius/lora-pilot:stable 
-docker run --gpus all -p 7878:7878 -p 5555:5555 -p 6666:6666 -v /path/to/your/data:/workspace notrius/lora-pilot:stable
-```
-*(This would pull the image and run Comfy UI, Kohya SS and ControlPilot services, exposing the ControlPilot dashboard on port 7878)*  
-
 ## Supported training models
 
 **All 51 model groups**, including their listed variants, from the [September 26 training inventory](https://lorapilot.com/lora-training/#supported-models):
@@ -79,13 +66,14 @@ See the [full trainer compatibility tables](docs/reference/supported-models.md) 
 Everything is orchestrated by **supervisord** and writes to **/workspace**, so reboots do not nuke your progress.
 
 Nice quality-of-life bits:
-- Use a verified image tag or digest for reproducible deployments; check Docker publishing status before assuming `:latest` includes a new release.
+- Pin an image digest for reproducible deployments.
 - Jupyter and code-server settings/plugins persist between restarts.
 - Venv switching gymnastics are gone; the stack is prewired.
 - Handy CLI tools (`mc`, `nano`, `unzip`, model scripts) are already there.
 - Need SDXL base? `models pull sdxl-base` and continue with your life.
 - Need a quick Kohya run? `trainpilot` builds a sane config from dataset size + selected quality.
 - Prefer UI? ControlPilot handles service state, logs, and workflows.
+- TensorBoard controls show server status and recent runs, with direct links to the selected run and its last log-write time.
 - Prefer CLI? `pilot status`, `pilot start`, `pilot stop` are right there.
 
 ## Installation

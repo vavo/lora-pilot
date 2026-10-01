@@ -1,5 +1,7 @@
 Unreleased (October 1st 2026)
 
+Refreshed the README with TensorBoard run discovery, removed the dated release/build-status block and duplicate quick-start snippet, and kept installation instructions in the Installation section.
+
 TensorBoard buttons now offer a recent-run picker with exact run filters, separate server/log status, last-write timestamps and a guarded Start action. Trainer attribution excludes overlapping roots, ControlPilot Dpipe runs register their actual output directories, and TensorBoard startup preserves real log directories.
 
 The Dashboard keeps spending in the compact workspace overview, with the main dataset and training actions directly below. Storage usage now has a visual bar on the Dashboard, in Hardware details and on the Storage page. Unavailable capacity uses a distinct unknown state. Mount paths and billing explanations no longer occupy the dashboard.
