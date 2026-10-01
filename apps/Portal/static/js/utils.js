@@ -79,39 +79,86 @@ window.getTensorBoardSourceStatus = async function (source, opts = {}) {
   const payload = await window.getTensorBoardStatus(opts);
   opts.screen?.check();
   if (!payload || typeof payload !== "object") return null;
-  return payload.sources && payload.sources[source] ? payload.sources[source] : null;
+  const info = payload.sources?.[source];
+  if (!info) return null;
+  const last = info.latest_mtime ? new Date(info.latest_mtime * 1000).toLocaleString() : null;
+  return {...info, reason: !payload.server?.reachable ? payload.server?.reason || "Server unavailable"
+    : last ? `Last log write: ${last}` : info.reason};
 };
 
 window.openTensorBoard = async function (source, opts = {}) {
-  const tb = await window.getTensorBoardSourceStatus(source, opts);
-  opts.screen?.check();
-  const label = typeof opts.label === "string" && opts.label ? opts.label : "TensorBoard";
-  if (!tb) {
-    if (typeof opts.onError === "function") {
-      opts.onError(`No TensorBoard metadata for ${label}`);
-      return false;
-    }
-    alert(`No TensorBoard metadata for ${label}`);
-    return false;
+  const dialog = document.createElement("dialog");
+  dialog.style.cssText = "width:min(560px,calc(100vw - 48px));box-sizing:border-box;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:20px";
+  const title = document.createElement("h3");
+  title.textContent = `${opts.label || source} · TensorBoard`;
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  const label = document.createElement("label");
+  label.textContent = "Recent runs";
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", "Recent TensorBoard runs");
+  select.style.cssText = "display:block;width:100%;margin:8px 0 16px";
+  const detail = document.createElement("p");
+  detail.style.overflowWrap = "anywhere";
+  const actions = document.createElement("div");
+  actions.style.cssText = "display:flex;flex-wrap:wrap;gap:8px";
+  function button(text, action) {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "btn secondary"; btn.textContent = text;
+    btn.onclick = action; actions.append(btn); return btn;
   }
-
-  if (!tb.ready) {
-    const msg = tb.reason || `${label} has no TensorBoard events yet.`;
-    if (!opts.allowUnavailable) {
-      if (typeof opts.onError === "function") {
-        opts.onError(msg);
-        return false;
-      }
-      alert(msg);
-      return false;
-    }
+  let payload, runs = [];
+  function selected() {
+    const run = runs.find(r => r.name === select.value);
+    open.disabled = !payload?.server?.reachable || !run?.loaded;
+    detail.textContent = run ? `${run.recent ? "Recent log writes" : "Last log write"}: ${new Date(run.latest_mtime * 1000).toLocaleString()} · ${run.path}${run.loaded ? "" : " · Waiting for TensorBoard to load this run"}` : "No runs found. Enable TensorBoard logging in this trainer, then start a training run.";
   }
-
-  const payload = await window.getTensorBoardStatus(opts);
-  opts.screen?.check();
-  const tbUrl = window.buildPortUrl(payload.port || 4444);
-  if (!tbUrl) return false;
-  window.open(tbUrl, "_blank", "noopener,noreferrer");
+  const open = button("Open selected run", () => {
+    const run = runs.find(r => r.name === select.value);
+    if (!run?.loaded || !payload?.server?.reachable) return;
+    const url = new URL(window.buildPortUrl(payload.port || 4444));
+    const escaped = run.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    url.hash = `scalars&runFilter=${encodeURIComponent(`^${escaped}$`)}`;
+    window.open(url.toString(), "_blank", "noopener,noreferrer");
+  });
+  open.disabled = true;
+  const start = button("Start TensorBoard", async () => {
+    start.disabled = true;
+    try {
+      await fetchJson("/api/tensorboard/start", {method: "POST"});
+      await refresh();
+    } catch (e) { status.textContent = e.message || String(e); }
+  });
+  const reload = button("Refresh", () => refresh());
+  button("Close", () => dialog.close());
+  async function refresh() {
+    reload.disabled = true;
+    try {
+      payload = await window.getTensorBoardStatus({force: true, screen: opts.screen});
+      if (!dialog.isConnected) return;
+      runs = payload.sources?.[source]?.runs || [];
+      status.textContent = payload.server.reason;
+      start.hidden = !payload.server.can_start;
+      start.disabled = false;
+      const previous = select.value;
+      select.replaceChildren(...runs.map(run => {
+        const option = document.createElement("option");
+        option.value = run.name;
+        option.textContent = `${run.label || run.name} · ${new Date(run.latest_mtime * 1000).toLocaleString()}`;
+        return option;
+      }));
+      if (runs.some(r => r.name === previous)) select.value = previous;
+      select.disabled = !runs.length;
+      selected();
+    } catch (e) { status.textContent = e.message || String(e); open.disabled = true; start.hidden = true; }
+    finally { reload.disabled = false; }
+  }
+  select.onchange = selected;
+  dialog.append(title, status, label, select, detail, actions);
+  document.body.append(dialog);
+  dialog.addEventListener("close", () => dialog.remove(), {once:true});
+  dialog.showModal();
+  await refresh();
   return true;
 };
 

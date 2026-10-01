@@ -587,6 +587,19 @@ def _start_training(req: TrainRequest):
         wandb_api_key=req.wandb_api_key,
     )
 
+    # Register the actual output root with the shared TensorBoard log tree.
+    import hashlib
+    tb_root = Path(os.environ.get("TENSORBOARD_ROOT_LOGDIR", str(WORKSPACE / "logs" / "tensorboard")))
+    tb_root.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    alias = tb_root / ("diffpipe-run-" + hashlib.sha256(str(out_dir).encode()).hexdigest()[:12])
+    if not alias.is_symlink() and alias.exists():
+        raise HTTPException(status_code=409, detail="TensorBoard run alias is occupied by a real directory/file")
+    if alias.is_symlink() and alias.resolve() != out_dir.resolve():
+        raise HTTPException(status_code=409, detail="TensorBoard run alias points to a different output directory")
+    if not alias.is_symlink():
+        alias.symlink_to(out_dir.resolve(), target_is_directory=True)
+
     safe_training_cfg = _materialize_training_config(training_cfg)
     cmd = [
         str(deepspeed_bin),

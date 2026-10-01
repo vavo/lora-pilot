@@ -155,3 +155,15 @@ tail -n 260 /workspace/logs/diffpipe.err.log
 ## 📝 Feedback
 
 Was this helpful? [Suggest improvements on GitHub Discussions](https://github.com/vavo/lora-pilot/discussions/categories/documentation-feedback)
+
+## TensorBoard run picker
+
+TensorBoard buttons in Services, TrainPilot and Dpipe open a recent-run picker. Select a run and choose **Open selected run** to open the Scalars dashboard with an exact run-name filter. Up to 50 recent event directories are listed per trainer, newest first.
+
+Server reachability is checked independently from event-file discovery. A saved run remains visible when the server is stopped. **Start TensorBoard** starts the existing DiffPipe service only when it is stopped and `DIFFPIPE_CONFIG` is empty; it never restarts training. Use **Refresh** while the server starts or loads new events.
+
+The picker shows the last log-write timestamp. “Recent log writes” means the event file changed within two minutes, not proof that a training process is currently running. Existing event files that the server has not loaded are marked accordingly and cannot be opened yet.
+
+AI Toolkit discovery is limited to its configured output root. Legacy Kohya discovery retains its configured output location, excluding roots owned by other trainers. The unfiltered TensorBoard dashboard can still expose overlapping legacy aliases; use the source-specific picker for attributed runs. Custom trainers should use distinct output directories.
+
+New Dpipe runs launched through ControlPilot register their actual output directory as a persistent `diffpipe-run-*` symlink under `TENSORBOARD_ROOT_LOGDIR`. Existing/manual Dpipe runs must be under `DIFFPIPE_LOGDIR` (or have a configured link) to appear. TrainPilot discovery honors `TRAINPILOT_TENSORBOARD_LOGDIR`. Startup updates only symlinks it owns and preserves real directories in the TensorBoard log tree.

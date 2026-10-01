@@ -214,7 +214,7 @@ TENSORBOARD_ROOT = Path(os.environ.get("TENSORBOARD_ROOT_LOGDIR", str(WORKSPACE_
 DIFFPIPE_LOGDIR = Path(os.environ.get("DIFFPIPE_LOGDIR", str(WORKSPACE_ROOT / "logs" / "diffusion-pipe")))
 KOHYA_TENSORBOARD_PATH = Path(os.environ.get("KOHYA_TENSORBOARD_LOGDIR", str(WORKSPACE_ROOT / "outputs")))
 AI_TOOLKIT_TENSORBOARD_PATH = Path(os.environ.get("AI_TOOLKIT_TENSORBOARD_LOGDIR", str(WORKSPACE_ROOT / "outputs" / "ai-toolkit")))
-TRAINPILOT_TENSORBOARD_PATH = Path("/workspace/logs/TrainPilot")
+TRAINPILOT_TENSORBOARD_PATH = Path(os.environ.get("TRAINPILOT_TENSORBOARD_LOGDIR", str(WORKSPACE_ROOT / "logs" / "TrainPilot")))
 CONTROLPILOT_SETTINGS_PATH = Path(
     os.environ.get("CONTROLPILOT_SETTINGS_PATH", str(WORKSPACE_ROOT / "config" / "controlpilot-settings.json"))
 )
@@ -1519,39 +1519,29 @@ def _latest_tensorboard_event(base: Path, *, max_depth: int = 8) -> Optional[tup
     return path, mtime
 
 
-def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int = 8) -> dict:
+def _tensorboard_source_status(source: str, paths: list[Path], *, max_depth: int = 8,
+                               excluded: list[Path] = ()) -> dict:
+    runs = {}
+    exclusions = [p.resolve() for p in excluded]
     for path in paths:
-        latest = _latest_tensorboard_event(path, max_depth=max_depth)
-        if latest is not None:
-            event_path, event_mtime = latest
-            return {
-                "source": source,
-                "ready": True,
-                "path": str(path),
-                "event_path": str(event_path),
-                "latest_mtime": float(event_mtime),
-                "reason": "ready",
-            }
-
-    fallback = paths[0] if paths else Path()
-    if fallback.exists():
-        return {
-            "source": source,
-            "ready": False,
-            "path": str(fallback),
-            "event_path": None,
-            "latest_mtime": None,
-            "reason": f"No TensorBoard event files found in {fallback}. Start a run to create events.",
-        }
-
-    return {
-        "source": source,
-        "ready": False,
-        "path": str(fallback),
-        "event_path": None,
-        "latest_mtime": None,
-        "reason": f"TensorBoard path not available: {fallback}",
-    }
+        root = path.resolve()
+        alias = path.name if path.name.startswith("diffpipe-run-") else source
+        for event, mtime in _iter_tensorboard_events(root, max_depth=max_depth):
+            if any(event.is_relative_to(p) for p in exclusions):
+                continue
+            relative = event.parent.relative_to(root).as_posix()
+            name = alias if relative == "." else f"{alias}/{relative}"
+            if name not in runs or mtime > runs[name]["latest_mtime"]:
+                runs[name] = {"name": name, "label": event.parent.name if relative == "." else relative,
+                              "source": source, "path": str(event.parent),
+                              "event_path": str(event), "latest_mtime": mtime,
+                              "recent": time.time() - mtime < 120}
+    ordered = sorted(runs.values(), key=lambda r: r["latest_mtime"], reverse=True)
+    latest = ordered[0] if ordered else {}
+    return {"source": source, "ready": bool(ordered), "runs": ordered[:50],
+            "path": str(paths[0]) if paths else "",
+            "event_path": latest.get("event_path"), "latest_mtime": latest.get("latest_mtime"),
+            "reason": "Logs detected" if ordered else "No runs found. Enable TensorBoard logging in this trainer."}
 
 
 def _iter_dataset_files(root: Path):
@@ -2877,29 +2867,53 @@ def service_log(name: str, lines: int = 100):
 
 @app.get("/api/tensorboard/status")
 def tensorboard_status():
-    sources = {
-        "diffpipe": _tensorboard_source_status(
-            "diffpipe",
-            [TENSORBOARD_ROOT / "diffpipe", DIFFPIPE_LOGDIR],
-            max_depth=6,
-        ),
-        "trainpilot": _tensorboard_source_status(
-            "trainpilot",
-            [TRAINPILOT_TENSORBOARD_PATH],
-            max_depth=6,
-        ),
-        "kohya": _tensorboard_source_status(
-            "kohya",
-            [KOHYA_TENSORBOARD_PATH],
-            max_depth=8,
-        ),
-        "ai-toolkit": _tensorboard_source_status(
-            "ai-toolkit",
-            [AI_TOOLKIT_TENSORBOARD_PATH, Path("/workspace/outputs")],
-            max_depth=8,
-        ),
+    registered = sorted(TENSORBOARD_ROOT.glob("diffpipe-run-*"))
+    registered = [p for p in registered if p.is_symlink() and
+                  p.resolve().is_relative_to((WORKSPACE_ROOT / "outputs").resolve())]
+    roots = {
+        "diffpipe": [DIFFPIPE_LOGDIR, *registered],
+        "trainpilot": [TRAINPILOT_TENSORBOARD_PATH],
+        "kohya": [KOHYA_TENSORBOARD_PATH],
+        "ai-toolkit": [AI_TOOLKIT_TENSORBOARD_PATH],
     }
-    return {"port": TENSORBOARD_PORT, "sources": sources}
+    sources = {}
+    for source, paths in roots.items():
+        # Legacy Kohya logs may live anywhere under outputs. Exclude other trainers.
+        excluded = [p for owner, entries in roots.items() if owner != source
+                    for p in entries if any(p.resolve().is_relative_to(root.resolve())
+                                            for root in paths)]
+        sources[source] = _tensorboard_source_status(source, paths, excluded=excluded)
+    try:
+        response = httpx.get(f"http://127.0.0.1:{TENSORBOARD_PORT}/data/runs", timeout=2,
+                             follow_redirects=False)
+        response.raise_for_status()
+        loaded = response.json()
+        reachable = isinstance(loaded, list) and all(isinstance(r, str) for r in loaded)
+    except (httpx.HTTPError, ValueError):
+        loaded, reachable = [], False
+    try:
+        state = supervisor_status("diffpipe").state.upper()
+    except (HTTPException, OSError):
+        state = "UNKNOWN"
+    can_start = not reachable and state in {"STOPPED", "EXITED", "FATAL"} and not os.environ.get("DIFFPIPE_CONFIG")
+    for source in sources.values():
+        for run in source["runs"]:
+            run["loaded"] = reachable and run["name"] in loaded
+    return {"port": TENSORBOARD_PORT, "sources": sources,
+            "server": {"reachable": reachable, "service_state": state, "can_start": can_start,
+                       "reason": "Server reachable" if reachable else
+                       ("Server stopped" if can_start else "Server unreachable; check DiffPipe service and logs.")}}
+
+
+@app.post("/api/tensorboard/start")
+def start_tensorboard():
+    if os.environ.get("DIFFPIPE_CONFIG"):
+        raise HTTPException(status_code=409, detail="DiffPipe is configured to train on start. Start it from Services.")
+    state = supervisor_status("diffpipe").state.upper()
+    if state not in {"STOPPED", "EXITED", "FATAL"}:
+        raise HTTPException(status_code=409, detail="DiffPipe is already running or changing state. Check its logs.")
+    _run_supervisorctl("start", "diffpipe")
+    return {"status": "starting"}
 
 
 @app.post("/api/shutdown/schedule")

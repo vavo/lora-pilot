@@ -323,7 +323,7 @@ window.refreshTrainpilotTensorBoardStatus = async function () {
   try {
     const tb = await window.getTensorBoardSourceStatus("trainpilot", { force: false, screen });
     if (tb && tb.ready) {
-      statusEl.textContent = "TensorBoard: run logs detected";
+      statusEl.textContent = `TensorBoard: ${tb.reason}`;
     } else {
       statusEl.textContent = `TensorBoard: ${tb && tb.reason ? tb.reason : "No data yet"}`;
     }

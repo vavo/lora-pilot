@@ -39,7 +39,6 @@ ensure_tb_link() {
   ln -s "${target}" "${link_path}"
 }
 
-rm -rf "${TB_ROOT}/diffpipe" "${TB_ROOT}/trainpilot" "${TB_ROOT}/kohya" "${TB_ROOT}/ai-toolkit"
 ensure_tb_link "${LOGDIR}" "${TB_ROOT}/diffpipe"
 ensure_tb_link "${TRAINPILOT_LOGDIR}" "${TB_ROOT}/trainpilot"
 ensure_tb_link "${KOHYA_TENSORBOARD_LOGDIR}" "${TB_ROOT}/kohya"
