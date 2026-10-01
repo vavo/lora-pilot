@@ -1,4 +1,4 @@
-"""Reviewed SDXL and FLUX.1-dev recipes for the persistent training queue."""
+"""Guided Kohya image-model recipes for the persistent training queue."""
 import hashlib
 import json
 import os
@@ -27,6 +27,34 @@ FLUX_MODELS = {
 }
 
 
+SD3_ENCODERS = {
+    'clip_l': FLUX_MODELS['clip_l'],
+    'clip_g': ('sd3-clip-g', 'text_encoders/clip_g.safetensors'),
+    't5xxl': FLUX_MODELS['t5xxl'],
+}
+MODEL_FILES = {
+    'flux1': FLUX_MODELS,
+    'sd15': {'pretrained_model_name_or_path': ('sd15-base', 'checkpoints/v1-5-pruned-emaonly.safetensors')},
+    'sd35_medium': {
+        'pretrained_model_name_or_path': ('sd3.5-medium', 'checkpoints/sd3.5_medium.safetensors'),
+        **SD3_ENCODERS,
+    },
+    'sd35_large': {
+        'pretrained_model_name_or_path': ('sd3.5-large', 'checkpoints/sd3.5_large.safetensors'),
+        **SD3_ENCODERS,
+    },
+}
+TRAINING_SCRIPTS = {'flux1': 'flux_train_network.py', 'sd15': 'train_network.py',
+                    'sd35_medium': 'sd3_train_network.py', 'sd35_large': 'sd3_train_network.py'}
+FAMILY_NOTES = {
+    'sdxl': 'SDXL uses your configured checkpoint and VAE with the existing Kohya profiles.',
+    'flux1': 'FLUX.1 dev uses full-size weights, AE, CLIP-L and FP16 T5. Block swapping needs substantial system memory.',
+    'sd15': 'SD 1.5 uses its base checkpoint with the included text encoder and VAE. Training and comparisons use 512-pixel images.',
+    'sd35_medium': 'SD 3.5 Medium uses full-size weights with the included VAE, CLIP-L, CLIP-G and FP16 T5. Allow substantial GPU and system memory.',
+    'sd35_large': 'SD 3.5 Large uses full-size weights with the included VAE, CLIP-L, CLIP-G and FP16 T5. Block swapping needs substantial system memory.',
+}
+
+
 def complete_checkpoint(path):
     try:
         if path.is_symlink():
@@ -45,7 +73,7 @@ def complete_checkpoint(path):
 class TrainingRequest(BaseModel):
     dataset_name: str = Field(min_length=1, max_length=200)
     output_name: str = Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
-    family: Literal['sdxl', 'flux1'] = 'sdxl'
+    family: Literal['sdxl', 'flux1', 'sd15', 'sd35_medium', 'sd35_large'] = 'sdxl'
     profile: Literal['quick_test', 'regular', 'high_quality'] = 'regular'
     toml_path: str = ''
     source_run_id: str | None = Field(default=None, pattern=r'^[a-f0-9]{32}$')
@@ -93,20 +121,30 @@ class GuidedTraining:
         return None
 
     def template(self, spec):
-        if spec['family'] == 'flux1':
+        if spec['family'] in MODEL_FILES:
+            family = spec['family']
             steps, rank = {'quick_test': (600, 16), 'regular': (1200, 32), 'high_quality': (2400, 64)}[spec['profile']]
-            return dict(
-                **{key: str(self.models / relative) for key, (_, relative) in FLUX_MODELS.items()},
-                network_module='networks.lora_flux', network_dim=rank, network_alpha=rank,
+            config = dict(
+                **{key: str(self.models / relative) for key, (_, relative) in MODEL_FILES[family].items()},
+                network_dim=rank, network_alpha=rank,
                 network_train_unet_only=True, learning_rate=0.0001, optimizer_type='AdamW8bit',
                 lr_scheduler='constant', train_batch_size=1, max_train_steps=steps,
                 mixed_precision='bf16', save_precision='bf16', save_model_as='safetensors',
                 save_every_n_steps=200, gradient_checkpointing=True, sdpa=True,
-                cache_latents=True, cache_latents_to_disk=True, cache_text_encoder_outputs=True,
-                cache_text_encoder_outputs_to_disk=True, blocks_to_swap=18,
-                guidance_scale=1.0, timestep_sampling='flux_shift', model_prediction_type='raw',
+                cache_latents=True, cache_latents_to_disk=True,
                 seed=31337, max_data_loader_n_workers=2,
             )
+            if family == 'sd15':
+                config.update(network_module='networks.lora', mixed_precision='fp16', save_precision='fp16')
+            else:
+                config.update(cache_text_encoder_outputs=True, cache_text_encoder_outputs_to_disk=True)
+                if family == 'flux1':
+                    config.update(network_module='networks.lora_flux', blocks_to_swap=18,
+                                  guidance_scale=1.0, timestep_sampling='flux_shift', model_prediction_type='raw')
+                else:
+                    config.update(network_module='networks.lora_sd3', weighting_scheme='uniform',
+                                  blocks_to_swap=16 if family == 'sd35_medium' else 32)
+            return config
         path = self.resolve_config(spec.get('toml_path', ''))
         try:
             return tomllib.loads(path.read_text())
@@ -115,13 +153,14 @@ class GuidedTraining:
 
     def requirements(self, spec, config=None):
         config = config if config is not None else self.template(spec)
-        keys = list(FLUX_MODELS) if spec['family'] == 'flux1' else ['pretrained_model_name_or_path', 'vae']
+        files = MODEL_FILES.get(spec['family'])
+        keys = list(files) if files else ['pretrained_model_name_or_path', 'vae']
         items = []
         for key in keys:
             raw = config.get(key, '')
             path = under(self.models, Path(raw)) if raw else None
             exists = bool(path and path.is_file() and path.stat().st_size > 0)
-            name = FLUX_MODELS[key][0] if spec['family'] == 'flux1' else self.model_name(path) if path else None
+            name = files[key][0] if files else self.model_name(path) if path else None
             items.append(dict(kind=key, key=key, value=str(path) if path else '', exists=exists,
                               model_name=name, reason=None if exists else 'Required model file is missing'))
         return {'items': items, 'missing': [item for item in items if not item['exists']]}
@@ -216,18 +255,18 @@ class GuidedTraining:
         env = os.environ.copy()
         env['PYTHONUNBUFFERED'] = '1'
         env['HF_HUB_ENABLE_HF_TRANSFER'] = '0'
-        if spec['family'] == 'flux1':
+        if spec['family'] in TRAINING_SCRIPTS:
             subsets = sorted({str((images / p.relative_to(dataset)).parent) for p in files if p.suffix.lower() in IMAGE_EXTENSIONS})
             dataset_config = directory / 'dataset.toml'
-            dataset_config.write_text(toml.dumps({'datasets': [dict(resolution=1024, batch_size=1, enable_bucket=True,
+            dataset_config.write_text(toml.dumps({'datasets': [dict(resolution=512 if spec['family'] == 'sd15' else 1024, batch_size=1, enable_bucket=True,
                 subsets=[dict(image_dir=path, num_repeats=1, caption_extension='.txt') for path in subsets])]}))
             config.update(dataset_config=str(dataset_config), output_dir=str(output), output_name=spec['output_name'],
                           logging_dir=str(self.workspace / 'logs/TrainPilot' / output.name), log_with='tensorboard')
             path = directory / 'effective.toml'
             path.write_text(toml.dumps(config))
-            script = kohya / 'sd-scripts/flux_train_network.py'
+            script = kohya / 'sd-scripts' / TRAINING_SCRIPTS[spec['family']]
             if not script.is_file():
-                raise HTTPException(400, 'Kohya FLUX training script is unavailable in this image')
+                raise HTTPException(400, 'The selected Kohya training script is unavailable in this image')
             command = [python, '-u', str(script), '--config_file', str(path)]
             cwd = kohya
         else:

@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from . import gpu_guard
 from .training_timing import timing
-from .guided_training import GuidedTraining, TrainingRequest
+from .guided_training import GuidedTraining, TrainingRequest, FAMILY_NOTES
 from .lora_comparison import ComparisonRequest, checkpoint_order, comparison_outputs, comfy, graph, result_images
 from .training_runs import TrainingRuns, under, write_json, now
 
@@ -151,8 +151,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             config = old['template']
         checks = recipe.requirements(req.model_dump(), config)
         return dict(checks, conflicts=managed_conflicts(), warnings=gpu_guard.conflicts(),
-                    note='FLUX.1 dev uses full-size weights and substantial GPU/system memory. Block swapping is enabled.'
-                         if req.family == 'flux1' else 'SDXL uses the existing Kohya profiles.')
+                    note=FAMILY_NOTES[req.family])
 
     @router.post('/runs')
     def submit(req: TrainingRequest):
@@ -163,7 +162,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             if old['spec']['family'] != req.family:
                 raise HTTPException(400, 'Saved configuration belongs to a different model family')
             spec['_template'] = dict(old['template'])
-            if req.family == 'flux1' and req.profile != old['spec']['profile']:
+            if req.family != 'sdxl' and req.profile != old['spec']['profile']:
                 profile = recipe.template(spec)
                 for key in ('network_dim', 'network_alpha', 'max_train_steps'):
                     spec['_template'][key] = profile[key]

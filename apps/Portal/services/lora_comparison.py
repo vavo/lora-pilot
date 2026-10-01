@@ -38,7 +38,9 @@ def checkpoint_order(name):
 def graph(run, request, lora_name, registry):
     nodes = {}
     config = run['template']
-    flux = run['spec']['family'] == 'flux1'
+    family = run['spec']['family']
+    flux = family == 'flux1'
+    sd3 = family in {'sd35_medium', 'sd35_large'}
 
     def add(node_id, kind, **inputs):
         if kind not in registry:
@@ -69,13 +71,18 @@ def graph(run, request, lora_name, registry):
     else:
         model = add('1', 'CheckpointLoaderSimple', ckpt_name=model_name('pretrained_model_name_or_path', 'checkpoints'))
         clip, vae = ['1', 1], ['1', 2]
+        if sd3:
+            clip = add('2', 'TripleCLIPLoader', clip_name1=model_name('clip_l', 'text_encoders'),
+                       clip_name2=model_name('clip_g', 'text_encoders'), clip_name3=model_name('t5xxl', 'text_encoders'))
+            model = add('6', 'ModelSamplingSD3', model=model, shift=3.0)
         if config.get('vae'):
             if 'checkpoints' in Path(config['vae']).parts:
                 add('3', 'CheckpointLoaderSimple', ckpt_name=model_name('vae', 'checkpoints'))
                 vae = ['3', 2]
             else:
                 vae = add('3', 'VAELoader', vae_name=model_name('vae', 'vae'))
-    latent = add('5', 'EmptySD3LatentImage' if flux else 'EmptyLatentImage', width=1024, height=1024, batch_size=1)
+    latent = add('5', 'EmptySD3LatentImage' if flux or sd3 else 'EmptyLatentImage',
+                 width=512 if family == 'sd15' else 1024, height=512 if family == 'sd15' else 1024, batch_size=1)
     names = [lora_name] if isinstance(lora_name, str) else lora_name
     for index, name in enumerate([None, *names]):
         base = 10 + index * 10
@@ -91,8 +98,8 @@ def graph(run, request, lora_name, registry):
         if flux:
             positive = add(str(base + 2), 'FluxGuidance', conditioning=positive, guidance=3.5)
         samples = add(str(base + 3), 'KSampler', model=branch_model, positive=positive, negative=negative,
-                      latent_image=latent, seed=request.seed, steps=20, cfg=1.0 if flux else 7.0,
-                      sampler_name='euler' if flux else 'dpmpp_2m', scheduler='simple' if flux else 'normal', denoise=1.0)
+                      latent_image=latent, seed=request.seed, steps=20, cfg=1.0 if flux else 4.5 if sd3 else 7.0,
+                      sampler_name='euler' if flux or sd3 else 'dpmpp_2m', scheduler='simple' if flux or sd3 else 'normal', denoise=1.0)
         image = add(str(base + 4), 'VAEDecode', samples=samples, vae=vae)
         add(str(base + 5), 'SaveImage', images=image, filename_prefix=f'LoRA-Pilot/{run["id"]}/{index:03d}')
         nodes[str(base + 5)]['_meta'] = {'title': label}

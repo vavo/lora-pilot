@@ -28,7 +28,7 @@
 <div class="row wrap gap-12"><p id="tp-draft-status" class="journey-note" role="status">Your unfinished setup is saved in this browser.</p><button id="tp-clear-draft" type="button" class="journey-link">Clear draft</button></div>
 <div class="tp-layout">
 <fieldset class="tp-fields" id="tp-fields"><legend class="sr-only">Training setup</legend>
-  <div class="field"><label for="tp-family">Model family</label><select id="tp-family" class="select"><option value="sdxl">SDXL · Kohya</option><option value="flux1">FLUX.1 dev · Kohya</option></select><p id="tp-family-note" class="journey-note">Use your configured SDXL checkpoint and VAE.</p></div>
+  <div class="field"><label for="tp-family">Model family</label><select id="tp-family" class="select"><option value="sdxl">SDXL · Kohya</option><option value="flux1">FLUX.1 dev · Kohya</option><option value="sd15">SD 1.5 · Kohya</option><option value="sd35_medium">SD 3.5 Medium · Kohya</option><option value="sd35_large">SD 3.5 Large · Kohya</option></select><p id="tp-family-note" class="journey-note">Use your configured SDXL checkpoint and VAE.</p></div>
   <div class="field"><label for="tp-dataset">Dataset</label><select id="tp-dataset" class="select"><option value="">Loading datasets…</option></select><div id="tp-dataset-info" class="journey-note"></div><div><button type="button" class="journey-link" id="tp-review-dataset">Review dataset</button> <a href="#datasets" class="journey-link" onclick="openDatasets(event)">Add a dataset</a></div></div>
   <div class="field"><label for="tp-output">LoRA name</label><input id="tp-output" class="input" type="text" placeholder="Name your LoRA" /><span class="journey-note">Used in the filenames saved after training.</span><span id="tp-epoch-example" class="journey-note"></span></div>
   <fieldset class="tp-profiles"><legend class="tp-label">Training profile</legend><div class="tp-profile-options">
@@ -52,7 +52,7 @@
   <p id="tp-queue-status" class="status" role="status"></p><p class="journey-note">Training and ComfyUI can run together and share GPU memory. If a job runs out of memory, reduce its settings or stop the other workload. Training jobs run one at a time. Pausing leaves the current run running.</p>
   <div class="row wrap gap-12" style="margin:16px 0">
 <label>Search runs<input id="tp-history-search" class="input" type="search" placeholder="LoRA or dataset name" /></label>
-<label>Model family<select id="tp-history-family" class="select"><option value="">All families</option><option value="sdxl">SDXL</option><option value="flux1">FLUX.1 dev</option></select></label>
+<label>Model family<select id="tp-history-family" class="select"><option value="">All families</option><option value="sdxl">SDXL</option><option value="flux1">FLUX.1 dev</option><option value="sd15">SD 1.5</option><option value="sd35_medium">SD 3.5 Medium</option><option value="sd35_large">SD 3.5 Large</option></select></label>
 <label>Status<select id="tp-history-state" class="select"><option value="">All statuses</option><option>queued</option><option>running</option><option>succeeded</option><option>failed</option><option>stopped</option><option>cancelled</option><option>interrupted</option><option>stopping</option></select></label>
 </div>
 <p id="tp-history-count" class="journey-note"></p>

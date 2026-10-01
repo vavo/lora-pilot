@@ -38,6 +38,8 @@ sd3-medium-fp8-allinone|hf_file|stabilityai/stable-diffusion-3-medium:sd3_medium
 
 # SD3.5 (popular, Comfy-Org packaged)
 sd3.5-medium-fp8-allinone|hf_file|Comfy-Org/stable-diffusion-3.5-fp8:sd3.5_medium_incl_clips_t5xxlfp8scaled.safetensors|checkpoints||11638004202
+sd3.5-medium|hf_file|stabilityai/stable-diffusion-3.5-medium:sd3.5_medium.safetensors|checkpoints||5107104286
+sd3-clip-g|hf_file|stabilityai/stable-diffusion-3.5-medium:text_encoders/clip_g.safetensors|text_encoders||1389382176
 sd3.5-large|hf_file|stabilityai/stable-diffusion-3.5-large:sd3.5_large.safetensors|checkpoints||16460379262
 sd3.5-large-turbo|hf_file|stabilityai/stable-diffusion-3.5-large-turbo:sd3.5_large_turbo.safetensors|checkpoints||16460374454
 

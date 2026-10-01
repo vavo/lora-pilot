@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
-from apps.Portal.services.guided_training import GuidedTraining, FLUX_MODELS
+from apps.Portal.services.guided_training import GuidedTraining, FLUX_MODELS, MODEL_FILES, TRAINING_SCRIPTS
 from apps.Portal.services.lora_comparison import ComparisonRequest, graph, result_images
 from apps.Portal.services.training_api import create_router
 from apps.Portal.services import gpu_guard
@@ -133,6 +133,90 @@ class GuidedTrainingTests(unittest.TestCase):
             (self.dataset / 'a.txt').write_text('different captions')
             self.assertEqual(client.post(f'/api/training/runs/{rid}/resume').status_code, 409)
 
+    def test_new_model_profiles_launch_with_matching_weights_and_dataset_resolution(self):
+        kohya = self.root / 'kohya'
+        (kohya / 'sd-scripts').mkdir(parents=True)
+        for family_index, family in enumerate(['sd15', 'sd35_medium', 'sd35_large'], 1):
+            for _, relative in MODEL_FILES[family].values():
+                path = self.models / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'fixture')
+            (kohya / 'sd-scripts' / TRAINING_SCRIPTS[family]).touch()
+            for profile, steps, rank in [('quick_test', 600, 16), ('regular', 1200, 32), ('high_quality', 2400, 64)]:
+                with self.subTest(family=family, profile=profile):
+                    spec = dict(self.spec, family=family, profile=profile)
+                    rid = f'{family_index * 10000 + steps:032x}'
+                    directory = self.root / 'config/training' / rid
+                    directory.mkdir()
+                    run = self.recipe.prepare(spec, rid, directory)
+                    run['id'] = rid
+                    config = run['template']
+                    self.assertEqual((config['max_train_steps'], config['network_dim']), (steps, rank))
+                    self.assertEqual(config['network_module'], 'networks.lora' if family == 'sd15' else 'networks.lora_sd3')
+                    self.assertNotIn('timestep_sampling', config)
+                    self.assertNotIn('guidance_scale', config)
+                    if family == 'sd15':
+                        self.assertNotIn('cache_text_encoder_outputs', config)
+                        self.assertNotIn('blocks_to_swap', config)
+                    else:
+                        self.assertTrue(config['cache_text_encoder_outputs'])
+                        self.assertEqual(config['blocks_to_swap'], 16 if family == 'sd35_medium' else 32)
+                    checkpoint = Path(run['output_dir']) / 'saved.safetensors'
+                    self.checkpoint(checkpoint)
+                    run['recovery'] = dict(mode='weights', path=str(checkpoint))
+                    with patch.dict('os.environ', KOHYA_ROOT=str(kohya)), patch('subprocess.Popen') as launch:
+                        self.recipe.launch(run, io.BytesIO())
+                    self.assertEqual(launch.call_args.args[0][2], str(kohya / 'sd-scripts' / TRAINING_SCRIPTS[family]))
+                    effective = tomllib.loads((directory / 'effective.toml').read_text())
+                    self.assertEqual(effective['network_weights'], str(checkpoint))
+                    self.assertTrue(effective['save_state'])
+                    dataset = tomllib.loads((directory / 'dataset.toml').read_text())['datasets'][0]
+                    self.assertEqual(dataset['resolution'], 512 if family == 'sd15' else 1024)
+                    self.assertTrue(Path(dataset['subsets'][0]['image_dir'], 'a.png').is_file())
+
+    def test_guided_model_requirements_match_download_destinations(self):
+        from test_models_manifest import manifest_entries, MANIFEST
+        entries = manifest_entries(MANIFEST)
+        for family, files in MODEL_FILES.items():
+            requirements = self.recipe.requirements(dict(self.spec, family=family))
+            self.assertEqual(len(requirements['items']), len(files))
+            for item in requirements['items']:
+                entry = entries[item['model_name']]
+                filename = entry['source'].split(':', 1)[1].split('/')[-1]
+                self.assertEqual(Path(item['value']), (self.models / entry['subdir'] / filename).resolve())
+        checks = self.recipe.requirements(dict(self.spec, family='sd35_medium'))
+        self.assertEqual({m['model_name'] for m in checks['missing']}, {'sd3.5-medium', 'sd3-clip-g'})
+        with self.assertRaises(HTTPException):
+            self.recipe.prepare(dict(self.spec, family='sd35_medium'), self.rid, self.directory)
+
+    def test_new_family_saved_settings_keep_weights_and_apply_changed_profile(self):
+        self.addCleanup(setattr, gpu_guard, 'managed_conflicts', gpu_guard.managed_conflicts)
+        router, queue = create_router(self.root, self.models, self.resolve_dataset, lambda _: self.config, lambda _: 'base', lambda: [])
+        start = queue.start
+        queue.start = lambda: start(background=False)
+        self.addCleanup(queue.close)
+        app = FastAPI(); app.include_router(router)
+        with TestClient(app) as client:
+            for family in ['sd15', 'sd35_medium', 'sd35_large']:
+                for _, relative in MODEL_FILES[family].values():
+                    path = self.models / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b'fixture')
+                spec = dict(self.spec, family=family)
+                original = client.post('/api/training/runs', json=spec)
+                self.assertEqual(original.status_code, 200, original.text)
+                saved = queue.get(original.json()['id'])
+                saved['template']['learning_rate'] = 0.00002
+                queue.save(saved)
+                updated = client.post('/api/training/runs', json=dict(spec, source_run_id=saved['id'], profile='high_quality'))
+                self.assertEqual(updated.status_code, 200, updated.text)
+                config = queue.get(updated.json()['id'])['template']
+                self.assertEqual(config['learning_rate'], 0.00002)
+                self.assertEqual((config['max_train_steps'], config['network_dim']), (2400, 64))
+                self.assertEqual(config['pretrained_model_name_or_path'], saved['template']['pretrained_model_name_or_path'])
+                queue.cancel(updated.json()['id'])
+                queue.cancel(saved['id'])
+
     def test_flux_uses_separate_reviewed_recipe_and_exact_encoders(self):
         template = self.recipe.template(self.spec)
         self.assertEqual(template['network_module'], 'networks.lora_flux')
@@ -254,6 +338,31 @@ class ComparisonGraphTests(unittest.TestCase):
                 self.assertEqual(workflow['23']['inputs']['model'], ['4', 0])
                 self.assertEqual(workflow['4']['inputs']['model'], ['1', 0])
                 self.assertEqual(workflow['5']['class_type'], 'EmptySD3LatentImage' if family == 'flux1' else 'EmptyLatentImage')
+
+    def test_new_model_comparisons_match_training_components(self):
+        for family in ['sd15', 'sd35_medium', 'sd35_large']:
+            with self.subTest(family=family):
+                run = {'id': 'a' * 32, 'spec': {'family': family}, 'template': {
+                    key: '/workspace/models/' + relative for key, (_, relative) in MODEL_FILES[family].items()}}
+                registry = self.registry()
+                checkpoint = Path(run['template']['pretrained_model_name_or_path']).name
+                registry['CheckpointLoaderSimple']['input']['required']['ckpt_name'] = [[checkpoint]]
+                registry['TripleCLIPLoader'] = {'input': {'required': {
+                    'clip_name1': [['clip_l.safetensors']], 'clip_name2': [['clip_g.safetensors']],
+                    'clip_name3': [['t5xxl_fp16.safetensors']]}}}
+                registry['ModelSamplingSD3'] = {'input': {'required': {'model': ['MODEL'], 'shift': ['FLOAT']}}}
+                workflow = graph(run, ComparisonRequest(prompt='portrait', seed=7), ['trained.safetensors'], registry)
+                self.assertEqual(workflow['13']['inputs']['seed'], workflow['23']['inputs']['seed'])
+                self.assertEqual(workflow['4']['inputs']['model'], workflow['13']['inputs']['model'])
+                self.assertEqual(workflow['5']['inputs']['width'], 512 if family == 'sd15' else 1024)
+                self.assertEqual(workflow['5']['class_type'], 'EmptyLatentImage' if family == 'sd15' else 'EmptySD3LatentImage')
+                if family != 'sd15':
+                    self.assertEqual(workflow['2']['class_type'], 'TripleCLIPLoader')
+                    self.assertEqual(workflow['4']['inputs']['model'], ['6', 0])
+                    self.assertEqual(workflow['6']['inputs']['model'], ['1', 0])
+                    del registry['TripleCLIPLoader']
+                    with self.assertRaises(HTTPException):
+                        graph(run, ComparisonRequest(prompt='portrait'), 'trained.safetensors', registry)
 
     def test_missing_nodes_or_unavailable_models_prevent_submission(self):
         registry = self.registry()

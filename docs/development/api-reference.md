@@ -165,7 +165,7 @@ The run listing accepts `search` (LoRA or dataset name, up to 200 characters), `
 
 `GET /api/training/runs/{id}/artifacts/{filename}` streams an eligible checkpoint as an attachment. Queued or active runs return HTTP 409; missing or linked checkpoints are excluded. The endpoint does not move or publish the file.
 
-Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path`. Supported families are `sdxl` and `flux1`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family; the chosen profile is applied to the new run.
+Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path`. Supported families are `sdxl`, `flux1`, `sd15`, `sd35_medium`, and `sd35_large`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family; the chosen profile is applied to the new run.
 
 Run creation returns the new record and UUID. Each run has a separate output directory. The queue accepts at most 50 active or waiting runs and returns HTTP 409 when full. Missing models fail before queueing. A dataset changed since queueing fails at launch, with an explanation saved in the record. After a restart, interrupted processes are not automatically resumed and pending dispatch remains paused. Only one ControlPilot worker can own the queue for a workspace.
 

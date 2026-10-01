@@ -10,7 +10,7 @@ window.trainingWorkspace = (() => {
   const api = (screen, path, body) => screen.json(`/api/training${path}`, body === undefined ? {} : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
-  const familyName = family => family === 'flux1' ? 'FLUX.1 dev · Kohya' : 'SDXL · Kohya';
+  const familyName = family => ({sdxl: 'SDXL', flux1: 'FLUX.1 dev', sd15: 'SD 1.5', sd35_medium: 'SD 3.5 Medium', sd35_large: 'SD 3.5 Large'}[family] || family) + ' · Kohya';
   const element = (tag, text, className = '') => {
     const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
   };
@@ -44,9 +44,7 @@ window.trainingWorkspace = (() => {
   function formState() {
     const family = spec().family;
     $('tp-summary-engine').textContent = familyName(family);
-    $('tp-family-note').textContent = family === 'flux1'
-      ? 'FLUX.1 dev requires its full-size model, AE, CLIP-L and FP16 T5 encoder. Uses batch size 1 and block swapping; allow substantial GPU and system memory.'
-      : 'Use your configured SDXL checkpoint and VAE.';
+    $('tp-family-note').textContent = 'Checking the selected model requirements…';
     $('tp-advanced').hidden = family !== 'sdxl' || !!sourceRun;
     $('tp-saved-config').hidden = !sourceRun;
     $('tp-saved-config').textContent = sourceRun ? 'Using the saved configuration from the selected run. Your profile choice is applied to a new copy.' : '';
@@ -61,6 +59,7 @@ window.trainingWorkspace = (() => {
     try {
       const result = await api(screen, '/preflight', spec());
       if (!screen.active || !$('tp-page')) return;
+      $('tp-family-note').textContent = result.note;
       $('tp-check-model').textContent = result.missing.length
         ? `Missing ${result.missing.length} model file(s). You can download them before queuing.` : 'Required model files found';
       $('tp-check-model').classList.toggle('verified', !result.missing.length);
@@ -343,7 +342,7 @@ window.trainingWorkspace = (() => {
         preferSetup = true; preflight();
       } catch { $('tp-draft-status').textContent = 'Browser storage is unavailable; the saved draft could not be cleared.'; }
     };
-    $('tp-family').onchange = () => { sourceRun = null; preflight(); };
+    $('tp-family').onchange = () => { sourceRun = null; saveDraft(); preflight(); };
     $('tp-current-defaults').onclick = () => { sourceRun = null; saveDraft(); preflight(); };
     $('tp-history-search').value = historySearch; $('tp-history-family').value = historyFamily; $('tp-history-state').value = historyState;
     const filter = () => { historySearch = $('tp-history-search').value; historyFamily = $('tp-history-family').value; historyState = $('tp-history-state').value; offset = 0; historySignature = ''; refresh(); };

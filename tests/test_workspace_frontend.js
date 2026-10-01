@@ -131,3 +131,12 @@ test('workspace minimization persists, preserves activity notices, and hides con
   assert.equal(preferences.getItem('lora-pilot.workspace-minimized.v1'),'false');
   reloaded.page.window.workspaceStatus.stop();
 });
+
+
+test('guided drafts retain each newly supported model family', () => {
+  const draft = context.createTrainingDraft(storage());
+  for (const family of ['sd15', 'sd35_medium', 'sd35_large']) {
+    draft.save({family, profile:'regular', dataset_name:'1_sample', output_name:'portrait'});
+    assert.equal(draft.read().family, family);
+  }
+});

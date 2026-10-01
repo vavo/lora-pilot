@@ -14,7 +14,7 @@ This reference follows the [LoRA Pilot training-model inventory](https://lorapil
 - **Named variants**: support applies only to the versions named in that cell.
 - **Extra setup**: additional dependencies or configuration are required; see the row's notes.
 
-These tables describe trainer support. They do not establish a successful GPU training run for each entry. [TrainPilot's guided recipes](../components/trainpilot.md) cover SDXL and FLUX.1 dev; use the other trainers for the wider list below.
+These tables describe trainer support. They do not establish a successful GPU training run for each entry. [TrainPilot's guided recipes](../components/trainpilot.md) cover SDXL, FLUX.1 dev, SD 1.5, and SD 3.5 Medium/Large; use the other trainers for the wider list below.
 
 Download weights separately and match the checkpoint format, text encoders, dataset type, and hardware to the chosen trainer. VRAM needs depend on the model, resolution, precision, batch size, and offloading settings. Check the model's license and access requirements before downloading. Compatible community fine-tunes follow their parent architecture.
 

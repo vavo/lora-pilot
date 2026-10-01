@@ -34,7 +34,7 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
 ## From your images to a usable LoRA
 
-In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, queue guided SDXL or FLUX.1 dev training, and compare the completed LoRA with its base model in ComfyUI. Persistent history keeps configurations, logs, and output locations available after a restart, and library copies preserve original checkpoints. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
+In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, queue guided SDXL, FLUX.1 dev, SD 1.5, or SD 3.5 Medium/Large training, and compare the completed LoRA with its base model in ComfyUI. Persistent history keeps configurations, logs, and output locations available after a restart, and library copies preserve original checkpoints. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
 
 These interface changes are **unreleased**. The [ControlPilot guide](docs/user-guide/control-pilot.md) describes the current source; check the [changelog](CHANGELOG) and the image you deploy before expecting the same screens on an existing pod.
 
@@ -60,7 +60,7 @@ docker run --gpus all -p 7878:7878 -p 5555:5555 -p 6666:6666 -v /path/to/your/da
 - **Audio (2):** ACE-Step 1.5 Base; ACE-Step 1.5 XL Base.
 - **Advanced image configuration (6):** AuraFlow 0.3; PixArt-α XL-2/Σ XL-2; CogView4-6B; F-Lite Standard/Texture; Chroma1-Radiance (x0); Segmind SSD-1B/Vega.
 
-See the [full trainer compatibility tables](docs/reference/supported-models.md) for UI versus configuration paths, version restrictions, and setup notes. Cosmos 1.0 needs extra setup; the advanced entries need configuration outside the web UI. Guided TrainPilot recipes cover SDXL and FLUX.1 dev. Model weights download separately. Qwen-Image 2.1 and Ming-Image 0.1 Design require a trainer upgrade and are outside this count.
+See the [full trainer compatibility tables](docs/reference/supported-models.md) for UI versus configuration paths, version restrictions, and setup notes. Cosmos 1.0 needs extra setup; the advanced entries need configuration outside the web UI. Guided TrainPilot recipes cover SDXL, FLUX.1 dev, SD 1.5, and SD 3.5 Medium/Large. Model weights download separately. Qwen-Image 2.1 and Ming-Image 0.1 Design require a trainer upgrade and are outside this count.
 
 ## Explore the workspace
 

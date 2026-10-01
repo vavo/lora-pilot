@@ -32,7 +32,7 @@ Datasets accepts ZIP archives containing images and optional matching captions. 
 
 When captions are missing, **Review captions** opens the selected collection in Caption images. A fully captioned collection offers **Train a LoRA**, carrying the dataset into Guided training. **Manage** keeps rename and delete actions separate from that next step. You can also create an empty dataset and add images through the existing captioning workspace.
 
-Guided training brings SDXL and FLUX.1 dev into the same setup flow. Choose a dataset, name the LoRA, and select a profile. A persistent queue and history keep the experiment available after a restart, while the result screen lets you move or copy checkpoints into the library and compare their progress against the base model. Read the [TrainPilot guide](../components/trainpilot.md) for the complete workflow.
+Guided training brings SDXL, FLUX.1 dev, SD 1.5, and SD 3.5 Medium/Large into the same setup flow. Choose a dataset, name the LoRA, and select a profile. A persistent queue and history keep the experiment available after a restart, while the result screen lets you move or copy checkpoints into the library and compare their progress against the base model. Read the [TrainPilot guide](../components/trainpilot.md) for the complete workflow.
 
 ![Datasets preview showing ZIP upload and caption coverage](../assets/images/home/datasets.png)
 

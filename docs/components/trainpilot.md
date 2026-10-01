@@ -1,16 +1,20 @@
 # TrainPilot
 
-_Last updated: 2026-09-21_
+_Last updated: 2026-10-01_
 
 A useful training experiment should leave you with more than a file named `final_final`. It should tell you what you trained, which settings you used, and what changed in the result. Guided training brings that whole loop into ControlPilot: prepare a run, keep its history, and compare your LoRA with the original model.
 
 ## Choose the model you want to teach
 
-Open **Guided training** and choose **SDXL** or **FLUX.1 dev**. Both use Kohya, but each has its own training recipe. SDXL uses your saved checkpoint and VAE configuration. FLUX.1 dev uses its diffusion model, autoencoder, CLIP-L encoder, and full FP16 T5 encoder. An inference-oriented quantized model is not a replacement for those training weights.
+Open **Guided training** and choose **SDXL**, **FLUX.1 dev**, **SD 1.5**, **SD 3.5 Medium**, or **SD 3.5 Large**. Each uses a model-specific Kohya recipe. SDXL uses your saved checkpoint and VAE configuration. FLUX.1 dev uses its diffusion model, autoencoder, CLIP-L encoder, and full FP16 T5 encoder. An inference-oriented quantized model is not a replacement for those training weights.
 
 ControlPilot checks the required model paths before adding a run. When missing files match the catalog, it offers to download them. Gated downloads may require a Hugging Face token and access approved on the model's page. A successful file check means the required paths exist; it does not establish that the weights are valid or that a run will fit your GPU.
 
 FLUX uses block swapping to move part of the model between GPU and system memory. This reduces pressure on GPU memory at the cost of transfers and substantial host memory use. Start with a short experiment on your actual hardware. This guided recipe does not claim a universal minimum GPU size.
+
+SD 1.5 uses `sd15-base`, including its text encoder and VAE, at 512-pixel resolution. SD 3.5 Medium and Large use the full-size `sd3.5-medium` or `sd3.5-large` checkpoint, its included VAE, and separate `flux-clip-l`, `sd3-clip-g`, and `flux-t5xxl-fp16` encoders. The CLIP-L and T5 files are shared with FLUX. Download the full-size SD 3.5 checkpoint; the FP8 all-in-one and Turbo variants are separate models.
+
+The new profiles follow the pinned Kohya [SD 1.x training path](https://github.com/kohya-ss/sd-scripts/blob/6721028c79ee85a78b3a06dfd8954dae310a1cce/train_network.py) and [SD3 training implementation](https://github.com/kohya-ss/sd-scripts/blob/6721028c79ee85a78b3a06dfd8954dae310a1cce/sd3_train_network.py). Local checks cover configuration, launch arguments, recovery, and comparison graphs. Completed GPU training and generation runs for these new profiles remain unverified.
 
 ## Begin with a reviewed dataset
 
@@ -35,6 +39,8 @@ Drafts belong to this browser and site address. They do not follow you to anothe
 For SDXL, Quick test begins with a 600-step target, a 12-epoch ceiling, rank 32, alpha 16, batch size 1, gradient accumulation of 2, and FP16 precision. Balanced begins at 1,200 steps and 25 epochs, with rank 48, alpha 24, batch size 2, accumulation of 2, and BF16. Extended begins at 2,400 steps and 45 epochs, with rank 64, alpha 32, batch size 4, accumulation of 1, and BF16. The wrapper adjusts these step targets for dataset size and clamps them to its epoch calculation.
 
 For FLUX.1 dev, the three profiles use 600, 1,200, and 2,400 steps, respectively, with ranks 16, 32, and 64. They train the diffusion model's LoRA with batch size 1, BF16 precision, gradient checkpointing, and cached text-encoder outputs. They use a separate recipe rather than applying SDXL parameters to a different model architecture.
+
+SD 1.5 and both SD 3.5 profiles also use 600 / 1,200 / 2,400 steps and ranks 16 / 32 / 64, with batch size 1. SD 1.5 uses FP16 and trains only the U-Net LoRA. SD 3.5 uses BF16, `networks.lora_sd3`, cached text-encoder outputs, and block swapping (16 blocks for Medium, 32 for Large). These are starting profiles; longer runs are not a quality guarantee.
 
 ## Let the queue manage the next start
 
@@ -64,9 +70,9 @@ Recognized failures explain the next useful action. A model access error points 
 
 SDXL starts from `/workspace/config/trainpilot/newlora.toml`. **Advanced configuration** edits those defaults. Each queued run retains its own snapshot, and the wrapper applies the selected profile to a private copy at launch. **Selected run configuration** shows the effective configuration once it is available, including profile overrides.
 
-The SDXL launcher is `/opt/pilot/apps/TrainPilot/trainpilot.sh`. FLUX invokes Kohya's `sd-scripts/flux_train_network.py` directly. Both use `/opt/venvs/kohya/bin/python` by default; the Kohya browser service does not need to be running to execute these scripts.
+The SDXL launcher is `/opt/pilot/apps/TrainPilot/trainpilot.sh`. FLUX invokes `sd-scripts/flux_train_network.py`, SD 1.5 invokes `sd-scripts/train_network.py`, and SD 3.5 invokes `sd-scripts/sd3_train_network.py` directly. All use `/opt/venvs/kohya/bin/python` by default; the Kohya browser service does not need to be running to execute these scripts.
 
-**Logs & diagnostics** shows the recent persisted log tail. The full launcher output remains in `/workspace/config/training/<run-id>/run.log`. SDXL also writes `_logs/train.log` inside its output directory. TensorBoard events for both guided families live under `/workspace/logs/TrainPilot`, with a separate directory for each run. The shared TensorBoard service can display them when it is running.
+**Logs & diagnostics** shows the recent persisted log tail. The full launcher output remains in `/workspace/config/training/<run-id>/run.log`. SDXL also writes `_logs/train.log` inside its output directory. TensorBoard events for all guided families live under `/workspace/logs/TrainPilot`, with a separate directory for each run. The shared TensorBoard service can display them when it is running.
 
 ## See what your LoRA changes
 
@@ -74,7 +80,7 @@ A successful run shows the saved checkpoints and their location. **Download** sa
 
 In **Try my LoRA**, enter a prompt containing your trigger word. **All checkpoints** creates a grid beginning with the base model without LoRA, followed by each saved epoch or step checkpoint in training order and the final file. Every image uses the same prompt, seed, sampling settings, and dimensions, and each checkpoint is applied independently at the selected strength. The filenames label the images so you can see where training improved the result or went too far. Choose a single checkpoint when you want a smaller, two-image comparison.
 
-The comparison checks the running ComfyUI node registry and available model choices before submission. It uses native nodes for SDXL and FLUX.1 dev. Start ComfyUI in Services if it is unavailable. Comparisons can generate alongside another training run and share the same GPU memory.
+The comparison checks the running ComfyUI node registry and available model choices before submission. It uses native nodes for SDXL, FLUX.1 dev, SD 1.5, and SD 3.5 Medium/Large. Start ComfyUI in Services if it is unavailable. Comparisons can generate alongside another training run and share the same GPU memory.
 
 **Open prepared workflow in ComfyUI** loads the same graph into the editor without starting generation. The image includes a small frontend extension for this handoff, and ControlPilot confirms when the workflow has loaded. If loading is not confirmed, it keeps a download link available rather than treating an empty editor as success. **Download workflow** also provides the prepared API-format JSON for manual loading. If a network interruption leaves submission uncertain, inspect ComfyUI before using the explicit reset action; the queue must be empty before resetting that state.
 
