@@ -5,6 +5,8 @@
 > End-to-end Stable Diffusion workspace in one container, with one persistent `/workspace`.
 LoRA Pilot bundles dataset prep, model management, training, inference, and media workflow into one integrated stack, so you can spend time creating instead of fixing broken envs.
 
+**[Watch the LoRA Pilot product video on YouTube](https://www.youtube.com/watch?v=R88EE3VPnhU)**
+
 Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
 ![ControlPilot dashboard with workspace status and dataset, training, generation, and gallery shortcuts](docs/assets/images/home/dashboard.png)
