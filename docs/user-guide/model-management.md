@@ -56,7 +56,10 @@ models pull sdxl-base
 
 Use `models help` to inspect the supported syntax. The CLI accepts one manifest name per pull. It also provides `models pull-all`, which targets the entire active catalog. Review the scope and storage before using that command for a workspace with many large entries.
 
-An optional `--dir` changes the download destination relative to the model root. For example, `models pull sdxl-base --dir custom/sdxl-base` writes into that alternate location. It does not update the catalog's canonical installed-state path. Use the default destination unless your workflow has a reason to use another one.
+The CLI always uses the manifest's canonical destination. To change a model's
+destination, edit its `subdir` in the active manifest and keep the catalog
+entry aligned with the consuming workflow. The CLI rejects extra pull
+arguments instead of silently ignoring a typo.
 
 For a single command from a Compose host, use `docker compose exec lora-pilot models pull sdxl-base`. The [CLI reference](../reference/cli-commands.md) explains service controls and the other supported commands. Removal belongs to ControlPilot's **Installed** view rather than a `models remove` subcommand.
 
@@ -72,7 +75,7 @@ Single Hugging Face files use the entry's subdirectory followed by the filename,
 
 Older ControlNet and VAE files named `diffusion_pytorch_model.safetensors` can be ambiguous. The corrected entries use model-specific subdirectories and preserve the old files. Z-Image's `ae.safetensors` uses `vae/z-image` to distinguish it from FLUX's file with the same name.
 
-Some catalog names also changed. `realistic-vision-v6-sd15` replaces the misleading `realistic-vision-xl` name and identifies an SD1.5 model. `swin2sr-4x` replaces `swinir-4x`, and `gfpgan-v1.4` replaces `esrgan-4x`. The CLI accepts those old names as aliases when the active manifest contains the corrected entries. Existing GFPGAN and Swin2SR files remain preserved, but their corrected destinations need another pull. Real-ESRGAN entries are unchanged.
+Some catalog names also changed. `realistic-vision-v6-sd15` replaces the misleading `realistic-vision-xl` name and identifies an SD1.5 model. `swin2sr-4x` replaces `swinir-4x`, and `gfpgan-v1.4` replaces the old GFPGAN name. The CLI accepts those old names as aliases when the active manifest contains the corrected entries. Existing GFPGAN and Swin2SR files remain preserved, but their corrected destinations need another pull. The old `esrgan-4x` alias points to `realesrgan-4x`, not GFPGAN.
 
 ## Diagnose a failed download or catalog load
 

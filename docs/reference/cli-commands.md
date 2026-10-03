@@ -40,7 +40,10 @@ models pull sdxl-base
 
 The downloader accepts one catalog name per invocation. A Hugging Face repository ID is not a substitute for that name. Add or edit a manifest entry if you need a source outside the catalog, following the [manifest guide](../configuration/models-manifest.md).
 
-You can override the destination with `models pull sdxl-base --dir custom/sdxl-base`. The `--dir` value is relative to the configured model root, which defaults to `/workspace/models`, and cannot escape that directory. An alternate destination may need manual selection in a consuming tool and does not change the canonical path used by the catalog's installed-state check.
+The CLI uses the manifest's canonical destination. To change where an entry is
+stored, edit its `subdir` in the manifest and keep the active and bundled
+catalogs aligned as appropriate. The CLI rejects extra pull arguments so a
+typo cannot silently use a different destination.
 
 The `models pull-all` command downloads all entries in the active manifest. Review the catalog and available storage before choosing it; it is not a command for downloading only the components of one workflow. For an LTX-2.5 or MiniMax H3 workflow, use **Review installation** in ControlPilot to inspect its requirements and queue missing files. Use `models help` to print the model CLI's supported syntax.
 

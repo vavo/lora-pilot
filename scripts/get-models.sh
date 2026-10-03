@@ -35,7 +35,7 @@ usage() {
   cat <<EOF
 Usage:
   models list
-  models pull <name> [--dir SUBDIR]
+  models pull <name>
   models pull-all
   models where
   models help
@@ -119,7 +119,7 @@ read_line_for_name() {
   case "$name" in
     realistic-vision-xl) name="realistic-vision-v6-sd15" ;;
     swinir-4x) name="swin2sr-4x" ;;
-    esrgan-4x) name="gfpgan-v1.4" ;;
+    esrgan-4x) name="realesrgan-4x" ;;
   esac
   awk -F'|' -v n="${name}" '
     /^[[:space:]]*#/ {next}
@@ -138,12 +138,19 @@ list_names() {
 }
 
 download_url() {
-  local url="$1" destdir="$2"
+  local url="$1" destdir="$2" expected_size="${3:-}"
   mkdir -p "${destdir}"
   local fn
   fn="$(basename "${url%%\?*}")"
   echo "Downloading URL -> ${destdir}/${fn}"
   curl -fL --retry 5 --retry-delay 2 -o "${destdir}/${fn}.part" "${url}"
+  local actual_size
+  actual_size="$(stat -c%s "${destdir}/${fn}.part" 2>/dev/null || stat -f%z "${destdir}/${fn}.part")"
+  if [[ "${expected_size}" =~ ^[0-9]+$ ]] && [[ "${actual_size}" != "${expected_size}" ]]; then
+    echo "ERROR: downloaded file size does not match manifest for ${fn}" >&2
+    rm -f "${destdir}/${fn}.part"
+    exit 5
+  fi
   mv -f "${destdir}/${fn}.part" "${destdir}/${fn}"
 }
 
@@ -194,7 +201,7 @@ pull_one() {
   dest="$(safe_model_dest "${subdir}")"
   case "${kind}" in
     url)
-      download_url "${source}" "${dest}"
+      download_url "${source}" "${dest}" "${size}"
       ;;
     hf_file)
       local repo="${source%%:*}"
@@ -240,12 +247,8 @@ case "${cmd}" in
     name="${1:-}"
     [[ -n "${name}" ]] || { usage; exit 1; }
     shift || true
-    subdir=""
-    if [[ "${1:-}" == "--dir" ]]; then
-      subdir="${2:-}"
-      [[ -n "${subdir}" ]] || { echo "ERROR: --dir needs a value"; exit 1; }
-    fi
-    pull_one "${name}" "${subdir}"
+    [[ "$#" -eq 0 ]] || { echo "ERROR: models pull accepts only a manifest name" >&2; usage; exit 1; }
+    pull_one "${name}"
     ;;
   pull-all)
     require_manifest

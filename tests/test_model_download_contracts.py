@@ -21,6 +21,17 @@ class ModelDownloadContractTests(unittest.TestCase):
         source = (ROOT / "apps/Portal/services/model_downloads.py").read_text()
         self.assertIn('re.compile(r"(?P<pct>\\d{1,3})%")', source)
 
+    def test_model_cli_aliases_real_esrgan_to_real_esrgan(self):
+        source = (ROOT / "scripts/get-models.sh").read_text()
+        self.assertIn('esrgan-4x) name="realesrgan-4x" ;;', source)
+        self.assertNotIn('esrgan-4x) name="gfpgan-v1.4" ;;', source)
+
+    def test_model_cli_validates_direct_url_size_and_rejects_extra_pull_args(self):
+        source = (ROOT / "scripts/get-models.sh").read_text()
+        self.assertIn('download_url "${source}" "${dest}" "${size}"', source)
+        self.assertIn('downloaded file size does not match manifest', source)
+        self.assertIn('models pull accepts only a manifest name', source)
+
 
 if __name__ == "__main__":
     unittest.main()
