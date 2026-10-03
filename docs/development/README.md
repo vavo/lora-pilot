@@ -31,3 +31,5 @@ Choose runtime validation according to the change. A documentation edit needs ac
 Use [contributing](contributing.md) for the contribution process, while treating the current build files and test entry points here as the authority for executable commands. Keep a change focused enough that another reader can connect the original problem, the correction, and the result you verified. Return to [configuration](../configuration/README.md) for runtime settings or the [documentation home](../README.md) to follow the user-facing workflow your change supports.
 
 The [screen lifecycle guide](screen-lifecycle.md) explains how ControlPilot owns requests, prevents stale responses, and cleans up work when users navigate between pages.
+
+The proposed [MCP implementation plan](mcp-implementation-plan.md) covers agent access, permissions, retry safety and data protection. Its [test plan](mcp-test-plan.md) defines failure cases and release gates; MCP is not yet implemented.
