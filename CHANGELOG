@@ -1,5 +1,7 @@
 Unreleased (October 3rd 2026)
 
+ControlPilot service metadata now comes from one shared registry, with checks against Supervisor program names, launchers and logs. Service links follow configured ports, Copilot uses its configured sidecar port, and AI Toolkit honors its UI port override. Invalid or mismatched Supervisor status output remains unknown instead of being treated as a valid process state.
+
 ControlPilot adds a read-only dataset quality report before guided training, an optional first-LoRA guide using the eight original orange robot video images, editable GPU settings informed by matching completed runs, and portable experiment ZIPs with a file preview. Exports exclude datasets, logs, credentials and local paths. GPU measurements are local observations; unmeasured suggestions are labeled explicitly.
 
 Refreshed the README with TensorBoard run discovery, removed the dated release/build-status block and duplicate quick-start snippet, and kept installation instructions in the Installation section.

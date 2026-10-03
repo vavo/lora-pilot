@@ -1,5 +1,4 @@
 """Native ComfyUI comparison graphs, checked against the running node registry."""
-import os
 import re
 from pathlib import Path
 from urllib.parse import urlencode
@@ -9,6 +8,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from .comfy_access import internal_headers
+from .service_registry import local_url
 
 
 class ComparisonRequest(BaseModel):
@@ -22,7 +22,7 @@ class ComparisonRequest(BaseModel):
 def comfy(method, path, **kwargs):
     try:
         with httpx.Client(timeout=30, trust_env=False) as client:
-            response = client.request(method, f'http://127.0.0.1:{int(os.environ.get("COMFY_PORT", "5555"))}/{path}', headers=internal_headers(), **kwargs)
+            response = client.request(method, f'{local_url("comfy")}/{path}', headers=internal_headers(), **kwargs)
             if response.status_code >= 400:
                 raise HTTPException(400, 'ComfyUI rejected the comparison: ' + response.text[:1000])
             return response.json()

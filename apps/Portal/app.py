@@ -32,7 +32,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import httpx
 
 try:
@@ -59,6 +59,7 @@ try:
     from .services.storage_capacity import workspace_capacity
     from .services import gpu_guard
     from .services.dataset_quality import review_dataset
+    from .services import service_registry
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
@@ -76,6 +77,7 @@ except (ImportError, ValueError):
         from services.storage_capacity import workspace_capacity
         from services import gpu_guard
         from services.dataset_quality import review_dataset
+        from services import service_registry
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
         from apps.Portal.services.models_api import create_router as create_models_router  # type: ignore
@@ -92,6 +94,7 @@ except (ImportError, ValueError):
         from apps.Portal.services.storage_capacity import workspace_capacity
         from apps.Portal.services import gpu_guard
         from apps.Portal.services.dataset_quality import review_dataset
+        from apps.Portal.services import service_registry
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -153,53 +156,17 @@ DATASET_ZIP_MAX_ENTRY_BYTES = max(1, _parse_int_env("DATASET_ZIP_MAX_ENTRY_BYTES
 DATASET_ZIP_MAX_COMPRESSION_RATIO = _parse_float_env("DATASET_ZIP_MAX_COMPRESSION_RATIO", 100.0)
 _TAGPILOT_LOAD_DEFAULT_LIMIT = max(0, _parse_int_env("TAGPILOT_LOAD_DEFAULT_LIMIT", 0))
 _TAGPILOT_LOAD_MAX_LIMIT = max(1, _parse_int_env("TAGPILOT_LOAD_MAX_LIMIT", 1000))
-SERVICE_LOGS = {
-    "jupyter": ("/workspace/logs/jupyter.out.log", "/workspace/logs/jupyter.err.log"),
-    "code-server": ("/workspace/logs/code-server.out.log", "/workspace/logs/code-server.err.log"),
-    "comfy": ("/workspace/logs/comfy.out.log", "/workspace/logs/comfy.err.log"),
-    "kohya": ("/workspace/logs/kohya.out.log", "/workspace/logs/kohya.err.log"),
-    "diffpipe": ("/workspace/logs/diffpipe.out.log", "/workspace/logs/diffpipe.err.log"),
-    "invoke": ("/workspace/logs/invoke.out.log", "/workspace/logs/invoke.err.log"),
-    "ai-toolkit": ("/workspace/logs/ai-toolkit.out.log", "/workspace/logs/ai-toolkit.err.log"),
-    "controlpilot": ("/workspace/logs/controlpilot.out.log", "/workspace/logs/controlpilot.err.log"),
-    "copilot": ("/workspace/logs/copilot.out.log", "/workspace/logs/copilot.err.log"),
-}
-DISPLAY_NAMES = {
-    "jupyter": "Jupyter Lab",
-    "code-server": "VS Code Server",
-    "comfy": "Comfy UI",
-    "kohya": "Kohya",
-    "diffpipe": "TensorBoard",
-    "invoke": "Invoke AI",
-    "ai-toolkit": "AI Toolkit",
-    "controlpilot": "ControlPilot",
-    "copilot": "Copilot Sidecar",
-}
+SERVICE_LOGS = service_registry.SERVICE_LOGS
+DISPLAY_NAMES = {name: spec['display'] for name, spec in service_registry.SERVICES.items()}
 _SUPERVISOR_ACTIONS = {
     "start": "start",
     "stop": "stop",
     "restart": "restart",
     "reread": "reread",
 }
-_SUPERVISOR_SERVICE_NAMES = {
-    "jupyter": "jupyter",
-    "code-server": "code-server",
-    "comfy": "comfy",
-    "kohya": "kohya",
-    "diffpipe": "diffpipe",
-    "invoke": "invoke",
-    "ai-toolkit": "ai-toolkit",
-    "controlpilot": "controlpilot",
-    "copilot": "copilot",
-}
-SERVICES = list(SERVICE_LOGS.keys())
-SERVICE_UPDATE_SPECS: dict[str, dict[str, str]] = {
-    "invoke": {"kind": "pip", "python_bin": "/opt/venvs/invoke/bin/python", "package": "invokeai"},
-    "comfy": {"kind": "git", "repo_dir": "/opt/pilot/repos/ComfyUI"},
-    "kohya": {"kind": "git", "repo_dir": "/opt/pilot/repos/kohya_ss"},
-    "diffpipe": {"kind": "git", "repo_dir": "/opt/pilot/repos/diffusion-pipe"},
-    "ai-toolkit": {"kind": "git", "repo_dir": "/opt/pilot/repos/ai-toolkit"},
-}
+_SUPERVISOR_SERVICE_NAMES = {name: name for name in service_registry.SERVICES}
+SERVICES = list(service_registry.SERVICES)
+SERVICE_UPDATE_SPECS = service_registry.VERSION_SPECS
 SERVICE_UPDATES_CONFIG_PATH = Path(
     os.environ.get("SERVICE_UPDATES_CONFIG_PATH", str(WORKSPACE_ROOT / "config" / "service-updates.toml"))
 )
@@ -209,10 +176,7 @@ SERVICE_UPDATES_ROLLBACK_LOG_PATH = Path(
 SERVICE_AUTOSTART_CONFIG_PATH = Path(
     os.environ.get("SERVICE_AUTOSTART_CONFIG_PATH", str(WORKSPACE_ROOT / "config" / "service-autostart.toml"))
 )
-try:
-    TENSORBOARD_PORT = int(os.environ.get("DIFFPIPE_PORT", "4444"))
-except ValueError:
-    TENSORBOARD_PORT = 4444
+TENSORBOARD_PORT = service_registry.service_port("diffpipe")
 TENSORBOARD_ROOT = Path(os.environ.get("TENSORBOARD_ROOT_LOGDIR", str(WORKSPACE_ROOT / "logs" / "tensorboard")))
 DIFFPIPE_LOGDIR = Path(os.environ.get("DIFFPIPE_LOGDIR", str(WORKSPACE_ROOT / "logs" / "diffusion-pipe")))
 KOHYA_TENSORBOARD_PATH = Path(os.environ.get("KOHYA_TENSORBOARD_LOGDIR", str(WORKSPACE_ROOT / "outputs")))
@@ -304,6 +268,7 @@ class ServiceEntry(BaseModel):
     state_raw: str
     running: bool
     autostart: Optional[bool] = None
+    definition: dict = Field(default_factory=dict)
 
 
 class ServiceAutostartRequest(BaseModel):
@@ -960,7 +925,7 @@ def _sync_mediapilot_static_hotfix(app_dir: Path) -> None:
 def _set_mediapilot_env_defaults(app_dir: Path) -> None:
     _sync_mediapilot_static_hotfix(app_dir)
 
-    comfy_port = os.environ.get("COMFY_PORT", "5555")
+    comfy_port = service_registry.service_port("comfy")
     defaults = {
         "MEDIAPILOT_OUTPUT_DIR": str(WORKSPACE_ROOT / "outputs" / "comfy"),
         "MEDIAPILOT_INVOKEAI_DIR": str(WORKSPACE_ROOT / "outputs" / "invoke"),
@@ -1103,7 +1068,7 @@ app.include_router(create_comfy_router(WORKSPACE_ROOT, auth_checker=_controlpilo
                                        gateway_checker=_comfy_gateway_authenticated, policy_reader=_comfy_policy))
 
 # Copilot sidecar config
-COPILOT_SIDECAR_URL = os.environ.get("COPILOT_SIDECAR_URL", "http://127.0.0.1:7879")
+COPILOT_SIDECAR_URL = os.environ.get("COPILOT_SIDECAR_URL", "")
 
 # No-cache headers for API responses (helps avoid stale data)
 @app.middleware("http")
@@ -1236,7 +1201,11 @@ def dataset_quality(name: str):
 
 
 async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[dict] = None):
-    url = COPILOT_SIDECAR_URL.rstrip("/") + path
+    try:
+        base = COPILOT_SIDECAR_URL or service_registry.local_url("copilot")
+    except ValueError:
+        raise HTTPException(status_code=503, detail="Invalid Copilot sidecar port")
+    url = base.rstrip("/") + path
     try:
         timeout = httpx.Timeout(float(COPILOT_SIDECAR_TIMEOUT_SECONDS))
         if path == "/chat":
@@ -2613,8 +2582,7 @@ def supervisor_status(name: str) -> ServiceEntry:
     except subprocess.CalledProcessError as e:
         out = e.output or ""
     # Expected format: "name                       RUNNING   pid ...\n"
-    parts = out.strip().split()
-    state_raw = parts[1] if len(parts) > 1 else "UNKNOWN"
+    state_raw = service_registry.supervisor_state(name, out)
     state_upper = state_raw.upper()
     running = state_upper in ("RUNNING",)
     display = DISPLAY_NAMES.get(name, name)
@@ -2625,6 +2593,7 @@ def supervisor_status(name: str) -> ServiceEntry:
         state_raw=state_raw,
         running=running,
         autostart=_read_service_autostart(name),
+        definition=service_registry.public_definition(name),
     )
 
 

@@ -5,7 +5,7 @@ let comfyActive = false;
 let previewEnabled = true;
 let imageCount = 0;
 let lastGeneratedImage = null;
-let comfyPort = "5555";
+let comfyPort = null;
 let comfyProtected = false;
 let comfyStatusFailures = 0;
 const COMFY_STATUS_FAILURE_THRESHOLD = 3;
@@ -155,7 +155,7 @@ async function checkComfyUIStatus() {
 
     if (status.status === "running") {
       comfyStatusFailures = 0;
-      comfyPort = status.port || "5555";
+      comfyPort = status.port || null;
       comfyProtected = !!status.protected;
       if (statusEl) {
         statusEl.className = "status-indicator status-connected";
@@ -177,7 +177,7 @@ async function checkComfyUIStatus() {
         statusEl.className = stillRetrying ? "status-indicator status-connecting" : "status-indicator status-disconnected";
         statusEl.textContent = stillRetrying ? `Checking... (${comfyStatusFailures}/${COMFY_STATUS_FAILURE_THRESHOLD})` : "Stopped";
       }
-      if (portEl) portEl.textContent = status.port || comfyPort || "5555";
+      if (portEl) portEl.textContent = status.port || comfyPort || "Unavailable";
       if (!stillRetrying && iframeEl) iframeEl.src = "about:blank";
     }
   } catch (error) {

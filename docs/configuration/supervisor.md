@@ -243,3 +243,11 @@ Keep the bundled Comfy launcher in the execution chain to retain model/workflow 
 For an intentionally customized Comfy runtime, provision a complete compatible venv under `/workspace/venvs/comfy` and set `export COMFY_VENV_PATH=/workspace/venvs/comfy` in `secrets.env` or your wrapper. LoRA Pilot activates it without installing or repairing packages. The default remains core; invalid custom venv paths fail explicitly. You own compatibility between that venv, the bundled Comfy version, and custom nodes.
 
 Do not remove torchaudio as a general cuDNN fix: audio workflows require it. Issue #27's A40/cuDNN failure needs target-host validation with matching CUDA/Torch libraries; persistence support alone does not prove that GPU error resolved.
+
+### Keeping service definitions consistent
+
+ControlPilot's service registry lives in `apps/Portal/services/service_registry.py`. It supplies the program names, display labels, default ports and their environment overrides, log paths, browser capabilities and update metadata. The Services screen receives a public subset through `/api/services`; repository paths and updater commands stay on the backend. ComfyUI access protection continues to use the authenticated gateway, and the private Copilot sidecar has no direct Open link.
+
+Supervisor remains the owner of process commands and autostart. When adding or changing a service, check the registry against the bundled configuration with `python3 apps/Portal/services/service_registry.py supervisor/supervisord.conf`. The check reports missing or unregistered programs, incorrect log destinations and unexpected launchers. It does not modify configuration. The same check runs in the Python regression suite, which also checks launcher port defaults and override handling.
+
+Inside an image, the equivalent command is `python3 /opt/pilot/apps/Portal/services/service_registry.py "${SUPERVISOR_CONFIG_PATH:-/etc/supervisor/supervisord.conf}"`. Custom wrappers can deliberately differ from the bundled launcher; review those reported differences without replacing the user's configuration. Port overrides must describe the port the service actually listens on, and external Docker or RunPod port mappings still need to expose it.

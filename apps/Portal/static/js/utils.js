@@ -116,7 +116,7 @@ window.openTensorBoard = async function (source, opts = {}) {
   const open = button("Open selected run", () => {
     const run = runs.find(r => r.name === select.value);
     if (!run?.loaded || !payload?.server?.reachable) return;
-    const url = new URL(window.buildPortUrl(payload.port || 4444));
+    const url = new URL(window.buildPortUrl(payload.port));
     const escaped = run.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     url.hash = `scalars&runFilter=${encodeURIComponent(`^${escaped}$`)}`;
     window.open(url.toString(), "_blank", "noopener,noreferrer");
@@ -209,16 +209,8 @@ window.sanitizeHttpUrl = function (rawUrl, opts = {}) {
 // Build service URL respecting RunPod proxy subdomain pattern <id>-<port>.proxy.runpod.net
 window.serviceUrl = function (name) {
   if (name === "comfy" && window.controlPilotSettings?.comfy_access?.enabled) return new URL("/comfy/", location.origin).href;
-  const ports = {
-    "jupyter": 8888,
-    "code-server": 8443,
-    "comfy": 5555,
-    "kohya": 6666,
-    "diffpipe": 4444,
-    "invoke": 9090,
-    "ai-toolkit": 8675,
-  };
-  const port = ports[name];
-  if (!port || name === "controlpilot") return null;
+  const definition = window.serviceDefinitions?.[name];
+  const port = definition?.port;
+  if (!definition?.capabilities?.open || !port) return null;
   return window.buildPortUrl(port);
 };

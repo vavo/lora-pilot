@@ -16,17 +16,6 @@ window.initServices = async function (screen = window.createScreenLifecycle()) {
   await loadServices();
 };
 
-const serviceCatalog = {
-  comfy: { label: "ComfyUI", role: "Image & video workflows", description: "Node-based interface for image and video workflows.", icon: "comfyui" },
-  invoke: { label: "Invoke AI", role: "Image generation", description: "Generate and edit images with Invoke AI.", icon: "mediapilot" },
-  kohya: { label: "Kohya", role: "LoRA training", description: "Configure and train LoRAs with Kohya.", icon: "models" },
-  "ai-toolkit": { label: "AI Toolkit", role: "LoRA training", description: "Train and manage LoRAs with AI Toolkit.", icon: "dpipe" },
-  diffpipe: { label: "TensorBoard", role: "Training metrics", description: "Follow training progress and compare your runs.", icon: "dashboard" },
-  jupyter: { label: "Jupyter Lab", role: "Notebooks", description: "Work with notebooks and files in your workspace.", icon: "docs" },
-  "code-server": { label: "VS Code Server", role: "Code editor", description: "Edit code and workspace files in your browser.", icon: "storage" },
-  controlpilot: { label: "ControlPilot", role: "Workspace interface", description: "The interface you are using to manage your workspace.", icon: "services" },
-  copilot: { label: "Copilot Sidecar", role: "Assistant", description: "Connect the workspace assistant to Copilot.", icon: "settings" },
-};
 let servicesData = [];
 let selectedService = "comfy";
 let serviceFilter = "all";
@@ -39,7 +28,7 @@ function serviceEscape(value) {
 }
 
 function serviceInfo(svc) {
-  return serviceCatalog[svc.name] || { label: svc.display || svc.name, role: "Workspace service", description: "Manage this workspace service.", icon: "services" };
+  return svc.definition || { label: svc.display || svc.name, role: "Workspace service", description: "Manage this workspace service.", icon: "services" };
 }
 
 function serviceIcon(svc) {
@@ -120,7 +109,7 @@ function renderServiceDetail() {
       ${running ? `<button class="btn secondary" type="button" data-action="restart" ${busy ? "disabled" : ""}>Restart</button>` : ""}
       ${running || starting ? `<button class="btn secondary svc-stop" type="button" data-action="stop" ${busy ? "disabled" : ""}>Stop</button>` : ""}
     </div>
-    ${svc.name === "controlpilot" ? '<p class="svc-control-note">Restarting or stopping ControlPilot disconnects this interface.</p>' : ""}
+    ${info.capabilities?.disconnects_ui ? '<p class="svc-control-note">Restarting or stopping ControlPilot disconnects this interface.</p>' : ""}
     <section class="svc-detail-section svc-autostart-row"><div><label for="svc-autostart-toggle">Start with workspace</label><p>${typeof svc.autostart === "boolean" ? "Automatically start this service when your workspace starts." : "Auto-start setting is unavailable."}</p></div><input id="svc-autostart-toggle" class="svc-switch" type="checkbox" role="switch" ${svc.autostart === true ? "checked" : ""} ${typeof svc.autostart !== "boolean" || serviceAutostartPending.has(svc.name) ? "disabled" : ""}></section>
     <section class="svc-detail-section"><div class="svc-section-row"><div><h4>Version</h4><p id="svc-version-${domId}">Checking version…</p><p id="svc-available-${domId}" class="svc-update-hint is-hidden">Update available</p></div><button class="btn secondary svc-update-btn is-hidden" id="svc-update-${domId}" type="button">Update</button></div><p class="svc-update-status is-hidden" id="svc-update-status-${domId}" role="status"></p></section>
     ${tbSource ? `<section class="svc-detail-section"><div class="svc-section-row"><div><h4>Training metrics</h4><p id="svc-tensorboard-status-${domId}">TensorBoard: checking…</p></div><button class="svc-text-button" type="button" data-tensorboard>Open TensorBoard</button></div></section>` : ""}
@@ -153,32 +142,17 @@ async function loadServiceLogPreview(name, scope) {
 }
 
 function servicePortLabel(name) {
-  const ports = {
-    jupyter: 8888,
-    "code-server": 8443,
-    comfy: 5555,
-    kohya: 6666,
-    diffpipe: 4444,
-    invoke: 9090,
-    "ai-toolkit": 8675,
-    copilot: 7879,
-  };
-  const port = ports[name];
+  const port = window.serviceDefinitions?.[name]?.port;
   return port ? `:${port}` : "";
 }
 
 function serviceTensorBoardSource(name) {
-  if (name === "diffpipe") return "diffpipe";
-  if (name === "kohya") return "kohya";
-  if (name === "ai-toolkit") return "ai-toolkit";
-  return "";
+  return window.serviceDefinitions?.[name]?.capabilities?.tensorboard || "";
 }
 
 function serviceDisplayLabel(name) {
-  if (name === "ai-toolkit") return "AI Toolkit";
-  if (name === "diffpipe") return "Diffusion Pipe";
-  if (name === "kohya") return "Kohya";
-  return (name || "").toString();
+  const info = window.serviceDefinitions?.[name];
+  return info?.capabilities?.tensorboard_label || info?.label || name;
 }
 
 function serviceDomId(name) {
@@ -324,8 +298,8 @@ async function loadServices() {
   refresh.disabled = true;
   try {
     const data = await screen.json("/api/services");
-    const order = Object.keys(serviceCatalog);
-    servicesData = data.sort((a, b) => (order.indexOf(a.name) < 0 ? 99 : order.indexOf(a.name)) - (order.indexOf(b.name) < 0 ? 99 : order.indexOf(b.name)));
+    window.serviceDefinitions = Object.fromEntries(data.map(svc => [svc.name, svc.definition]));
+    servicesData = data.sort((a, b) => (a.definition?.order ?? 99) - (b.definition?.order ?? 99));
     renderServices();
     workspace.hidden = false;
     status.textContent = "";

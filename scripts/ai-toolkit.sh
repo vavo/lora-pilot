@@ -36,4 +36,11 @@ if [ ! -f .next/BUILD_ID ]; then
   npm run build
 fi
 
-exec npm run start
+PORT="${AI_TOOLKIT_PORT:-8675}"
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || (( 10#$PORT < 1 || 10#$PORT > 65535 )); then
+  echo "Invalid AI_TOOLKIT_PORT" >&2
+  exit 1
+fi
+# Preserve the upstream worker/UI pair while honoring the configured UI port.
+exec ./node_modules/.bin/concurrently --restart-tries -1 --restart-after 1000 -n WORKER,UI \
+  "node dist/cron/worker.js" "node dist/cron/fileServer.js start --port $PORT"

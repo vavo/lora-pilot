@@ -8,10 +8,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-SERVICE_UPDATE_SPECS: dict[str, dict[str, str]] = {
-    "invoke": {"kind": "pip", "python_bin": "/opt/venvs/invoke/bin/python", "package": "invokeai"},
-}
-IMAGE_MANAGED_SERVICES = {"comfy", "kohya", "diffpipe", "ai-toolkit"}
+_bundle = Path(__file__).resolve().parent
+if not (_bundle / 'apps/Portal/services').is_dir():
+    _bundle = _bundle.parent
+sys.path.insert(0, str(_bundle / 'apps/Portal/services'))
+from service_registry import UPDATE_SPECS as SERVICE_UPDATE_SPECS, IMAGE_MANAGED_SERVICES
+
 RUN_CMD_TIMEOUT_SECONDS = 45
 STREAM_CMD_TIMEOUT_SECONDS = 180
 

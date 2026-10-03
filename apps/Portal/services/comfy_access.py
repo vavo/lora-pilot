@@ -6,6 +6,11 @@ import os
 from urllib.parse import urlsplit
 from pathlib import Path
 
+try:
+    from .service_registry import service_port
+except ImportError:
+    from service_registry import service_port
+
 
 def read_policy(path: Path) -> dict:
     try:
@@ -34,7 +39,7 @@ def internal_headers(url: str = "") -> dict:
     if url:
         target = urlsplit(url)
         if (target.scheme != "http" or target.hostname not in {"127.0.0.1", "localhost"}
-                or target.port != int(os.environ.get("COMFY_PORT", "5555"))
+                or target.port != service_port("comfy")
                 or target.username or target.password):
             return {}
     config = Path(os.environ.get("WORKSPACE_ROOT", "/workspace")) / "config"

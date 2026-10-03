@@ -10,6 +10,7 @@ import httpx
 import websockets
 
 from .comfy_access import INTERNAL_HEADER, internal_headers
+from .service_registry import service_port
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
     router = APIRouter()
 
     async def bridge_websocket(websocket: WebSocket, query: str, checker=None):
-        url = f"ws://127.0.0.1:{os.environ.get('COMFY_PORT', '5555')}/ws"
+        url = f"ws://127.0.0.1:{service_port('comfy')}/ws"
         if query:
             url += "?" + query
         try:
@@ -91,7 +92,7 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
         excluded.update(x.strip().lower() for x in request.headers.get("connection", "").split(","))
         headers = {k: v for k, v in request.headers.items() if k.lower() not in excluded}
         headers.update(internal_headers())
-        base = f"http://127.0.0.1:{os.environ.get('COMFY_PORT', '5555')}"
+        base = f"http://127.0.0.1:{service_port('comfy')}"
         url = base + "/" + path
         if request.url.query:
             url += "?" + request.url.query
@@ -122,19 +123,22 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
     @router.get("/api/comfy/status")
     def comfy_status():
         """Check if ComfyUI is running and accessible."""
-        comfy_port = os.environ.get("COMFY_PORT", "5555")
+        port = service_port("comfy")
+        if port is None:
+            return {"status": "error", "port": None, "message": "Invalid ComfyUI port"}
+        comfy_port = str(port)
         try:
             import requests
             response = requests.get(f"http://localhost:{comfy_port}/system_stats", headers=internal_headers(), timeout=5, allow_redirects=False)
             if response.status_code == 200:
                 return {"status": "running", "port": comfy_port,
                         "protected": bool(policy_reader and policy_reader()["enabled"])}
-            return {"status": "error", "message": "ComfyUI returned error status"}
+            return {"status": "error", "port": comfy_port, "message": "ComfyUI returned error status"}
         except requests.exceptions.RequestException:
-            return {"status": "stopped", "message": "ComfyUI is not reachable"}
+            return {"status": "stopped", "port": comfy_port, "message": "ComfyUI is not reachable"}
         except Exception:
             logger.exception("Failed to query ComfyUI status")
-            return {"status": "error", "message": "Unable to query ComfyUI"}
+            return {"status": "error", "port": comfy_port, "message": "Unable to query ComfyUI"}
 
     @router.get("/api/comfy/latest-image")
     def comfy_latest_image():
@@ -194,7 +198,7 @@ def create_router(workspace_root: Path, auth_checker=None, gateway_checker=None,
     @router.get("/proxy/comfy/{path:path}")
     async def proxy_comfy(request: Request, path: str):
         """Proxy ComfyUI requests to avoid mixed content issues."""
-        comfy_port = os.environ.get("COMFY_PORT", "5555")
+        comfy_port = str(service_port("comfy"))
         comfy_url = f"http://localhost:{comfy_port}/{path}"
 
         query_string = str(request.url.query) if request.url.query else ""
