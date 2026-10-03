@@ -36,6 +36,8 @@ Before editing an existing catalog, save a copy and use `models where` inside th
 
 Use ControlPilot's settings for its login configuration. If you want ComfyUI to use the protected entry point, follow [ComfyUI access protection](comfy-access.md). That guide explains the browser session and the separate Comfy-only API token.
 
+For assistant access, use [MCP connections](mcp.md). This provides separate scoped credentials, selected data grants and owner approvals. MCP starts disabled; private header-token clients are supported, while OAuth remains a separate release gate.
+
 Treat the other exposed services according to their own access configuration. A password on ControlPilot does not establish protection for an independent port. Keep `/workspace/config/secrets.env` private and inspect individual settings without copying the whole file into a support request.
 
 ## Distinguish build choices from runtime choices

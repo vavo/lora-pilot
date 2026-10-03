@@ -34,6 +34,8 @@ For a hosted workspace, consult [cloud platforms](deployment/cloud-platforms.md)
 
 Read the [architecture](development/architecture.md) before changing how the tools fit together. [Building](development/building.md) describes image creation, and the [API reference](development/api-reference.md) documents ControlPilot requests, including training history and reviewed storage cleanup. The [CLI reference](reference/cli-commands.md) covers terminal entry points. Follow the [contribution guide](development/contributing.md) for code or documentation changes.
 
+Connect an assistant through the [MCP setup guide](configuration/mcp.md). It covers the disabled-by-default private endpoint, permissions, approvals, retry behavior and remaining release gates.
+
 ## Follow product development
 
 The [changelog](reference/changelog.md) records completed source changes and published releases. Read the [v2.5.8 release notes](releases/v2.5.8.md) for that version's scope and upgrade context. Current source documentation also describes later unreleased work; check the running build's commit before assuming a mutable Docker tag includes a feature.

@@ -29,6 +29,7 @@ set -euo pipefail
 : "${PYTHON_SOCKETIO_VERSION:?PYTHON_SOCKETIO_VERSION is required}"
 : "${WEBSOCKETS_VERSION:?WEBSOCKETS_VERSION is required}"
 : "${HTTPX_VERSION:?HTTPX_VERSION is required}"
+: "${MCP_VERSION:?MCP_VERSION is required}"
 
 case "${CUDA_PROFILE:-cu130}" in
   cu128) expected_cuda=12.8 ;;
@@ -119,4 +120,5 @@ pip_install_in_venv /opt/venvs/core \
   "python-socketio==${PYTHON_SOCKETIO_VERSION}" \
   "websockets==${WEBSOCKETS_VERSION}" \
   pillow \
-  "httpx==${HTTPX_VERSION}"
+  "httpx==${HTTPX_VERSION}" \
+  "mcp==${MCP_VERSION}"

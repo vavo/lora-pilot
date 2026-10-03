@@ -1,7 +1,7 @@
 # LoRA Pilot MCP test plan
 
 Date: 2026-10-03  
-Status: proposed tests, not implemented or executed MCP coverage.  
+Status: release test catalog. A subset is implemented in `test_mcp_access.py` and `test_mcp_operations.py`; [validation evidence](mcp-validation.md) records the actual runs and remaining gates. The 106 scenarios below must not be read as 106 executed tests.
 Design: [MCP implementation plan](mcp-implementation-plan.md).
 
 ## 1. What the tests must prove
@@ -251,4 +251,4 @@ The implementation release report must contain:
 - Real GPU run/checkpoint/comparison/export evidence separately from the barrier-runner tests.
 - Rollback/revocation drill results, remaining limitations, any deferred tool, and the operator steps for unknown outcomes.
 
-This planning task validates the design against source and protocol documentation only. It does not certify future MCP code, provider authentication, container deployment or GPU execution. Complete the applicable gates before enabling writes for users.
+The original planning task validated the design only. Subsequent source implementation and local/container checks are recorded separately in [validation evidence](mcp-validation.md). Provider authentication, target-volume durability and live GPU execution remain uncertified. Complete the applicable gates before enabling writes for users.

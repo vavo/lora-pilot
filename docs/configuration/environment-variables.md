@@ -18,6 +18,10 @@ If you only care about the knobs that usually matter:
 | Diffusion Pipe behavior | `DIFFPIPE_CONFIG`, `DIFFPIPE_NUM_GPUS`, `DIFFPIPE_LOGDIR`, `DIFFPIPE_TENSORBOARD` |
 | Media/Tag sync behavior | `MEDIAPILOT_SYNC_ON_BOOT`, `MEDIAPILOT_FORCE_ENV_DEFAULTS`, `TAGPILOT_SYNC_ON_BOOT` |
 
+## MCP connections
+
+`MCP_PUBLIC_URL` is empty by default and must be an exact HTTPS origin (loopback HTTP is allowed for development). `MCP_EXECUTION_ENABLED`, `MCP_STORAGE_VERIFIED`, `MCP_GPU_VERIFIED` and `MCP_WRITE_BUDGET_BYTES` default to `0`. The first three must all equal `1` to expose write tools; a positive explicit byte budget is required for allocations. These flags attest to completed release checks; they do not perform those checks. See [MCP setup and limits](mcp.md) before enabling access.
+
 ## Workspace storage capacity
 
 ControlPilot suppresses shared network filesystem totals because they can describe the storage cluster rather than your allocation. Without a known allocation, Dashboard and Storage show measured workspace usage and mark capacity as unavailable. Container disk statistics remain separate.

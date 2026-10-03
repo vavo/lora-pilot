@@ -170,8 +170,11 @@ def parse_manifest(
     default_manifest_path: Path,
     models_dir: Path,
     config_dir: Path,
+    *,
+    read_only: bool = False,
 ) -> List[ModelEntry]:
-    ensure_manifest(manifest_path, default_manifest_path, models_dir, config_dir)
+    if not read_only:
+        ensure_manifest(manifest_path, default_manifest_path, models_dir, config_dir)
     entries: List[ModelEntry] = []
     if not manifest_path.exists():
         return entries
@@ -232,7 +235,8 @@ def parse_manifest(
             size_is_exact = len(rest) > 1 and rest[1].strip().isdigit()
             validation_size = expected_size_bytes if size_is_exact else None
             target_dir = contained_path(models_dir, subdir)
-            target_dir.mkdir(parents=True, exist_ok=True)
+            if not read_only:
+                target_dir.mkdir(parents=True, exist_ok=True)
             expected: List[Path] = []
             matched: List[Path] = []
             completed_repo_files: List[Path] = []

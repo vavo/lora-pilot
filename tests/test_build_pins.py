@@ -204,6 +204,7 @@ class BuildPinTests(unittest.TestCase):
             "PYTHON_SOCKETIO_VERSION": "5.16.3",
             "WEBSOCKETS_VERSION": "16.0",
             "HTTPX_VERSION": "0.28.1",
+            "MCP_VERSION": "2.3.0",
             "TENSORBOARD_VERSION": "2.21.0",
         }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
@@ -250,6 +251,7 @@ class BuildPinTests(unittest.TestCase):
                 "PYTHON_SOCKETIO_VERSION": "5.16.3",
                 "WEBSOCKETS_VERSION": "16.0",
                 "HTTPX_VERSION": "0.28.1",
+                "MCP_VERSION": "2.3.0",
                 "INVOKE_TORCH_VERSION": "2.7.1+cu128",
                 "INVOKE_TORCHVISION_VERSION": "0.22.1+cu128",
                 "INVOKE_XFORMERS_VERSION": "0.0.31.post1",
@@ -344,6 +346,7 @@ class BuildPinTests(unittest.TestCase):
                 "HF_TRANSFER_VERSION",
                 "FASTAPI_VERSION",
                 "PYDANTIC_VERSION",
+                "MCP_VERSION",
             ),
             "DIFFPIPE_CACHE_BUST": (
                 "DIFFPIPE_REF",

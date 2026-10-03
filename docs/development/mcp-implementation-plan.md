@@ -1,8 +1,21 @@
 # LoRA Pilot MCP implementation plan
 
 Date: 2026-10-03  
-Status: proposed implementation; no MCP server or security controls described here have shipped.  
+Status: private-token implementation now exists in source; writes remain gated pending live validation. OAuth and optional expansion remain planned. This document records the design, not a published-image certification.
 Companion: [test plan and release gates](mcp-test-plan.md).
+
+## Implementation decisions recorded 2026-10-03
+
+See [setup](../configuration/mcp.md) for the current contract and [validation evidence](mcp-validation.md) for measured coverage. The roadmap below is retained; unimplemented roadmap entries are not active capabilities.
+
+- Pin official SDK `2.3.0`; use its current and legacy protocol modes with stateless JSON Streamable HTTP.
+- Implement private bearer grants, owner approval/edit/revocation UI, bounded unattended policies, read tools, guarded training/comparison/export and an offline read-only bootstrap. No OAuth provider has been selected; phase 5 is pending. Phase 6 stays absent.
+- Use one private atomic ledger (`store.py`) for clients, approvals, operation tombstones and bounded audit records. Acceptance and approval consumption commit together. There is no separate per-record transaction system or database migration.
+- Reuse the existing training queue and comparison graph; add reserved operation/run linkage and MCP launch checks. Keep the first recipe fixed instead of exposing mutable UI templates. This avoids extracting unrelated REST routes.
+- Use `files.py`, `contracts.py`, `store.py`, `facade.py`, `operations.py`, `server.py`, `admin.py`, `integration.py`, and `cli.py`; auth/policy live in these focused modules rather than additional one-use wrappers.
+- Response projections carry `schema_version`; arbitrary response fields, logs and raw configurations are not exposed. Dataset/run resources are limited to the guide and structured run summaries. No log/preview resources yet.
+- Local storage/process tests are implemented. Actual volume durability, full target image/GPU execution, public reverse proxy and independent third-party clients remain required evidence. Execution flags default off.
+- Limits and retention are the current setup guide's values. No automatic private-artifact cleanup, reservation release or owner unknown-operation reconciliation/reset UI is implemented. Existing operation identities are never pruned to regain capacity.
 
 ## 1. Outcome and assumptions
 

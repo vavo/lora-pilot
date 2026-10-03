@@ -75,6 +75,7 @@
     <button id="settings-tab-general" role="tab" aria-controls="settings-panel-general" aria-selected="true" tabindex="0" type="button">General</button>
     <button id="settings-tab-access" role="tab" aria-controls="settings-panel-access" aria-selected="false" tabindex="-1" type="button">Access & security</button>
     <button id="settings-tab-connections" role="tab" aria-controls="settings-panel-connections" aria-selected="false" tabindex="-1" type="button">Connections</button>
+    <button id="settings-tab-mcp" role="tab" aria-controls="settings-panel-mcp" aria-selected="false" tabindex="-1" type="button">MCP</button>
     <button id="settings-tab-shutdown" role="tab" aria-controls="settings-panel-shutdown" aria-selected="false" tabindex="-1" type="button">Shutdown</button>
   </div>
   <p id="settings-load-error" class="settings-load-error" role="alert" hidden></p>
@@ -206,6 +207,38 @@
 </section>
 </details><details class="settings-details"><summary>Captioning providers</summary><p class="settings-note">Manage credentials for AI image captions in Caption images.</p><a class="journey-link" href="#tagpilot" data-open-section="tagpilot">Open Caption images</a></details>
 </div><aside class="settings-aside"><section><h3>Access to gated models</h3><p>Some models also require you to accept their license on Hugging Face. A saved token alone does not grant access.</p><a class="journey-link" href="#models" id="settings-return-models">Return to Models</a></section><section><h3>Your secrets stay hidden</h3><p>Saved credentials are never displayed. A saved indicator confirms they are configured; enter a new value to replace one.</p></section><section><h3>Service restarts</h3><p>Saving a Copilot token restarts the assistant. Saving Jupyter settings restarts Jupyter.</p></section></aside></div></section>
+  <section id="settings-panel-mcp" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-mcp" hidden>
+    <div class="settings-layout"><div class="settings-main">
+      <section class="settings-section settings-card">
+        <h3>Assistant connections</h3>
+        <p>Grant each assistant access to selected data. MCP starts disabled. Connected clients can retain anything they receive; revocation prevents further access.</p>
+        <div class="field"><label for="settings-mcp-password">Current ControlPilot password</label><input id="settings-mcp-password" class="input" type="password" autocomplete="current-password" /></div>
+        <div class="settings-row"><label><input id="settings-mcp-enabled" type="checkbox" /> Enable MCP</label><button id="settings-mcp-save" type="button" class="btn primary">Apply</button><button id="settings-mcp-refresh" type="button" class="btn secondary">Refresh</button></div>
+        <div class="field"><label for="settings-mcp-url">MCP endpoint</label><input id="settings-mcp-url" class="input" readonly /></div>
+        <div id="settings-mcp-status" class="settings-status" role="status">Set a ControlPilot password and configure MCP_PUBLIC_URL to your public HTTPS origin before connecting.</div>
+      </section>
+      <section class="settings-section settings-card">
+        <h3 id="settings-mcp-form-title">New connection</h3>
+        <div class="field"><label for="settings-mcp-label">Connection name</label><input id="settings-mcp-label" class="input" maxlength="80" placeholder="My assistant" /></div>
+        <fieldset id="settings-mcp-scopes"><legend>Permissions</legend></fieldset>
+        <fieldset id="settings-mcp-datasets"><legend>Datasets</legend></fieldset>
+        <fieldset id="settings-mcp-runs"><legend>Existing runs</legend></fieldset>
+        <div class="field"><label for="settings-mcp-days">Expires after (days)</label><input id="settings-mcp-days" class="input" type="number" min="1" max="30" value="30" /></div>
+        <fieldset id="settings-mcp-policy" hidden><legend>Unattended operations</legend>
+          <label><input id="settings-mcp-unattended" type="checkbox" /> Allow selected operations within these limits without asking again</label>
+          <p class="settings-note">Only selected datasets and runs are included. Training needs all five read permissions. Comparisons generate two images; only one operation of each kind can be active per connection. Requests above these limits need a separate approval.</p>
+          <div class="field"><label for="settings-mcp-steps">Maximum training steps</label><input id="settings-mcp-steps" class="input" type="number" min="1" max="600" value="100" /></div>
+          <div class="field"><label for="settings-mcp-seconds">Maximum training seconds</label><input id="settings-mcp-seconds" class="input" type="number" min="60" max="3600" value="1800" /></div>
+          <div class="field"><label for="settings-mcp-bytes">Storage allowance per operation (GiB)</label><input id="settings-mcp-bytes" class="input" type="number" min="1" max="32" value="8" /></div>
+        </fieldset>
+        <button id="settings-mcp-create" type="button" class="btn primary">Create connection</button>
+        <button id="settings-mcp-cancel-edit" type="button" class="btn secondary" hidden>Cancel edit</button>
+        <div id="settings-mcp-token-result" hidden><label for="settings-mcp-token">Copy this token into your client's Authorization bearer header. It is shown once.</label><input id="settings-mcp-token" class="input" type="password" readonly /><button id="settings-mcp-copy" type="button" class="btn secondary">Copy token</button></div>
+      </section>
+      <section class="settings-section settings-card"><h3>Connections</h3><div id="settings-mcp-clients"></div></section>
+      <section class="settings-section settings-card"><h3>Pending approvals</h3><p>Review the selected data and limits before approving. Cancellation permission can stop a run and lose progress since its last checkpoint.</p><div id="settings-mcp-approvals"></div></section>
+    </div><aside class="settings-aside"><section><h3>Selected access</h3><p>New datasets and existing runs are not shared automatically. Enable only permissions the connection needs. Tokens expire after at most 30 days.</p></section><section><h3>Your files stay yours</h3><p>There is no MCP shell or deletion tool. Exports exclude original datasets and logs, but trained LoRAs may retain information from their training data.</p></section></aside></div>
+  </section>
   <section id="settings-panel-shutdown" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-shutdown" hidden><div class="settings-layout"><div class="settings-main"><section class="settings-section settings-card">
     <h3 class="settings-section-title">Shutdown Defaults</h3>
     <div class="field">

@@ -2002,6 +2002,12 @@ def controlpilot_logout():
 
 @app.post("/api/settings/password")
 def set_controlpilot_password(request: Request, payload: ControlPilotPasswordRequest):
+    if not payload.enabled:
+        try:
+            if _mcp_runtime.store.read()['enabled']:
+                raise HTTPException(status_code=409, detail="Disable MCP before removing the ControlPilot password")
+        except FileNotFoundError:
+            pass
     with _comfy_access_lock:
         if _comfy_policy()["enabled"]:
             _require_comfy_settings_access(request)
@@ -3958,6 +3964,15 @@ def _storage_conflicts():
 
 
 app.include_router(create_storage_router(WORKSPACE_ROOT, MODELS_DIR, _training_queue, _model_downloads, _storage_conflicts, workspace_data_used_bytes))
+
+try:
+    from .mcp_server.integration import install as install_mcp
+except ImportError:
+    from mcp_server.integration import install as install_mcp
+
+_mcp_runtime = install_mcp(app, WORKSPACE_ROOT, MODELS_DIR, _training_queue,
+    _controlpilot_auth_enabled, _controlpilot_request_authenticated, _controlpilot_session_value,
+    lambda password: _verify_controlpilot_password(password, str(_read_controlpilot_settings().get('password_hash', ''))))
 
 
 

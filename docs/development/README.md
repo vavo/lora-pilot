@@ -32,4 +32,4 @@ Use [contributing](contributing.md) for the contribution process, while treating
 
 The [screen lifecycle guide](screen-lifecycle.md) explains how ControlPilot owns requests, prevents stale responses, and cleans up work when users navigate between pages.
 
-The proposed [MCP implementation plan](mcp-implementation-plan.md) covers agent access, permissions, retry safety and data protection. Its [test plan](mcp-test-plan.md) defines failure cases and release gates; MCP is not yet implemented.
+The [MCP setup guide](../configuration/mcp.md) documents the private Streamable HTTP implementation. The [implementation plan](mcp-implementation-plan.md) and [test plan](mcp-test-plan.md) retain the wider roadmap; [validation evidence](mcp-validation.md) records implemented coverage and the OAuth, storage and GPU release gates still outstanding.

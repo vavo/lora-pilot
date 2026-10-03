@@ -18,6 +18,11 @@ services:
       - ./workspace:/workspace
     
     environment:
+      - MCP_PUBLIC_URL=${MCP_PUBLIC_URL:-}
+      - MCP_EXECUTION_ENABLED=${MCP_EXECUTION_ENABLED:-0}
+      - MCP_STORAGE_VERIFIED=${MCP_STORAGE_VERIFIED:-0}
+      - MCP_GPU_VERIFIED=${MCP_GPU_VERIFIED:-0}
+      - MCP_WRITE_BUDGET_BYTES=${MCP_WRITE_BUDGET_BYTES:-0}
       - TZ=${TZ:-America/New_York}
       - PORTAL_PORT=${PORTAL_PORT:-7878}
       - JUPYTER_PORT=${JUPYTER_PORT:-8888}

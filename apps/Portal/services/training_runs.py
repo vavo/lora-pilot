@@ -65,6 +65,10 @@ class TrainingRuns:
         self.current = None
         self.paused = False
         self.reason = []
+        self.mcp_authorize = None
+        self.mcp_launch = None
+        self.mcp_monitor = None
+        self.mcp_conflicts = None
 
     def start(self, background=True):
         with self.lock:
@@ -138,16 +142,29 @@ class TrainingRuns:
     def _save_queue(self):
         write_json(self.root / 'queue.json', {'paused': self.paused})
 
-    def submit(self, spec):
+    def submit(self, spec, *, run_id=None, origin_operation_id=None, prepared=None):
         with self.lock:
+            if origin_operation_id:
+                if run_id != origin_operation_id or prepared is None:
+                    raise HTTPException(400, 'Invalid managed operation linkage')
+                existing = self.directory(run_id) / 'run.json'
+                if existing.exists():
+                    run = self.get(run_id)
+                    if run.get('origin_operation_id') != origin_operation_id:
+                        raise HTTPException(409, 'Run identity conflict')
+                    return run
+            elif run_id is not None or prepared is not None:
+                raise HTTPException(400, 'Reserved run IDs require managed operation linkage')
             if sum(r['status'] in ACTIVE for r in self.list()) >= 50:
                 raise HTTPException(409, 'Queue is full (50 runs). Cancel a queued run first.')
-            run_id = uuid.uuid4().hex
+            run_id = run_id or uuid.uuid4().hex
             directory = self.directory(run_id)
             directory.mkdir(mode=0o700)
-            prepared = self.prepare(copy.deepcopy(spec), run_id, directory)
+            prepared = prepared if origin_operation_id else self.prepare(copy.deepcopy(spec), run_id, directory)
             run = dict(prepared, id=run_id, created_at=now(), status='queued', exit_code=None,
                        started_at=None, finished_at=None, error=None)
+            if origin_operation_id:
+                run['origin_operation_id'] = origin_operation_id
             self.save(run)
             self.wake.set()
             return run
@@ -174,6 +191,8 @@ class TrainingRuns:
                 code = self.proc.poll()
                 if code is None:
                     run = self.get(self.current)
+                    if run.get('origin_operation_id') and self.mcp_monitor:
+                        self.mcp_monitor(run, self.proc)
                     training_performance.sample(run)
                     self.save(run)
                     return
@@ -191,6 +210,14 @@ class TrainingRuns:
             if self.reason:
                 return
             run = queued[0]
+            if run.get('origin_operation_id'):
+                if not self.mcp_authorize or not self.mcp_launch or not self.mcp_authorize(run):
+                    run.update(status='cancelled', finished_at=now(), error='MCP authorization is no longer valid; files were preserved.')
+                    self.save(run)
+                    return
+                self.reason = self.mcp_conflicts() if self.mcp_conflicts else ['MCP GPU checks unavailable']
+                if self.reason:
+                    return
             run.update(status='running', started_at=now())
             training_performance.sample(run)
             self.save(run)  # A crash during launch becomes interrupted, never silently repeated.
@@ -198,7 +225,7 @@ class TrainingRuns:
                 path = self.directory(run['id']) / 'run.log'
                 fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND | os.O_NOFOLLOW, 0o600)
                 with os.fdopen(fd, 'ab') as stream:
-                    proc = self.launch(run, stream)
+                    proc = self.mcp_launch(run, stream) if run.get('origin_operation_id') and self.mcp_launch else self.launch(run, stream)
                 self.proc = proc
                 self.current = run['id']
                 run.update(pid=proc.pid, process_identity=process_identity(proc.pid))

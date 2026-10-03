@@ -28,7 +28,7 @@ class Element {
   for (const failure of [null, '/api/settings/ui', '/api/settings/copilot-defaults']) {
     const elements = new Map();
     const get = id => {
-      if (!elements.has(id)) elements.set(id, new Element());
+      if (!elements.has(id)) { const el = new Element(); el.id = id; elements.set(id, el); }
       return elements.get(id);
     };
     const radios = ['light', 'dark'].map(value => new Element(value));
@@ -47,7 +47,10 @@ class Element {
       },
       document: {
         getElementById: get,
-        querySelectorAll: selector => selector.includes('settings-theme') ? radios : tabs,
+        querySelectorAll: selector => selector.includes('settings-theme') ? radios
+          : selector.includes('settings-mcp-')
+            ? [...fs.readFileSync('apps/Portal/static/views/settings.html', 'utf8').matchAll(/id="(settings-mcp-[^"]+)"/g)].map(match => get(match[1]))
+            : tabs,
       },
       AbortController, URL, location: { origin: 'http://localhost' },
       fetchJson: async (url, options) => {

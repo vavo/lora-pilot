@@ -29,6 +29,7 @@ mkdir -p "${config_dir}"
 : "${PYTHON_SOCKETIO_VERSION:?PYTHON_SOCKETIO_VERSION is required}"
 : "${WEBSOCKETS_VERSION:?WEBSOCKETS_VERSION is required}"
 : "${HTTPX_VERSION:?HTTPX_VERSION is required}"
+: "${MCP_VERSION:?MCP_VERSION is required}"
 : "${INVOKE_TORCH_VERSION:?INVOKE_TORCH_VERSION is required}"
 : "${INVOKE_TORCHVISION_VERSION:?INVOKE_TORCHVISION_VERSION is required}"
 : "${INVOKE_XFORMERS_VERSION:?INVOKE_XFORMERS_VERSION is required}"
@@ -75,6 +76,7 @@ python-dotenv==${PYTHON_DOTENV_VERSION}
 python-socketio==${PYTHON_SOCKETIO_VERSION}
 websockets==${WEBSOCKETS_VERSION}
 httpx==${HTTPX_VERSION}
+mcp==${MCP_VERSION}
 EOF
 
 cat > "${config_dir}/invoke-constraints.txt" <<EOF
