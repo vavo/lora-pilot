@@ -4,36 +4,152 @@ const serviceUpdatePollers = {};
 
 window.initServices = async function (screen = window.createScreenLifecycle()) {
   servicesScreen = screen;
+  servicesData = [];
+  selectedService = "comfy";
+  serviceFilter = "all";
+  for (const cache of [serviceVersions, serviceUpdateStatuses]) Object.keys(cache).forEach(key => delete cache[key]);
+  serviceActions.clear();
+  serviceAutostartPending.clear();
   screen.onCleanup(() => {
     for (const name of Object.keys(serviceUpdatePollers)) stopServiceUpdatePolling(name);
   });
   await loadServices();
 };
 
-function iconSvg(name) {
-  if (name === "play") {
-    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5v14l11-7L8 5Z" fill="currentColor"/></svg>`;
-  }
-  if (name === "restart") {
-    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3.1-6.7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 4v6h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  }
-  if (name === "stop") {
-    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7h10v10H7V7Z" fill="currentColor"/></svg>`;
-  }
-  if (name === "logs") {
-    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 2h9l3 3v17H6V2Zm8 1.5V6h2.5L14 3.5ZM8 10h8v2H8v-2Zm0 4h8v2H8v-2Zm0 4h6v2H8v-2Z" fill="currentColor"/></svg>`;
-  }
-  if (name === "external") {
-    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 4h6v6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 14 20 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 14v6H4V4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  }
-  return "";
+const serviceCatalog = {
+  comfy: { label: "ComfyUI", role: "Image & video workflows", description: "Node-based interface for image and video workflows.", icon: "comfyui" },
+  invoke: { label: "Invoke AI", role: "Image generation", description: "Generate and edit images with Invoke AI.", icon: "mediapilot" },
+  kohya: { label: "Kohya", role: "LoRA training", description: "Configure and train LoRAs with Kohya.", icon: "models" },
+  "ai-toolkit": { label: "AI Toolkit", role: "LoRA training", description: "Train and manage LoRAs with AI Toolkit.", icon: "dpipe" },
+  diffpipe: { label: "TensorBoard", role: "Training metrics", description: "Follow training progress and compare your runs.", icon: "dashboard" },
+  jupyter: { label: "Jupyter Lab", role: "Notebooks", description: "Work with notebooks and files in your workspace.", icon: "docs" },
+  "code-server": { label: "VS Code Server", role: "Code editor", description: "Edit code and workspace files in your browser.", icon: "storage" },
+  controlpilot: { label: "ControlPilot", role: "Workspace interface", description: "The interface you are using to manage your workspace.", icon: "services" },
+  copilot: { label: "Copilot Sidecar", role: "Assistant", description: "Connect the workspace assistant to Copilot.", icon: "settings" },
+};
+let servicesData = [];
+let selectedService = "comfy";
+let serviceFilter = "all";
+const serviceUpdateStatuses = {};
+const serviceActions = new Set();
+const serviceAutostartPending = new Set();
+
+function serviceEscape(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function serviceInfo(svc) {
+  return serviceCatalog[svc.name] || { label: svc.display || svc.name, role: "Workspace service", description: "Manage this workspace service.", icon: "services" };
+}
+
+function serviceIcon(svc) {
+  return document.querySelector(`.nav [data-section="${serviceInfo(svc).icon}"] .nav-icon`)?.innerHTML || "";
 }
 
 function stateBadge(svc) {
-  const raw = (svc.state_raw || "").toUpperCase();
-  const cls = raw === "RUNNING" ? "running" : raw === "STARTING" ? "starting" : "stopped";
-  const dotCls = raw === "RUNNING" ? "green" : raw === "STARTING" ? "orange" : "red";
-  return { cls, dotCls, raw: raw || "UNKNOWN" };
+  const raw = (svc.state_raw || "UNKNOWN").toUpperCase();
+  const cls = raw === "RUNNING" ? "running" : ["STARTING", "STOPPING"].includes(raw) ? "starting" : ["FATAL", "BACKOFF"].includes(raw) ? "error" : "stopped";
+  const label = raw.charAt(0) + raw.slice(1).toLowerCase();
+  return { cls, raw, label };
+}
+
+function visibleServices() {
+  return servicesData.filter(svc => serviceFilter === "all" || (serviceFilter === "running" ? stateBadge(svc).raw === "RUNNING" : ["STOPPED", "EXITED"].includes(stateBadge(svc).raw)));
+}
+
+window.filterServices = function (filter) {
+  serviceFilter = filter;
+  renderServices();
+};
+
+function renderServices() {
+  const list = document.getElementById("services-list");
+  const visible = visibleServices();
+  if (!visible.some(svc => svc.name === selectedService)) selectedService = visible[0]?.name || "";
+  const counts = {};
+  servicesData.forEach(svc => { const label = stateBadge(svc).label.toLowerCase(); counts[label] = (counts[label] || 0) + 1; });
+  document.getElementById("svc-summary").textContent = Object.entries(counts).map(([state, count]) => `${count} ${state}`).join(" · ") || "No services available";
+  document.querySelectorAll("[data-service-filter]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.serviceFilter === serviceFilter)));
+  list.replaceChildren();
+  visible.forEach(svc => {
+    const info = serviceInfo(svc), badge = stateBadge(svc);
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "svc-row";
+    row.dataset.service = svc.name;
+    row.setAttribute("aria-pressed", String(svc.name === selectedService));
+    row.setAttribute("aria-controls", "svc-detail");
+    row.innerHTML = `<span class="svc-icon" aria-hidden="true">${serviceIcon(svc)}</span>
+      <span class="svc-row-copy"><strong>${serviceEscape(info.label)}</strong><span class="svc-update-hint is-hidden" id="svc-hint-${serviceDomId(svc.name)}">Update available</span><span class="svc-role">${serviceEscape(info.role)}</span></span>
+      <span class="svc-state ${badge.cls}">${serviceEscape(badge.label)}</span>`;
+    row.onclick = () => {
+      selectedService = svc.name;
+      list.querySelectorAll(".svc-row").forEach(item => item.setAttribute("aria-pressed", String(item.dataset.service === selectedService)));
+      renderServiceDetail();
+      if (window.matchMedia("(max-width: 900px)").matches) {
+        document.getElementById("svc-detail-title").focus({ preventScroll: true });
+        document.getElementById("svc-detail").scrollIntoView({ block: "start" });
+      }
+    };
+    list.appendChild(row);
+  });
+  if (!visible.length) list.textContent = servicesData.length ? `No ${serviceFilter} services.` : "No services were returned by the supervisor.";
+  renderServiceDetail();
+  servicesData.forEach(svc => renderServiceVersion(svc.name, serviceVersions[svc.name]));
+}
+
+function renderServiceDetail() {
+  const scope = servicesScreen.latest("detail");
+  const detail = document.getElementById("svc-detail");
+  const svc = servicesData.find(item => item.name === selectedService);
+  detail.hidden = !svc;
+  if (!svc) { detail.replaceChildren(); return; }
+  const info = serviceInfo(svc), badge = stateBadge(svc), domId = serviceDomId(svc.name);
+  const running = badge.raw === "RUNNING", starting = badge.raw === "STARTING", stopping = badge.raw === "STOPPING";
+  const busy = serviceActions.has(svc.name);
+  const url = running ? serviceUrl(svc.name) : null;
+  const port = servicePortLabel(svc.name);
+  const tbSource = serviceTensorBoardSource(svc.name);
+  detail.innerHTML = `
+    <button class="svc-text-button svc-back" type="button">Back to services</button>
+    <header class="svc-detail-heading"><span class="svc-icon" aria-hidden="true">${serviceIcon(svc)}</span><div><h3 id="svc-detail-title" tabindex="-1">${serviceEscape(info.label)}</h3><p>${serviceEscape(info.description)}</p></div></header>
+    <div class="svc-detail-meta"><span class="svc-state ${badge.cls}">${serviceEscape(badge.label)}</span>${port ? `<span>Port ${serviceEscape(port.slice(1))}</span>` : ""}</div>
+    <div class="svc-actions">
+      ${url ? `<a class="btn primary" href="${serviceEscape(url)}" target="_blank" rel="noopener noreferrer">Open ${serviceEscape(info.label)} <span aria-hidden="true">↗</span></a>` : ""}
+      ${!running ? `<button class="btn primary" type="button" data-action="start" ${busy || starting || stopping ? "disabled" : ""}>${starting ? "Starting…" : stopping ? "Stopping…" : "Start service"}</button>` : ""}
+      ${running ? `<button class="btn secondary" type="button" data-action="restart" ${busy ? "disabled" : ""}>Restart</button>` : ""}
+      ${running || starting ? `<button class="btn secondary svc-stop" type="button" data-action="stop" ${busy ? "disabled" : ""}>Stop</button>` : ""}
+    </div>
+    ${svc.name === "controlpilot" ? '<p class="svc-control-note">Restarting or stopping ControlPilot disconnects this interface.</p>' : ""}
+    <section class="svc-detail-section svc-autostart-row"><div><label for="svc-autostart-toggle">Start with workspace</label><p>${typeof svc.autostart === "boolean" ? "Automatically start this service when your workspace starts." : "Auto-start setting is unavailable."}</p></div><input id="svc-autostart-toggle" class="svc-switch" type="checkbox" role="switch" ${svc.autostart === true ? "checked" : ""} ${typeof svc.autostart !== "boolean" || serviceAutostartPending.has(svc.name) ? "disabled" : ""}></section>
+    <section class="svc-detail-section"><div class="svc-section-row"><div><h4>Version</h4><p id="svc-version-${domId}">Checking version…</p><p id="svc-available-${domId}" class="svc-update-hint is-hidden">Update available</p></div><button class="btn secondary svc-update-btn is-hidden" id="svc-update-${domId}" type="button">Update</button></div><p class="svc-update-status is-hidden" id="svc-update-status-${domId}" role="status"></p></section>
+    ${tbSource ? `<section class="svc-detail-section"><div class="svc-section-row"><div><h4>Training metrics</h4><p id="svc-tensorboard-status-${domId}">TensorBoard: checking…</p></div><button class="svc-text-button" type="button" data-tensorboard>Open TensorBoard</button></div></section>` : ""}
+    <section class="svc-detail-section svc-logs"><div class="svc-section-row"><h4>Logs</h4><button class="svc-text-button" type="button" data-log>View full log <span aria-hidden="true">↗</span></button></div><pre id="svc-log-preview" class="svc-log-pre mono">Loading log…</pre></section>`;
+  detail.querySelector(".svc-back").onclick = () => {
+    document.querySelector('.svc-row[aria-pressed="true"]')?.focus({ preventScroll: true });
+    document.getElementById("services-list").scrollIntoView({ block: "start" });
+  };
+  detail.querySelectorAll("[data-action]").forEach(button => button.onclick = () => serviceAction(svc.name, button.dataset.action));
+  detail.querySelector("#svc-autostart-toggle").onchange = event => toggleServiceAutostart(svc.name, event.target);
+  detail.querySelector(`#svc-update-${domId}`).onclick = () => startServiceUpdate(svc.name);
+  detail.querySelector("[data-log]").onclick = () => viewServiceLog(svc.name);
+  if (tbSource) {
+    detail.querySelector("[data-tensorboard]").onclick = () => openServiceTensorBoard(svc.name);
+    refreshServiceTensorBoardStatus(svc.name).catch(() => {});
+  }
+  if (Object.hasOwn(serviceVersions, svc.name)) renderServiceVersion(svc.name, serviceVersions[svc.name]);
+  renderServiceUpdateStatus(svc.name, serviceUpdateStatuses[svc.name]);
+  loadServiceLogPreview(svc.name, scope);
+}
+
+async function loadServiceLogPreview(name, scope) {
+  const preview = document.getElementById("svc-log-preview");
+  try {
+    const result = await scope.json(`/api/services/${encodeURIComponent(name)}/log?lines=8`);
+    preview.textContent = result.log || "No log output yet.";
+  } catch (error) {
+    if (scope.active) preview.textContent = "Log unavailable. Try View full log to retry.";
+  }
 }
 
 function servicePortLabel(name) {
@@ -70,11 +186,11 @@ function serviceDomId(name) {
 }
 
 function versionText(info) {
-  if (!info) return "Version: unavailable";
-  if (info.installed && info.latest && info.update_available) return `Version: ${info.installed} -> ${info.latest}`;
-  if (info.installed && info.latest) return `Version: ${info.installed} (latest)`;
-  if (info.installed) return `Version: ${info.installed}`;
-  if (info.detail) return `Version: ${info.detail}`;
+  if (!info) return "Version unavailable";
+  if (info.installed && info.latest && info.update_available) return `Installed build: ${info.installed} → ${info.latest}`;
+  if (info.installed && info.latest) return `Installed build: ${info.installed} (latest)`;
+  if (info.installed) return `Installed build: ${info.installed}`;
+  if (info.detail) return info.detail;
   return "Version: unknown";
 }
 
@@ -82,13 +198,14 @@ function renderServiceVersion(name, info) {
   const domId = serviceDomId(name);
   const versionEl = document.getElementById(`svc-version-${domId}`);
   const buttonEl = document.getElementById(`svc-update-${domId}`);
-  if (!versionEl || !buttonEl) return;
-
-  versionEl.textContent = versionText(info);
   const canUpdate = !!(info && info.update_supported && info.update_available);
+  document.getElementById(`svc-hint-${domId}`)?.classList.toggle("is-hidden", !canUpdate);
+  document.getElementById(`svc-available-${domId}`)?.classList.toggle("is-hidden", !canUpdate);
+  if (!versionEl || !buttonEl || info === undefined) return;
+  versionEl.textContent = versionText(info);
   if (canUpdate) {
     buttonEl.classList.remove("is-hidden");
-    buttonEl.disabled = false;
+    buttonEl.disabled = serviceUpdateStatuses[name]?.state === "running";
     buttonEl.title = info.latest ? `Install ${info.latest}` : "Install update";
   } else {
     buttonEl.classList.add("is-hidden");
@@ -98,6 +215,7 @@ function renderServiceVersion(name, info) {
 }
 
 function renderServiceUpdateStatus(name, status) {
+  if (status) serviceUpdateStatuses[name] = status;
   const domId = serviceDomId(name);
   const statusEl = document.getElementById(`svc-update-status-${domId}`);
   const buttonEl = document.getElementById(`svc-update-${domId}`);
@@ -192,104 +310,54 @@ async function loadServiceVersions(services, screen) {
     });
   } catch (e) {
     if (!screen.active) return;
-    services.forEach(svc => renderServiceVersion(svc.name, null));
+    services.forEach(svc => { serviceVersions[svc.name] = null; renderServiceVersion(svc.name, null); });
   }
 }
 
 async function loadServices() {
   const screen = servicesScreen.latest("list");
-  if (!screen.active) return;
   const status = document.getElementById("svc-status");
-  const list = document.getElementById("services-list");
-  if (!status || !list) return;
-  status.textContent = "Loading services...";
-  list.classList.add("is-hidden");
-  list.innerHTML = "";
+  const workspace = document.getElementById("svc-workspace");
+  const refresh = document.getElementById("svc-refresh");
+  if (!status || !workspace) return;
+  status.textContent = "Loading services…";
+  refresh.disabled = true;
   try {
     const data = await screen.json("/api/services");
-    data.forEach(svc => {
-      const openUrl = serviceUrl(svc.name);
-      const badge = stateBadge(svc);
-      const running = svc.running === true || badge.raw === "RUNNING" || badge.raw === "STARTING";
-      const tbSource = serviceTensorBoardSource(svc.name);
-      const tbStatusId = tbSource ? `svc-tensorboard-status-${serviceDomId(svc.name)}` : "";
-
-      const card = document.createElement("div");
-      card.className = "svc-card";
-      const domId = serviceDomId(svc.name);
-
-      const nameHtml = openUrl
-        ? `<a class="svc-link" href="${openUrl}" target="_blank" rel="noopener noreferrer" title="Open ${svc.display}">${svc.display}<span class="svc-open-icon">${iconSvg("external")}</span></a>`
-        : `<strong>${svc.display}</strong>`;
-
-      const scheduleStartDisabled = running;
-      const scheduleRestartDisabled = !running;
-      const scheduleStopDisabled = !running;
-      const portLabel = servicePortLabel(svc.name);
-      const hasAutostart = typeof svc.autostart === "boolean";
-      const autostartChecked = hasAutostart && svc.autostart ? "checked" : "";
-      const autostartDisabled = hasAutostart ? "" : "disabled";
-      const autostartLabel = hasAutostart ? "Auto-start on boot" : "Auto-start unknown";
-
-      card.innerHTML = `
-        <div class="svc-top">
-          <div class="svc-main">
-            <div class="svc-name">
-              <span class="dot ${badge.dotCls}"></span>
-              ${nameHtml}
-            </div>
-            <div class="svc-version-row">
-              <span class="svc-version mono-sm" id="svc-version-${domId}">Version: checking...</span>
-              <button class="btn secondary svc-update-btn is-hidden" id="svc-update-${domId}" type="button" onclick="startServiceUpdate('${svc.name}')">Update</button>
-            </div>
-            ${tbSource ? `<div class="svc-tensorboard-status mono-sm muted" id="${tbStatusId}">TensorBoard: checking...</div>` : ""}
-            <div class="svc-update-status mono-sm is-hidden" id="svc-update-status-${domId}"></div>
-          </div>
-          <div class="svc-controls">
-            <div class="svc-meta">
-              <span class="svc-pill ${badge.cls}">${badge.raw}</span>
-              ${portLabel ? `<span class="svc-port">Port ${portLabel}</span>` : ""}
-            </div>
-            <label class="svc-autostart" title="${autostartLabel}">
-              <input class="svc-switch" type="checkbox" ${autostartChecked} ${autostartDisabled} onchange="toggleServiceAutostart('${svc.name}', this)" />
-              <span>Auto-start</span>
-            </label>
-            <div class="svc-actions">
-              <button class="btn icon" data-action="start" title="Start" ${scheduleStartDisabled ? "disabled" : ""} onclick="serviceAction('${svc.name}','start')">${iconSvg("play")}</button>
-              <button class="btn icon" data-action="restart" title="Restart" ${scheduleRestartDisabled ? "disabled" : ""} onclick="serviceAction('${svc.name}','restart')">${iconSvg("restart")}</button>
-              <button class="btn icon danger" data-action="stop" title="Stop" ${scheduleStopDisabled ? "disabled" : ""} onclick="serviceAction('${svc.name}','stop')">${iconSvg("stop")}</button>
-              <button class="btn icon" data-action="logs" title="View logs" onclick="viewServiceLog('${svc.name}')">${iconSvg("logs")}</button>
-              ${tbSource ? `<button class="btn secondary" type="button" onclick="openServiceTensorBoard('${svc.name}')">TensorBoard</button>` : ""}
-            </div>
-          </div>
-        </div>
-      `;
-      list.appendChild(card);
-      if (tbSource) {
-        refreshServiceTensorBoardStatus(svc.name).catch(() => {});
-      }
-    });
-    await loadServiceVersions(data, screen);
-    if (!screen.active) return;
+    const order = Object.keys(serviceCatalog);
+    servicesData = data.sort((a, b) => (order.indexOf(a.name) < 0 ? 99 : order.indexOf(a.name)) - (order.indexOf(b.name) < 0 ? 99 : order.indexOf(b.name)));
+    renderServices();
+    workspace.hidden = false;
     status.textContent = "";
-    list.classList.remove("is-hidden");
+    await loadServiceVersions(data, screen);
   } catch (e) {
     if (!screen.active) return;
-    status.textContent = `Error: ${e.message || e}`;
+    let message = e.message || String(e);
+    try { message = JSON.parse(message).detail || message; } catch (_) {}
+    status.textContent = `Could not refresh services: ${message}. Try Refresh.`;
+  } finally {
+    if (screen.active) refresh.disabled = false;
   }
 }
 
 window.serviceAction = async function (name, action) {
   const screen = servicesScreen;
-  if (!screen?.active) return;
+  if (!screen?.active || serviceActions.has(name)) return;
+  serviceActions.add(name);
+  if (selectedService === name) renderServiceDetail();
   try {
     await screen.json(`/api/services/${encodeURIComponent(name)}/${action}`, { method: "POST" });
     if (name === "copilot") window.dispatchEvent(new CustomEvent("copilot-service-action", { detail: action }));
+    serviceActions.delete(name);
     await loadServices();
-    if (!screen.active) return;
   } catch (e) {
     if (!screen.active) return;
     alert(`Service action failed: ${e.message || e}`);
+  } finally {
+    if (screen.active) {
+      serviceActions.delete(name);
+      if (selectedService === name) renderServiceDetail();
+    }
   }
 };
 
@@ -299,7 +367,7 @@ window.startServiceUpdate = async function (name) {
   const info = serviceVersions[name] || null;
   const domId = serviceDomId(name);
   const buttonEl = document.getElementById(`svc-update-${domId}`);
-  if (!buttonEl) return;
+  if (!buttonEl || serviceUpdateStatuses[name]?.state === "running") return;
 
   buttonEl.disabled = true;
   renderServiceUpdateStatus(name, { state: "running", last_line: "Starting update..." });
@@ -325,7 +393,8 @@ window.startServiceUpdate = async function (name) {
 window.toggleServiceAutostart = async function (name, toggle) {
   const screen = servicesScreen;
   if (!screen?.active) return;
-  if (!toggle) return;
+  if (!toggle || serviceAutostartPending.has(name)) return;
+  serviceAutostartPending.add(name);
   const enabled = !!toggle.checked;
   toggle.disabled = true;
   try {
@@ -334,19 +403,25 @@ window.toggleServiceAutostart = async function (name, toggle) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled }),
     });
+    const svc = servicesData.find(item => item.name === name);
+    if (svc) svc.autostart = enabled;
   } catch (e) {
     if (!screen.active) return;
     toggle.checked = !enabled;
     alert(`Failed to update auto-start: ${e.message || e}`);
   } finally {
     if (!screen.active) return;
-    toggle.disabled = false;
+    serviceAutostartPending.delete(name);
+    if (selectedService === name) {
+      const current = document.getElementById("svc-autostart-toggle");
+      if (current) { current.checked = servicesData.find(item => item.name === name)?.autostart === true; current.disabled = false; }
+    }
   }
 };
 
 window.viewServiceLog = async function (name) {
-  const screen = servicesScreen;
-  if (!screen?.active) return;
+  if (!servicesScreen?.active) return;
+  const screen = servicesScreen.latest("modal-log");
   try {
     const res = await screen.json(`/api/services/${encodeURIComponent(name)}/log?lines=200`);
     const modal = document.getElementById("svc-log-modal");
