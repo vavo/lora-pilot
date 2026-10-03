@@ -200,7 +200,7 @@ services:
     networks:
       - lora-pilot-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7878/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:7878/healthz"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -679,6 +679,9 @@ spec:
 ### Health Checks
 
 #### Comprehensive Health Checks
+
+The following is a custom extension example, not a bundled endpoint. Stock ControlPilot exposes `GET /healthz` with `{"ok":true}`. Use `/api/services`, `/api/telemetry` and `/api/diagnostics` for existing status APIs; the deployment probes below use `/healthz`.
+
 ```python
 # apps/Portal/health/health_check.py
 from fastapi import APIRouter, HTTPException
@@ -837,13 +840,13 @@ spec:
         image: vavo/lora-pilot:v2.1.0
         readinessProbe:
           httpGet:
-            path: /api/health
+            path: /healthz
             port: 7878
           initialDelaySeconds: 30
           periodSeconds: 10
         livenessProbe:
           httpGet:
-            path: /api/health
+            path: /healthz
             port: 7878
           initialDelaySeconds: 60
           periodSeconds: 30
@@ -950,7 +953,7 @@ class ConnectionPool:
 ```bash
 # Check service connectivity
 kubectl exec -it lora-pilot-pod -- nslookup lora-pilot-service
-kubectl exec -it lora-pilot-pod -- curl http://lora-pilot-service:7878/api/health
+kubectl exec -it lora-pilot-pod -- curl http://lora-pilot-service:7878/healthz
 
 # Check DNS resolution
 kubectl exec -it lora-pilot-pod -- nslookup kubernetes.default.svc.cluster.local

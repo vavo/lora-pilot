@@ -113,11 +113,14 @@ Notes:
 
 ## 🔌 API Reference (Core)
 
+The paths below are relative to MediaPilot. In LoRA Pilot, prefix them with `/mediapilot` on the ControlPilot origin, for example `http://localhost:7878/mediapilot/images`. Standalone MediaPilot uses the unprefixed paths.
+
 | Endpoint | Method | Description |
 |---|---|---|
 | `/healthz` | `GET` | Health check |
 | `/auth/status` | `GET` | Auth enabled/authenticated state |
 | `/auth/login` | `POST` | Login when password auth enabled |
+| `/auth/logout` | `POST` | Invalidate MediaPilot session and clear cookie |
 | `/folders` | `GET` | List folders |
 | `/folders` | `POST` | Create folder |
 | `/images` | `GET` | Paginated image list |
@@ -125,9 +128,45 @@ Notes:
 | `/unlike/{filename}` | `POST` | Unlike image |
 | `/tag` | `POST` | Move image between folders |
 | `/image/{filename}` | `DELETE` | Delete image from root |
-| `/image/{folder}/{filename}` | `DELETE` | Delete image from folder |
+| `/image/{folder:path}/{filename}` | `DELETE` | Delete image from folder |
 | `/download/bulk` | `POST` | Download selected files as ZIP |
 | `/upscale/bulk` | `POST` | Queue selected files to ComfyUI |
+
+### API request and response contracts
+
+Current limitation: with a separate MediaPilot password enabled, the embedded app checks prefixed request paths against unprefixed public-path rules. Local mounted-app checks return 401 for `/mediapilot/auth/login`, `/mediapilot/auth/status` and `/mediapilot/healthz` before their handlers run. Use ControlPilot password protection with the separate MediaPilot password unset for the embedded gallery until this is fixed. Standalone `/auth/login` works.
+
+Send JSON bodies except for `/tag`, which takes query parameters. When embedded, ControlPilot enforces its own password gate before MediaPilot handles requests. A separate `MEDIAPILOT_ACCESS_PASSWORD`, if configured, adds MediaPilot's cookie requirement. A MediaPilot login does not grant access to ControlPilot APIs. See [ControlPilot authentication](../development/api-reference.md#authentication-and-settings).
+
+| Route | Input | Success response |
+|---|---|---|
+| `GET /healthz` | None | `{"ok":true}` |
+| `GET /auth/status` | Cookie if present | `enabled`, `authenticated` |
+| `POST /auth/login` | `{"password":"..."}` | `ok`, `enabled`; sets `mediapilot_auth` by default; wrong password returns 401 |
+| `POST /auth/logout` | Session cookie; no body | `{"ok":true}`; invalidates this MediaPilot session |
+| `GET /folders` | None | `{"folders":["..."]}` |
+| `POST /folders` | `{"name":"selected"}` | `{"created":true,"folder":"selected"}` |
+| `GET /images` | Query `page=1`, `limit=50`, `folder=_root`, `sort=NEWEST`, `search=` | `page`, `pages`, `images`; use positive page/limit values |
+| `POST /like/{filename}` / `POST /unlike/{filename}` | No body | `{"ok":true}` |
+| `POST /tag` | Required query `filename`, `old_folder`, `new_folder` | `{"moved":true}`; physically moves the file; missing source returns 404, occupied destination 409 |
+| `DELETE /image/{filename}` / `DELETE /image/{folder:path}/{filename}` | Path parameters | `{"deleted":true}`; removes image, thumbnail and metadata; also succeeds for an absent file |
+| `POST /download/bulk` | `{"folder":"_root","filenames":["example.png"]}` | ZIP attachment; skips missing files, returns 404 if none exist |
+| `POST /upscale/bulk` | Same JSON shape as download | `ok`, `queued`, `submitted`, `failed`; submits ComfyUI jobs without waiting for generation |
+
+`_root` selects the configured output root, `InvokeAI` selects the separate InvokeAI image directory, and other folder values are relative paths beneath the output root. Image listing reads one folder at a time. Sort accepts `NEWEST`, `OLDEST`, or `ALPHABETICALLY` (case-insensitive); unrecognized values use newest first. Search uses the metadata syntax described above. URL-encode filenames and folder segments.
+
+Image entries contain `filename`, `thumb_url`, `full_url`, `liked`, `tagged`, `created_at` (Unix seconds), and nullable generation metadata: `prompt`, `lora_name`, `lora_strength`, `lora_name_2`, `lora_strength_2`, `steps`, `cfg`, `sampler`, `scheduler`. Resolve the returned `./output`, `./thumbs`, or `./invoke` URLs relative to `/mediapilot/` when embedded. Likes use filenames as database keys, so equal filenames in different folders share like state.
+
+Bulk calls require a nonempty filename list. The default limits are 500 download selections and 50 upscale selections, configurable through the environment variables above. Duplicate names are processed once; the selection limit applies before deduplication. Upscale `submitted` entries contain `filename`, `prompt_id` and `comfy_input_image`; `failed` entries contain `filename` and `error`. Partial success returns HTTP 200; if all attempted submissions fail, HTTP 502 contains `detail.submitted` and `detail.failed`. Inspect both lists before retrying to avoid duplicate jobs.
+
+MediaPilot serves files through `/output/{path}`, `/thumbs/{path}` and `/invoke/{path}`, and its frontend through `/` and `/static/{path}`. Its own schema and interactive docs live at `/openapi.json`, `/docs`, and `/redoc`; prefix those with `/mediapilot` in ControlPilot. These surfaces follow the applicable authentication gates. MediaPilot sessions live in memory and disappear on restart.
+
+Example move within the gallery, using a cookie jar with the required login cookies:
+
+```bash
+curl --fail-with-body -sS -b "$COOKIE_JAR" -X POST \
+  'http://localhost:7878/mediapilot/tag?filename=example.png&old_folder=_root&new_folder=selected'
+```
 
 ## 🧪 Thumbnail Pre-generation
 

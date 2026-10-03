@@ -280,9 +280,9 @@ class TestAPIIntegration:
     def test_health_check(self):
         """Test API health check endpoint"""
         client = TestClient(app)
-        response = client.get("/api/health")
+        response = client.get("/healthz")
         assert response.status_code == 200
-        assert response.json()["status"] == "healthy"
+        assert response.json() == {"ok": True}
 ```
 
 #### End-to-End Tests

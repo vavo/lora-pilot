@@ -89,17 +89,21 @@ Notes:
 
 ## API (core)
 
+These paths are relative to MediaPilot; prefix them with `/mediapilot` when using the embedded ControlPilot app. See the [API request and response contracts](../../docs/components/mediapilot.md#api-request-and-response-contracts) for payloads, cookies, pagination and bulk-result handling.
+
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/auth/status` | `GET` | Auth enabled/authenticated flags |
 | `/auth/login` | `POST` | Login with password |
+| `/auth/logout` | `POST` | Invalidate session and clear cookie |
+| `/healthz` | `GET` | Health check |
 | `/images` | `GET` | Paginated image listing |
 | `/folders` | `GET` | Folder/tag list |
 | `/folders` | `POST` | Create folder/tag |
 | `/like/{filename}` | `POST` | Like image |
 | `/unlike/{filename}` | `POST` | Unlike image |
 | `/image/{filename}` | `DELETE` | Delete root image |
-| `/image/{folder}/{filename}` | `DELETE` | Delete image in folder |
+| `/image/{folder:path}/{filename}` | `DELETE` | Delete image in folder |
 | `/download/bulk` | `POST` | Download selected images as ZIP |
 | `/images?search=...` | `GET` | Smart metadata search in image listing |
 | `/upscale/bulk` | `POST` | Queue selected images for ComfyUI upscale |

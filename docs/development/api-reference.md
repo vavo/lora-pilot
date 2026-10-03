@@ -1,16 +1,48 @@
 # API Reference
 
-_Last updated: 2026-09-20_
+_Last updated: 2026-10-03_
 
-ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
+ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`). This reference covers first-party routes in ControlPilot, embedded MediaPilot and the internal Copilot sidecar. Upstream applications such as ComfyUI keep their own API contracts.
 
 ## Conventions
 
 - Base URL: `http://localhost:7878`
-- Response format: JSON (except proxied binary/static payloads)
-- OpenAPI UI: disabled (`docs_url=None`, `redoc_url=None`)
-- CORS: `allow_origins=["*"]`
-- `/api/*` responses get no-cache headers from middleware
+- Request bodies use JSON unless a route specifies multipart fields or query parameters. Bodyless actions need no `{}` payload.
+- Response format: JSON, except file downloads, images, static assets and proxy responses. Successful handlers normally return HTTP 200, including queued jobs; inspect their state fields for completion.
+- OpenAPI schema: `GET /openapi.json`. Swagger UI and ReDoc are disabled. The schema describes typed inputs but omits middleware authentication, WebSockets, mounted apps and fields accepted through untyped dictionaries. The multi-method Comfy gateway currently shares operation IDs across methods, so normalize those IDs before generating a client.
+- CORS: `CORS_ALLOWED_ORIGINS` is a comma-separated list, default `*`. `CORS_ALLOW_CREDENTIALS` defaults to false for the wildcard and true for an explicit origin list.
+- `/api/*` responses receive no-cache headers after handler execution.
+- `GET /healthz` returns `{"ok":true}` without authentication. It checks the Portal process, not GPU or downstream service readiness.
+- Paths and filenames refer to the server/container filesystem. URL-encode path parameters and query values.
+
+## Authentication and settings
+
+ControlPilot defaults to password protection off. Once enabled, requests to `/api/*`, `/dpipe/*`, `/proxy/comfy/*` and the MediaPilot mount require the `controlpilot_session` cookie. Exceptions include ControlPilot login/status, MediaPilot login/status/health and MediaPilot static assets. The root frontend and `/openapi.json` remain outside this password gate. `/ws/comfy` checks the ControlPilot cookie separately.
+
+Log in with `POST /api/settings/auth/login` and JSON `{"password":"..."}`; preserve the response cookie for subsequent requests. `GET /api/settings/auth/status` returns `enabled` and `authenticated`. With protection disabled, it reports authenticated without a cookie. An invalid password or missing session on a protected route returns HTTP 401. Logout removes the caller's cookie. Changing the password invalidates cookies derived from the previous password.
+
+There is no general ControlPilot bearer-token API. The optional Comfy token applies only to `/comfy/*` and `/comfy/ws`; it cannot authenticate Settings, training, model downloads or `/proxy/comfy/*`.
+
+| Method | Path | Input and result |
+|---|---|---|
+| `GET` | `/api/settings` | Auth/secret-presence flags, `comfy_access`, theme/sidebar, shutdown defaults, Copilot defaults and Jupyter origin pattern; no stored secret values |
+| `GET` | `/api/settings/auth/status` | Public login state |
+| `POST` | `/api/settings/auth/login` | JSON `{"password":"..."}`; sets session cookie when protection is enabled |
+| `POST` | `/api/settings/auth/logout` | No body; clears session cookie |
+| `POST` | `/api/settings/password` | `{"enabled":true,"password":"..."}`; nonempty password required when enabling; `{"enabled":false}` removes protection |
+| `POST` | `/api/settings/ui` | Required `theme` and `sidebar_compact`; `dark` selects dark, other theme values select light |
+| `POST` | `/api/settings/shutdown-defaults` | `shutdown_mode`: `""`, `stop`, or `remove`; `hours`, `mins`, `secs` default to 0, 1, 0 and clamp to 0–99, 0–59, 0–59; saves defaults without scheduling |
+| `POST` | `/api/settings/copilot-defaults` | Required `allow_all_urls` boolean |
+| `POST` | `/api/settings/jupyter` | Optional `token` (omit/null preserves; empty clears), `allow_origin_pat` (defaults empty); saves values and restarts Jupyter |
+| `POST` | `/api/settings/copilot/restart` | No body; restarts the sidecar after token/settings changes |
+| `POST` | `/api/settings/mediapilot/password` | `{"password":"..."}`; empty clears the separate MediaPilot password |
+| `POST` | `/api/settings/comfy/protection` | `{"enabled":true}` or false; stops/starts ComfyUI when policy changes |
+| `POST` | `/api/settings/comfy/token` | No body; generates/replaces token, returns plaintext `token` once with access status |
+| `DELETE` | `/api/settings/comfy/token` | No body; revokes token without disabling protection |
+
+Comfy policy/token changes require an enabled ControlPilot password, its session cookie, and an `Origin` header whose host (including port) matches `Host`. Missing password returns 422; rejected origin returns 403. Send the public origin when using a reverse proxy. The same rule applies to changing the ControlPilot password while Comfy protection is on; disable Comfy protection before removing that password (otherwise 409).
+
+Comfy access status contains `enabled`, `token_set` and `gateway_path`. A protection change can return 503 after saving the policy if ComfyUI fails to restart; read Settings and service logs before retrying. Jupyter settings also persist before the restart attempt. See [Comfy access protection](../configuration/comfy-access.md) for the gateway setup.
 
 ## Workspace status API
 
@@ -27,9 +59,10 @@ ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`).
 | `POST` | `/api/services/{name}/{action}` | `action`: `start`, `stop`, `restart` |
 | `POST` | `/api/services/{name}/update/start` | Starts async update job |
 | `GET` | `/api/services/{name}/update/status` | Update job state/tail |
-| `POST` | `/api/services/{name}/settings/autostart` | Body: `{"enabled": true|false}` |
+| `POST` | `/api/services/{name}/settings/autostart` | Body: `{"enabled":true}` or `{"enabled":false}` |
 | `GET` | `/api/services/{name}/log` | Query: `lines` (default `100`) |
-| `GET` | `/api/tensorboard/status` | Shared TensorBoard source status for Diffusion Pipe + TrainPilot + Kohya + AI Toolkit |
+| `GET` | `/api/tensorboard/status` | `port`, per-source `sources`, and `server` reachability/service state/start eligibility |
+| `POST` | `/api/tensorboard/start` | No body; starts the DiffPipe service in TensorBoard-only mode; returns `{"status":"starting"}` |
 
 Known service names:
 
@@ -42,6 +75,10 @@ Known service names:
 - `ai-toolkit`
 - `controlpilot`
 - `copilot`
+
+Service listings return an array with `name`, `display`, `state`, `state_raw`, `running` and `autostart`. Version listings return installed/latest metadata and `update_supported`; update start accepts optional `{"target_version":"..."}`. Image-managed Git services reject runtime updates with 400. Poll update status for `state`, `error`, `last_line` and `output_tail`; no recorded job returns `state: "idle"`. Service log responses contain `log` and `path`.
+
+TensorBoard status groups event directories under `diffpipe`, `trainpilot`, `kohya` and `ai-toolkit`, with run-level loaded/recent flags. `/api/tensorboard/start` returns 409 if `DIFFPIPE_CONFIG` would launch training, or if the service is not stopped/exited/fatal. A successful start response does not prove the TensorBoard HTTP server is ready; poll status.
 
 ## Models API
 
@@ -87,33 +124,47 @@ python3 -m unittest discover -s tests -p 'test_model_install.py'
 | `POST` | `/api/hf-token` | Set HF token (query or JSON body) |
 | `GET` | `/api/hf-token` | Returns `{ "set": bool }` |
 
+Model pull actions take no body. Blocking pull returns `status` and `output`; background start returns a job, and polling can return `state` values `idle`, `queued`, `running`, `done`, or `error`. Jobs include `name`, `pid`, nullable `progress_pct`, `last_line`, `error`, timestamps and `output_tail`. `/api/models/pulls` wraps the list in `jobs`. Delete returns `status` and `deleted`, and rejects active downloads with 409.
+
+Workflow plan accepts `{"optional":[]}` (optional file `name` values from the workflow catalog, not manifest model IDs). Inspect `files`, `can_install`, and `plan_id`; install requires the same selection plus `plan_id`. A stale/missing plan or failed checks returns 409. Success returns `jobs` and `installed_count`.
+
+Set the Hugging Face token with JSON `{"token":"..."}`; empty clears it. The legacy `token` query parameter takes precedence when both are supplied. Prefer JSON to keep the token out of URLs.
+
 ## Dataset + TagPilot API
 
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/datasets` | Lists dataset dirs (`/workspace/datasets/1_*`) with image counts, caption coverage, and preview paths |
-| `GET` | `/api/datasets/{name}/preview?file={relative_path}` | Returns a bounded JPEG thumbnail for a dataset image |
+| `GET` | `/api/datasets/{name}/preview` | Required query `file`: relative image path; returns a bounded JPEG thumbnail |
 | `POST` | `/api/datasets/create` | Body: `{"name":"..."}` |
 | `POST` | `/api/datasets/upload` | Multipart `file` zip upload + extract |
 | `DELETE` | `/api/datasets/{name}` | Deletes dataset + best-effort zip cleanup |
 | `PATCH` | `/api/datasets/{name}` | Body: `{"name":"new_name"}` |
-| `GET` | `/api/tagpilot/load` | Query: `name` |
+| `GET` | `/api/tagpilot/load` | Query: required `name`, optional `offset` and `limit`; returns base64 files |
 | `POST` | `/api/tagpilot/save` | Query `name` + multipart `file` |
-| `POST` | `/api/tagpilot/save-item` | Incremental item save/finalize endpoint |
+| `POST` | `/api/tagpilot/save-item` | Required query `name` plus multipart fields below |
 | `GET` | `/api/tagpilot/providers` | Provider status for Gemini/Grok/OpenAI; does not expose secret values |
 | `POST` | `/api/tagpilot/providers/{provider}/key` | Saves or clears the provider key in `/workspace/config/secrets.env` |
-| `POST` | `/api/tagpilot/generate` | Multipart image generation through Gemini/Grok/OpenAI |
+| `POST` | `/api/tagpilot/generate` | Multipart image input; generates tags or a caption through Gemini/Grok/OpenAI |
 
-Dataset entries retain `name`, `label`, `images`, `size_bytes`, `has_tags`, and `path`, and add `captioned_images` and `preview_files`. Caption coverage counts images with a matching nonempty `.txt` or `.caption` file in the same directory. `preview_files` contains up to three relative image paths; URL-encode the dataset name and query value when requesting a preview.
+Dataset entries retain `name`, `display`, `images`, `size_bytes`, `has_tags`, and `path`, and add `captioned_images` and `preview_files`. Caption coverage counts images with a matching nonempty `.txt` or `.caption` file in the same directory. `preview_files` contains up to three relative image paths; URL-encode the dataset name and query value when requesting a preview.
 
-The preview route preserves aspect ratio within 180 by 180 pixels and returns `image/jpeg`. It rejects absolute paths, traversal, symbolic links, non-image files, inputs larger than 32 MiB, and images above 40 million pixels. Responses use private caching and follow ControlPilot's authentication policy.
+The preview route preserves aspect ratio within 180 by 180 pixels and returns `image/jpeg`. It rejects absolute paths, traversal, symbolic links, non-image files, inputs larger than 32 MiB, and images above 40 million pixels. The handler sets private cache headers, but Portal middleware overrides them with API no-store headers. Previews follow ControlPilot's authentication policy.
+
+Dataset create normalizes names to `1_<name>` and returns `status`/`path`; an existing name returns 400. ZIP upload derives the dataset name from the archive filename and replaces an existing dataset of that name. TagPilot ZIP save also replaces the dataset contents. Default archive limits are 700 MiB uploaded, 10,000 members, 4 GiB extracted total, 2 GiB per member and a 100:1 compression ratio; configuration can override them. Invalid archive paths/symlinks are rejected. Dataset deletion removes its directory and attempts to remove matching ZIPs.
+
+TagPilot load returns `name`, `files`, `offset`, `limit`, `total`, and `returned`; each file has `name`, `mime` and `b64`. Offset defaults to 0. Limit defaults to `TAGPILOT_LOAD_DEFAULT_LIMIT` (0, meaning all files); positive limits cap at `TAGPILOT_LOAD_MAX_LIMIT` (1,000). Negative pagination values return 400.
+
+Provider-key writes take JSON `{"api_key":"..."}`; empty clears the key. Generation defaults to `mode=tags` and an empty prompt. It returns text, not a generated image.
 
 `/api/tagpilot/save-item` multipart fields:
 
 - `file`
 - `tags` (optional)
-- `reset` (optional bool)
-- `done` (optional bool)
+- `reset` (default false; true deletes the existing dataset before writing this item)
+- `done` (default false; true also rebuilds the dataset ZIP)
+
+Item save writes a matching `.txt` caption and returns `status`, `path`, `file` and `done`, plus `zip` on finalization. Duplicate filenames receive a unique suffix.
 
 `/api/tagpilot/generate` multipart fields:
 
@@ -145,7 +196,7 @@ Sidecar URL is configured by `COPILOT_SIDECAR_URL` (default `http://127.0.0.1:78
 
 `GET /api/datasets/{name}/quality` returns `complete`, `images`, finding counts and relative file findings without modifying the dataset. Scans are bounded and incomplete results are explicit.
 
-`GET /api/training/first-lora` returns guide progress. `POST /api/training/first-lora/install` installs the bundled sample without overwriting existing files; `POST /api/training/first-lora/reviewed` records explicit review of the current dataset fingerprint. The guide uses the existing training and comparison APIs.
+`GET /api/training/first-lora` returns guide progress. `GET /api/training/first-lora/preview` returns the bundled sample PNG. `POST /api/training/first-lora/install` installs the bundled sample without overwriting existing files; `POST /api/training/first-lora/reviewed` records explicit review of the current dataset fingerprint. The guide uses the existing training and comparison APIs.
 
 `POST /api/training/recommendation` accepts the training request and returns GPU capacity, suggested settings and optional evidence from a matching successful run. Training requests accept an optional `hardware` object containing `train_batch_size`, `gradient_accumulation_steps`, `network_dim` and FLUX-only `blocks_to_swap`. New run records can include sampled `performance` data. Missing measurements do not block training.
 
@@ -161,7 +212,8 @@ The guided interface uses `/api/training`. These routes follow ControlPilot auth
 | `POST` | `/api/training/queue` | Accepts `{"paused":true}` or `false`; pausing does not stop current work. |
 | `GET` | `/api/training/runs/{id}` | Returns status, artifacts, timing, saved configuration, effective configuration when available, and up to 500 recent log lines. |
 | `POST` | `/api/training/runs/{id}/cancel` | Cancels a queued run or stops a currently managed process. |
-| `POST` | `/api/training/runs/{id}/repeat` | Queues a new run using saved configuration and the current dataset. |
+| `POST` | `/api/training/runs/{id}/repeat` | No body; queues a new run using saved configuration and the current dataset. |
+| `POST` | `/api/training/runs/{id}/resume` | No body; queues a continuation from saved state or weights when `recovery_option` is available. |
 | `POST` | `/api/training/runs/{id}/library` | Copies successful artifacts by default; `{"action":"move"}` removes originals after all library destinations are verified. Moved files remain accessible through the run. |
 | `POST` | `/api/training/runs/{id}/comparison/prepare` | Publishes selected or all checkpoints, checks live ComfyUI nodes/models, and saves the comparison graph without queueing it. |
 | `GET` | `/api/training/runs/{id}/comparison/workflow` | Downloads the prepared API-format workflow JSON. |
@@ -175,7 +227,11 @@ The run listing accepts `search` (LoRA or dataset name, up to 200 characters), `
 
 Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path`. Supported families are `sdxl`, `flux1`, `sd15`, `sd35_medium`, and `sd35_large`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family; the chosen profile is applied to the new run.
 
-Run creation returns the new record and UUID. Each run has a separate output directory. The queue accepts at most 50 active or waiting runs and returns HTTP 409 when full. Missing models fail before queueing. A dataset changed since queueing fails at launch, with an explanation saved in the record. After a restart, interrupted processes are not automatically resumed and pending dispatch remains paused. Only one ControlPilot worker can own the queue for a workspace.
+Only `dataset_name` and `output_name` are required; `family` defaults to `sdxl`, `profile` to `regular`, and `toml_path` to empty. Hardware override ranges are batch size 1–8, accumulation 1–16, network dimension 4–128 and blocks to swap 0–35.
+
+Run creation returns the record with its 32-character hexadecimal `id`. Status values include `queued`, `running`, `stopping`, `succeeded`, `failed`, `stopped`, `cancelled` and `interrupted`. Each run has a separate output directory. The queue accepts at most 50 active or waiting runs and returns HTTP 409 when full. Missing models fail before queueing. A dataset changed since queueing fails at launch, with an explanation saved in the record. After a restart, interrupted processes are not automatically resumed and pending dispatch remains paused. Only one ControlPilot worker can own the queue for a workspace.
+
+Run detail exposes nullable `recovery_option`. Resume creates a new run from complete saved optimizer/training state, or from an available checkpoint with a fresh optimizer and full training schedule. An unchanged dataset is required. Missing recovery data, an existing active continuation, an orphan process, or dataset changes return 409. Repeat starts fresh using the current dataset instead.
 
 Comparison requests contain `prompt` and either `artifact` for one checkpoint or `all_checkpoints: true` for every saved checkpoint, with optional `seed` and `strength`. All-checkpoint comparisons support up to 64 saved files and return images in baseline, training checkpoint, then final-file order, with filename labels. Seeds range from zero to `4294967295`; strength ranges from zero to two. A successful training record and saved artifact are required. Active managed training and duplicate or unconfirmed comparison submissions return HTTP 409. A lost submission response is persisted as `unknown`, requiring inspection and an explicit reset before retrying. Resetting tracking does not cancel a ComfyUI job or remove its outputs.
 
@@ -196,7 +252,8 @@ After the user explicitly confirms the review, `POST /api/storage/cleanup` accep
 | `POST` | `/api/trainpilot/model-check` | Checks TOML-referenced checkpoint/VAE paths |
 | `GET` | `/api/trainpilot/logs` | Combined logs, process state, current-run metadata, and LoRA artifacts |
 | `POST` | `/api/trainpilot/move-loras` | Body: `{"run_id":"..."}`; moves eligible files into the shared LoRA directory |
-| `GET` | `/api/trainpilot/toml` | Returns default TOML content |
+| `GET` | `/api/trainpilot/toml` | Returns `content` and `path` for the default TOML |
+| `POST` | `/api/trainpilot/toml` | JSON `{"content":"..."}`; validates syntax and overwrites the default TOML; returns `status` and `path` |
 
 `/api/trainpilot/start` body:
 
@@ -238,7 +295,11 @@ Required input fields for `/dpipe/train/start` include:
 - `llm_path`
 - `clip_path`
 
-`learning_rate` is accepted as payload key alias for `lr`.
+Send `learning_rate` in JSON (default `0.00002`); `lr` is the Python attribute name, not a supported request key. Additional defaults include `epochs=1000`, `batch_size=1`, `rank=32`, `gradient_accumulation_steps=4`, `num_repeats=10`, `save_every=2`, and `eval_every=1`. See `TrainRequest` in `/openapi.json` for the full option list.
+
+`resolutions_input`, `frame_buckets` and nonempty `ar_buckets` are JSON-encoded **strings**, for example `"[512]"`, `"[1, 33]"` and `"[0.5, 1, 2]"`. `betas` accepts either a list or a JSON-encoded list. Dataset/config/output paths must stay within `/workspace/datasets`, `/workspace/configs` (plural), and `/workspace/outputs`, respectively, adjusted by `WORKSPACE_ROOT`. Model validation accepts local paths beneath the workspace, `/opt`, or the service user's home.
+
+Validate takes just the four model-path fields and returns `{"ok":true,"missing":[]}` or `ok:false` with missing field/path entries. Start returns `status`, `pid` and the generated config path. Stop accepts an optional **query** `pid`; logs accepts query `pid` and `limit` (default 500) and returns `pid`, `lines`, and `activity`. An untracked stop returns `status: "noop"`. Process/log bookkeeping is in memory; restarting Portal clears it. A second start returns 400 while another DiffPipe run is starting/running, and detected managed-training conflicts return 409.
 
 ## Comfy Integration API
 
@@ -247,14 +308,19 @@ Required input fields for `/dpipe/train/start` include:
 | `GET` | `/api/comfy/status` | Comfy reachability probe |
 | `GET` | `/api/comfy/latest-image` | Latest generated image metadata |
 | `GET` | `/proxy/comfy/{path:path}` | HTTP proxy to Comfy |
-| `WS` | `/ws/comfy` | WebSocket bridge |
+| `WS` | `/ws/comfy` | Preview WebSocket bridge using `clientId=portal_preview`; ControlPilot cookie policy |
+| `GET` | `/comfy` | Redirects to `/comfy/` |
+| `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS` | `/comfy/{path:path}` | Full streaming ComfyUI gateway; preserves query strings and upstream status/content |
+| `WS` | `/comfy/ws` | Full WebSocket gateway; forwards the caller's query string |
+
+The full gateway is public when Comfy protection is off. When on, use a ControlPilot cookie or `Authorization: Bearer <Comfy token>`. Cookie-authenticated writes and WebSockets also require a matching `Origin`; bearer-token requests do not. Unauthenticated HTTP calls return 401 (HTML requests to the gateway root redirect to ControlPilot); rejected WebSocket authentication uses close code 4401. Gateway HTTP connection failures return 502. The read-only `/proxy/comfy/{path:path}` route remains subject to ControlPilot authentication regardless of Comfy protection.
 
 ## Telemetry + Shutdown API
 
 | Method | Path | Notes |
 |---|---|---|
 | `GET` | `/api/telemetry` | Host/container/GPU snapshot |
-| `GET` | `/api/telemetry/history` | Query: `max_seconds` |
+| `GET` | `/api/telemetry/history` | Query: `max_seconds` (0/default returns all retained samples; positive values select the recent window) |
 | `GET` | `/api/runpod/status` | Selected current-pod fields, workspace allocation and optional UTC-day billing; credentials stay on the backend |
 | `POST` | `/api/shutdown/schedule` | Body: `{"value":30,"unit":"minutes"}` |
 | `POST` | `/api/shutdown/cancel` | Cancels pending shutdown |
@@ -278,7 +344,8 @@ Shutdown `unit` must be one of:
 | `GET` | `/api/docs` | Returns top-level README content |
 | `GET` | `/api/changelog` | Returns CHANGELOG content |
 | `GET` | `/api/docs/sitemap` | Returns `docs/README.md` |
-| `GET` | `/api/docs/file` | Query: `path` (safe relative `.md` only) |
+| `GET` | `/api/docs/file` | Query: `path` (safe relative `.md` only); returns `content` and `source` |
+| `GET` | `/api/docs/assets/{path:path}` | Streams an image beneath `docs/assets`; path excludes the `assets/` prefix |
 | `GET` | `/api/mediapilot/status` | MediaPilot embed/env status summary |
 
 `/api/docs/file` rejects:
@@ -287,9 +354,15 @@ Shutdown `unit` must be one of:
 - traversal (`..`)
 - non-`.md` targets
 
+Docs content routes return JSON with `content` and `source`. Assets accept PNG, JPEG, GIF, WebP and SVG; invalid paths/types return 400 and missing files return 404.
+
+## MediaPilot API
+
+MediaPilot mounts at `/mediapilot` when available; check `/api/mediapilot/status` first. Its paths do not include `/api`. For example, list images at `/mediapilot/images`. See the [MediaPilot API contract](../components/mediapilot.md#api-request-and-response-contracts) for all routes, query parameters, bulk payloads and responses. Mounted MediaPilot has its own `/mediapilot/openapi.json`, `/mediapilot/docs`, and `/mediapilot/redoc`, subject to its authentication. The Portal schema does not include these mounted routes.
+
 ## Copilot Sidecar API (Internal Service)
 
-Default base URL: `http://127.0.0.1:7879`
+Default base URL: `http://127.0.0.1:7879`. The sidecar has no authentication middleware; keep it internal and use the authenticated `/api/copilot/*` Portal routes for clients. Its schema is `GET /openapi.json`; Swagger/ReDoc are disabled.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -304,23 +377,60 @@ Default base URL: `http://127.0.0.1:7879`
 - `allow_all_tools` (default `true`)
 - `allow_all_paths` (default `true`)
 - `allow_all_urls` (default `false`)
-- `timeout_seconds` (optional override)
+- `timeout_seconds` (positive integer; defaults to `COPILOT_TIMEOUT_SECONDS`, normally 1,800)
+
+Chat returns `ok`, `returncode`, `duration_seconds`, `stdout`, `stderr` and `command`. A CLI failure still returns HTTP 200 with `ok:false`; a CLI timeout returns `returncode:124`. Missing CLI returns 503. Portal-to-sidecar transport timeouts return 504. Portal status reports an unreachable sidecar as HTTP 200 with `sidecar_reachable:false`; clients must inspect the payload.
 
 ## Error Patterns
 
+FastAPI errors normally use `{"detail":"message"}`; validation errors put a structured list in `detail`. Some proxies and bulk operations return other shapes, described above.
+
 - `400`: invalid action or payload values
+- `401`: missing session or invalid credentials
+- `403`: rejected same-origin Settings request
 - `404`: unknown resource/service/model or missing file
-- `422`: missing/invalid typed input
+- `409`: busy workload, stale review token/plan, or conflicting resource state
+- `413`: upload or dataset-preview size limits exceeded
+- `422`: missing/invalid typed input or required settings
+- `424`: TagPilot provider failure
 - `500`: subprocess/runtime failures
+- `502`, `503`, `504`: upstream, service availability or timeout failures
 
 ## Quick Smoke Calls
 
+These read-only calls use the default local base URL. Use the public HTTPS origin for a remote deployment. If password protection is off, omit the login and cookie options.
+
 ```bash
-curl -s http://localhost:7878/api/services
-curl -s http://localhost:7878/api/models
-curl -s http://localhost:7878/api/telemetry
-curl -s http://localhost:7878/api/docs/sitemap
+BASE_URL=http://localhost:7878
+curl --fail-with-body -sS "$BASE_URL/healthz"
+curl --fail-with-body -sS "$BASE_URL/api/settings/auth/status"
+
+# With protection enabled, supply the password from a local JSON file.
+# login.json contains {"password":"your ControlPilot password"}.
+COOKIE_JAR=$(mktemp)
+chmod 600 "$COOKIE_JAR"
+curl --fail-with-body -sS -c "$COOKIE_JAR" \
+  -H 'Content-Type: application/json' --data-binary @login.json \
+  "$BASE_URL/api/settings/auth/login"
+curl --fail-with-body -sS -b "$COOKIE_JAR" "$BASE_URL/api/services"
+curl --fail-with-body -sS -b "$COOKIE_JAR" "$BASE_URL/api/models"
+curl --fail-with-body -sS -b "$COOKIE_JAR" "$BASE_URL/api/telemetry"
+curl --fail-with-body -sS -b "$COOKIE_JAR" --get \
+  --data-urlencode 'path=development/api-reference.md' "$BASE_URL/api/docs/file"
 ```
+
+Optional checks for an existing dataset; these do not start training:
+
+```bash
+curl --fail-with-body -sS -b "$COOKIE_JAR" \
+  "$BASE_URL/api/datasets/1_my_dataset/quality"
+curl --fail-with-body -sS -b "$COOKIE_JAR" \
+  -H 'Content-Type: application/json' \
+  -d '{"dataset_name":"1_my_dataset","output_name":"my_run","family":"sdxl","profile":"quick_test"}' \
+  "$BASE_URL/api/training/preflight"
+```
+
+Create `1_my_dataset` and install its required models first. Preflight returns checks and conflicts; inspect them before posting the same payload to `/api/training/runs`. After the calls, remove the temporary cookie jar with `rm -f "$COOKIE_JAR"`.
 
 ## Related
 

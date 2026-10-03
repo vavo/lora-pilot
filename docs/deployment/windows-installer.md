@@ -799,7 +799,7 @@ class TestHealthCheck:
         # Wait for services to start
         time.sleep(60)
         
-        response = requests.get("http://localhost:7878/api/health", timeout=10)
+        response = requests.get("http://localhost:7878/healthz", timeout=10)
         assert response.status_code == 200
         
         health_data = response.json()

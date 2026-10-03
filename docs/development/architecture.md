@@ -354,7 +354,7 @@ class DatasetManager:
 class ServiceRegistry:
     def __init__(self):
         self.services = {
-            'controlpilot': {'port': 7878, 'health': '/api/health'},
+            'controlpilot': {'port': 7878, 'health': '/healthz'},
             'kohya': {'port': 6666, 'health': '/'},
             'comfyui': {'port': 5555, 'health': '/system_stats'},
             'invokeai': {'port': 9090, 'health': '/api/v1/session'}
@@ -429,18 +429,10 @@ ports:
 ```
 
 #### Access Control
-```python
-# API authentication
-class SecurityMiddleware:
-    def __init__(self):
-        self.admin_password = os.getenv('SUPERVISOR_ADMIN_PASSWORD')
-    
-    async def authenticate(self, request: Request):
-        """Authenticate API requests"""
-        auth_header = request.headers.get('Authorization')
-        if not self.validate_token(auth_header):
-            raise HTTPException(401, "Unauthorized")
-```
+
+ControlPilot uses optional password protection and the `controlpilot_session` cookie. Log in with `POST /api/settings/auth/login` and a JSON password, then send the cookie on protected API requests. It does not use `SUPERVISOR_ADMIN_PASSWORD` or a general bearer token for API authentication.
+
+The ComfyUI gateway has separate optional protection and a Comfy-only bearer token. Embedded MediaPilot can also require its own password cookie. See [API authentication and settings](api-reference.md#authentication-and-settings) for route coverage, public exceptions and same-origin requirements.
 
 ### Data Security
 

@@ -15,7 +15,7 @@ Run this comprehensive diagnostic to identify issues:
 docker exec -it lora-pilot bash
 
 # Run health check
-curl -s http://localhost:7878/api/health || echo "ControlPilot not responding"
+curl -s http://localhost:7878/healthz || echo "ControlPilot not responding"
 nvidia-smi || echo "GPU not detected"
 df -h /workspace || echo "Workspace not accessible"
 python -c "import torch; print('PyTorch:', torch.__version__, 'CUDA:', torch.cuda.is_available())"

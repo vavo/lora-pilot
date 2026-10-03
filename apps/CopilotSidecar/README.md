@@ -17,6 +17,10 @@ It is intentionally simple:
 
 ## API
 
+The sidecar has no authentication middleware. Keep it internal and use ControlPilot’s `/api/copilot/*` routes for authenticated clients. See the [sidecar API reference](../../docs/development/api-reference.md#copilot-sidecar-api-internal-service) for response and error handling.
+
+- `GET /health` returns `{"ok":true}`
+- `GET /openapi.json` returns the schema (Swagger/ReDoc UI disabled)
 - `GET /status`
 - `POST /chat` JSON:
   - `prompt` (required)
@@ -24,3 +28,6 @@ It is intentionally simple:
   - `allow_all_tools` (default true)
   - `allow_all_paths` (default true)
   - `allow_all_urls` (default false)
+  - `timeout_seconds` (optional positive integer; defaults to `COPILOT_TIMEOUT_SECONDS`, normally 1800)
+
+Chat returns `ok`, `returncode`, `duration_seconds`, `stdout`, `stderr` and `command`. CLI errors and timeouts use HTTP 200 with `ok:false`; a timeout uses exit code 124.
