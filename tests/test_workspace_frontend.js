@@ -55,7 +55,7 @@ test('only a successful queue submission clears the unfinished draft', async () 
   const store=storage();
   const nodes=new Map();
   const node=id=>{
-    if (!nodes.has(id)) nodes.set(id,{value:'',textContent:'',hidden:false,addEventListener(){},classList:{toggle(){}},replaceChildren(){},append(){}});
+    if (!nodes.has(id)) nodes.set(id,{value:'',textContent:'',hidden:false,reportValidity(){return true;},addEventListener(){},classList:{toggle(){}},replaceChildren(){},append(){}});
     return nodes.get(id);
   };
   const submitted={family:'sdxl',profile:'regular',dataset_name:'portraits',output_name:'Monday',source_run_id:null};
@@ -76,6 +76,7 @@ test('only a successful queue submission clears the unfinished draft', async () 
     },
   });
   page.window.fetchJson = page.fetchJson;
+  page.window.reviewDataset = async () => true;
   for(const file of ['screen-lifecycle','training-draft','training-workspace'])vm.runInContext(fs.readFileSync(`apps/Portal/static/js/${file}.js`,'utf8'),page);
   await page.window.trainingWorkspace.init();
   assert.equal(node('tp-output').value,'Monday');
@@ -86,8 +87,21 @@ test('only a successful queue submission clears the unfinished draft', async () 
   await page.window.trainingWorkspace.submit();
   assert.equal(context.createTrainingDraft(store).read().output_name,'Monday');
   rejectSubmission=false;
+  page.window.reviewDataset = async () => false;
+  await page.window.trainingWorkspace.submit();
+  assert.equal(context.createTrainingDraft(store).read().output_name,'Monday');
+  page.window.reviewDataset = async () => true;
   await page.window.trainingWorkspace.submit();
   assert.equal(context.createTrainingDraft(store).read(),null);
+});
+
+test('GPU overrides persist in drafts and exclude unsupported settings', () => {
+  const store = storage(), draft = context.createTrainingDraft(store);
+  draft.save({family:'flux1', profile:'quick_test', dataset_name:'robot', output_name:'Robot',
+    hardware:{train_batch_size:2, network_dim:32, blocks_to_swap:0, api_key:'PRIVATE', gradient_accumulation_steps:99}});
+  const saved = draft.read();
+  assert.deepEqual(JSON.parse(JSON.stringify(saved.hardware)), {train_batch_size:2, network_dim:32, blocks_to_swap:0});
+  assert.equal(JSON.stringify(saved).includes('PRIVATE'), false);
 });
 
 vm.runInContext(fs.readFileSync('apps/Portal/static/js/task-feedback.js','utf8'),context);

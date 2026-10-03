@@ -70,6 +70,13 @@ def complete_checkpoint(path):
         return False
 
 
+class HardwareOverrides(BaseModel):
+    train_batch_size: int | None = Field(default=None, ge=1, le=8)
+    gradient_accumulation_steps: int | None = Field(default=None, ge=1, le=16)
+    network_dim: int | None = Field(default=None, ge=4, le=128)
+    blocks_to_swap: int | None = Field(default=None, ge=0, le=35)
+
+
 class TrainingRequest(BaseModel):
     dataset_name: str = Field(min_length=1, max_length=200)
     output_name: str = Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
@@ -77,6 +84,7 @@ class TrainingRequest(BaseModel):
     profile: Literal['quick_test', 'regular', 'high_quality'] = 'regular'
     toml_path: str = ''
     source_run_id: str | None = Field(default=None, pattern=r'^[a-f0-9]{32}$')
+    hardware: HardwareOverrides = Field(default_factory=HardwareOverrides)
 
 
 class GuidedTraining:
@@ -128,7 +136,7 @@ class GuidedTraining:
                 **{key: str(self.models / relative) for key, (_, relative) in MODEL_FILES[family].items()},
                 network_dim=rank, network_alpha=rank,
                 network_train_unet_only=True, learning_rate=0.0001, optimizer_type='AdamW8bit',
-                lr_scheduler='constant', train_batch_size=1, max_train_steps=steps,
+                lr_scheduler='constant', train_batch_size=1, gradient_accumulation_steps=1, max_train_steps=steps,
                 mixed_precision='bf16', save_precision='bf16', save_model_as='safetensors',
                 save_every_n_steps=200, gradient_checkpointing=True, sdpa=True,
                 cache_latents=True, cache_latents_to_disk=True,
@@ -193,6 +201,10 @@ class GuidedTraining:
             raise HTTPException(409, 'The dataset changed while preparing recovery. Repeat the original run instead.')
         config = raw.get('_template') or self.template(spec)
         config = dict(config)
+        config.update({key: value for key, value in spec['hardware'].items() if value is not None
+                       and (key != 'blocks_to_swap' or spec['family'] == 'flux1')})
+        if spec['hardware']['network_dim'] is not None:
+            config['network_alpha'] = min(config.get('network_alpha', config['network_dim']), config['network_dim'])
         if raw.get('_recovery'):
             for key in ('resume', 'network_weights', 'initial_step', 'initial_epoch', 'skip_until_initial_step'):
                 config.pop(key, None)
@@ -258,7 +270,7 @@ class GuidedTraining:
         if spec['family'] in TRAINING_SCRIPTS:
             subsets = sorted({str((images / p.relative_to(dataset)).parent) for p in files if p.suffix.lower() in IMAGE_EXTENSIONS})
             dataset_config = directory / 'dataset.toml'
-            dataset_config.write_text(toml.dumps({'datasets': [dict(resolution=512 if spec['family'] == 'sd15' else 1024, batch_size=1, enable_bucket=True,
+            dataset_config.write_text(toml.dumps({'datasets': [dict(resolution=512 if spec['family'] == 'sd15' else 1024, batch_size=config.get('train_batch_size', 1), enable_bucket=True,
                 subsets=[dict(image_dir=path, num_repeats=1, caption_extension='.txt') for path in subsets])]}))
             config.update(dataset_config=str(dataset_config), output_dir=str(output), output_name=spec['output_name'],
                           logging_dir=str(self.workspace / 'logs/TrainPilot' / output.name), log_with='tensorboard')
@@ -282,6 +294,9 @@ class GuidedTraining:
                        PROFILE=spec['profile'], TOML=str(path), WORKSPACE_ROOT=str(self.workspace),
                        DATASET_ROOT=str(self.workspace / 'datasets'), OUTS_BASE=str(self.workspace / 'outputs'),
                        IMAGES_DIR=str(directory / 'training-images'), PYTHON_BIN=python)
+            for key, value in spec['hardware'].items():
+                if value is not None and key != 'blocks_to_swap':
+                    env['TRAINPILOT_OVERRIDE_' + key.upper()] = str(value)
             command, cwd = [str(script)], script.parent
         return subprocess.Popen(command, cwd=cwd, stdout=stream, stderr=subprocess.STDOUT,
                                 env=env, start_new_session=True)

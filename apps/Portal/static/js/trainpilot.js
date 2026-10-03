@@ -6,6 +6,7 @@ const tpProfiles = { quick_test: "Quick test", regular: "Balanced", high_quality
 
 window.initTrainpilot = async function (screen = window.createScreenLifecycle()) {
   tpScreen = screen;
+  const guideReady = window.firstLora.init(screen);
   tpStarting = false; tpMoving = false;
   const page = document.getElementById('tp-page');
   tpStatusKnown = false;
@@ -13,6 +14,8 @@ window.initTrainpilot = async function (screen = window.createScreenLifecycle())
   const explicitDataset = window.pendingTrainDataset;
   await loadTpDatasets();
     if (!screen.active) return;
+  await guideReady;
+  if (!screen.active) return;
   if (page && page === document.getElementById('tp-page')) await window.trainingWorkspace.init(explicitDataset, screen);
 };
 
@@ -39,7 +42,7 @@ function bindTpControls() {
   }));
   document.getElementById("tp-review-dataset").onclick = () => {
     const dataset = tpDatasets.find(d => d.name === document.getElementById("tp-dataset").value);
-    if (dataset) openTagpilotDataset(dataset.name);
+    if (dataset) window.reviewDataset(dataset.name, tpScreen);
   };
   document.getElementById("tp-move-loras").onclick = moveTrainpilotLoras;
   document.getElementById("tp-another").onclick = () => {

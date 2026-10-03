@@ -1,26 +1,24 @@
 # Product ideas
 
-_Last updated: 2026-09-21_
+_Last updated: 2026-10-03_
 
-These are proposals to investigate, not features you can use today or a schedule for delivery. Each idea starts with a user problem and a small way to test whether solving it would help. The [roadmap](roadmap.md) records implemented work and nearer-term priorities.
+This document separates implemented foundations from ideas that still need investigation. It is not a delivery schedule. Each idea starts with a user problem and a small way to test whether solving it would help. The [roadmap](roadmap.md) records implemented work and nearer-term priorities.
 
 ## Carry an experiment to another workspace
 
-A downloaded checkpoint preserves the trained weights, but someone using it later may also need the model family, trigger words, training settings, and sample prompts. An experiment export could package a selected checkpoint with a readable run summary and chosen comparison images. Begin by defining the manifest and showing an exact preview of included files. Dataset images, captions, logs, credentials, and machine-specific paths should require separate consideration rather than entering an export by default.
-
-Direct checkpoint downloads, saved configuration, and workflow JSON downloads already cover parts of this journey. A combined experiment package does not yet exist.
+The first experiment-export implementation now packages one selected checkpoint with a manifest, trigger words, sample prompt and optional comparison images after an exact file preview. It excludes datasets, logs, credentials and local paths. A future importer could validate model compatibility in a second workspace, but restoring optimizer state and moving private training data need separate designs.
 
 ## Compare checkpoints across a training run
 
-Try my LoRA compares a selected checkpoint with the base model. A contact sheet could extend that comparison across several checkpoints using the same prompts and seeds. You could look for the point where the subject becomes recognizable without losing flexibility. Start with a few selected checkpoints and show the generation count before submission; a large comparison can consume considerable GPU time.
+Try my LoRA already generates a baseline followed by every saved checkpoint with a shared prompt and seed. A useful next experiment is comparison across several prompts, with generation count and GPU cost made clear before submission. The current grid is a single-prompt comparison.
 
 ## Recommend a starting profile from measured runs
 
-A hardware-aware setup could suggest a starting profile using the model family, available VRAM, image resolution, and observed results from verified training runs. The useful outcome would be a stated assumption and a configuration you can inspect. Before building the recommendation UI, collect a small benchmark set and record hardware, dependency versions, peak memory, and failures. VRAM alone does not establish whether a job will succeed.
+Editable GPU suggestions and local run measurements are now implemented. The next evidence gap is a small, published SDXL and FLUX benchmark set across common GPU capacities, including dependency versions, dataset shape, memory peaks and failures. Local measurements help choose memory settings but do not establish universal hardware requirements.
 
 ## Explain checkpoint recovery
 
-A stopped run can leave useful LoRA weights, but continuing the same optimization process may also require optimizer and scheduler state. A recovery assistant could identify what a run saved and explain the difference between starting a new experiment from weights and resuming full training state. Investigate the storage cost and trainer support first. The current Repeat run action creates a new experiment; it does not resume a checkpoint.
+Guided training now distinguishes resuming full saved training state from continuing checkpoint weights with a fresh optimizer. Future work can make checkpoint retention easier to understand and measure the space-versus-recovery tradeoff on real training workloads.
 
 ## Understand why storage keeps growing
 
@@ -28,7 +26,7 @@ The Storage page measures current usage and offers reviewed cleanup of eligible 
 
 ## Prepare a repeatable demonstration
 
-A small, licensed sample dataset and a documented training-and-comparison recipe could make a first session easier to evaluate. Someone trying LoRA Pilot would have a known starting point and a result to compare with their own run. Check redistribution rights, download size, and reproducibility on target hardware before bundling assets. Keep sample outputs visibly identified so they cannot be mistaken for results generated on the current pod.
+The first-run guide now includes the original eight orange robot images from the LoRA Pilot videos, reviewed captions and a path through a Quick test and checkpoint comparison. The images vary in design and are sample inputs, not validated identity-training results. A consistent mascot dataset and a published, repeatable target-GPU result remain useful follow-ups.
 
 ## Choose an idea before expanding it
 

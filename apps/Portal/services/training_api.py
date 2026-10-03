@@ -17,6 +17,9 @@ from .training_timing import timing
 from .guided_training import GuidedTraining, TrainingRequest, FAMILY_NOTES
 from .lora_comparison import ComparisonRequest, checkpoint_order, comparison_outputs, comfy, graph, result_images
 from .training_runs import TrainingRuns, under, write_json, now
+from .experiment_export import ExportRequest, export_plan, build_archive, preview_token
+from .training_performance import gpu_snapshot, recommendation
+from .first_lora import create_router as create_first_lora_router
 
 
 class QueueRequest(BaseModel):
@@ -27,12 +30,13 @@ class LibraryRequest(BaseModel):
     action: Literal['copy', 'move'] = 'copy'
 
 
-def create_router(workspace, models, resolve_dataset, resolve_config, model_name, legacy_conflicts):
+def create_router(workspace, models, resolve_dataset, resolve_config, model_name, legacy_conflicts, invalidate_datasets=lambda: None):
     router = APIRouter(prefix='/api/training')
     workspace, models = Path(workspace).resolve(), Path(models).resolve()
     recipe = GuidedTraining(workspace, models, resolve_dataset, resolve_config, model_name)
     queue = TrainingRuns(under(workspace, workspace / 'config/training'), recipe.prepare, recipe.launch,
                          legacy_conflicts)
+    router.include_router(create_first_lora_router(workspace, queue, recipe, invalidate_datasets))
 
     def managed_conflicts():
         reasons = legacy_conflicts()
@@ -153,6 +157,11 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         return dict(checks, conflicts=managed_conflicts(), warnings=gpu_guard.conflicts(),
                     note=FAMILY_NOTES[req.family])
 
+    @router.post('/recommendation')
+    def hardware_recommendation(req: TrainingRequest):
+        ready()
+        return recommendation(req.family, req.profile, queue.list(), gpu_snapshot())
+
     @router.post('/runs')
     def submit(req: TrainingRequest):
         ready()
@@ -263,6 +272,39 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
 
     def comparison_file(run_id):
         return under(queue.directory(run_id), queue.directory(run_id) / 'comparison.json')
+
+    def package_plan(run_id, request):
+        ready()
+        run = queue.get(run_id)
+        path = comparison_file(run_id)
+        comparison = json.loads(path.read_text()) if path.exists() else {}
+        return export_plan(workspace, models, queue.directory(run_id), run, artifact_paths(run), request, comparison)
+
+    @router.post('/runs/{run_id}/export/preview')
+    def preview_export(run_id: str, req: ExportRequest):
+        files, metadata = package_plan(run_id, req)
+        return dict(files=[dict(name=name, size_bytes=size) for _, _, name, size in files]
+                          + [dict(name='experiment.json'), dict(name='README.md')], metadata=metadata,
+                    token=preview_token(files, metadata))
+
+    @router.get('/runs/{run_id}/export')
+    def download_export(run_id: str, artifact: str = Query(max_length=255),
+                        token: str = Query(min_length=64, max_length=64),
+                        trigger_words: str = Query('', max_length=500), sample_prompt: str = Query('', max_length=4000),
+                        images: list[int] = Query(default=[], max_length=65)):
+        req = ExportRequest(artifact=artifact, trigger_words=trigger_words, sample_prompt=sample_prompt, images=images)
+        files, metadata = package_plan(run_id, req)
+        if token != preview_token(files, metadata):
+            raise HTTPException(409, 'The package changed. Preview it again before downloading.')
+        stream = build_archive(queue.directory(run_id), files, metadata)
+        def chunks():
+            try:
+                while data := stream.read(1024 * 1024):
+                    yield data
+            finally:
+                stream.close()
+        return StreamingResponse(chunks(), media_type='application/zip', background=BackgroundTask(stream.close),
+                                 headers={'Content-Disposition': 'attachment; filename="lora-experiment.zip"'})
 
     @router.post('/runs/{run_id}/comparison/prepare')
     def prepare_comparison(run_id: str, req: ComparisonRequest):

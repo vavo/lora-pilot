@@ -143,6 +143,14 @@ Sidecar URL is configured by `COPILOT_SIDECAR_URL` (default `http://127.0.0.1:78
 
 ## Persistent guided training API
 
+`GET /api/datasets/{name}/quality` returns `complete`, `images`, finding counts and relative file findings without modifying the dataset. Scans are bounded and incomplete results are explicit.
+
+`GET /api/training/first-lora` returns guide progress. `POST /api/training/first-lora/install` installs the bundled sample without overwriting existing files; `POST /api/training/first-lora/reviewed` records explicit review of the current dataset fingerprint. The guide uses the existing training and comparison APIs.
+
+`POST /api/training/recommendation` accepts the training request and returns GPU capacity, suggested settings and optional evidence from a matching successful run. Training requests accept an optional `hardware` object containing `train_batch_size`, `gradient_accumulation_steps`, `network_dim` and FLUX-only `blocks_to_swap`. New run records can include sampled `performance` data. Missing measurements do not block training.
+
+`POST /api/training/runs/{id}/export/preview` accepts `artifact`, `trigger_words`, `sample_prompt` and optional comparison-image indices in `images`. It returns a file list, manifest and preview token. `GET /api/training/runs/{id}/export` accepts the same fields as query parameters, repeated `images` parameters and the token, and streams a ZIP. A changed package returns HTTP 409 and requires a fresh preview.
+
 The guided interface uses `/api/training`. These routes follow ControlPilot authentication and persist run records under the workspace. The legacy SDXL API remains available separately below.
 
 | Method | Path | Behavior |

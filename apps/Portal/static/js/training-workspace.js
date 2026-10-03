@@ -6,6 +6,9 @@ window.trainingWorkspace = (() => {
   let comparisonFormRun = null;
   let draft = null, preferSetup = false;
   let sourceRun = null, comparisonBusy = false, historySignature = '';
+  let exportRun = null, exportImagesSignature = '';
+  let hardware = {}, suggestedHardware = null;
+  const hardwareFields = {train_batch_size: 'tp-hw-batch', gradient_accumulation_steps: 'tp-hw-accumulation', network_dim: 'tp-hw-rank', blocks_to_swap: 'tp-hw-swap'};
   const $ = id => document.getElementById(id);
   const api = (screen, path, body) => screen.json(`/api/training${path}`, body === undefined ? {} : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -21,7 +24,7 @@ window.trainingWorkspace = (() => {
   function spec() {
     return { dataset_name: $('tp-dataset')?.value || 'preflight', output_name: $('tp-output')?.value || 'preview',
       family: $('tp-family')?.value || 'sdxl', profile: $('tp-profile')?.value || 'regular',
-      toml_path: $('tp-toml')?.value || '', source_run_id: sourceRun };
+      toml_path: $('tp-toml')?.value || '', source_run_id: sourceRun, hardware: {...hardware} };
   }
   function saveDraft() {
     try {
@@ -37,6 +40,7 @@ window.trainingWorkspace = (() => {
       $('tp-output').value = normalizeOutputName(value.output_name);
     }
     sourceRun = value.source_run_id;
+    hardware = value.hardware || {}; renderHardware();
     updateEpochExample($('tp-output').value);
     $('tp-draft-status').textContent = !explicitDataset && value.dataset_name && !$('tp-dataset').value
       ? 'Draft restored. Its dataset is unavailable; choose a dataset before training.' : 'Draft restored from this browser.';
@@ -54,6 +58,7 @@ window.trainingWorkspace = (() => {
   async function preflight() {
     if (!trainingScreen?.active || !$('tp-page')) return;
     formState();
+    loadHardware();
     const screen = trainingScreen.latest("preflight");
     $('tp-check-model').textContent = 'Checking model requirements…';
     try {
@@ -71,6 +76,33 @@ window.trainingWorkspace = (() => {
       if (!screen.active) return;
       if (screen.active && $('tp-check-model')) $('tp-check-model').textContent = `Model check unavailable: ${error.message || error}`;
     }
+  }
+  function renderHardware() {
+    const family = spec().family, profile = spec().profile;
+    const defaults = family === 'sdxl' ? {train_batch_size: {quick_test:1, regular:2, high_quality:4}[profile],
+      gradient_accumulation_steps: profile === 'high_quality' ? 1 : 2, network_dim: {quick_test:32, regular:48, high_quality:64}[profile]}
+      : {train_batch_size:1, gradient_accumulation_steps:1, network_dim:{quick_test:16, regular:32, high_quality:64}[profile], blocks_to_swap:18};
+    Object.entries(hardwareFields).forEach(([key, id]) => $(id).value = hardware[key] ?? defaults[key] ?? 0);
+    $('tp-hw-swap-label').hidden = family !== 'flux1';
+    $('tp-hardware-choice').textContent = Object.values(hardware).some(value => value != null) ? 'Using your edited settings for this run.' : 'Using the profile defaults.';
+  }
+  async function loadHardware() {
+    const screen = trainingScreen.latest('hardware');
+    suggestedHardware = null; $('tp-hardware-apply').disabled = true; renderHardware();
+    try {
+      const data = await api(screen, '/recommendation', spec());
+      suggestedHardware = data.settings;
+      $('tp-hardware-apply').disabled = false;
+      const gpu = data.gpu;
+      $('tp-hardware-status').textContent = gpu ? `${gpu.name} · ${((gpu.total_mib - gpu.used_mib) / 1024).toFixed(1)} of ${(gpu.total_mib / 1024).toFixed(1)} GB free` : 'GPU measurements unavailable.';
+      $('tp-hardware-memory').hidden = !gpu;
+      if (gpu) { $('tp-hardware-memory').value = gpu.used_mib / gpu.total_mib * 100; $('tp-hardware-memory').setAttribute('aria-label', `${(gpu.used_mib / 1024).toFixed(1)} GB of GPU memory used`); }
+      const evidence = data.evidence;
+      $('tp-hardware-evidence').textContent = evidence
+        ? `Measured on this GPU: ${evidence.output_name}, ${Math.round(evidence.elapsed_seconds / 60)} min. Sampled peak device memory ${(evidence.peak_device_mib / 1024).toFixed(1)} GB (includes other workloads).`
+        : 'Starting suggestion only. No matching completed measurement on this GPU yet.';
+      $('tp-hardware-apply').textContent = data.measured ? 'Use measured settings' : 'Use suggested settings';
+    } catch (error) { if (screen.active) $('tp-hardware-status').textContent = `GPU suggestions unavailable: ${error.message || error}`; }
   }
   function compatible(run) {
     return { run_id: run.id, running: ['running', 'stopping'].includes(run.status),
@@ -142,6 +174,15 @@ window.trainingWorkspace = (() => {
     $('tp-compare-download').hidden = !run.comparison_workflow;
     updateProgressUI(findLatestProgress(lines), tpRunning, run.status === 'succeeded');
     syncTpActions();
+    $('tp-export').hidden = preferSetup || ['queued','running','stopping'].includes(run.status) || !run.artifacts?.length;
+    if (exportRun !== run.id || $('tp-export-artifact').dataset.signature !== downloadSignature) {
+      exportRun = run.id; exportImagesSignature = '';
+      $('tp-export-artifact').dataset.signature = downloadSignature;
+      $('tp-export-artifact').replaceChildren(...(run.artifacts || []).map(file => new Option(file.name, file.name)));
+      $('tp-export-trigger').value = ''; $('tp-export-prompt').value = '';
+      $('tp-export-images').replaceChildren(element('legend', 'Comparison images to include'));
+      invalidateExport();
+    }
     const choices = $('tp-compare-artifact');
     const signature = JSON.stringify(run.artifacts || []);
     if (choices.dataset.signature !== signature || choices.dataset.run !== run.id) {
@@ -150,9 +191,11 @@ window.trainingWorkspace = (() => {
     }
   }
   function renderComparison(data) {
+    renderExportImages(data);
     if (current && comparisonFormRun !== current.id) {
       comparisonFormRun = current.id;
-      $('tp-compare-prompt').value = data.request?.prompt || '';
+      const guide = window.firstLora?.current;
+      $('tp-compare-prompt').value = data.request?.prompt || (guide?.dataset === current.spec.dataset_name ? guide.sample_prompt : '') || '';
       $('tp-compare-seed').value = data.request?.seed ?? 31337;
       $('tp-compare-strength').value = data.request?.strength ?? 1;
       $('tp-compare-artifact').value = data.request?.all_checkpoints ? '' : (data.request?.artifact || '');
@@ -172,6 +215,40 @@ window.trainingWorkspace = (() => {
       if (!item.url.startsWith('/proxy/comfy/view?')) continue;
       img.src = item.url; figure.append(img, element('figcaption', item.label)); images.append(figure);
     }
+  }
+  function invalidateExport() {
+    $('tp-export-download').hidden = true; $('tp-export-preview-files').replaceChildren();
+    trainingScreen?.latest('export-preview');
+  }
+  function renderExportImages(data) {
+    const signature = JSON.stringify(data.images || []);
+    if (exportImagesSignature === signature) return;
+    exportImagesSignature = signature; invalidateExport();
+    const box = $('tp-export-images'); box.replaceChildren(element('legend', 'Comparison images to include'));
+    (data.images || []).forEach((item, index) => {
+      const label = element('label', '', 'tp-export-image'); const input = document.createElement('input');
+      input.type = 'checkbox'; input.value = String(index); input.onchange = invalidateExport;
+      label.append(input, document.createTextNode(item.label)); box.append(label);
+    });
+    if (!(data.images || []).length) box.append(element('p', 'Generate a comparison to include sample images.', 'journey-note'));
+    if (!$('tp-export-prompt').value) $('tp-export-prompt').value = data.request?.prompt || '';
+  }
+  async function previewExport() {
+    if (!current || !trainingScreen?.active) return;
+    const id = current.id, screen = trainingScreen.latest('export-preview');
+    const request = {artifact: $('tp-export-artifact').value, trigger_words: $('tp-export-trigger').value,
+      sample_prompt: $('tp-export-prompt').value, images: [...$('tp-export-images').querySelectorAll('input:checked')].map(input => Number(input.value))};
+    $('tp-export-download').hidden = true; $('tp-export-preview-files').textContent = 'Preparing preview…';
+    try {
+      const result = await api(screen, `/runs/${id}/export/preview`, request);
+      if (current?.id !== id) return;
+      const box = $('tp-export-preview-files'); box.replaceChildren();
+      result.files.forEach(file => box.append(element('p', `${file.name}${file.size_bytes === undefined ? '' : ' · ' + formatBytes(file.size_bytes)}`)));
+      const params = new URLSearchParams({artifact: request.artifact, trigger_words: request.trigger_words, sample_prompt: request.sample_prompt, token: result.token});
+      request.images.forEach(index => params.append('images', String(index)));
+      $('tp-export-download').href = `/api/training/runs/${id}/export?${params}`;
+      $('tp-export-download').hidden = false;
+    } catch (error) { if (screen.active) $('tp-export-preview-files').textContent = error.message || String(error); }
   }
   async function poll(screen) {
     try {
@@ -213,11 +290,17 @@ window.trainingWorkspace = (() => {
     const screen = trainingScreen;
     if (!screen?.active) return;
     if (tpStarting || !tpStatusKnown) return;
+    for (const [key, id] of Object.entries(hardwareFields)) {
+      if (key === 'blocks_to_swap' && spec().family !== 'flux1') continue;
+      if (!$(id).reportValidity()) { $('tp-hardware').open = true; return; }
+    }
     const request = spec();
     if (!$('tp-dataset').value || !$('tp-output').value.trim()) { showTpError('Choose a dataset and give your LoRA a name.'); return; }
     const controller = screen.latest("preparation"); preparation = controller;
     tpStarting = true; syncTpActions(); showTpError('');
     try {
+      if (!await window.reviewDataset(request.dataset_name, controller, true)) return;
+      controller.check();
       if (!await ensureTrainpilotModelsPresent(request, controller.signal)) return;
       controller.signal.throwIfAborted();
       const run = await api(screen, '/runs', request);
@@ -248,12 +331,14 @@ window.trainingWorkspace = (() => {
         $('tp-family').value = run.spec.family; $('tp-dataset').value = run.spec.dataset_name;
         $('tp-output').value = run.spec.output_name; $('tp-profile').value = run.spec.profile;
         document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.checked = input.value === run.spec.profile);
+        hardware = run.spec.hardware || {};
         sourceRun = id; preferSetup = true; saveDraft();
         tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData);
         preflight(); $('tp-setup').scrollIntoView({ block: 'start', behavior: 'smooth' });
       }
       if (control.dataset.runAction === 'repeat') {
-        if (!confirm('Queue a new run using this saved configuration? It uses the dataset as it exists now.')) return;
+        const previous = await api(screen, `/runs/${id}`);
+        if (!await window.reviewDataset(previous.spec.dataset_name, screen, true)) return;
         const run = await api(screen, `/runs/${id}/repeat`, {}); selected = run.id; tpDismissedRunId = null;
       }
       if (control.dataset.runAction === 'resume') {
@@ -324,6 +409,8 @@ window.trainingWorkspace = (() => {
     const linkedRun = window.pendingTrainingRun;
     if (linkedRun) { selected = linkedRun; window.pendingTrainingRun = null; tpDismissedRunId = null; }
     comparisonFormRun = null;
+    exportRun = null; exportImagesSignature = '';
+    hardware = {}; suggestedHardware = null;
     historySignature = ''; sourceRun = null;
     preferSetup = !!explicitDataset && !linkedRun;
     try {
@@ -332,6 +419,11 @@ window.trainingWorkspace = (() => {
       if (saved) { applyDraft(saved, explicitDataset); preferSetup = !linkedRun; }
     } catch { if (!screen.active) return; $('tp-draft-status').textContent = 'Saved draft could not be read. You can still set up training.'; }
     if (explicitDataset) saveDraft();
+    if (window.pendingFirstLora) {
+      const guide = window.pendingFirstLora; window.pendingFirstLora = null;
+      applyDraft({family:guide.family, profile:guide.profile, dataset_name:guide.dataset, output_name:'OrangeRobot', source_run_id:null});
+      preferSetup = true; saveDraft();
+    }
     $('tp-fields').addEventListener('input', saveDraft);
     $('tp-fields').addEventListener('change', saveDraft);
     $('tp-clear-draft').onclick = () => {
@@ -342,7 +434,14 @@ window.trainingWorkspace = (() => {
         preferSetup = true; preflight();
       } catch { $('tp-draft-status').textContent = 'Browser storage is unavailable; the saved draft could not be cleared.'; }
     };
-    $('tp-family').onchange = () => { sourceRun = null; saveDraft(); preflight(); };
+    $('tp-family').onchange = () => { sourceRun = null; hardware = {}; saveDraft(); preflight(); };
+    document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.addEventListener('change', () => { hardware = {}; saveDraft(); preflight(); }));
+    Object.entries(hardwareFields).forEach(([key, id]) => $(id).onchange = () => {
+      if (!$(id).reportValidity()) return;
+      hardware[key] = Number($(id).value); saveDraft(); renderHardware();
+    });
+    $('tp-hardware-apply').onclick = () => { if (suggestedHardware) { hardware = {...suggestedHardware}; saveDraft(); renderHardware(); } };
+    $('tp-hardware-reset').onclick = () => { hardware = {}; saveDraft(); renderHardware(); };
     $('tp-current-defaults').onclick = () => { sourceRun = null; saveDraft(); preflight(); };
     $('tp-history-search').value = historySearch; $('tp-history-family').value = historyFamily; $('tp-history-state').value = historyState;
     const filter = () => { historySearch = $('tp-history-search').value; historyFamily = $('tp-history-family').value; historyState = $('tp-history-state').value; offset = 0; historySignature = ''; refresh(); };
@@ -364,6 +463,8 @@ window.trainingWorkspace = (() => {
     $('tp-compare-generate').onclick = () => compare(false);
     $('tp-compare-open').onclick = () => compare(true);
     $('tp-copy-loras').onclick = () => publish('copy');
+    $('tp-export-preview').onclick = previewExport;
+    ['tp-export-artifact', 'tp-export-trigger', 'tp-export-prompt'].forEach(id => $(id).oninput = invalidateExport);
     try {
       const config = await screen.json('/api/trainpilot/toml');
       if (!screen.active || !$('tp-page')) return;

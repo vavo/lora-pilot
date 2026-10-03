@@ -6,6 +6,7 @@ window.initDatasets = async function (screen = window.createScreenLifecycle()) {
   datasetsScreen = screen;
   dsUploading = false;
   wireUpload();
+  window.firstLora.init(screen);
   await loadDatasets();
 };
 
@@ -85,6 +86,9 @@ async function loadDatasets() {
       summary.textContent = "Manage";
       menu.append(summary, datasetActionButton("Rename", "secondary", "rename", d.name), datasetActionButton("Delete", "danger", "del", d.name));
       actions.append(next, menu);
+      const review = datasetActionButton('Check quality', 'ghost', 'quality', d.name);
+      review.onclick = () => window.reviewDataset(d.name, datasetsScreen);
+      actions.prepend(review);
       actionsTd.append(actions);
       tr.appendChild(actionsTd);
       list.appendChild(tr);
@@ -277,19 +281,25 @@ function tagpilotUrl(datasetName) {
   return `${window.location.origin}/tagpilot/?dataset=${encodeURIComponent(datasetName)}`;
 }
 
-function openTagpilotDataset(name) {
+function openTagpilotDataset(name, image = '') {
   window.pendingTagDataset = name;
+  window.pendingTagImage = image;
+  window.pendingTagTrigger = window.firstLora?.current?.dataset === name ? window.firstLora.current.trigger_word : '';
+  const params = new URLSearchParams({dataset:name});
+  if (image) params.set('image', image);
+  if (window.pendingTagTrigger) params.set('trigger', window.pendingTagTrigger);
+  const url = `/tagpilot/?${params}`;
   const iframe = document.querySelector("iframe[src^=\"/tagpilot\"]");
   if (iframe) {
-    iframe.src = `/tagpilot/?dataset=${encodeURIComponent(name)}`;
+    iframe.src = url;
     if (window.loadSection) window.loadSection("tagpilot");
   } else if (window.loadSection) {
     window.loadSection("tagpilot").then(() => {
       const ifr = document.querySelector("iframe[src^=\"/tagpilot\"]");
-      if (ifr) ifr.src = `/tagpilot/?dataset=${encodeURIComponent(name)}`;
+      if (ifr) ifr.src = url;
     });
   } else {
-    window.location.href = tagpilotUrl(name);
+    window.location.href = url;
   }
 }
 

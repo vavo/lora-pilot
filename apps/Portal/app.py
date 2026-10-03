@@ -58,6 +58,7 @@ try:
     from .services.storage import create_router as create_storage_router
     from .services.storage_capacity import workspace_capacity
     from .services import gpu_guard
+    from .services.dataset_quality import review_dataset
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
@@ -74,6 +75,7 @@ except (ImportError, ValueError):
         from services.storage import create_router as create_storage_router
         from services.storage_capacity import workspace_capacity
         from services import gpu_guard
+        from services.dataset_quality import review_dataset
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
         from apps.Portal.services.models_api import create_router as create_models_router  # type: ignore
@@ -89,6 +91,7 @@ except (ImportError, ValueError):
         from apps.Portal.services.storage import create_router as create_storage_router
         from apps.Portal.services.storage_capacity import workspace_capacity
         from apps.Portal.services import gpu_guard
+        from apps.Portal.services.dataset_quality import review_dataset
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -1225,6 +1228,11 @@ def _validate_docs_relative_path(raw_path: str) -> Optional[PurePosixPath]:
 @app.get("/api/datasets", response_model=List[DatasetEntry])
 def list_datasets():
     return _list_dataset_entries()
+
+
+@app.get("/api/datasets/{name}/quality")
+def dataset_quality(name: str):
+    return review_dataset(_resolve_existing_dataset_dir(name))
 
 
 async def _copilot_sidecar_request(method: str, path: str, json_body: Optional[dict] = None):
@@ -3938,6 +3946,7 @@ _training_router, _training_queue = create_training_router(
     WORKSPACE_ROOT, MODELS_DIR, _resolve_existing_dataset_dir, _resolve_trainpilot_toml_path,
     lambda path: models_service.model_name_for_expected_path(path, MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR),
     _legacy_training_conflicts,
+    _invalidate_dataset_list_cache,
 )
 app.include_router(_training_router)
 

@@ -1,0 +1,27 @@
+{
+  "title": "Orange robot",
+  "trigger_word": "pilotceramic",
+  "family": "sdxl",
+  "profile": "quick_test",
+  "sample_prompt": "A product photograph of pilotceramic, a small orange robot figurine on a blue tabletop, soft studio lighting",
+  "source": "LoRA Pilot video recording dataset, 1 October 2026",
+  "generator": "ComfyUI with SDXL base 1.0",
+  "files": {
+    "ceramic_robot_00001_.png": "7d3db9d2a6f88b0793f0bd2635406c49585139d4de89959ce2bffde2b2df1cf5",
+    "ceramic_robot_00001_.txt": "3cc085870d551136c8939e0615e85c0af9d9740456df0eeb979d6bf2947e6891",
+    "ceramic_robot_00002_.png": "e0796a4e03db7f2dbd375c013d81125959c7105b8e7d5f2a5d038a65ba1c4ffe",
+    "ceramic_robot_00002_.txt": "0da323b82829f27494798d78a89b3f1fdafd6b12883c072d67da71aeddd3ad51",
+    "ceramic_robot_00003_.png": "d105f42ad45790eb09bcfd42707e484c8e9c6767e190a10e1bc9c9bc5c6f229e",
+    "ceramic_robot_00003_.txt": "a2ddfff50b67db27770d848eac918a7c8433436e4cae5ee76c5da550c9b8829a",
+    "ceramic_robot_00004_.png": "765f0dc097c64428ab7c3a9d5275cde570276f616adb1eaaee0727a4a2372ff1",
+    "ceramic_robot_00004_.txt": "ff589241f85f7c0a863b825fcc4999daab1c7585ea1380843939387cfe38a1d8",
+    "ceramic_robot_00005_.png": "5e9f442ccbaebe057985e99cac253c73ad0727d5dab93d7380174a6718ff8076",
+    "ceramic_robot_00005_.txt": "5ad542293f3f5be54eb7128e2957292d3cc5e1e74b5ff37d89e17e6330f9b768",
+    "ceramic_robot_00006_.png": "707a28ca8c30d58dd8e0ac1734db3a6fb7816e25498048e57479d7d88ab29a41",
+    "ceramic_robot_00006_.txt": "24b69e174ee5002b887fe5e8e5251ba58b237177b4c42c60bff064b949205772",
+    "ceramic_robot_00007_.png": "8c639974bd7bc67678d65f819b615e6c2e02fd09ae9cc6abc3e79f0bcd98d799",
+    "ceramic_robot_00007_.txt": "b269fe529e0ee01d5db01246c2f4f733a91c07234a0c7fad8f2b23bd875aeec8",
+    "ceramic_robot_00008_.png": "dfcbb28755532abb60c0586fb392eb13834da19fc1a6be6cf3ab2dc760db63f0",
+    "ceramic_robot_00008_.txt": "50cd8d33991ac8494ff30261628a7d6cee2eee3107e3fc1b99385f20df4d9aa5"
+  }
+}

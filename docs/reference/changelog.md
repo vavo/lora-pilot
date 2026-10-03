@@ -1,10 +1,12 @@
 # Changelog
 
-_Last updated: 2026-09-25_
+_Last updated: 2026-10-03_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Current unreleased work
+
+The October 3 source changes add read-only dataset quality review, the optional orange robot first-LoRA guide, editable GPU suggestions informed by matching local runs, and previewed experiment ZIP exports. The guide uses original video assets as training inputs. No published cross-GPU benchmark or trained demo result is implied. See [TrainPilot](../components/trainpilot.md) for the workflow and validation limits.
 
 The RunPod integration now uses REST v2 for shutdown, reads allocated workspace storage, and separates hourly cost, estimated session spending and recorded daily pod charges. Credentials remain on the backend. Volume and billing details are optional when permission is missing. See [RunPod integration](../configuration/runpod.md) for configuration and the limits of each figure.
 

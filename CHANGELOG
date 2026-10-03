@@ -1,4 +1,6 @@
-Unreleased (October 1st 2026)
+Unreleased (October 3rd 2026)
+
+ControlPilot adds a read-only dataset quality report before guided training, an optional first-LoRA guide using the eight original orange robot video images, editable GPU settings informed by matching completed runs, and portable experiment ZIPs with a file preview. Exports exclude datasets, logs, credentials and local paths. GPU measurements are local observations; unmeasured suggestions are labeled explicitly.
 
 Refreshed the README with TensorBoard run discovery, removed the dated release/build-status block and duplicate quick-start snippet, and kept installation instructions in the Installation section.
 

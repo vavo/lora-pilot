@@ -2496,7 +2496,17 @@ Limit the caption to ${maxWords} words or fewer.`;
             const params = new URLSearchParams(window.location.search);
             const datasetName = params.get('dataset');
             if (datasetName) {
+                const trigger = (params.get('trigger') || '').slice(0, 500);
+                triggerWordInput.value = trigger;
+                currentTriggerWord = trigger;
                 await loadDatasetFromServer(datasetName);
+                const selected = dataset.findIndex(item => item.file.name === params.get('image'));
+                if (selected >= 0) {
+                    currentPage = Math.floor(selected / IMAGES_PER_PAGE);
+                    render();
+                    const item = dataset[selected];
+                    showPreview(getFileObjectUrl(item.file), item.id);
+                }
                 return;
             }
             render();

@@ -1,5 +1,6 @@
 <div class="journey-page" id="tp-page">
 <header class="journey-heading"><h2 id="tp-heading">Train your LoRA</h2><p id="tp-subheading">Choose your images and a training profile. TrainPilot handles the setup.</p></header>
+<div id="first-lora-guide"></div>
 <div id="tp-error" class="status" role="alert" hidden></div>
 <div id="tp-completion-steps" class="tp-completion-steps" hidden><span><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Training finished</span><span id="tp-files-saved"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Files saved</span></div>
 <section id="tp-result" class="journey-surface" hidden aria-labelledby="tp-result-title">
@@ -24,6 +25,14 @@
   </section>
   <div class="tp-result-footer"><button class="btn ghost" type="button" id="tp-result-logs">View training logs</button><button class="btn ghost" type="button" id="tp-another">Train another LoRA</button></div>
 </section>
+<details id="tp-export" class="tp-disclosure" hidden><summary>Export experiment</summary><div>
+  <p class="journey-note">Package one checkpoint, its settings and selected comparison images. Your dataset and credentials stay here.</p>
+  <div class="tp-compare-fields"><label>Checkpoint<select id="tp-export-artifact" class="select"></select></label><label>Trigger words<input id="tp-export-trigger" class="input" maxlength="500" placeholder="Your trained trigger words"></label></div>
+  <label>Sample prompt<textarea id="tp-export-prompt" class="input" maxlength="4000" rows="2"></textarea></label>
+  <fieldset id="tp-export-images"><legend>Comparison images to include</legend></fieldset>
+  <button id="tp-export-preview" class="btn ghost" type="button">Preview package</button>
+  <div id="tp-export-preview-files" class="journey-note" role="status"></div><a id="tp-export-download" class="btn primary" hidden>Download experiment ZIP</a>
+</div></details>
 <section id="tp-setup" class="journey-surface">
 <div class="row wrap gap-12"><p id="tp-draft-status" class="journey-note" role="status">Your unfinished setup is saved in this browser.</p><button id="tp-clear-draft" type="button" class="journey-link">Clear draft</button></div>
 <div class="tp-layout">
@@ -41,6 +50,19 @@
 <aside class="tp-run-summary"><h3>This run</h3><dl><dt>Dataset</dt><dd id="tp-summary-dataset">Choose a dataset</dd><dt>Training engine</dt><dd id="tp-summary-engine">SDXL · Kohya</dd><dt>Profile</dt><dd id="tp-summary-profile">Balanced</dd><dt>Output name</dt><dd id="tp-summary-output">—</dd></dl><p class="journey-note">Your files are saved in your persistent workspace.</p></aside>
 </div>
 <details id="tp-advanced" class="tp-disclosure"><summary>Advanced configuration</summary><div><input id="tp-toml" type="hidden" value="/workspace/config/trainpilot/newlora.toml" /><button type="button" class="journey-link" onclick="showTomlConfig()">Edit training configuration</button><p id="toml-config-path" class="journey-note">/workspace/config/trainpilot/newlora.toml</p></div></details>
+<details id="tp-hardware" class="tp-disclosure"><summary>GPU &amp; training settings</summary><div>
+  <p id="tp-hardware-status" class="journey-note" role="status">Checking GPU…</p><progress id="tp-hardware-memory" max="100" value="0" hidden aria-label="GPU memory used"></progress>
+  <p id="tp-hardware-evidence" class="journey-note"></p>
+  <div class="tp-compare-fields">
+    <label>Batch size<input id="tp-hw-batch" class="input" type="number" min="1" max="8" required></label>
+    <label>Gradient accumulation<input id="tp-hw-accumulation" class="input" type="number" min="1" max="16" required></label>
+    <label>LoRA rank<input id="tp-hw-rank" class="input" type="number" min="4" max="128" required></label>
+    <label id="tp-hw-swap-label">Blocks to swap<input id="tp-hw-swap" class="input" type="number" min="0" max="35" required></label>
+  </div>
+  <div class="row wrap gap-12"><button id="tp-hardware-apply" class="btn ghost" type="button" disabled>Use suggested settings</button><button id="tp-hardware-reset" class="journey-link" type="button">Use profile defaults</button></div>
+  <p id="tp-hardware-choice" class="journey-note">Using the profile defaults.</p>
+  <p class="journey-note">ComfyUI can keep running. Both workloads share this memory; a previously successful run does not guarantee enough room for a different dataset.</p>
+</div></details>
 <p id="tp-saved-config" class="journey-note" hidden></p><button id="tp-current-defaults" class="journey-link" type="button" hidden>Use current configuration instead</button>
 <div class="tp-actions"><span id="tp-status" class="status" role="status">Checking training status…</span><div class="row gap-12"><button id="tp-stop" class="btn danger" type="button" onclick="stopTrainPilot()" hidden>Stop training</button><button id="tp-start" class="btn primary" type="button" onclick="startTrainPilot()" disabled>Start training</button></div></div>
 <div id="tp-progress-wrap" class="tp-progress-wrap is-hidden"><div class="tp-progress"><div id="tp-progress-bar" class="tp-progress-bar"></div></div><span id="tp-progress-text" class="tp-progress-text"></span></div>

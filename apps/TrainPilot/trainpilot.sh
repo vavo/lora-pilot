@@ -264,6 +264,23 @@ while :; do
           ;;
       esac
 
+      # Guided runs can explicitly override the profile's memory-sensitive settings.
+      if [[ -n "${TRAINPILOT_OVERRIDE_TRAIN_BATCH_SIZE:-}" ]]; then
+        [[ "$TRAINPILOT_OVERRIDE_TRAIN_BATCH_SIZE" =~ ^[1-8]$ ]] || exit 1
+        batch="$TRAINPILOT_OVERRIDE_TRAIN_BATCH_SIZE"
+      fi
+      if [[ -n "${TRAINPILOT_OVERRIDE_GRADIENT_ACCUMULATION_STEPS:-}" ]]; then
+        [[ "$TRAINPILOT_OVERRIDE_GRADIENT_ACCUMULATION_STEPS" =~ ^([1-9]|1[0-6])$ ]] || exit 1
+        ga="$TRAINPILOT_OVERRIDE_GRADIENT_ACCUMULATION_STEPS"
+      fi
+      if [[ -n "${TRAINPILOT_OVERRIDE_NETWORK_DIM:-}" ]]; then
+        [[ "$TRAINPILOT_OVERRIDE_NETWORK_DIM" =~ ^[0-9]{1,3}$ ]] || exit 1
+        (( TRAINPILOT_OVERRIDE_NETWORK_DIM >= 4 && TRAINPILOT_OVERRIDE_NETWORK_DIM <= 128 )) || exit 1
+        net_dim="$TRAINPILOT_OVERRIDE_NETWORK_DIM"; conv_dim="$net_dim"
+        (( net_alpha <= net_dim )) || net_alpha="$net_dim"
+        (( conv_alpha <= conv_dim )) || conv_alpha="$conv_dim"
+      fi
+
       # Big datasets extend training
       if (( IMG_CNT > 80 )); then
         train_steps=$((train_steps + train_steps / 3))

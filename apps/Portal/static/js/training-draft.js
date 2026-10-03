@@ -6,7 +6,12 @@ function createTrainingDraft(storage) {
         !['quick_test', 'regular', 'high_quality'].includes(value.profile) ||
         typeof value.dataset_name !== 'string' || value.dataset_name.length > 255 ||
         typeof value.output_name !== 'string' || value.output_name.length > 80) return null;
-    return {version: 1, family: value.family, profile: value.profile,
+    const hardware = {};
+    for (const [key, [min, max]] of Object.entries({train_batch_size:[1,8], gradient_accumulation_steps:[1,16], network_dim:[4,128], blocks_to_swap:[0,35]})) {
+      const number = value.hardware?.[key];
+      if (Number.isInteger(number) && number >= min && number <= max) hardware[key] = number;
+    }
+    return {version: 1, family: value.family, profile: value.profile, hardware,
       dataset_name: value.dataset_name, output_name: value.output_name,
       source_run_id: /^[a-f0-9]{32}$/.test(value.source_run_id || '') ? value.source_run_id : null};
   }

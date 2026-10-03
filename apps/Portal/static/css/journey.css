@@ -211,3 +211,19 @@
   .sidebar .theme-segments button { min-height:44px; }
   .sidebar.compact #theme-toggle { padding:3px; }
 }
+
+.dataset-quality-results { max-height: 45vh; overflow: auto; overflow-wrap: anywhere; }
+.dataset-quality-results p { padding-block: 8px; border-bottom: 1px solid var(--border); }
+
+.tp-export-image { display: inline-flex; align-items: center; gap: 8px; margin: 8px 16px 8px 0; overflow-wrap: anywhere; }
+#tp-export fieldset { border: 1px solid var(--border); margin: 12px 0; border-radius: 8px; }
+
+.first-lora-body { display: flex; gap: 20px; align-items: start; }
+.first-lora-body img { width: 112px; height: 112px; object-fit: cover; border-radius: 12px; }
+.first-lora-body > div { min-width: 0; }
+.first-lora-body progress, #tp-hardware-memory { width: 100%; accent-color: var(--accent); height: 10px; }
+@media (max-width: 600px) { .first-lora-body { flex-direction: column; } .first-lora-body img { width: 80px; height: 80px; } }
+
+dialog.dataset-quality-dialog { border: 0; margin: auto; background: transparent; max-width: 100vw; max-height: 100vh; }
+dialog.dataset-quality-dialog::backdrop { background: rgba(0,0,0,.5); }
+.dataset-quality-dialog .modal-actions { flex-wrap: wrap; }

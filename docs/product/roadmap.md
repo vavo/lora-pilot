@@ -1,6 +1,6 @@
 # Product roadmap
 
-_Last updated: 2026-09-21_
+_Last updated: 2026-10-03_
 
 LoRA Pilot should help you take a training experiment from prepared images to a result you can inspect, keep, and use again. This roadmap separates implemented source features from proposed work. It sets no release dates. The [ideas document](ideas.md) holds directions that need more investigation before they become implementation tasks.
 
@@ -14,7 +14,7 @@ Q1 adds individual checkpoint downloads after a guided run finishes, including f
 
 V5 adds Storage under Manage. You can inspect category usage and review selected checkpoints, private dataset snapshots, or training caches from finished guided runs before permanent removal. Workload and file-change checks protect the operation. Original datasets, shared models, linked files, and run records remain outside this cleanup flow. General application caches and outputs from other tools appear in the overview but are not cleanup candidates.
 
-Successful runs also support copying checkpoints into the shared LoRA library and generating a paired comparison in ComfyUI. The same prompt and seed help you inspect what the chosen LoRA changes. See [TrainPilot](../components/trainpilot.md) and [ControlPilot](../user-guide/control-pilot.md) for the current user flows.
+Successful runs also support moving or copying checkpoints into the shared LoRA library and generating a comparison grid in ComfyUI. The same prompt and seed help you inspect what the chosen LoRA changes. See [TrainPilot](../components/trainpilot.md) and [ControlPilot](../user-guide/control-pilot.md) for the current user flows.
 
 ## Verify the new image on target hardware
 
@@ -28,7 +28,15 @@ Download cancellation, the unselected Q4 from the September 21 batch, remains pr
 
 ## Review dataset quality before spending GPU time
 
-Caption coverage already helps you find missing text files. A proposed dataset review would also identify unreadable images, exact duplicates, unusually small images, and caption mismatches before queueing. Start with a read-only report that takes you to the affected files. Define any repair actions separately so the first version cannot silently change a training dataset.
+The October 3 source implementation adds a bounded, read-only report for unreadable images, exact duplicates, small images and caption mismatches. Datasets and Guided training link to it, and the guided setup opens it before queue submission. Findings link to previews and Caption images. Repairs remain explicit actions in the existing tools.
+
+## First-run guidance, measured settings and portable experiments
+
+The optional first-LoRA guide uses the eight original orange robot video images and the trigger word `pilotceramic`. It installs a separate workspace dataset, records explicit caption review and leads through an SDXL Quick test to the existing checkpoint comparison. Progress comes from actual saved state, not demonstration outputs.
+
+GPU settings now offer editable starting suggestions and can reuse memory settings from successful local runs with matching hardware, family, profile and build. New runs record sampled device memory, elapsed time and effective settings. A published benchmark matrix across common GPUs remains outstanding; the UI labels suggestions without matching measurements.
+
+Experiment export packages one chosen checkpoint, selected settings, model requirements, trigger words, prompts and optional comparison images after a file preview. Dataset files, credentials, logs and local paths stay out of the package. Local API and browser checks validate these flows; image publication and a complete robot training/comparison run on a target GPU remain separate delivery checks.
 
 ## Prove workflow readiness before launch
 

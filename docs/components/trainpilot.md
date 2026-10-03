@@ -16,7 +16,19 @@ SD 1.5 uses `sd15-base`, including its text encoder and VAE, at 512-pixel resolu
 
 The new profiles follow the pinned Kohya [SD 1.x training path](https://github.com/kohya-ss/sd-scripts/blob/6721028c79ee85a78b3a06dfd8954dae310a1cce/train_network.py) and [SD3 training implementation](https://github.com/kohya-ss/sd-scripts/blob/6721028c79ee85a78b3a06dfd8954dae310a1cce/sd3_train_network.py). Local checks cover configuration, launch arguments, recovery, and comparison graphs. Completed GPU training and generation runs for these new profiles remain unverified.
 
+## Meet the orange robot
+
+Open **Your first LoRA** in Datasets or Guided training to use the orange robot from the LoRA Pilot videos. Installing the sample copies eight original 1024-pixel images and their reviewed captions into your workspace. Existing datasets are never overwritten. The trigger word is `pilotceramic`.
+
+Open the captions, look at the images, then return to the guide and choose **I reviewed the captions**. **Set up quick training** fills an SDXL Quick test named `OrangeRobot`. The existing model check offers missing downloads before queueing, and you still choose when to start. Progress follows the saved dataset, successful training and completed comparison. Changing the dataset resets its caption-review state.
+
+These are generated sample inputs with variations in the robot's design, not a finished mascot or examples of trained output. Use the comparison to see what your own run learned. A suggested prompt is filled for the sample run; try a new setting as well as a familiar one. GPU training quality remains something to assess on your hardware.
+
 ## Begin with a reviewed dataset
+
+**Check quality** in Datasets and **Review dataset** in Guided training open a read-only report. It checks for unreadable images, exact duplicates, images with a short side below 512 pixels, empty or missing captions, orphan captions and symbolic links. Findings link to image previews and the selected image in Caption images. No repair, deletion or caption rewrite happens automatically.
+
+The report opens before a new run is added from the guided setup. Unreadable files and symbolic links must be resolved first. Other findings are advisory. Large scans stop after 5,000 files, 2 GiB of image reads or 45 seconds; individual images above 32 MiB or 40 million pixels are left unchecked. An incomplete scan is labeled explicitly, never presented as a clean result. This review is a frontend handoff; direct API clients remain responsible for their own quality checks.
 
 Choose a saved dataset and inspect its images and caption coverage. The collection should live under `/workspace/datasets` using the `1_` naming convention. A name such as `teapot_sideviews_test` makes your training intent easier to recognize later.
 
@@ -99,3 +111,17 @@ Resume queue allows waiting jobs to start. It does not restart a stopped trainin
 Older runs may have saved only LoRA weights. Continue from checkpoint loads those weights into a new run with a fresh optimizer and learning-rate schedule, then runs the full selected schedule again. The confirmation explains this before queuing. If no recovery point exists, Repeat run starts from the base model. Recovery requires the original dataset to remain unchanged.
 
 New guided runs save optimizer state with their periodic checkpoints, defaulting to a save every 200 steps when no step interval is configured. Recovery states use additional disk space; retention keeps recent step and epoch states. Stopping before the first save still requires starting again. If the queue is paused, the resumed run waits until you choose Resume queue.
+
+## Fit a run to your GPU
+
+Open **GPU & training settings** to see available GPU memory as a bar and adjust batch size, gradient accumulation, LoRA rank and, for FLUX.1, block swapping. Choosing a suggestion fills these fields; it never starts training. Your edits survive navigation and refresh with the unfinished draft. **Use profile defaults** removes the overrides.
+
+ControlPilot records GPU model and capacity, build identity, elapsed time, effective training settings and sampled whole-device peak memory for new managed runs. A successful, non-recovery run on the same GPU, model family, profile and build can supply the suggested memory settings. Whole-device memory includes ComfyUI and other workloads, and sampling can miss brief peaks. Multi-GPU or unavailable telemetry produces no measured recommendation.
+
+When no matching measurement exists, the interface says **Starting suggestion only**. These are editable starting points rather than a published benchmark set. Different datasets, resolutions, models and simultaneous workloads can change the memory needed. ComfyUI remains allowed to run concurrently.
+
+## Take an experiment with you
+
+Open **Export experiment** on a finished or stopped run with a saved checkpoint. Choose one checkpoint, enter its trigger words and a sample prompt, and optionally select comparison images. **Preview package** shows the included files before **Download experiment ZIP** becomes available. Changing the selection requires a new preview; changed source files invalidate the download.
+
+The ZIP contains the checkpoint, a readable readme and an `experiment.json` manifest with model requirements and selected training settings. Chosen comparison images are included with embedded image metadata removed. Dataset files, credentials, logs, local filesystem paths and optimizer state are excluded. Base-model weights are not bundled. The package helps you use the LoRA elsewhere and understand the experiment; resuming its optimizer still requires the original training state.

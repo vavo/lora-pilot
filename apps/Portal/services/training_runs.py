@@ -168,14 +168,19 @@ class TrainingRuns:
         return reasons
 
     def tick(self):
+        from . import training_performance
         with LAUNCH_LOCK, self.lock:
             if self.proc:
                 code = self.proc.poll()
                 if code is None:
+                    run = self.get(self.current)
+                    training_performance.sample(run)
+                    self.save(run)
                     return
                 run = self.get(self.current)
                 run.update(status='stopped' if run['status'] == 'stopping' else 'succeeded' if code == 0 else 'failed',
                            exit_code=code, finished_at=now())
+                training_performance.finish(run, self.directory(run['id']))
                 self.save(run)
                 self.proc = None
                 self.current = None
@@ -187,6 +192,7 @@ class TrainingRuns:
                 return
             run = queued[0]
             run.update(status='running', started_at=now())
+            training_performance.sample(run)
             self.save(run)  # A crash during launch becomes interrupted, never silently repeated.
             try:
                 path = self.directory(run['id']) / 'run.log'
