@@ -1,6 +1,6 @@
-Unreleased (October 3rd 2026)
+Unreleased (October 5th 2026)
 
-VS Code Server is now optional: removed from the default Docker image and available through Services → Install VS Code. The checksum-verified editor persists in the workspace; fresh workspaces keep auto-start off and existing editor data is preserved.
+VS Code Server is now optional: removed from the default Docker image and available through Services → Install VS Code. The checksum-verified editor persists in the workspace; fresh workspaces keep auto-start off and existing editor data is preserved. Install it, then choose Start service. Existing workspaces can reinstall after an image upgrade without losing settings, extensions or their password. Port 8443 remains available for the optional editor.
 
 ControlPilot service metadata now comes from one shared registry, with checks against Supervisor program names, launchers and logs. Service links follow configured ports, Copilot uses its configured sidecar port, and AI Toolkit honors its UI port override. Invalid or mismatched Supervisor status output remains unknown instead of being treated as a valid process state.
 

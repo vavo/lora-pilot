@@ -1,10 +1,12 @@
 # Changelog
 
-_Last updated: 2026-10-03_
+_Last updated: 2026-10-05_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Current unreleased work
+
+VS Code Server is now an [optional install](../components/code-server.md) from **ControlPilot → Services**. The default Docker image no longer bundles the editor. Choose **Install VS Code**, wait for verification to finish, then **Start service**. The executable persists in the workspace, existing editor data is preserved, and fresh workspaces leave autostart off. Port 8443 remains reserved so installation does not require recreating a standard Compose container.
 
 The October 3 source changes add read-only dataset quality review, the optional orange robot first-LoRA guide, editable GPU suggestions informed by matching local runs, and previewed experiment ZIP exports. The guide uses original video assets as training inputs. No published cross-GPU benchmark or trained demo result is implied. See [TrainPilot](../components/trainpilot.md) for the workflow and validation limits.
 
@@ -19,6 +21,8 @@ The September 21 additions bring checkpoint downloads, searchable and paginated 
 This section also records the Settings redesign, the Models HTTP 500 fix, and repaired documentation images. These are source changes awaiting a release. A changelog entry does not establish that a Docker image contains the change or that training has passed on a target GPU.
 
 ## Implementation and delivery status
+
+The optional-editor implementation at `99b07d3` passed 399 Python tests and 17 Services/lifecycle JavaScript tests, Docker build checks for cu130 and cu128, desktop/mobile installation and retry checks, and an isolated Linux amd64 installation and password-gated startup using the real release archive. Two broader Settings JavaScript failures also occurred on the unchanged parent commit. These checks do not certify GPU training. Development images are published through the [GitHub Actions workflow](../development/building.md#publish-a-development-image-with-github-actions); verify the successful run and image revision before deploying a mutable tag.
 
 The September 21 implementation through `e70a86b` passed 229 Python tests and 8 frontend tests. Local browser checks covered checkpoint downloads, history filters, progress estimates, reviewed cleanup, mobile layout, and both themes. Cleanup checks used disposable files. The local Docker build check could not reach a running daemon; that task did not publish a new image or validate a training run on a live GPU.
 

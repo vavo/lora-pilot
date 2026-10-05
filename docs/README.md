@@ -20,6 +20,8 @@ The [inference guide](user-guide/inference.md) connects saved models to generati
 
 ## Keep the workspace understandable
 
+JupyterLab is included for notebooks and terminals. [VS Code Server](components/code-server.md) is an optional download from **Services**; the editor and its settings persist in your workspace.
+
 [ControlPilot](user-guide/control-pilot.md) covers build diagnostics, global activity, unfinished training drafts, service controls, and Settings. Its Storage page shows category usage and offers reviewed cleanup of eligible files from finished guided runs. Read the cleanup explanation before removing checkpoints you may still want to download or compare.
 
 Models, datasets, settings, and outputs use the persistent workspace. Image-owned application code follows the container image. The [file structure reference](reference/file-structure.md) explains that boundary; persistence depends on retaining the workspace volume. For a failure, start with [troubleshooting](reference/troubleshooting.md) or the [debugging guide](development/debugging.md). The [Copilot Sidecar guide](components/copilot-sidecar.md) describes the optional assistant integration.

@@ -1,18 +1,31 @@
 # Building LoRA Pilot
 
-_Last updated: 2026-09-20_
+_Last updated: 2026-10-05_
 
 This guide covers building LoRA Pilot from source, including development setup, custom configurations, and deployment options.
 
 ## Publish a development image with GitHub Actions
 
-Run the repository's **Publish Docker image** workflow on `main` to build and push `notrius/lora-pilot:dev` plus a commit-specific SHA tag. Manual builds leave `latest` unchanged unless you enable **Also update the latest tag**. From an authenticated GitHub CLI, start a development build with:
+Run the repository's **Publish Docker image** workflow on the pushed branch you want to publish to build and push `notrius/lora-pilot:dev` plus a commit-specific SHA tag. Manual builds leave `latest` unchanged unless you enable **Also update the latest tag**. It builds Linux/amd64 with the default cu130 profile. Commit and push the intended source first; GitHub Actions does not include local uncommitted files. From an authenticated GitHub CLI, publish the current branch with:
 
 ```bash
-gh workflow run publish-docker.yml -R vavo/lora-pilot --ref main -f publish_latest=false
+gh workflow run publish-docker.yml -R vavo/lora-pilot --ref "$(git branch --show-current)" -f publish_latest=false
 ```
 
-Wait for the workflow to finish and verify the Docker Hub manifest before pulling the new image. Push-triggered builds retain their existing publication behavior. Publishing an image does not replace the running container or validate training on its GPU.
+Check the run's source SHA, wait for successful completion, then verify the Docker Hub manifest and revision label before pulling the new image:
+
+```bash
+gh run list -R vavo/lora-pilot --workflow publish-docker.yml --branch "$(git branch --show-current)" --limit 5
+gh run watch RUN_ID -R vavo/lora-pilot --exit-status
+docker buildx imagetools inspect notrius/lora-pilot:dev
+docker buildx imagetools inspect notrius/lora-pilot:dev --format '{{json .Image.Config.Labels}}'
+```
+
+Replace `RUN_ID` with the matching run ID. The `org.opencontainers.image.revision` label must match that run's full source commit. The `sha-<short-commit>` tag identifies the same build independently of later `dev` publications.
+
+Images built from `99b07d3` or later omit VS Code Server. Install it from Services when needed; see the [optional editor guide](../components/code-server.md) for persistence and upgrade behavior.
+
+Push-triggered builds retain their existing publication behavior. Publishing an image does not replace the running container or validate training on its GPU.
 
 ## Identify the running image
 
