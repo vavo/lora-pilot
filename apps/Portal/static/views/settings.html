@@ -33,6 +33,12 @@
   .settings-page .btn.primary { background:#ef542e; color:#fff; }
   .settings-page .btn.secondary { background:var(--card); }
   .settings-status { display:block; min-height:20px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; color:var(--muted); }
+  .settings-mcp-examples { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .settings-mcp-examples .btn { text-align:left; white-space:normal; line-height:1.6; }
+  #settings-mcp-instructions { box-sizing:border-box; width:100%; min-height:190px; resize:vertical; }
+  #settings-mcp-password-setup, #settings-mcp-ready, #settings-mcp-token-result { display:flex; flex-direction:column; gap:16px; }
+  #settings-panel-mcp [hidden] { display:none; }
+  @media (max-width:575px) { .settings-mcp-examples { grid-template-columns:1fr; } }
   .settings-aside { align-self:stretch; border-left:1px solid var(--border); padding:18px 0 12px 30px; }
   .settings-aside h3 { margin:0 0 14px; font-size:18px; }
   .settings-aside p { margin:0; color:var(--muted); font-size:16px; line-height:1.7; }
@@ -210,17 +216,31 @@
   <section id="settings-panel-mcp" class="settings-panel" role="tabpanel" aria-labelledby="settings-tab-mcp" hidden>
     <div class="settings-layout"><div class="settings-main">
       <section class="settings-section settings-card">
-        <h3>Assistant connections</h3>
-        <p>Grant each assistant access to selected data. MCP starts disabled. Connected clients can retain anything they receive; revocation prevents further access.</p>
+        <h3>Connect your agent</h3>
+        <p>Create a connection, then copy its setup instructions into your agent. Your workspace address is configured automatically.</p>
+        <div id="settings-mcp-password-setup" hidden>
+          <p>First, set a ControlPilot password to protect your workspace. You will use it to manage agent access.</p>
+          <div class="field"><label for="settings-mcp-new-password">New ControlPilot password</label><input id="settings-mcp-new-password" class="input" type="password" autocomplete="new-password" minlength="8" maxlength="1024" /></div>
+          <div class="field"><label for="settings-mcp-confirm-password">Confirm password</label><input id="settings-mcp-confirm-password" class="input" type="password" autocomplete="new-password" maxlength="1024" /></div>
+          <button id="settings-mcp-set-password" class="btn primary" type="button">Set password and continue</button>
+        </div>
+        <div id="settings-mcp-ready">
         <div class="field"><label for="settings-mcp-password">Current ControlPilot password</label><input id="settings-mcp-password" class="input" type="password" autocomplete="current-password" /></div>
-        <div class="settings-row"><label><input id="settings-mcp-enabled" type="checkbox" /> Enable MCP</label><button id="settings-mcp-save" type="button" class="btn primary">Apply</button><button id="settings-mcp-refresh" type="button" class="btn secondary">Refresh</button></div>
-        <div class="field"><label for="settings-mcp-url">MCP endpoint</label><input id="settings-mcp-url" class="input" readonly /></div>
-        <div id="settings-mcp-status" class="settings-status" role="status">Set a ControlPilot password and configure MCP_PUBLIC_URL to your public HTTPS origin before connecting.</div>
+        <details class="settings-details"><summary>Server controls</summary>
+          <div class="settings-row"><label><input id="settings-mcp-enabled" type="checkbox" /> Enable MCP</label><button id="settings-mcp-save" type="button" class="btn secondary">Apply</button></div>
+          <div class="field"><label for="settings-mcp-url">MCP endpoint</label><input id="settings-mcp-url" class="input" readonly /></div>
+        </details>
+        </div>
+        <div id="settings-mcp-status" class="settings-status" role="status">Checking connection setup…</div>
+        <button id="settings-mcp-refresh" type="button" class="btn secondary">Refresh</button>
       </section>
-      <section class="settings-section settings-card">
+      <section id="settings-mcp-connection-form" class="settings-section settings-card">
         <h3 id="settings-mcp-form-title">New connection</h3>
-        <div class="field"><label for="settings-mcp-label">Connection name</label><input id="settings-mcp-label" class="input" maxlength="80" placeholder="My assistant" /></div>
+        <p>Start with read-only access. Select the datasets and runs this agent may inspect. Creating a connection also enables MCP.</p>
+        <div class="field"><label for="settings-mcp-label">Connection name</label><input id="settings-mcp-label" class="input" maxlength="80" value="My agent" /></div>
+        <details class="settings-details"><summary>Permissions</summary>
         <fieldset id="settings-mcp-scopes"><legend>Permissions</legend></fieldset>
+        </details>
         <fieldset id="settings-mcp-datasets"><legend>Datasets</legend></fieldset>
         <fieldset id="settings-mcp-runs"><legend>Existing runs</legend></fieldset>
         <div class="field"><label for="settings-mcp-days">Expires after (days)</label><input id="settings-mcp-days" class="input" type="number" min="1" max="30" value="30" /></div>
@@ -233,7 +253,26 @@
         </fieldset>
         <button id="settings-mcp-create" type="button" class="btn primary">Create connection</button>
         <button id="settings-mcp-cancel-edit" type="button" class="btn secondary" hidden>Cancel edit</button>
-        <div id="settings-mcp-token-result" hidden><label for="settings-mcp-token">Copy this token into your client's Authorization bearer header. It is shown once.</label><input id="settings-mcp-token" class="input" type="password" readonly /><button id="settings-mcp-copy" type="button" class="btn secondary">Copy token</button></div>
+      </section>
+      <section id="settings-mcp-token-result" class="settings-section settings-card" hidden>
+        <h3>Copy this into your agent to set up the connection</h3>
+        <p>The copy button includes your private connection token. Paste it only into an agent you trust. It is available here once; rotate the token if you need new setup instructions later.</p>
+        <textarea id="settings-mcp-instructions" class="input" readonly aria-label="Agent setup instructions"></textarea>
+        <button id="settings-mcp-copy-setup" type="button" class="btn primary">Copy setup instructions</button>
+        <details class="settings-details"><summary>Manual connection details</summary>
+          <p>Use Streamable HTTP with an Authorization bearer header. Your client must support bearer tokens; OAuth-only clients cannot connect yet.</p>
+          <label for="settings-mcp-token">Connection token</label><input id="settings-mcp-token" class="input" type="password" readonly /><button id="settings-mcp-copy" type="button" class="btn secondary">Copy token</button>
+        </details>
+      </section>
+      <section class="settings-section settings-card">
+        <h3>Try one of these</h3>
+        <p>Copy a prompt into your connected agent. Dataset and run examples use only the items you chose to share.</p>
+        <div id="settings-mcp-examples" class="settings-mcp-examples">
+          <button class="btn secondary" type="button">Check my LoRA Pilot workspace and tell me whether the training queue is paused.</button>
+          <button class="btn secondary" type="button">Review the datasets I shared for missing captions, duplicate images and small images.</button>
+          <button class="btn secondary" type="button">Which models are installed, and which catalog entries still need downloading?</button>
+          <button class="btn secondary" type="button">Summarize the training runs I shared and their saved checkpoints.</button>
+        </div>
       </section>
       <section class="settings-section settings-card"><h3>Connections</h3><div id="settings-mcp-clients"></div></section>
       <section class="settings-section settings-card"><h3>Pending approvals</h3><p>Review the selected data and limits before approving. Cancellation permission can stop a run and lose progress since its last checkpoint.</p><div id="settings-mcp-approvals"></div></section>

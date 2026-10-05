@@ -34,7 +34,9 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
   };
 
   const tabs = [...document.querySelectorAll('.settings-tabs [role="tab"]')];
+  let onMcpTabChange = () => {};
   function selectTab(selected) {
+    onMcpTabChange(selected.id === "settings-tab-mcp");
     tabs.forEach(tab => {
       const active = tab === selected;
       tab.setAttribute("aria-selected", String(active));
@@ -430,7 +432,33 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
   const mcpElements = new Map([...document.querySelectorAll('[id^="settings-mcp-"]')].map(element => [element.id.slice('settings-mcp-'.length), element]));
   const mcp = name => mcpElements.get(name);
   let mcpCsrf = '';
-  let mcpEditing = null;
+  let mcpEditing = null, mcpBusy = false, mcpLoaded = false, mcpAvailable = false, mcpView = 0;
+  const mcpSelected = name => [...mcp(name).querySelectorAll('input:checked')].map(input => input.value);
+  function clearMcpSecrets() {
+    for (const name of ['password', 'new-password', 'confirm-password', 'token', 'instructions']) mcp(name).value = '';
+    mcp('token-result').hidden = true;
+  }
+  function mcpControls() {
+    mcp('create').disabled = mcpBusy || !mcpAvailable;
+    mcp('save').disabled = mcpBusy || !mcpCsrf || (!mcpAvailable && !mcp('enabled').checked);
+    mcp('set-password').disabled = mcpBusy;
+  }
+  function mcpSetupText(token) {
+    return `Add an MCP server named "lora-pilot" to this agent.
+Transport: Streamable HTTP
+URL: ${mcp('url').value}
+Authorization header: Bearer ${token}
+Keep this credential in private configuration. Do not echo it or commit it.
+Connect and list the available tools.`;
+  }
+  function resetMcpForm() {
+    mcpEditing = null; mcp('form-title').textContent = 'New connection';
+    mcp('create').textContent = 'Create connection'; mcp('cancel-edit').hidden = true;
+    mcp('label').value = 'My agent'; mcp('unattended').checked = false;
+    for (const group of ['scopes', 'datasets', 'runs']) mcp(group).querySelectorAll('input').forEach(input => {
+      input.checked = group === 'scopes' && !['training:submit', 'training:cancel', 'comparison:submit', 'artifacts:export', 'artifacts:read'].includes(input.value);
+    });
+  }
   const permissionLabels = {
     'workspace:read': 'Workspace status', 'datasets:inspect': 'Inspect selected datasets',
     'models:read': 'Model catalog', 'runs:read': 'Read selected runs', 'operations:read': 'Operation status',
@@ -440,10 +468,11 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
   };
   function mcpChoices(name, items) {
     const box = mcp(name), legend = box.querySelector('legend');
+    const selected = mcpSelected(name);
     box.replaceChildren(legend);
     for (const [value, label] of items) {
       const row = document.createElement('label'), input = document.createElement('input');
-      input.type = 'checkbox'; input.value = value;
+      input.type = 'checkbox'; input.value = value; input.checked = selected.includes(value);
       row.append(input, document.createTextNode(` ${label}`));
       const line = document.createElement('div'); line.append(row); box.append(line);
     }
@@ -457,13 +486,24 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
     const request = screen.latest('mcp-settings');
     try {
       const value = await request.json('/api/settings/mcp');
-      request.check(); mcpCsrf = value.csrf;
-      mcp('enabled').checked = value.enabled; mcp('url').value = value.url;
+      request.check(); mcpCsrf = value.csrf || ''; mcpAvailable = !!value.available;
+      mcp('password-setup').hidden = !value.password_required;
+      mcp('ready').hidden = !!value.password_required;
+      mcp('connection-form').hidden = !!value.password_required;
+      mcp('enabled').checked = value.enabled; mcp('url').value = value.url || new URL('/mcp', location.origin).href;
+      mcpControls();
+      if (value.password_required) {
+        clearMcpSecrets(); mcpLoaded = false;
+        mcp('clients').replaceChildren(); mcp('approvals').replaceChildren();
+        mcp('status').textContent = 'Set a ControlPilot password to protect your MCP connections.';
+        return;
+      }
       mcp('policy').hidden = !value.execution_enabled;
-      mcp('status').textContent = value.enabled ? `MCP enabled. ${value.execution_enabled ? 'Approved operations available.' : 'Read-only access.'}` : 'MCP disabled.';
+      mcp('status').textContent = !value.available ? 'MCP is unavailable in this installation. Check the server configuration and logs.' : value.enabled ? `MCP enabled. ${value.execution_enabled ? 'Approved operations available.' : 'Read-only access.'}` : 'Ready to create a connection. MCP will be enabled when you create it.';
       mcpChoices('scopes', value.scopes.map(scope => [scope, permissionLabels[scope] || scope]));
       mcpChoices('datasets', value.datasets.map(name => [name, name]));
       mcpChoices('runs', value.runs.map(run => [run.id, run.name]));
+      if (!mcpLoaded) { resetMcpForm(); mcpLoaded = true; }
       mcp('clients').replaceChildren();
       for (const client of value.clients) {
         const row = document.createElement('div'), description = document.createElement('p');
@@ -471,6 +511,7 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
         row.append(description);
         if (!client.revoked) row.append(
           mcpButton('Edit grants', () => {
+            if (mcpBusy) return;
             mcpEditing = client.id;
             mcp('form-title').textContent = `Edit ${client.label}`;
             mcp('create').textContent = 'Save connection'; mcp('cancel-edit').hidden = false;
@@ -501,39 +542,87 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
         mcp('approvals').append(row);
       }
     } catch (error) {
-      if (request.active) mcp('status').textContent = `MCP settings unavailable: ${settingsError(error)}. Set a ControlPilot password and configure MCP_PUBLIC_URL.`;
+      if (request.active) {
+        mcpCsrf = ''; mcpAvailable = false; mcpControls();
+        mcp('status').textContent = `Could not load MCP settings: ${settingsError(error)}. Sign in to ControlPilot at its public address, then refresh.`;
+      }
     }
   }
   async function updateMcp(path, method, body) {
-    const password = mcp('password').value;
-    mcp('password').value = ''; mcp('token').value = ''; mcp('token-result').hidden = true;
+    if (mcpBusy) return;
+    const password = mcp('password').value, view = mcpView;
+    clearMcpSecrets();
     if (!password) { mcp('status').textContent = 'Enter your current ControlPilot password to authorize this change.'; return; }
+    mcpBusy = true; mcpControls();
     try {
       const result = await screen.json('/api/settings/mcp' + path, { method,
         headers: { 'Content-Type': 'application/json', 'X-MCP-CSRF': mcpCsrf }, body: JSON.stringify({ ...body, password }) });
       await refreshMcp(); screen.check();
-      mcpEditing = null; mcp('form-title').textContent = 'New connection';
-      mcp('create').textContent = 'Create connection'; mcp('cancel-edit').hidden = true;
-      mcp('unattended').checked = false;
-      if (result.token) { mcp('token').value = result.token; mcp('token-result').hidden = false; }
+      resetMcpForm();
+      if (result.token && view === mcpView) {
+        if (result.url) mcp('url').value = result.url;
+        mcp('token').value = result.token;
+        mcp('instructions').value = mcpSetupText('[included when copied]');
+        mcp('token-result').hidden = false;
+        mcp('token-result').scrollIntoView({block: 'nearest'});
+      }
     } catch (error) { if (screen.active) mcp('status').textContent = settingsError(error); }
+    finally { mcpBusy = false; if (screen.active) mcpControls(); }
   }
-  const mcpSelected = name => [...mcp(name).querySelectorAll('input:checked')].map(input => input.value);
+  mcpControls();
   mcp('save').onclick = () => updateMcp('', 'POST', { enabled: mcp('enabled').checked });
   mcp('create').onclick = () => updateMcp(mcpEditing ? `/clients/${mcpEditing}` : '/clients', mcpEditing ? 'PATCH' : 'POST', {
-    label: mcp('label').value, scopes: mcpSelected('scopes'), datasets: mcpSelected('datasets'), runs: mcpSelected('runs'), days: Number(mcp('days').value),
+    ...(mcpEditing ? {} : {enable: true}), label: mcp('label').value, scopes: mcpSelected('scopes'), datasets: mcpSelected('datasets'), runs: mcpSelected('runs'), days: Number(mcp('days').value),
     policy: { enabled: mcp('unattended').checked, max_steps: Number(mcp('steps').value), max_seconds: Number(mcp('seconds').value), max_bytes: Number(mcp('bytes').value) * 1024 ** 3 } });
-  mcp('cancel-edit').onclick = () => {
-    mcpEditing = null; mcp('form-title').textContent = 'New connection'; mcp('create').textContent = 'Create connection';
-    mcp('cancel-edit').hidden = true; mcp('unattended').checked = false; refreshMcp();
-  };
+  mcp('cancel-edit').onclick = () => { if (!mcpBusy) resetMcpForm(); };
   mcp('refresh').onclick = refreshMcp;
-  mcp('copy').onclick = async () => {
-    try { await navigator.clipboard.writeText(mcp('token').value); }
-    catch (_) { if (screen.active) { mcp('token').select(); mcp('status').textContent = 'Copy the selected token manually.'; } }
+  mcp('set-password').onclick = async () => {
+    if (mcpBusy) return;
+    const password = mcp('new-password').value.trim(), view = mcpView;
+    if (password.length < 8 || password !== mcp('confirm-password').value.trim()) {
+      mcp('status').textContent = 'Enter matching passwords with at least 8 characters.'; return;
+    }
+    mcpBusy = true; mcpControls(); clearMcpSecrets();
+    try {
+      await screen.json('/api/settings/password', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({enabled: true, password})});
+      await refreshMcp(); screen.check();
+      els.passwordEnabled.checked = true;
+      if (view === mcpView && mcpCsrf) mcp('password').value = password;
+    } catch (error) { if (screen.active) mcp('status').textContent = settingsError(error); }
+    finally { mcpBusy = false; if (screen.active) mcpControls(); }
   };
-  document.getElementById('settings-tab-mcp').addEventListener('click', refreshMcp);
-  screen.onCleanup(() => { mcpCsrf = ''; mcp('password').value = ''; mcp('token').value = ''; });
+  mcp('copy-setup').onclick = async () => {
+    if (!mcp('token').value) return;
+    const text = mcpSetupText(mcp('token').value), view = mcpView;
+    try {
+      await navigator.clipboard.writeText(text);
+      if (screen.active && view === mcpView) mcp('status').textContent = 'Connection instructions copied. Paste them into your agent’s private setup.';
+    } catch (_) {
+      if (screen.active && view === mcpView) {
+        mcp('instructions').value = text; mcp('instructions').select();
+        mcp('status').textContent = 'Copy the selected instructions manually. They include your private token.';
+      }
+    }
+  };
+  mcp('copy').onclick = async () => {
+    if (!mcp('token').value) return;
+    const view = mcpView;
+    try { await navigator.clipboard.writeText(mcp('token').value); }
+    catch (_) { if (screen.active && view === mcpView) { mcp('token').select(); mcp('status').textContent = 'Copy the selected token manually.'; } }
+  };
+  mcp('examples').addEventListener('click', async event => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    try {
+      await navigator.clipboard.writeText(button.textContent.trim());
+      if (screen.active) mcp('status').textContent = 'Prompt copied. Paste it into your connected agent.';
+    } catch (_) { if (screen.active) mcp('status').textContent = 'Clipboard unavailable. Select and copy the prompt text manually.'; }
+  });
+  onMcpTabChange = active => {
+    if (active) refreshMcp();
+    else { mcpView++; clearMcpSecrets(); }
+  };
+  screen.onCleanup(() => { mcpCsrf = ''; mcpView++; clearMcpSecrets(); });
   if (requestedTab === 'mcp') refreshMcp();
 
   try {
