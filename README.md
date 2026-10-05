@@ -31,7 +31,7 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 - **TagPilot** - fast dataset tagging/prep flow.
 - **TrainPilot** - guided Kohya run flow with sane profile defaults.
 - **MediaPilot** - generated image browser/organizer for curation and review.
-- **JupyterLab** and **code-server** for notebook/dev workflows.
+- **JupyterLab** for notebooks and terminals. **VS Code Server** is an optional install from ControlPilot → Services.
 - **Copilot sidecar (optional)** - workspace-aware assistant integration.
 
 ## From your images to a usable LoRA
@@ -149,7 +149,7 @@ Typical entries:
 | Kohya SS | `6666` |
 | ControlPilot | `7878` |
 | MediaPilot | `7878` (`/mediapilot`) |
-| code-server | `8443` |
+| code-server (optional install) | `8443` |
 | AI Toolkit | `8675` |
 | JupyterLab | `8888` |
 | InvokeAI (optional) | `9090` |

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import configparser
+import os
 from pathlib import Path
 import sys
 import tomllib
@@ -116,10 +117,14 @@ def main() -> int:
     if not state_path.exists():
         write_state(state_path, parser)
         print(f"[service-autostart] initialized {state_path}", flush=True)
-        return 0
 
     state = load_state(state_path)
     changes = apply_state(parser, state)
+    workspace = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
+    editor_installed = any(os.access(path, os.X_OK) and path.is_file() for path in (
+        workspace / "apps/code-server/bin/code-server", Path("/usr/bin/code-server")))
+    if not editor_installed and parser.has_section("program:code-server"):
+        changes["program:code-server"] = "false"
     if changes:
         write_autostart_changes(conf_path, changes)
         print(f"[service-autostart] applied persisted autostart settings from {state_path}", flush=True)

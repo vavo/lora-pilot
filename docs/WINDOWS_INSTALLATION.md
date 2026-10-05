@@ -2,7 +2,7 @@
 
 _Last updated: 2026-07-05_
 
-This guide will help Windows users install and run LoRA Pilot using Docker Desktop. LoRA Pilot is a comprehensive AI platform that includes ComfyUI, Kohya SS, JupyterLab, VS Code, and more in a single Docker container.
+This guide will help Windows users install and run LoRA Pilot using Docker Desktop. LoRA Pilot is a comprehensive AI platform that includes ComfyUI, Kohya SS, JupyterLab, and more in a single Docker container.
 
 ## System Requirements
 
@@ -172,7 +172,7 @@ docker-compose -f docker-compose.dev.yml up -d
    Open your web browser and navigate to:
    - **ControlPilot**: http://localhost:7878
    - **JupyterLab**: http://localhost:8888
-   - **VS Code Server**: http://localhost:8443
+   - **VS Code Server** (optional): install and start it from **ControlPilot → Services**, then open http://localhost:8443
    - **ComfyUI**: http://localhost:5555
    - **Kohya SS**: http://localhost:6666
    - **InvokeAI**: http://localhost:9090

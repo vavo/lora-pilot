@@ -1,5 +1,6 @@
 """Small, allowlisted support snapshots; never include settings, logs or URLs."""
 import json
+import os
 import re
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -35,8 +36,15 @@ def command(args, status=False):
 
 def installed_version(spec):
     if spec.get('kind') == 'code-server':
-        value = command(['code-server', '--version']).split()
-        return value[0] if value and re.fullmatch(r'\d+\.\d+\.\d+', value[0]) else None
+        from . import code_server
+        executable = spec.get('binary') or code_server.binary(Path(spec.get('workspace') or os.environ.get('WORKSPACE_ROOT', '/workspace')))
+        if not executable:
+            return None
+        for line in command([str(executable), '--version']).splitlines():
+            value = line.split()
+            if value and re.fullmatch(r'\d+\.\d+\.\d+', value[0]):
+                return value[0]
+        return None
     if spec.get('kind') == 'git':
         value = command(['git', '-C', spec['repo_dir'], 'rev-parse', 'HEAD'])
         return value if re.fullmatch(r'[a-f0-9]{40}', value) else None

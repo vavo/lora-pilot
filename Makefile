@@ -21,7 +21,6 @@ INSTALL_AI_TOOLKIT ?= 1
 INSTALL_AI_TOOLKIT_UI ?= 1
 INSTALL_COPILOT_CLI ?= 1
 COPILOT_CLI_VERSION ?= 1.0.10
-CODE_SERVER_VERSION ?= 4.135.0
 NODE_MAJOR ?= 24
 NPM_VERSION ?= 11.18.0
 JUPYTERLAB_VERSION ?= 4.6.3
@@ -109,7 +108,6 @@ DOCKER_BUILD_ARGS = \
 	--build-arg INSTALL_AI_TOOLKIT_UI=$(INSTALL_AI_TOOLKIT_UI) \
 	--build-arg INSTALL_COPILOT_CLI=$(INSTALL_COPILOT_CLI) \
 	--build-arg COPILOT_CLI_VERSION="$(COPILOT_CLI_VERSION)" \
-	--build-arg CODE_SERVER_VERSION="$(CODE_SERVER_VERSION)" \
 	--build-arg NODE_MAJOR="$(NODE_MAJOR)" \
 	--build-arg NPM_VERSION="$(NPM_VERSION)" \
 	--build-arg JUPYTERLAB_VERSION="$(JUPYTERLAB_VERSION)" \
@@ -225,7 +223,7 @@ shell:
 
 urls:
 	@echo "Jupyter:     http://localhost:8888/lab?token=$(JUPYTER_TOKEN)"
-	@echo "code-server: http://localhost:8443"
+	@echo "code-server (after installation in Services): http://localhost:8443"
 	@echo "password:    $(CODE_SERVER_PASSWORD)"
 
 secrets:

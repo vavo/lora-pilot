@@ -32,7 +32,13 @@ if [ -n "${CODE_SERVER_PASSWORD:-}" ]; then
   export PASSWORD="${CODE_SERVER_PASSWORD}"
 fi
 
-exec /usr/bin/code-server \
+BINARY="$WS/apps/code-server/bin/code-server"
+if [ ! -x "$BINARY" ]; then BINARY=/usr/bin/code-server; fi
+if [ ! -x "$BINARY" ]; then
+  echo "VS Code Server is optional. Install it from ControlPilot > Services first." >&2
+  exit 1
+fi
+exec "$BINARY" \
   --bind-addr "0.0.0.0:${PORT}" \
   --user-data-dir "${WS}/code-server/data" \
   --extensions-dir "${WS}/code-server/extensions" \

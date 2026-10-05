@@ -76,7 +76,8 @@ The Settings routes below also live outside Portal OpenAPI. They require an enab
 | `GET` | `/api/services/versions` | Installed/latest version metadata |
 | `POST` | `/api/services/{name}/{action}` | `action`: `start`, `stop`, `restart` |
 | `POST` | `/api/services/{name}/update/start` | Starts async update job |
-| `GET` | `/api/services/{name}/update/status` | Update job state/tail |
+| `POST` | `/api/services/{name}/install/start` | Installs optional code-server; no body |
+| `GET` | `/api/services/{name}/update/status` | Update/install job state/tail |
 | `POST` | `/api/services/{name}/settings/autostart` | Body: `{"enabled":true}` or `{"enabled":false}` |
 | `GET` | `/api/services/{name}/log` | Query: `lines` (default `100`) |
 | `GET` | `/api/tensorboard/status` | `port`, per-source `sources`, and `server` reachability/service state/start eligibility |
@@ -94,7 +95,13 @@ Known service names:
 - `controlpilot`
 - `copilot`
 
-Service listings return an array with `name`, `display`, `state`, `state_raw`, `running` and `autostart`. Version listings return installed/latest metadata and `update_supported`; update start accepts optional `{"target_version":"..."}`. Image-managed Git services reject runtime updates with 400. Poll update status for `state`, `error`, `last_line` and `output_tail`; no recorded job returns `state: "idle"`. Service log responses contain `log` and `path`.
+Service listings return an array with `name`, `display`, `state`, `state_raw`, `running` and `autostart`. `GET /api/services` also reports `installed` (boolean); code-server has `definition.capabilities.install: true`. When absent, starting/restarting it or enabling autostart returns 409.
+
+`POST /api/services/code-server/install/start` starts an asynchronous installation of the pinned release. No request body is needed; clients cannot choose a download URL, command or version. Other known services return 400; unknown names return 404. Duplicate calls reuse the running job; an existing installation returns `state: "done"`. The route uses the same ControlPilot authentication as other service controls.
+
+Poll `GET /api/services/code-server/update/status` for installation progress, using the existing service-job endpoint. Jobs include `operation: "install"` (normal updates use `"update"`), `state`, `last_line`, `error` and `installed_after`. A completed install does not start the service or change autostart. Job status is process-local: after a Portal restart refresh `/api/services` to discover installed files or retry an interrupted install.
+
+Version listings return installed/latest metadata and `update_supported`; update start accepts optional `{"target_version":"..."}`. Image-managed Git services reject runtime updates with 400. Poll update status for `state`, `error`, `last_line` and `output_tail`; no recorded job returns `state: "idle"`. Service log responses contain `log` and `path`.
 
 TensorBoard status groups event directories under `diffpipe`, `trainpilot`, `kohya` and `ai-toolkit`, with run-level loaded/recent flags. `/api/tensorboard/start` returns 409 if `DIFFPIPE_CONFIG` would launch training, or if the service is not stopped/exited/fatal. A successful start response does not prove the TensorBoard HTTP server is ready; poll status.
 

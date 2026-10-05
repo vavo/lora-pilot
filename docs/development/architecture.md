@@ -35,7 +35,7 @@ LoRA Pilot is built as a comprehensive, containerized AI workspace that integrat
 ├─────────────────────────────────────────────────────────────┤
 │  Development Environment                                     │
 │  ├── JupyterLab (Python/Jupyter)                            │
-│  └── Code Server (VS Code)                                  │
+│  └── Code Server (optional VS Code install)                 │
 ├─────────────────────────────────────────────────────────────┤
 │  Infrastructure                                             │
 │  ├── Docker Containers                                       │
@@ -76,7 +76,7 @@ lora-pilot (Main Container)
 │   ├── React Frontend
 │   └── FastAPI Backend
 ├── JupyterLab (Port 8888)
-├── Code Server (Port 8443)
+├── Code Server (optional install, Port 8443)
 ├── TrainPilot (CLI Tool)
 ├── TagPilot (Integrated)
 ├── MediaPilot (Integrated)
@@ -424,7 +424,7 @@ ports:
   - "6666:6666"      # Kohya SS
   - "9090:9090"      # InvokeAI
   - "8888:8888"      # JupyterLab
-  - "8443:8443"      # Code Server
+  - "8443:8443"      # Code Server (optional install)
   - "8675:8675"      # AI Toolkit
 ```
 

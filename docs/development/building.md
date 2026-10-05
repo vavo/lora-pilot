@@ -98,7 +98,6 @@ Stage 5: Final Image
 ```dockerfile
 # Version control
 ARG COPILOT_CLI_VERSION=1.0.10
-ARG CODE_SERVER_VERSION=4.135.0
 ARG NODE_MAJOR=24
 ARG NPM_VERSION=11.18.0
 ARG JUPYTERLAB_VERSION=4.6.3
@@ -604,7 +603,6 @@ TOMLKIT_VERSION=0.14.0
 ACCELERATE_VERSION=1.14.0
 HF_HUB_VERSION=1.19.0
 COPILOT_CLI_VERSION=1.0.10
-CODE_SERVER_VERSION=4.135.0
 NODE_MAJOR=24
 NPM_VERSION=11.18.0
 JUPYTERLAB_VERSION=4.6.3
@@ -655,7 +653,6 @@ docker build \
   --build-arg ACCELERATE_VERSION=$ACCELERATE_VERSION \
   --build-arg HF_HUB_VERSION=$HF_HUB_VERSION \
   --build-arg COPILOT_CLI_VERSION=$COPILOT_CLI_VERSION \
-  --build-arg CODE_SERVER_VERSION=$CODE_SERVER_VERSION \
   --build-arg NODE_MAJOR=$NODE_MAJOR \
   --build-arg NPM_VERSION=$NPM_VERSION \
   --build-arg JUPYTERLAB_VERSION=$JUPYTERLAB_VERSION \
@@ -841,6 +838,6 @@ Was this helpful? [Suggest improvements on GitHub Discussions](https://github.co
 
 ### September 5 build review
 
-code-server is pinned to 4.135.0 (VS Code 1.135.0). JupyterLab 4.6.3 remains the latest stable release checked on September 5, 2026. The system packages include FFmpeg, supplying the shared libraries required by AI Toolkit’s TorchCodec decoder; installing PyAV alone does not supply this system dependency.
+code-server is no longer installed during the image build. Services installs the optional, checksum-pinned 4.135.0 release into the persistent workspace; release pins live in `apps/Portal/services/code_server.py`. JupyterLab 4.6.3 remains the latest stable release checked on September 5, 2026. The system packages include FFmpeg, supplying the shared libraries required by AI Toolkit’s TorchCodec decoder; installing PyAV alone does not supply this system dependency.
 
 Validation: all 104 repository tests passed, build shell scripts passed `bash -n`, and the complete shared core dependency set resolved for Linux/Python 3.11 against both cu128 and cu130 (257 packages each). `make build-check` could not run because the local Docker daemon was unavailable; full image builds and native decoder/GPU checks remain pending.

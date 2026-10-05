@@ -52,14 +52,14 @@ try:
     from .services.comfy import create_router as create_comfy_router  # type: ignore
     from .services.comfy_access import read_policy, token_matches  # type: ignore
     from .services.training_api import create_router as create_training_router
-    from .services.diagnostics import create_router as create_diagnostics_router
+    from .services.diagnostics import create_router as create_diagnostics_router, installed_version as _installed_service_version
     from .services.activity import create_router as create_activity_router, progress as activity_progress
     from .services.model_downloads import ModelPullQueue
     from .services.storage import create_router as create_storage_router
     from .services.storage_capacity import workspace_capacity
     from .services import gpu_guard
     from .services.dataset_quality import review_dataset
-    from .services import service_registry
+    from .services import service_registry, code_server
 except (ImportError, ValueError):
     try:
         from services import models as models_service  # type: ignore
@@ -70,14 +70,14 @@ except (ImportError, ValueError):
         from services.comfy import create_router as create_comfy_router  # type: ignore
         from services.comfy_access import read_policy, token_matches  # type: ignore
         from services.training_api import create_router as create_training_router
-        from services.diagnostics import create_router as create_diagnostics_router
+        from services.diagnostics import create_router as create_diagnostics_router, installed_version as _installed_service_version
         from services.activity import create_router as create_activity_router, progress as activity_progress
         from services.model_downloads import ModelPullQueue
         from services.storage import create_router as create_storage_router
         from services.storage_capacity import workspace_capacity
         from services import gpu_guard
         from services.dataset_quality import review_dataset
-        from services import service_registry
+        from services import service_registry, code_server
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
         from apps.Portal.services.models_api import create_router as create_models_router  # type: ignore
@@ -87,14 +87,14 @@ except (ImportError, ValueError):
         from apps.Portal.services.comfy import create_router as create_comfy_router  # type: ignore
         from apps.Portal.services.comfy_access import read_policy, token_matches  # type: ignore
         from apps.Portal.services.training_api import create_router as create_training_router
-        from apps.Portal.services.diagnostics import create_router as create_diagnostics_router
+        from apps.Portal.services.diagnostics import create_router as create_diagnostics_router, installed_version as _installed_service_version
         from apps.Portal.services.activity import create_router as create_activity_router, progress as activity_progress
         from apps.Portal.services.model_downloads import ModelPullQueue
         from apps.Portal.services.storage import create_router as create_storage_router
         from apps.Portal.services.storage_capacity import workspace_capacity
         from apps.Portal.services import gpu_guard
         from apps.Portal.services.dataset_quality import review_dataset
-        from apps.Portal.services import service_registry
+        from apps.Portal.services import service_registry, code_server
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", WORKSPACE_ROOT / "models"))
@@ -209,6 +209,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ServiceUpdateJob:
     name: str
+    operation: str = "update"
     state: str = "running"  # running | done | error
     target_version: Optional[str] = None
     pid: Optional[int] = None
@@ -237,6 +238,7 @@ def _cleanup_service_update_jobs(now: Optional[float] = None) -> None:
 def _service_update_job_to_dict(job: ServiceUpdateJob) -> dict:
     return {
         "name": job.name,
+        "operation": job.operation,
         "state": job.state,
         "target_version": job.target_version,
         "pid": job.pid,
@@ -267,6 +269,7 @@ class ServiceEntry(BaseModel):
     state: str
     state_raw: str
     running: bool
+    installed: bool = True
     autostart: Optional[bool] = None
     definition: dict = Field(default_factory=dict)
 
@@ -2399,6 +2402,16 @@ def _git_local_sha(repo: Path) -> Optional[str]:
 
 def _service_version_entry(name: str) -> ServiceVersionEntry:
     display = DISPLAY_NAMES.get(name, name)
+    if name == "code-server":
+        executable = code_server.binary(WORKSPACE_ROOT)
+        detail = f"Optional workspace install: {code_server.VERSION}"
+        if executable:
+            detail = "Existing system installation" if executable == code_server.SYSTEM_BINARY else "Installed in workspace"
+        return ServiceVersionEntry(
+            name=name, display=display, source="optional", update_supported=False,
+            installed=_installed_service_version({'kind': 'code-server', 'binary': str(executable)}) if executable else None,
+            detail=detail,
+        )
     spec = SERVICE_UPDATE_SPECS.get(name)
     if not spec:
         return ServiceVersionEntry(
@@ -2598,6 +2611,7 @@ def supervisor_status(name: str) -> ServiceEntry:
         state=state_upper,
         state_raw=state_raw,
         running=running,
+        installed=name != "code-server" or code_server.binary(WORKSPACE_ROOT) is not None,
         autostart=_read_service_autostart(name),
         definition=service_registry.public_definition(name),
     )
@@ -2625,6 +2639,8 @@ def _supervisor_config_path() -> Optional[Path]:
 
 
 def _read_service_autostart(name: str) -> Optional[bool]:
+    if name == "code-server" and not code_server.binary(WORKSPACE_ROOT):
+        return False
     try:
         if SERVICE_AUTOSTART_CONFIG_PATH.exists():
             with SERVICE_AUTOSTART_CONFIG_PATH.open("rb") as f:
@@ -2747,6 +2763,8 @@ def control_service(name: str, action: str):
         raise HTTPException(status_code=404, detail="Unknown service")
     if action not in ("start", "stop", "restart"):
         raise HTTPException(status_code=400, detail="Bad action")
+    if name == "code-server" and action != "stop" and not code_server.binary(WORKSPACE_ROOT):
+        raise HTTPException(status_code=409, detail="Install VS Code Server from Services first")
     try:
         _run_supervisorctl(action, name, timeout=30)
         return {"status": "ok"}
@@ -2755,6 +2773,43 @@ def control_service(name: str, action: str):
     except Exception:
         logger.exception("Failed to %s service %s via supervisorctl", action, name)
         raise HTTPException(status_code=500, detail=f"Failed to {action} service")
+
+
+def _run_code_server_install(job: ServiceUpdateJob) -> None:
+    try:
+        job.installed_after = code_server.install(
+            WORKSPACE_ROOT, lambda line: _update_service_update_job(job, line))
+        job.state = "done"
+    except Exception as exc:
+        # Network errors can contain signed download URLs; expose only our own
+        # bounded messages, never third-party exception strings.
+        job.error = str(exc) if isinstance(exc, code_server.InstallError) else "Installation failed. Check connectivity and free workspace space, then retry."
+        job.state = "error"
+    finally:
+        job.updated_at = time.time()
+
+
+@app.post("/api/services/{name}/install/start")
+def service_install_start(name: str):
+    if name not in SERVICES:
+        raise HTTPException(status_code=404, detail="Unknown service")
+    if name != "code-server":
+        raise HTTPException(status_code=400, detail="Installation is not supported for this service")
+    _cleanup_service_update_jobs()
+    with _service_update_lock:
+        existing = _service_update_jobs.get(name)
+        if existing and existing.state == "running":
+            return _service_update_job_to_dict(existing)
+        if code_server.binary(WORKSPACE_ROOT):
+            return {"name": name, "operation": "install", "state": "done", "last_line": "Already installed"}
+        job = ServiceUpdateJob(name=name, operation="install", target_version=code_server.VERSION)
+        _service_update_jobs[name] = job
+        try:
+            threading.Thread(target=_run_code_server_install, args=(job,), daemon=True).start()
+        except RuntimeError:
+            job.state = "error"
+            job.error = "Could not start installation. Retry from Services."
+        return _service_update_job_to_dict(job)
 
 
 @app.post("/api/services/{name}/update/start")
@@ -2813,6 +2868,8 @@ def service_update_status(name: str):
 def service_autostart(name: str, payload: ServiceAutostartRequest):
     if name not in SERVICES:
         raise HTTPException(status_code=404, detail="Unknown service")
+    if name == "code-server" and payload.enabled and not code_server.binary(WORKSPACE_ROOT):
+        raise HTTPException(status_code=409, detail="Install VS Code Server before enabling auto-start")
     autostart = _set_service_autostart(name, bool(payload.enabled))
     return {"status": "ok", "name": name, "autostart": autostart}
 
@@ -3951,7 +4008,7 @@ _diagnostic_specs = {name: SERVICE_UPDATE_SPECS.get(name, {}) for name in SERVIC
 _diagnostic_specs.update({
     'controlpilot': {'kind': 'build'}, 'copilot': {'kind': 'build'},
     'jupyter': {'kind': 'pip', 'python_bin': '/opt/venvs/core/bin/python', 'package': 'jupyterlab'},
-    'code-server': {'kind': 'code-server'},
+    'code-server': {'kind': 'code-server', 'workspace': str(WORKSPACE_ROOT)},
 })
 app.include_router(create_diagnostics_router(get_gpus, _diagnostic_specs, SUPERVISORCTL))
 app.include_router(create_activity_router(_training_queue, _model_downloads, _other_training_activity))

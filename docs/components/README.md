@@ -30,7 +30,7 @@ The [inference guide](../user-guide/inference.md) connects those tools into a ge
 
 ## Work with the files behind the interfaces
 
-JupyterLab and VS Code Server provide notebook, terminal, and editing access to the workspace. Their default ports are `8888` and `8443`. These are useful when you need to inspect a configuration or a saved output without leaving the deployment.
+JupyterLab provides notebook and terminal access out of the box. [VS Code Server](code-server.md) is an optional editor installed from ControlPilot → Services; it is not bundled in the Docker image. Their default ports are `8888` and `8443`. These are useful when you need to inspect a configuration or a saved output without leaving the deployment.
 
 The optional [Copilot sidecar](copilot-sidecar.md) connects the installed GitHub Copilot CLI to ControlPilot. It uses internal port `7879` and requires its own service and authentication setup. Open its guide before enabling it; the rest of the creative workflow can run without it.
 

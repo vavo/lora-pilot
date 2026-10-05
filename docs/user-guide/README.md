@@ -10,7 +10,7 @@ Use this guide to choose the next action for your project. You can begin with ge
 
 [ControlPilot](control-pilot.md) is the starting point for checking the machine and opening services. The dashboard shows resource usage, while **Services** provides process controls and logs. On a local installation, open `http://localhost:7878`. On RunPod, use your pod's connection for that port.
 
-Open a tool through its service link so you reach the address configured for your deployment. The default local ports are `5555` for ComfyUI and `9090` for InvokeAI. Kohya uses `6666`, while JupyterLab and VS Code Server use `8888` and `8443`. A service can still be initializing after ControlPilot opens, so check its state if the link does not load.
+Open a tool through its service link so you reach the address configured for your deployment. The default local ports are `5555` for ComfyUI and `9090` for InvokeAI. Kohya uses `6666`, while JupyterLab uses `8888`. VS Code Server is an optional install from Services and uses `8443`. A service can still be initializing after ControlPilot opens, so check its state if the link does not load.
 
 ## Generate with a model you already have
 

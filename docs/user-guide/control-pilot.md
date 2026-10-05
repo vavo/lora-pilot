@@ -46,6 +46,8 @@ The Models catalog's **Access settings** action opens Settings directly on **Con
 
 Open **Services** to inspect the tools running in your workspace. Each service exposes the controls supported by that integration, including starting, stopping, restarting, and viewing logs. Follow its application link when you need the tool's own interface. The autostart switch controls whether Supervisor starts that service on boot. Image-managed applications receive their bundled updates through a new image.
 
+**VS Code Server** starts as **Not installed** on fresh images. Select it and choose **Install VS Code**. Follow the progress in the Version section, then choose **Start service** and **Open**. Installation needs internet access and 2.5 GiB free workspace space. The editor and its data persist on the workspace volume; installation does not enable auto-start. See [installation and recovery](../components/code-server.md).
+
 In **Models**, browse the Catalog, filter by task or family, and select a row for details. Bundled LTX-2.5 and MiniMax H3 workflows offer **Review installation**, where you can inspect required files, optional components, source access, and available storage before downloading. **Download missing files** reuses installed components and queues the remaining files.
 
 Use **Installed** to inspect paths and remove model files, or **Downloads** to follow progress and retry failures. An installed file still needs a compatible workflow and a successful GPU run before you can judge the result. The [model management guide](model-management.md) covers downloads and existing-file migration.

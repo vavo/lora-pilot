@@ -89,3 +89,38 @@ test('filters do not mislabel starting, stopping or failed services as stopped',
   assert.equal(run('stateBadge({state_raw:"STOPPED"}).cls'), 'stopped');
   assert.equal(run('stateBadge({state_raw:"FATAL"}).cls'), 'error');
 });
+
+
+test('optional editor shows missing state and install progress, failure and retry', () => {
+  const { context, nodes, run } = page(async () => ({}));
+  const install = element(), status = element();
+  nodes.set('svc-install-code-server', install);
+  nodes.set('svc-update-code-server', element());
+  nodes.set('svc-update-status-code-server', status);
+  assert.equal(run('stateBadge({installed:false, state_raw:"FATAL"}).label'), 'Not installed');
+  context.renderServiceUpdateStatus('code-server', { operation: 'install', state: 'running', last_line: 'Downloading' });
+  assert.equal(install.disabled, true);
+  assert.match(status.textContent, /Installing: Downloading/);
+  context.renderServiceUpdateStatus('code-server', { operation: 'install', state: 'error', error: '<b>offline</b>' });
+  assert.equal(install.disabled, false);
+  assert.equal(install.textContent, 'Retry installation');
+  assert.equal(status.textContent, 'Installation failed: <b>offline</b>');
+  context.renderServiceUpdateStatus('code-server', { operation: 'install', state: 'done' });
+  assert.match(status.textContent, /Start service/);
+});
+
+test('duplicate install clicks dispatch once and a lost response allows an idempotent retry', async () => {
+  const pending = deferred(); let calls = 0;
+  const { context, nodes } = page(() => { calls++; return pending.promise; });
+  nodes.set('svc-install-code-server', element());
+  nodes.set('svc-update-code-server', element());
+  nodes.set('svc-update-status-code-server', element());
+  const request = context.startServiceInstall('code-server');
+  await context.startServiceInstall('code-server');
+  assert.equal(calls, 1);
+  pending.reject(Error('offline')); await request;
+  assert.equal(nodes.get('svc-install-code-server').disabled, false);
+  assert.match(nodes.get('svc-update-status-code-server').textContent, /Could not confirm/);
+  await context.startServiceInstall('code-server');
+  assert.equal(calls, 2);
+});

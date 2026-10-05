@@ -33,7 +33,7 @@ Bootstrap loads persisted settings, generates a password when none is set, and e
 | Program | Autostart | Autorestart | Startsecs | Command |
 |---|---:|---:|---:|---|
 | `jupyter` | `true` | `true` | `2` | `/opt/pilot/start-jupyter.sh` |
-| `code-server` | `true` | `true` | `2` | `/opt/pilot/start-code-server.sh` |
+| `code-server` | `false` | `true` | `2` | `/opt/pilot/start-code-server.sh` |
 | `comfy` | `true` | `true` | `2` | `/bin/bash -lc '/opt/pilot/comfy.sh'` |
 | `kohya` | `true` | `true` | `2` | `/bin/bash -lc '/opt/pilot/start-kohya.sh'` |
 | `diffpipe` | `true` | `true` | `2` | `/bin/bash -lc 'exec /opt/pilot/diffusion-pipe.sh'` |
@@ -251,3 +251,5 @@ ControlPilot's service registry lives in `apps/Portal/services/service_registry.
 Supervisor remains the owner of process commands and autostart. When adding or changing a service, check the registry against the bundled configuration with `python3 apps/Portal/services/service_registry.py supervisor/supervisord.conf`. The check reports missing or unregistered programs, incorrect log destinations and unexpected launchers. It does not modify configuration. The same check runs in the Python regression suite, which also checks launcher port defaults and override handling.
 
 Inside an image, the equivalent command is `python3 /opt/pilot/apps/Portal/services/service_registry.py "${SUPERVISOR_CONFIG_PATH:-/etc/supervisor/supervisord.conf}"`. Custom wrappers can deliberately differ from the bundled launcher; review those reported differences without replacing the user's configuration. Port overrides must describe the port the service actually listens on, and external Docker or RunPod port mappings still need to expose it.
+
+VS Code Server is optional. Install it from **Services** before starting it or enabling **Start with workspace**. Boot suppresses a saved code-server autostart preference while its executable is absent, without deleting that preference or editor data. See [optional editor installation](../components/code-server.md).

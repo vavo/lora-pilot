@@ -36,6 +36,7 @@ function serviceIcon(svc) {
 }
 
 function stateBadge(svc) {
+  if (svc.installed === false) return { cls: "stopped", raw: "NOT_INSTALLED", label: "Not installed" };
   const raw = (svc.state_raw || "UNKNOWN").toUpperCase();
   const cls = raw === "RUNNING" ? "running" : ["STARTING", "STOPPING"].includes(raw) ? "starting" : ["FATAL", "BACKOFF"].includes(raw) ? "error" : "stopped";
   const label = raw.charAt(0) + raw.slice(1).toLowerCase();
@@ -95,6 +96,8 @@ function renderServiceDetail() {
   if (!svc) { detail.replaceChildren(); return; }
   const info = serviceInfo(svc), badge = stateBadge(svc), domId = serviceDomId(svc.name);
   const running = badge.raw === "RUNNING", starting = badge.raw === "STARTING", stopping = badge.raw === "STOPPING";
+  const missing = svc.installed === false;
+  const installing = serviceUpdateStatuses[svc.name]?.state === "running";
   const busy = serviceActions.has(svc.name);
   const url = running ? serviceUrl(svc.name) : null;
   const port = servicePortLabel(svc.name);
@@ -105,12 +108,14 @@ function renderServiceDetail() {
     <div class="svc-detail-meta"><span class="svc-state ${badge.cls}">${serviceEscape(badge.label)}</span>${port ? `<span>Port ${serviceEscape(port.slice(1))}</span>` : ""}</div>
     <div class="svc-actions">
       ${url ? `<a class="btn primary" href="${serviceEscape(url)}" target="_blank" rel="noopener noreferrer">Open ${serviceEscape(info.label)} <span aria-hidden="true">↗</span></a>` : ""}
-      ${!running ? `<button class="btn primary" type="button" data-action="start" ${busy || starting || stopping ? "disabled" : ""}>${starting ? "Starting…" : stopping ? "Stopping…" : "Start service"}</button>` : ""}
+      ${missing && info.capabilities?.install ? `<button class="btn primary" type="button" id="svc-install-${domId}" ${installing ? "disabled" : ""}>${installing ? "Installing…" : "Install VS Code"}</button>` : ""}
+      ${!running && !missing ? `<button class="btn primary" type="button" data-action="start" ${busy || starting || stopping ? "disabled" : ""}>${starting ? "Starting…" : stopping ? "Stopping…" : "Start service"}</button>` : ""}
       ${running ? `<button class="btn secondary" type="button" data-action="restart" ${busy ? "disabled" : ""}>Restart</button>` : ""}
       ${running || starting ? `<button class="btn secondary svc-stop" type="button" data-action="stop" ${busy ? "disabled" : ""}>Stop</button>` : ""}
     </div>
+    ${missing ? '<p class="svc-control-note">Optional download, about 235 MB. Installation and editor data stay in your workspace. Installation does not start the editor.</p>' : ""}
     ${info.capabilities?.disconnects_ui ? '<p class="svc-control-note">Restarting or stopping ControlPilot disconnects this interface.</p>' : ""}
-    <section class="svc-detail-section svc-autostart-row"><div><label for="svc-autostart-toggle">Start with workspace</label><p>${typeof svc.autostart === "boolean" ? "Automatically start this service when your workspace starts." : "Auto-start setting is unavailable."}</p></div><input id="svc-autostart-toggle" class="svc-switch" type="checkbox" role="switch" ${svc.autostart === true ? "checked" : ""} ${typeof svc.autostart !== "boolean" || serviceAutostartPending.has(svc.name) ? "disabled" : ""}></section>
+    <section class="svc-detail-section svc-autostart-row"><div><label for="svc-autostart-toggle">Start with workspace</label><p>${missing ? "Install this service before enabling auto-start." : typeof svc.autostart === "boolean" ? "Automatically start this service when your workspace starts." : "Auto-start setting is unavailable."}</p></div><input id="svc-autostart-toggle" class="svc-switch" type="checkbox" role="switch" ${svc.autostart === true ? "checked" : ""} ${missing || typeof svc.autostart !== "boolean" || serviceAutostartPending.has(svc.name) ? "disabled" : ""}></section>
     <section class="svc-detail-section"><div class="svc-section-row"><div><h4>Version</h4><p id="svc-version-${domId}">Checking version…</p><p id="svc-available-${domId}" class="svc-update-hint is-hidden">Update available</p></div><button class="btn secondary svc-update-btn is-hidden" id="svc-update-${domId}" type="button">Update</button></div><p class="svc-update-status is-hidden" id="svc-update-status-${domId}" role="status"></p></section>
     ${tbSource ? `<section class="svc-detail-section"><div class="svc-section-row"><div><h4>Training metrics</h4><p id="svc-tensorboard-status-${domId}">TensorBoard: checking…</p></div><button class="svc-text-button" type="button" data-tensorboard>Open TensorBoard</button></div></section>` : ""}
     <section class="svc-detail-section svc-logs"><div class="svc-section-row"><h4>Logs</h4><button class="svc-text-button" type="button" data-log>View full log <span aria-hidden="true">↗</span></button></div><pre id="svc-log-preview" class="svc-log-pre mono">Loading log…</pre></section>`;
@@ -118,6 +123,8 @@ function renderServiceDetail() {
     document.querySelector('.svc-row[aria-pressed="true"]')?.focus({ preventScroll: true });
     document.getElementById("services-list").scrollIntoView({ block: "start" });
   };
+  const installButton = detail.querySelector(`#svc-install-${domId}`);
+  if (installButton) installButton.onclick = () => startServiceInstall(svc.name);
   detail.querySelectorAll("[data-action]").forEach(button => button.onclick = () => serviceAction(svc.name, button.dataset.action));
   detail.querySelector("#svc-autostart-toggle").onchange = event => toggleServiceAutostart(svc.name, event.target);
   detail.querySelector(`#svc-update-${domId}`).onclick = () => startServiceUpdate(svc.name);
@@ -190,6 +197,12 @@ function renderServiceVersion(name, info) {
 
 function renderServiceUpdateStatus(name, status) {
   if (status) serviceUpdateStatuses[name] = status;
+  const installation = status?.operation === "install";
+  const installButton = document.getElementById(`svc-install-${serviceDomId(name)}`);
+  if (installButton && status) {
+    installButton.disabled = status.state === "running";
+    installButton.textContent = status.state === "running" ? "Installing…" : status.state === "error" ? "Retry installation" : "Install VS Code";
+  }
   const domId = serviceDomId(name);
   const statusEl = document.getElementById(`svc-update-status-${domId}`);
   const buttonEl = document.getElementById(`svc-update-${domId}`);
@@ -198,20 +211,20 @@ function renderServiceUpdateStatus(name, status) {
   statusEl.classList.remove("is-hidden", "ok", "error", "running");
   if (status.state === "running") {
     const line = (status.last_line || "").trim();
-    statusEl.textContent = line ? `Updating: ${line}` : "Updating...";
+    statusEl.textContent = line ? `${installation ? "Installing" : "Updating"}: ${line}` : installation ? "Installing…" : "Updating…";
     statusEl.classList.add("running");
     buttonEl.disabled = true;
     return;
   }
   if (status.state === "done") {
-    statusEl.textContent = status.installed_after ? `Updated: ${status.installed_after}` : "Update finished";
+    statusEl.textContent = installation ? "Installed. Use Start service when ready." : status.installed_after ? `Updated: ${status.installed_after}` : "Update finished";
     statusEl.classList.add("ok");
     buttonEl.disabled = false;
     return;
   }
   if (status.state === "error") {
     const msg = status.error || status.last_line || "unknown error";
-    statusEl.textContent = `Update failed: ${msg}`;
+    statusEl.textContent = `${installation ? "Installation" : "Update"} failed: ${msg}`;
     statusEl.classList.add("error");
     buttonEl.disabled = false;
     return;
@@ -253,7 +266,7 @@ async function startServiceUpdatePolling(name) {
       }
     } catch (error) {
       // A transient status failure must not stop watching a server-side update.
-      if (polling.active) renderServiceUpdateStatus(name, {state: "running", last_line: "Status unavailable; retrying…"});
+      if (polling.active) renderServiceUpdateStatus(name, {...serviceUpdateStatuses[name], state: "running", last_line: "Status unavailable; retrying…"});
     }
   }, 2000);
 }
@@ -271,7 +284,7 @@ async function loadServiceVersions(services, screen) {
     });
     services.forEach(svc => renderServiceVersion(svc.name, byName[svc.name] || null));
 
-    const supported = services.filter(svc => !!(byName[svc.name] && byName[svc.name].update_supported));
+    const supported = services.filter(svc => svc.definition?.capabilities?.install || !!(byName[svc.name] && byName[svc.name].update_supported));
     const statuses = await Promise.all(supported.map(svc => fetchServiceUpdateStatus(svc.name, screen)));
     screen.check();
     statuses.forEach((status, index) => {
@@ -332,6 +345,21 @@ window.serviceAction = async function (name, action) {
       serviceActions.delete(name);
       if (selectedService === name) renderServiceDetail();
     }
+  }
+};
+
+window.startServiceInstall = async function (name) {
+  const screen = servicesScreen;
+  if (!screen?.active || serviceUpdateStatuses[name]?.state === "running") return;
+  renderServiceUpdateStatus(name, { operation: "install", state: "running" });
+  try {
+    const status = await screen.json(`/api/services/${encodeURIComponent(name)}/install/start`, { method: "POST" });
+    renderServiceUpdateStatus(name, status);
+    if (status.state === "running") await startServiceUpdatePolling(name);
+    else if (status.state === "done") await loadServices();
+  } catch (error) {
+    if (!screen.active) return;
+    renderServiceUpdateStatus(name, { operation: "install", state: "error", error: "Could not confirm installation. Retry to check its status." });
   }
 };
 

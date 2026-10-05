@@ -70,7 +70,7 @@ def public_definition(name, environ=None):
     spec = SERVICES[name]
     return dict(label=spec['display'], port=service_port(name, environ), role=spec['role'],
                 description=spec['description'], icon=spec['icon'], order=spec['order'],
-                capabilities=dict(open=spec['open_ui'], update=name in UPDATE_SPECS,
+                capabilities=dict(open=spec['open_ui'], update=name in UPDATE_SPECS, install=name == 'code-server',
                     tensorboard=spec['tensorboard'], tensorboard_label=spec['tensorboard_label'],
                     disconnects_ui=name == 'controlpilot'))
 
