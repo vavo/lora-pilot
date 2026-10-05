@@ -26,17 +26,14 @@ class ComfyInstallTests(unittest.TestCase):
             first = path.read_text()
             install_direct_access(path)
             self.assertEqual(first, path.read_text())
-            import sys
-            from apps.Portal.services import comfy_access
-            with patch.dict(sys.modules, {'comfy_access': comfy_access}):
-                from unittest.mock import Mock
-                existing = object()
-                namespace = {'web': Mock(), 'max_upload_size': 1024, 'middlewares': [existing]}
-                exec(compile(first, str(path), 'exec'), namespace)
-                namespace['Server']()
-                middleware = namespace['web'].Application.call_args.kwargs['middlewares']
-                self.assertEqual(middleware[0].__name__, 'authenticate')
-                self.assertIs(middleware[1], existing)
+            from unittest.mock import Mock
+            existing = object()
+            namespace = {'web': Mock(), 'max_upload_size': 1024, 'middlewares': [existing]}
+            exec(compile(first, str(path), 'exec'), namespace)
+            namespace['Server']()
+            middleware = namespace['web'].Application.call_args.kwargs['middlewares']
+            self.assertEqual(middleware[0].__name__, 'authenticate')
+            self.assertIs(middleware[1], existing)
             path.write_text('upstream changed')
             with self.assertRaises(ValueError):
                 install_direct_access(path)
@@ -55,11 +52,67 @@ class ComfyInstallTests(unittest.TestCase):
             start = launcher.index('COMFY_LISTEN=')
             end = launcher.index('\n\n', start)
             fragment = launcher[start:end].replace('/opt/venvs/core/bin/python', shlex.quote(sys.executable))
-            fragment = fragment.replace('/opt/pilot/apps/Portal/services', str(Path('apps/Portal/services').resolve()))
+            fragment = fragment.replace('/opt/pilot', str(Path.cwd()))
             result = subprocess.check_output(['bash', '-ec', fragment + '\nprintf "%s\n" "$COMFY_LISTEN" "$PYTHONPATH"'],
                 env={**os.environ, 'WORKSPACE_ROOT': tmp, 'COMFY_DIR': tmp, 'PYTHONPATH': ''}, text=True)
-            self.assertEqual(result.splitlines(), ['127.0.0.1', str(Path('apps/Portal/services').resolve())])
+            self.assertEqual(result.splitlines(), ['127.0.0.1', str(Path.cwd())])
             self.assertIn('middlewares.insert(0, direct_access_middleware())', (root / 'server.py').read_text())
+
+    def test_upgrades_legacy_install_without_duplicate_middleware(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'server.py'
+            legacy = ('class Server:\n    def __init__(self):\n'
+                '        from comfy_access import direct_access_middleware\n'
+                '        middlewares.insert(0, direct_access_middleware())\n'
+                '        self.app = web.Application(client_max_size=max_upload_size, middlewares=middlewares)\n')
+            path.write_text(legacy)
+            install_direct_access(path)
+            expected = legacy.replace('from comfy_access import', 'from apps.Portal.services.comfy_access import')
+            self.assertEqual(path.read_text(), expected)
+            install_direct_access(path)
+            self.assertEqual(path.read_text(), expected)
+            path.write_text(legacy + legacy)
+            with self.assertRaises(ValueError):
+                install_direct_access(path)
+            self.assertEqual(path.read_text(), legacy + legacy)
+
+    def test_launcher_does_not_shadow_comfy_namespace_package(self):
+        import shlex
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'config').mkdir()
+            # Upstream ComfyUI uses a namespace package (no __init__.py).
+            (root / 'comfy').mkdir()
+            (root / 'comfy/options.py').write_text('is_comfy = True\n')
+            (root / 'server.py').write_text('class Server:\n    def __init__(self):\n'
+                '        self.app = web.Application(client_max_size=max_upload_size, middlewares=middlewares)\n')
+            (root / 'main.py').write_text(
+                'import comfy.options\n'
+                'assert comfy.options.is_comfy\n'
+                'import server\n'
+                'from aiohttp import web\n'
+                'server.web = web\n'
+                'server.max_upload_size = 1024\n'
+                'server.middlewares = []\n'
+                'app = server.Server().app\n'
+                'assert len(app.middlewares) == 1\n'
+                'assert app.middlewares[0].__name__ == "authenticate"\n'
+            )
+            launcher = Path('scripts/comfy.sh').read_text()
+            start = launcher.index('COMFY_LISTEN=')
+            fragment = launcher[start:launcher.index('\n\n', start)]
+            fragment = fragment.replace('/opt/venvs/core/bin/python', shlex.quote(sys.executable))
+            fragment = fragment.replace('/opt/pilot', str(Path.cwd()))
+            command = fragment + '\nexec ' + shlex.quote(sys.executable) + ' main.py'
+            for enabled in (False, True):
+                with self.subTest(enabled=enabled):
+                    (root / 'config/comfy-access.json').write_text(json.dumps({'enabled': enabled}))
+                    result = subprocess.run(['bash', '-ec', command], cwd=root,
+                        env={**os.environ, 'WORKSPACE_ROOT': tmp, 'COMFY_DIR': tmp, 'PYTHONPATH': ''},
+                        capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
 
 
 @unittest.skipIf(web is None, 'aiohttp unavailable')

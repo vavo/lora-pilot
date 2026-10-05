@@ -1,6 +1,6 @@
 # Debugging
 
-_Last updated: 2026-09-10_
+_Last updated: 2026-10-06_
 
 You can have a working dashboard, a running generation service, and a failed model load at the same time. LoRA Pilot brings several applications into one workspace, but each application still has its own startup and execution path. The fastest useful diagnosis identifies the point where your intended action stopped working.
 
@@ -31,6 +31,12 @@ tail -n 160 /workspace/logs/comfy.err.log
 ```
 
 You can also use ControlPilot's **View logs** action. For API-based inspection, `GET /api/services` returns service states and `GET /api/services/{name}/log?lines=200` returns a recent service log. Use an authenticated session if you have enabled ControlPilot access protection.
+
+### ComfyUI imports ControlPilot's `services/comfy.py`
+
+If startup fails at `import comfy.options` and the traceback points to `/opt/pilot/apps/Portal/services/comfy.py` with `attempted relative import with no known parent package`, the image has a launcher import-path collision. It is not a missing model or CUDA dependency. Use an image containing the October 6 startup fix: the launcher adds `/opt/pilot` to the Python path and loads its authentication helper as `apps.Portal.services.comfy_access`.
+
+Update the launcher and authentication helper together if applying a container hotfix. The helper upgrades an already-patched ComfyUI server on the next start. Keep the existing workspace and access policy; removing authentication, reinstalling Python packages, or deleting models is unnecessary. After the repair, start ComfyUI from **Services** and confirm that its UI opens. Image replacement removes container-only hotfixes, so upgrade the image for the lasting repair.
 
 ## Follow the affected feature
 

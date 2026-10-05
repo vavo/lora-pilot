@@ -81,13 +81,15 @@ def install_direct_access(server_path: Path) -> None:
     """Install before Comfy imports its server; incompatible updates fail startup."""
     source = server_path.read_text()
     target = "        self.app = web.Application(client_max_size=max_upload_size, middlewares=middlewares)"
-    replacement = ("        from comfy_access import direct_access_middleware\n"
-                   "        middlewares.insert(0, direct_access_middleware())\n" + target)
-    if source.count(replacement) == 1:
-        return
+    legacy = ("        from comfy_access import direct_access_middleware\n"
+              "        middlewares.insert(0, direct_access_middleware())\n" + target)
+    replacement = legacy.replace("from comfy_access import", "from apps.Portal.services.comfy_access import")
     if source.count(target) != 1:
         raise ValueError("ComfyUI server changed; cannot install access protection")
-    server_path.write_text(source.replace(target, replacement, 1))
+    if source.count(replacement) == 1:
+        return
+    # Upgrade a previously patched container without duplicating its middleware.
+    server_path.write_text(source.replace(legacy if legacy in source else target, replacement, 1))
 
 if __name__ == "__main__":
     import sys

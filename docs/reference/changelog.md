@@ -26,6 +26,8 @@ This section also records the Settings redesign, the Models HTTP 500 fix, and re
 
 ## Implementation and delivery status
 
+The October 6 ComfyUI startup fix removes a Python import collision with ControlPilot's `services/comfy.py`. It preserves access protection and upgrades an existing authentication hook without installing it twice. All 401 Python tests passed, including 27 ComfyUI tests. The regression test executes the launcher setup against ComfyUI's namespace-package layout with protection both on and off; this is separate from live GPU validation.
+
 The optional-editor implementation at `99b07d3` passed 399 Python tests and 17 Services/lifecycle JavaScript tests, Docker build checks for cu130 and cu128, desktop/mobile installation and retry checks, and an isolated Linux amd64 installation and password-gated startup using the real release archive. Two broader Settings JavaScript failures also occurred on the unchanged parent commit. These checks do not certify GPU training. Development images are published through the [GitHub Actions workflow](../development/building.md#publish-a-development-image-with-github-actions); verify the successful run and image revision before deploying a mutable tag.
 
 The October 3 service registry refactor at `2b310e1` passed 328 Python tests and 53 JavaScript tests. Local browser checks covered custom-port links, simulated service stop/start, desktop light mode and mobile dark mode. Those checks did not launch the real container services. MCP has a separate [validation record](../development/mcp-validation.md); this documentation update does not add an image publication or deployment result.
