@@ -16,6 +16,7 @@ from .files import Files, Rejected, canonical, digest
 
 ROOT = 'config/mcp'
 MAX_BYTES = 8 * 1024 * 1024
+CONTROL_RESERVE_BYTES = 64 * 1024
 MAX_OPERATIONS = 2048
 
 
@@ -33,7 +34,7 @@ class Store:
             names = {name for name, _ in self.files.listdir(ROOT)}
             if names and 'state.json' not in names:
                 raise Rejected('STORAGE_UNAVAILABLE')
-            with self.transaction(create=True) as data:
+            with self.transaction(create=True, control=True) as data:
                 if not data:
                     data.update(version=1, workspace_id=uuid.uuid4().hex, enabled=False,
                                 generation=0, clients={}, plans={}, operations={}, audit=[], last_clock=self.clock())
@@ -67,7 +68,7 @@ class Store:
 
     def read(self):
         with self.lock, self.files.directory(ROOT, private=True):
-            data = self._validate(self.files.json(ROOT + '/state.json', MAX_BYTES, private=True))
+            data = self._validate(self.files.json(ROOT + '/state.json', MAX_BYTES + CONTROL_RESERVE_BYTES, private=True))
             now = self.clock()
             if now + 2 < max(self.high_clock, data.get('last_clock', 0)):
                 raise Rejected('CLOCK_UNAVAILABLE')
@@ -75,7 +76,7 @@ class Store:
             return data
 
     @contextmanager
-    def transaction(self, create=False):
+    def transaction(self, create=False, control=False):
         with self.lock, self.files.directory(ROOT, private=True) as directory:
             fd = os.open('state.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600, dir_fd=directory)
             try:
@@ -93,9 +94,19 @@ class Store:
                 original = canonical(data)
                 yield data
                 self._validate(data)
+                updated = canonical(data)
+                if updated == original:
+                    return
                 data['last_clock'] = max(data.get('last_clock', 0), self.clock())
                 encoded = canonical(data)
-                if len(encoded) > MAX_BYTES:
+                # Existing full ledgers and no-op replays must remain recoverable.
+                limit = MAX_BYTES + CONTROL_RESERVE_BYTES if control or len(updated) <= len(original) else MAX_BYTES
+                if control and len(encoded) > limit:
+                    excess = len(encoded) - limit
+                    while excess > 0 and len(data['audit']) > 1:
+                        excess -= len(canonical(data['audit'].pop(0))) + 1
+                    encoded = canonical(data)
+                if len(encoded) > limit:
                     raise Rejected('LIMIT_EXCEEDED')
                 if encoded != original:
                     self.files.write(ROOT + '/state.json', encoded, replace=bool(original != b'{}'))
@@ -115,7 +126,7 @@ class Store:
                     raise Rejected('STORAGE_UNAVAILABLE')
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 self.owner = fd
-                with self.transaction() as data:
+                with self.transaction(control=True) as data:
                     for plan in data['plans'].values():
                         if plan['state'] in {'pending', 'approved'}:
                             plan['state'] = 'invalid'
@@ -138,7 +149,7 @@ class Store:
         data['audit'] = data['audit'][-1000:]
 
     def set_enabled(self, enabled):
-        with self.transaction() as data:
+        with self.transaction(control=True) as data:
             if data['enabled'] == enabled:
                 return
             data['enabled'] = enabled
@@ -181,7 +192,7 @@ class Store:
 
     def change_client(self, client_id, label, scopes, datasets, runs, days, policy):
         policy = self.validate_grant(scopes, datasets, runs, days, policy)
-        with self.transaction() as data:
+        with self.transaction(control=True) as data:
             client = data['clients'].get(client_id)
             if client is None or client['revoked']:
                 raise Rejected('NOT_AUTHORIZED')
@@ -196,7 +207,7 @@ class Store:
             self.audit(data, 'change_client', object_id=client_id)
 
     def revoke(self, client_id):
-        with self.transaction() as data:
+        with self.transaction(control=True) as data:
             client = data['clients'].get(client_id)
             if client is None:
                 raise Rejected()
@@ -209,7 +220,7 @@ class Store:
 
     def rotate(self, client_id):
         token = 'lp_mcp_' + secrets.token_urlsafe(32)
-        with self.transaction() as data:
+        with self.transaction(control=True) as data:
             client = self.principal(client_id, data, require_enabled=False)
             client['token_hash'] = hashlib.sha256(token.encode()).hexdigest()
             self.audit(data, 'rotate_client', object_id=client_id)
@@ -318,7 +329,7 @@ class Store:
         return copy.deepcopy(op), True
 
     def update_operation(self, op_id, **updates):
-        with self.transaction() as data:
+        with self.transaction(control=True) as data:
             for op in data['operations'].values():
                 if op['id'] == op_id:
                     op.update(updates)

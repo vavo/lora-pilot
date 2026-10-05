@@ -72,3 +72,26 @@ make build-check CUDA_PROFILE=cu128
 ```
 
 Tests construct temporary roots internally. Do not point a test harness at an existing user workspace. Existing suite warnings about Pydantic v1 validators and FastAPI lifecycle decorators are unrelated to MCP behavior; both focused and full runs completed successfully.
+
+## Security follow-up: 2026-10-05
+
+The follow-up to `0b87564` patches three availability findings in the shared ledger, artifact transport and run resource handler. The earlier fingerprint and Linux evidence above describe the original implementation, not this patch.
+
+- Owner controls and recovery transactions have a 64 KiB reserve above the existing 8 MiB work limit. Audit pressure can remove the oldest entries while retaining the newest; operation tombstones remain intact. Already-full ledgers can initialize, reconcile and disable, and unchanged retries do not require another write.
+- Artifact downloads allow two streams globally and one per connection identity, including across token rotation. Blocked header, body and completion sends time out after 30 seconds. Timeouts, disconnects and cancellation release capacity and close the open archive; error responses release capacity before sending. Ordinary downloads and revocation checks remain available.
+- Run resource reads use the same four-worker limiter and cancellation wrapper as tools, with a 256 KiB response cap. A blocked filesystem read leaves Portal HTTP handling responsive. Unauthorized, malformed and oversized resources retain safe errors.
+
+Changed runtime files: `apps/Portal/mcp_server/{store,server,operations}.py`. Added `tests/test_mcp_security_regressions.py`; updated the connection guide's limits. The shared boundaries preserve authorization, one-time approvals, replay identities and user files.
+
+Validation ran on macOS with Python 3.12.11 and `mcp==2.3.0`, using temporary workspaces, synthetic exports and in-process ASGI clients. The full suite's Comfy tests additionally used disposable loopback servers.
+
+| Gate | Command/check | Result |
+|---|---|---|
+| Syntax/imports | AST parse of MCP modules and new tests; import `store`, `server`, `operations`; `git diff --check` | Passed |
+| Focused security cases | `python -m unittest discover -s tests -p 'test_mcp_security_regressions.py' -v` | 9 passed; reduced ledger caps and short send deadlines exercise the production boundaries without exhausting storage or using live services |
+| Existing behavior | `python -m unittest discover -s tests` | 374 passed, including all 46 MCP tests; zero skips |
+| Dependency consistency | `uv --no-cache pip check --python <test-venv>/bin/python` | Passed, 49 installed packages compatible |
+| Independent patch review | Read-only caller/lifecycle review and a bounded stalled-error-response check | No remaining findings after releasing download capacity before error responses |
+| Optional build configuration | `make build-check` | Unavailable: local Docker daemon stopped; no image/build configuration changed |
+
+Initial full-suite attempts identified missing disposable-environment dependencies and sandbox restrictions on loopback sockets. After installing the required dependencies and allowing the local test sockets, the complete suite passed. The security tests establish recovery at the work cap, intact replay records, released download slots/descriptors, fair access for another connection and responsive resource dispatch. They do not establish target-volume durability, deployed proxy behavior, GPU execution or external-client compatibility; the release gates above remain open.

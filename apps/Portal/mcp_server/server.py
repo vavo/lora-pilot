@@ -16,6 +16,7 @@ from .contracts import MUTATIONS, TOOLS
 from .files import Rejected
 
 MAX_BODY = 64 * 1024
+DOWNLOAD_SEND_TIMEOUT = 30
 
 
 def public_origin(value):
@@ -74,6 +75,15 @@ class Runtime:
         # The request principal is established by our ASGI boundary, never RPC clientInfo.
         return self.store.principal(request.scope['mcp_principal'])
 
+    async def call_facade(self, principal_id, name, arguments):
+        cancelled = threading.Event()
+        try:
+            return await anyio.to_thread.run_sync(
+                self.facade.call, principal_id, name, arguments, cancelled,
+                limiter=self.limiter, abandon_on_cancel=name not in MUTATIONS)
+        finally:
+            cancelled.set()
+
     def setup_sdk(self):
         from mcp.server.lowlevel import Server
         from mcp.server.transport_security import TransportSecuritySettings
@@ -101,7 +111,10 @@ class Runtime:
                     value = doc_text
                 elif uri.startswith('lorapilot://runs/') and uri.endswith('/summary') and 'runs:read' in principal['scopes']:
                     run_id = uri[len('lorapilot://runs/'):-len('/summary')]
-                    value = json.dumps(self.facade.call(principal['id'], 'run_get', {'run_id': run_id}))
+                    result = await self.call_facade(principal['id'], 'run_get', {'run_id': run_id})
+                    value = json.dumps(result, allow_nan=False)
+                    if len(value.encode()) > 256 * 1024:
+                        raise Rejected('LIMIT_EXCEEDED')
                 else:
                     raise Rejected()
                 return ReadResourceResult(contents=[TextResourceContents(uri=params.uri, mime_type='text/plain', text=value)])
@@ -119,14 +132,11 @@ class Runtime:
                 for name, (model, scopes, description) in TOOLS.items() if self.facade.allowed(principal, name)])
 
         async def call_tool(context, params):
-            cancelled = threading.Event()
             try:
                 principal = self.principal(context)
                 if params.name in MUTATIONS and not self.mutation_limit.allow(principal['id']):
                     raise Rejected('LIMIT_EXCEEDED')
-                value = await anyio.to_thread.run_sync(
-                    self.facade.call, principal['id'], params.name, params.arguments or {}, cancelled,
-                    limiter=self.limiter, abandon_on_cancel=params.name not in MUTATIONS)
+                value = await self.call_facade(principal['id'], params.name, params.arguments or {})
                 payload = {'schema_version': 1, **value}
                 encoded = json.dumps(payload, allow_nan=False)
                 if len(encoded.encode()) > 256 * 1024:
@@ -139,8 +149,6 @@ class Runtime:
                     next_action='Inspect the operation or ask the workspace owner. Reuse the original request_id for a write.'))
                 return CallToolResult(is_error=True, structured_content=payload,
                                       content=[TextContent(type='text', text=json.dumps(payload))])
-            finally:
-                cancelled.set()
 
         self.sdk = Server('LoRA Pilot', version='1', on_list_tools=list_tools, on_call_tool=call_tool,
                           on_list_resources=list_resources, on_read_resource=read_resource,
@@ -282,9 +290,11 @@ class Runtime:
         identifier = scope['path'].removeprefix('/mcp-artifacts/')
         source = None
         started = False
-        borrower = object()
+        borrower = principal['id']
         acquired = False
         try:
+            if borrower in self.downloads.statistics().borrowers:
+                raise anyio.WouldBlock
             self.downloads.acquire_on_behalf_of_nowait(borrower)
             acquired = True
             if not re.fullmatch(r'[a-f0-9]{32}', identifier) or scope['method'] != 'GET' or b'range' in headers:
@@ -329,9 +339,12 @@ class Runtime:
                 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
                 'Content-Disposition': 'attachment; filename="lora-experiment.zip"',
                 'Content-Length': str(artifact['size_bytes'])})
+            async def bounded_send(message):
+                with anyio.fail_after(DOWNLOAD_SEND_TIMEOUT):
+                    await send(message)
             try:
                 started = True
-                return await response(scope, receive, send)
+                return await response(scope, receive, bounded_send)
             finally:
                 opened.__exit__(None, None, None)
                 source = None
@@ -343,6 +356,9 @@ class Runtime:
             if source is not None:
                 opened.__exit__(None, None, None)
                 source = None
+            if acquired:
+                self.downloads.release_on_behalf_of(borrower)
+                acquired = False
             return await JSONResponse({'error': 'NOT_FOUND'}, status_code=404,
                                       headers={'Cache-Control': 'no-store'})(scope, receive, send)
         finally:

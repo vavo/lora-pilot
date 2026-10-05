@@ -266,7 +266,7 @@ class Execution:
             with self.files.directory('config/training', private=False):
                 pass
             run = self.queue.submit({}, run_id=op['id'], origin_operation_id=op['id'], prepared=prepared)
-            with self.store.transaction() as data:
+            with self.store.transaction(control=True) as data:
                 client = self.store.principal(op['principal'], data)
                 if run['id'] not in client['runs']:
                     client['runs'].append(run['id'])
