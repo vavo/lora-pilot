@@ -131,6 +131,10 @@ class BuildPinTests(unittest.TestCase):
             "COMFYUI_REF": "v0.34.0",
             "COMFYUI_MANAGER_REF": "4.2.2",
             "COMFYUI_DOWNLOADER_REF": "03146df738191004a8aad8264dca5c3530907f56",
+            "COMFYUI_GGUF_REF": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
+            "COMFYUI_VHS_REF": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+            "OPENCV_VERSION": "4.11.0.86",
+            "IMAGEIO_FFMPEG_VERSION": "0.6.0",
         }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
@@ -235,6 +239,8 @@ class BuildPinTests(unittest.TestCase):
                 "UV_VERSION": "0.11.26",
                 "DEEPDIFF_VERSION": "9.1.0",
                 "GGUF_VERSION": "0.19.0",
+                "OPENCV_VERSION": "4.11.0.86",
+                "IMAGEIO_FFMPEG_VERSION": "0.6.0",
                 "TOMLKIT_VERSION": "0.14.0",
                 "PEFT_VERSION": "0.19.1",
                 "ACCELERATE_VERSION": "1.14.0",
@@ -285,6 +291,9 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("torchaudio==2.11.0\n", diffpipe_constraints)
         self.assertIn("deepdiff==9.1.0\n", core_constraints)
         self.assertIn("gguf==0.19.0\n", core_constraints)
+        for constraints_text in (core_constraints, diffpipe_constraints):
+            self.assertIn("opencv-python==4.11.0.86\n", constraints_text)
+            self.assertIn("imageio-ffmpeg==0.6.0\n", constraints_text)
 
     def test_makefile_passes_service_install_flags_to_docker(self):
         text = (ROOT / "Makefile").read_text()

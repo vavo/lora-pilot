@@ -188,11 +188,15 @@ for stale_manager_dir in "${CUSTOM_NODES_DIR}/ComfyUI-Manager" "${CUSTOM_NODES_D
     rm -rf "${stale_manager_dir}"
   fi
 done
-# Ensure ComfyUI-Downloader is present in workspace custom_nodes before rewiring
-if [ ! -d "${CUSTOM_NODES_DIR}/ComfyUI-Downloader" ] && [ -d "/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Downloader" ]; then
-  mkdir -p "${CUSTOM_NODES_DIR}"
-  cp -a "/opt/pilot/bundled/comfy-custom-nodes/ComfyUI-Downloader" "${CUSTOM_NODES_DIR}/"
-fi
+# Seed bundled custom nodes without replacing workspace copies or disabled nodes.
+for node in ComfyUI-Downloader ComfyUI-GGUF ComfyUI-VideoHelperSuite; do
+  bundled="/opt/pilot/bundled/comfy-custom-nodes/${node}"
+  destination="${CUSTOM_NODES_DIR}/${node}"
+  if [[ -d "${bundled}" && ! -e "${destination}" && ! -L "${destination}" &&
+        ! -e "${destination}.disabled" && ! -L "${destination}.disabled" ]]; then
+    cp -a "${bundled}" "${CUSTOM_NODES_DIR}/"
+  fi
+done
 # Point Comfy models to the shared workspace tree
 rm -rf "${COMFY_DIR}/models"
 ln -s "${WORKSPACE_ROOT}/models" "${COMFY_DIR}/models"

@@ -44,6 +44,10 @@ ARG IPYWIDGETS_VERSION=8.1.8
 ARG COMFYUI_REF=v0.34.0
 ARG COMFYUI_MANAGER_REF=4.2.2
 ARG COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
+ARG COMFYUI_GGUF_REF=6ea2651e7df66d7585f6ffee804b20e92fb38b8a
+ARG COMFYUI_VHS_REF=4d907bee61e92c2e65af3bd6383a4e4d356126d1
+ARG OPENCV_VERSION=4.11.0.86
+ARG IMAGEIO_FFMPEG_VERSION=0.6.0
 ARG KOHYA_REF=v26.0.0
 ARG DIFFPIPE_REF=8f83dbf25d03219df705570ec03e62be04bc402f
 ARG AI_TOOLKIT_REF=b36bb3998ae596a566d85513299696a3a78f0dcb
@@ -129,7 +133,7 @@ COPY scripts/build/lib/git_checkout.sh /opt/pilot/build/lib/
 COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/
 COPY scripts/build/install-comfy.sh /opt/pilot/build/
 RUN chmod +x /opt/pilot/build/lib/git_checkout.sh /opt/pilot/build/patches/patch-comfy.sh /opt/pilot/build/install-comfy.sh
-ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}-${COMFYUI_DOWNLOADER_REF}"
+ARG COMFY_CACHE_BUST="${COMFYUI_REF}-${COMFYUI_MANAGER_REF}-${COMFYUI_DOWNLOADER_REF}-${COMFYUI_GGUF_REF}-${COMFYUI_VHS_REF}-${OPENCV_VERSION}-${IMAGEIO_FFMPEG_VERSION}"
 RUN echo "COMFY_CACHE_BUST=${COMFY_CACHE_BUST}" >/dev/null && \
     if [ "${INSTALL_COMFY:-1}" = "1" ]; then /opt/pilot/build/install-comfy.sh; fi
 

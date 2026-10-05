@@ -209,10 +209,17 @@ LoadImage → VAEEncode ↗
 - **Features**: Download models from Hugging Face
 - **Integration**: Works with LoRA Pilot model management
 
-#### ControlNet Preprocessors
-- **Purpose**: Image preprocessing for ControlNet
-- **Features**: Canny, depth, pose detection
-- **Nodes**: Various preprocessing nodes
+#### ComfyUI-GGUF
+
+ComfyUI-GGUF provides the GGUF diffusion-model and text-encoder loaders used by quantized workflows. The image bundles commit `6ea2651e7df66d7585f6ffee804b20e92fb38b8a` and installs its requirements into ComfyUI's core Python environment. Model weights are downloaded separately.
+
+#### VideoHelperSuite
+
+VideoHelperSuite adds video loading, frame processing and video-combination nodes. The image bundles commit `4d907bee61e92c2e65af3bd6383a4e4d356126d1`, with OpenCV `4.11.0.86` and imageio-ffmpeg `0.6.0`. These dependencies are installed even when Diffusion Pipe is excluded from the build. System FFmpeg is also included.
+
+At startup, missing bundled extensions are copied into `/workspace/apps/comfy/custom_nodes`. Existing copies, symbolic links and folders with a `.disabled` suffix are preserved. A new image does not replace a workspace extension you have updated through Manager. A custom `COMFY_VENV_PATH` needs the same dependencies installed in that environment.
+
+ControlNet preprocessor extensions remain optional installations through Manager.
 
 #### Advanced Samplers
 - **Purpose**: Enhanced sampling methods

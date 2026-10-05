@@ -11,6 +11,8 @@ fi
 : "${COMFYUI_REF:?COMFYUI_REF is required}"
 : "${COMFYUI_MANAGER_REF:?COMFYUI_MANAGER_REF is required}"
 : "${COMFYUI_DOWNLOADER_REF:?COMFYUI_DOWNLOADER_REF is required}"
+: "${COMFYUI_GGUF_REF:?COMFYUI_GGUF_REF is required}"
+: "${COMFYUI_VHS_REF:?COMFYUI_VHS_REF is required}"
 
 /opt/pilot/build/lib/git_checkout.sh \
   https://github.com/Comfy-Org/ComfyUI.git \
@@ -48,7 +50,29 @@ mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes /opt/pilot/bundled/comfy-custom-n
   /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader \
   "${COMFYUI_DOWNLOADER_REF}"
 
-cp -a /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-Downloader /opt/pilot/bundled/comfy-custom-nodes/
+/opt/pilot/build/lib/git_checkout.sh \
+  https://github.com/city96/ComfyUI-GGUF.git \
+  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-GGUF \
+  "${COMFYUI_GGUF_REF}"
+/opt/pilot/build/lib/git_checkout.sh \
+  https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git \
+  /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite \
+  "${COMFYUI_VHS_REF}"
+
+pip_install_in_venv /opt/venvs/core \
+  -c /opt/pilot/config/core-constraints.txt \
+  -r /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-GGUF/requirements.txt \
+  -r /opt/pilot/repos/ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt
+/opt/venvs/core/bin/python - <<'PYTHON'
+import cv2
+import gguf
+import imageio_ffmpeg
+print("ComfyUI video dependencies:", cv2.__version__, imageio_ffmpeg.get_ffmpeg_version())
+PYTHON
+
+for node in ComfyUI-Downloader ComfyUI-GGUF ComfyUI-VideoHelperSuite; do
+  cp -a "/opt/pilot/repos/ComfyUI/custom_nodes/${node}" /opt/pilot/bundled/comfy-custom-nodes/
+done
 
 mkdir -p /workspace/apps/comfy/user
 rm -rf /opt/pilot/repos/ComfyUI/user
