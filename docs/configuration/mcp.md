@@ -1,6 +1,6 @@
 # Connect an assistant with MCP
 
-_Source implementation: 2026-10-03; not a published-image or live GPU certification._
+_Documentation updated: 2026-10-05. Source implementation remains unreleased; target deployment validation is outstanding._
 
 LoRA Pilot provides Streamable HTTP at `/mcp`, using the official Python SDK `mcp==2.3.0`. It starts disabled. Each connection has its own expiring bearer token, permissions, and selected datasets/runs. A ControlPilot browser cookie, Comfy token or Hugging Face token cannot authenticate MCP.
 
@@ -8,12 +8,11 @@ This version supports private clients that can send an `Authorization: Bearer �
 
 ## Enable read access
 
-1. Use an image built from source containing this implementation. A mutable `latest` tag does not establish that it includes MCP.
-2. Set `MCP_PUBLIC_URL` to the exact HTTPS origin used by both the client and Settings, such as `https://pilot.example.com`. Omit `/mcp`, query strings and credentials. Loopback development can use `http://127.0.0.1:7878`.
-3. Apply the container environment change. Keep the execution variables below at `0` for read-only use.
-4. Set a ControlPilot password, log in, then open **Settings → MCP**. Enter the current password, select **Enable MCP**, and click **Apply**.
-5. Name a connection and select only the permissions and objects it needs. Enter the current password again and click **Create connection**. Copy the token immediately into the client's protected credential/header configuration. It is shown once.
-6. Configure the client with transport **Streamable HTTP**, URL `https://pilot.example.com/mcp`, and that bearer header. Use its SDK for protocol initialization/version negotiation. List tools and call `workspace_status` first.
+Use an image built from source containing this implementation, and check its embedded commit. A mutable `latest` tag does not establish that it includes MCP. Set `MCP_PUBLIC_URL` to the exact HTTPS origin used by both the client and Settings, such as `https://pilot.example.com`. Omit `/mcp`, query strings and credentials. For loopback development, you can use `http://127.0.0.1:7878`. Apply the container environment change and keep the execution variables below at `0` for read-only use.
+
+Set a ControlPilot password and log in, then open **Settings → MCP**. Enter the current password, select **Enable MCP**, and choose **Apply**. Name a connection and select the permissions and objects it needs. Enter the current password again and choose **Create connection**. Copy the token into the client's protected credential or header configuration while it is visible; you will not be able to retrieve it later.
+
+Configure the client with **Streamable HTTP**, the URL `https://pilot.example.com/mcp`, and an `Authorization: Bearer …` header containing that token. Let the client's SDK handle initialization and protocol negotiation. List the available tools and call `workspace_status` to check the connection.
 
 Do not put the token in a URL, prompt, committed configuration, browser local storage or shared log. The Settings page clears displayed credentials after a change or navigation. Read permission authorizes disclosure to the connected client; revocation cannot erase data it already received.
 
@@ -46,12 +45,9 @@ Every Settings mutation requires the current owner password, session, same origi
 
 Read tools: `workspace_status`, `datasets_list`, `dataset_review`, `models_list`, `runs_list`, `run_get`, `operation_get`. Lists support `limit` (1–100) and opaque `cursor`. Cursors become invalid after relevant grants or list contents change. Resources include `lorapilot://docs/mcp` and authorized `lorapilot://runs/{run_id}/summary` reads.
 
-When execution is enabled:
+When execution is enabled, call `training_plan`, `comparison_plan` or `export_plan` with the returned dataset, run and checkpoint handles. Each plan records content hashes and expires after ten minutes. In **Settings → MCP → Pending approvals**, the owner reviews the selected data, resource limits and export disclosure, then approves or rejects with their password. Use **Refresh** to see new plans.
 
-1. Call `training_plan`, `comparison_plan` or `export_plan` with the returned dataset/run/checkpoint handles. A plan records content hashes and a ten-minute expiry.
-2. In **Settings → MCP → Pending approvals**, the owner reviews the selected data, cost bounds and export disclosure, then approves or rejects with their password. Use **Refresh** to see new plans.
-3. Call `training_start`, `comparison_start` or `export_create` with the approved `plan_id` and a fresh lowercase UUIDv4 `request_id`. Persist this request ID before sending.
-4. Poll `operation_get` with the returned `operation_id`, no more frequently than `next_poll_after_ms`. Repeating the identical request ID/payload returns the original operation. Changing the payload with that ID is rejected.
+After approval, call `training_start`, `comparison_start` or `export_create` with the approved `plan_id` and a fresh lowercase UUIDv4 `request_id`. Save that request ID before sending. Poll `operation_get` with the returned `operation_id`, respecting `next_poll_after_ms`. Repeating the same request ID and payload returns the original operation; changing its payload is rejected.
 
 A plan consumes its approval once. On a timeout, retry the same request; never invent a new ID to bypass an uncertain outcome. States are `accepted`, `dispatching`, `running`, `succeeded`, `failed`, `cancelled`, and `unknown`. A successful tool response can describe queued or failed work: inspect `state` and `error`. Errors expose safe codes, not provider responses or stack traces.
 

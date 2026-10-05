@@ -81,7 +81,22 @@ function renderServices() {
         document.getElementById("svc-detail").scrollIntoView({ block: "start" });
       }
     };
-    list.appendChild(row);
+    const entry = document.createElement("div");
+    entry.className = "svc-entry";
+    entry.appendChild(row);
+    const url = badge.raw === "RUNNING" ? serviceUrl(svc.name) : null;
+    if (url) {
+      const open = document.createElement("a");
+      open.className = "svc-quick-open";
+      open.href = url;
+      open.target = "_blank";
+      open.rel = "noopener noreferrer";
+      open.title = `Open ${info.label}`;
+      open.setAttribute("aria-label", `Open ${info.label}`);
+      open.innerHTML = '<span aria-hidden="true">↗</span>';
+      entry.appendChild(open);
+    }
+    list.appendChild(entry);
   });
   if (!visible.length) list.textContent = servicesData.length ? `No ${serviceFilter} services.` : "No services were returned by the supervisor.";
   renderServiceDetail();

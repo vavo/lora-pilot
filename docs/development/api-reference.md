@@ -83,19 +83,11 @@ The Settings routes below also live outside Portal OpenAPI. They require an enab
 | `GET` | `/api/tensorboard/status` | `port`, per-source `sources`, and `server` reachability/service state/start eligibility |
 | `POST` | `/api/tensorboard/start` | No body; starts the DiffPipe service in TensorBoard-only mode; returns `{"status":"starting"}` |
 
-Known service names:
+Known service names are `jupyter`, `code-server`, `comfy`, `kohya`, `diffpipe`, `invoke`, `ai-toolkit`, `controlpilot` and `copilot`. These identifiers match Supervisor program names.
 
-- `jupyter`
-- `code-server`
-- `comfy`
-- `kohya`
-- `diffpipe`
-- `invoke`
-- `ai-toolkit`
-- `controlpilot`
-- `copilot`
+Each `/api/services` entry retains `name`, `display`, `state`, `state_raw`, `running` and `autostart`. Its additional `definition` object contains `label`, resolved `port`, `role`, `description`, `icon`, `order` and `capabilities`. Capabilities identify browser access, update support, TensorBoard source/label and whether stopping the service disconnects ControlPilot. An invalid port is `null`; unknown or mismatched Supervisor output produces `UNKNOWN` with `running: false`. The public definition excludes launcher commands, repository paths and environment variable names. See the [shared registry contract](../configuration/supervisor.md#keeping-service-definitions-consistent).
 
-Service listings return an array with `name`, `display`, `state`, `state_raw`, `running` and `autostart`. `GET /api/services` also reports `installed` (boolean); code-server has `definition.capabilities.install: true`. When absent, starting/restarting it or enabling autostart returns 409.
+`GET /api/services` also reports `installed` (boolean); code-server has `definition.capabilities.install: true`. When absent, starting/restarting it or enabling autostart returns 409.
 
 `POST /api/services/code-server/install/start` starts an asynchronous installation of the pinned release. No request body is needed; clients cannot choose a download URL, command or version. Other known services return 400; unknown names return 404. Duplicate calls reuse the running job; an existing installation returns `state: "done"`. The route uses the same ControlPilot authentication as other service controls.
 

@@ -1,6 +1,6 @@
 # Product roadmap
 
-_Last updated: 2026-10-03_
+_Last updated: 2026-10-05_
 
 LoRA Pilot should help you take a training experiment from prepared images to a result you can inspect, keep, and use again. This roadmap separates implemented source features from proposed work. It sets no release dates. The [ideas document](ideas.md) holds directions that need more investigation before they become implementation tasks.
 
@@ -15,6 +15,16 @@ Q1 adds individual checkpoint downloads after a guided run finishes, including f
 V5 adds Storage under Manage. You can inspect category usage and review selected checkpoints, private dataset snapshots, or training caches from finished guided runs before permanent removal. Workload and file-change checks protect the operation. Original datasets, shared models, linked files, and run records remain outside this cleanup flow. General application caches and outputs from other tools appear in the overview but are not cleanup candidates.
 
 Successful runs also support moving or copying checkpoints into the shared LoRA library and generating a comparison grid in ComfyUI. The same prompt and seed help you inspect what the chosen LoRA changes. See [TrainPilot](../components/trainpilot.md) and [ControlPilot](../user-guide/control-pilot.md) for the current user flows.
+
+## Consistent service controls
+
+The Services directory and detail panel now use a shared registry for labels, resolved ports and capabilities. Backend status, logs and update metadata use the same definitions. Regression checks compare the registry with Supervisor programs, log paths and launchers. Custom-port links passed local browser checks; actual container startup remains a delivery check.
+
+## Scoped assistant access
+
+The MCP implementation adds private bearer-token connections with selected permissions, datasets and runs. Read tools expose bounded summaries. Gated write tools support approved SDXL quick tests, fixed baseline/LoRA comparisons and private experiment exports, with operation records for retries and unknown outcomes. Settings provides connection management and owner approvals.
+
+The next MCP milestone is deployment validation: complete target CUDA images, persistent-volume durability checks and a real HTTPS proxy/client roundtrip. OAuth integration, broader training recipes, model installation and a reviewed maintenance flow remain later work. Keep execution disabled until the deployment meets the [MCP release gates](../configuration/mcp.md#execution-release-gates-and-limits).
 
 ## Verify the new image on target hardware
 

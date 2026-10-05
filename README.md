@@ -68,7 +68,7 @@ See the [full trainer compatibility tables](docs/reference/supported-models.md) 
 Everything is orchestrated by **supervisord** and writes to **/workspace**, so reboots do not nuke your progress.
 
 Nice quality-of-life bits:
-- Pin an image digest for reproducible deployments.
+- Choose a Docker image tag: `notrius/lora-pilot:stable`, `notrius/lora-pilot:latest`, or `notrius/lora-pilot:dev`.
 - Jupyter and code-server settings/plugins persist between restarts.
 - Venv switching gymnastics are gone; the stack is prewired.
 - Handy CLI tools (`mc`, `nano`, `unzip`, model scripts) are already there.
