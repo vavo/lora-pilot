@@ -589,16 +589,21 @@ def _start_training(req: TrainRequest):
 
     # Register the actual output root with the shared TensorBoard log tree.
     import hashlib
+    output_root = os.path.realpath(str(OUTPUT_DIR))
+    output_path = os.path.realpath(str(out_dir))
+    if output_path != output_root and not output_path.startswith(os.path.join(output_root, "")):
+        raise HTTPException(status_code=400, detail=f"output_dir must stay within {output_root}")
+    out_dir = Path(output_path)
     tb_root = Path(os.environ.get("TENSORBOARD_ROOT_LOGDIR", str(WORKSPACE / "logs" / "tensorboard")))
     tb_root.mkdir(parents=True, exist_ok=True)
     out_dir.mkdir(parents=True, exist_ok=True)
     alias = tb_root / ("diffpipe-run-" + hashlib.sha256(str(out_dir).encode()).hexdigest()[:12])
     if not alias.is_symlink() and alias.exists():
         raise HTTPException(status_code=409, detail="TensorBoard run alias is occupied by a real directory/file")
-    if alias.is_symlink() and alias.resolve() != out_dir.resolve():
+    if alias.is_symlink() and alias.resolve() != out_dir:
         raise HTTPException(status_code=409, detail="TensorBoard run alias points to a different output directory")
     if not alias.is_symlink():
-        alias.symlink_to(out_dir.resolve(), target_is_directory=True)
+        alias.symlink_to(out_dir, target_is_directory=True)
 
     safe_training_cfg = _materialize_training_config(training_cfg)
     cmd = [

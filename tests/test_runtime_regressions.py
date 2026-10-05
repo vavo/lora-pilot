@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import io
 import os
@@ -146,6 +147,94 @@ class DiffusionPipeRunTests(unittest.TestCase):
                 dpipe.start_training(self.request)
         with patch.object(dpipe, "_resolve_deepspeed_bin", return_value=Path("/fake/deepspeed")):
             self.assertEqual(dpipe.start_training(self.request)["pid"], 123)
+
+    def test_output_escape_is_rejected_before_tensorboard_registration(self):
+        outside = self.root / 'outputs-neighbor'
+        outside.mkdir()
+        (dpipe.OUTPUT_DIR / 'escape').symlink_to(outside, target_is_directory=True)
+        for value in ('../outputs-neighbor/run', str(outside / 'run'), 'escape/run'):
+            with self.subTest(value=value):
+                self.request.output_dir = value
+                with self.assertRaises(dpipe.HTTPException) as error:
+                    dpipe.start_training(self.request)
+                self.assertEqual(error.exception.status_code, 400)
+                self.assertFalse((outside / 'run').exists())
+        self.spawn.assert_not_called()
+
+    def test_output_symlink_changed_during_config_creation_is_rejected(self):
+        outside = self.root / 'outside'
+        outside.mkdir()
+        parent = dpipe.OUTPUT_DIR / 'slot'
+        parent.mkdir()
+        self.request.output_dir = str(parent / 'run')
+        original = dpipe.create_training_config
+
+        def replace_parent(**kwargs):
+            config = original(**kwargs)
+            parent.rmdir()
+            parent.symlink_to(outside, target_is_directory=True)
+            return config
+
+        with patch.object(dpipe, '_resolve_deepspeed_bin', return_value=Path('/fake/deepspeed')), \
+             patch.object(dpipe, 'create_training_config', side_effect=replace_parent):
+            with self.assertRaises(dpipe.HTTPException) as error:
+                dpipe.start_training(self.request)
+        self.assertEqual(error.exception.status_code, 400)
+        self.assertFalse((outside / 'run').exists())
+        self.assertFalse((self.root / 'logs/tensorboard').exists())
+        self.spawn.assert_not_called()
+
+    def test_tensorboard_registration_preserves_nested_output_and_existing_alias(self):
+        self.request.output_dir = 'nested/run'
+        output = (dpipe.OUTPUT_DIR / self.request.output_dir).resolve()
+        tb_root = self.root / 'custom-tensorboard'
+        alias = tb_root / ('diffpipe-run-' + hashlib.sha256(str(output).encode()).hexdigest()[:12])
+        with patch.object(dpipe, '_resolve_deepspeed_bin', return_value=Path('/fake/deepspeed')), \
+             patch.dict(os.environ, {'TENSORBOARD_ROOT_LOGDIR': str(tb_root)}):
+            self.assertEqual(dpipe.start_training(self.request)['pid'], 123)
+            self.assertTrue(output.is_dir())
+            self.assertTrue(alias.is_symlink())
+            self.assertEqual(alias.resolve(), output)
+            dpipe._procs.clear()
+            self.assertEqual(dpipe.start_training(self.request)['pid'], 123)
+            self.assertEqual(alias.resolve(), output)
+
+    def test_tensorboard_alias_conflicts_are_preserved(self):
+        output = dpipe.OUTPUT_DIR.resolve()
+        tb_root = self.root / 'logs/tensorboard'
+        tb_root.mkdir(parents=True)
+        alias = tb_root / ('diffpipe-run-' + hashlib.sha256(str(output).encode()).hexdigest()[:12])
+        with patch.object(dpipe, '_resolve_deepspeed_bin', return_value=Path('/fake/deepspeed')), \
+             patch.dict(os.environ, {'TENSORBOARD_ROOT_LOGDIR': str(tb_root)}):
+            for kind in ('file', 'symlink'):
+                with self.subTest(kind=kind):
+                    if kind == 'file':
+                        alias.write_text('keep me')
+                    else:
+                        alias.symlink_to(self.root / 'different-output')
+                    with self.assertRaises(dpipe.HTTPException) as error:
+                        dpipe.start_training(self.request)
+                    self.assertEqual(error.exception.status_code, 409)
+                    if kind == 'file':
+                        self.assertEqual(alias.read_text(), 'keep me')
+                    else:
+                        self.assertEqual(alias.readlink(), self.root / 'different-output')
+                    alias.unlink()
+        self.spawn.assert_not_called()
+
+    def test_tensorboard_accepts_canonical_paths_within_output_root(self):
+        output = (dpipe.OUTPUT_DIR / 'actual').resolve()
+        output.mkdir()
+        (dpipe.OUTPUT_DIR / 'inward').symlink_to(output, target_is_directory=True)
+        with patch.object(dpipe, '_resolve_deepspeed_bin', return_value=Path('/fake/deepspeed')):
+            for value in ('inward', 'nested/../actual', str(output)):
+                with self.subTest(value=value):
+                    dpipe._procs.clear()
+                    self.request.output_dir = value
+                    self.assertEqual(dpipe.start_training(self.request)['pid'], 123)
+                    aliases = list((self.root / 'logs/tensorboard').glob('diffpipe-run-*'))
+                    self.assertEqual(len(aliases), 1)
+                    self.assertEqual(aliases[0].resolve(), output)
 
     def test_logs_expose_the_same_activity_state_as_the_global_indicator(self):
         dpipe._last_activity.update(state='running', pid=2)
