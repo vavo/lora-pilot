@@ -51,6 +51,8 @@ class Store:
                 raise Rejected('STORAGE_UNAVAILABLE')
         if not isinstance(data.get('audit'), list):
             raise Rejected('STORAGE_UNAVAILABLE')
+        if 'public_origin' in data and not isinstance(data['public_origin'], str):
+            raise Rejected('STORAGE_UNAVAILABLE')
         for key, client in data['clients'].items():
             if (not isinstance(client, dict) or client.get('id') != key
                     or type(client.get('expires_at')) not in {float, int}
@@ -175,7 +177,7 @@ class Store:
             raise Rejected('INVALID_INPUT')
         return Automation.model_validate(policy or {}).model_dump()
 
-    def create_client(self, label, scopes, datasets, runs, days=30, policy=None):
+    def create_client(self, label, scopes, datasets, runs, days=30, policy=None, *, enable=False):
         policy = self.validate_grant(scopes, datasets, runs, days, policy)
         token = 'lp_mcp_' + secrets.token_urlsafe(32)
         client_id = uuid.uuid4().hex
@@ -187,6 +189,10 @@ class Store:
             data['clients'][client_id] = dict(id=client_id, label=label, scopes=sorted(set(scopes)),
                 datasets=grants, runs=sorted(set(runs)), expires_at=self.clock() + days * 86400,
                 revoked=False, version=1, token_hash=hashlib.sha256(token.encode()).hexdigest(), policy=policy)
+            if enable and not data['enabled']:
+                data['enabled'] = True
+                data['generation'] += 1
+                self.audit(data, 'enable')
             self.audit(data, 'create_client', object_id=client_id)
         return client_id, token
 

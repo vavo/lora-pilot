@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import re
 import stat
+from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -11,6 +12,7 @@ from pydantic import Field
 
 from .contracts import Automation, Input, READ_SCOPES, SCOPES
 from .files import Rejected
+from .server import public_origin
 try:
     from ..services.gpu_guard import LAUNCH_LOCK
 except ImportError:
@@ -34,6 +36,10 @@ class Client(OwnerChange):
     policy: Automation = Field(default_factory=Automation)
 
 
+class NewClient(Client):
+    enable: bool = False
+
+
 class Approval(OwnerChange):
     approve: bool
 
@@ -53,14 +59,18 @@ def create_app(runtime, enabled, authenticated, session_value, verify_password):
                             headers={'Cache-Control': 'no-store'})
 
     def check(request, change=None):
-        if not runtime.origin:
-            raise Rejected('Configure MCP_PUBLIC_URL before managing MCP')
-        if (request.headers.get('host') != runtime.host or not enabled() or not authenticated(request)
+        if ((runtime.host and request.headers.get('host') != runtime.host) or not enabled() or not authenticated(request)
                 or request.headers.get('sec-fetch-site') == 'cross-site'):
             raise Rejected('NOT_AUTHORIZED')
         csrf = hmac.new(session_value().encode(), b'lora-pilot:mcp-settings:v1', hashlib.sha256).hexdigest()
         if change is not None:
-            if (request.headers.get('origin') != runtime.origin
+            try:
+                origin = public_origin(request.headers.get('origin', ''))
+            except ValueError:
+                raise Rejected('NOT_AUTHORIZED') from None
+            if ((runtime.origin and origin != runtime.origin)
+                    or urlsplit(origin).netloc != request.headers.get('host')
+                    or not runtime.accepts_transport(request.scope, origin)
                     or not hmac.compare_digest(request.headers.get('x-mcp-csrf', ''), csrf)
                     or not verify_password(change.password)):
                 raise Rejected('NOT_AUTHORIZED')
@@ -87,12 +97,14 @@ def create_app(runtime, enabled, authenticated, session_value, verify_password):
 
     @app.get('/api/settings/mcp')
     def status(request: Request):
+        if not enabled():
+            return dict(password_required=True, enabled=False, url=(runtime.origin + '/mcp') if runtime.origin else '')
         csrf = check(request)
         try:
             data = store.read()
         except FileNotFoundError:
             data = dict(enabled=False, clients={}, plans={})
-        return dict(enabled=data['enabled'], csrf=csrf, url=runtime.origin + '/mcp',
+        return dict(password_required=False, enabled=data['enabled'], csrf=csrf, url=(runtime.origin + '/mcp') if runtime.origin else '',
             execution_enabled=runtime.facade.writes, available=runtime.failure is None and runtime.http is not None,
             scopes=sorted(SCOPES if runtime.facade.writes else READ_SCOPES),
             clients=[dict({key: client[key] for key in ('id', 'label', 'scopes', 'datasets', 'runs', 'expires_at', 'revoked')}, policy=client.get('policy', {}))
@@ -108,6 +120,8 @@ def create_app(runtime, enabled, authenticated, session_value, verify_password):
             raise Rejected('MCP_UNAVAILABLE')
         store.initialize()
         store.claim()
+        if payload.enabled:
+            runtime.configure_origin(request.headers['origin'])
         with LAUNCH_LOCK:
             store.set_enabled(payload.enabled)
         return dict(enabled=payload.enabled)
@@ -120,11 +134,17 @@ def create_app(runtime, enabled, authenticated, session_value, verify_password):
             raise Rejected('INVALID_INPUT')
 
     @app.post('/api/settings/mcp/clients')
-    def create_client(request: Request, payload: Client):
+    def create_client(request: Request, payload: NewClient):
         check(request, payload)
         check_objects(payload)
-        client_id, token = store.create_client(payload.label, payload.scopes, payload.datasets, payload.runs, payload.days, payload.policy.model_dump())
-        return dict(id=client_id, token=token)
+        if runtime.failure or runtime.http is None:
+            raise Rejected('MCP_UNAVAILABLE')
+        store.initialize()
+        store.claim()
+        runtime.configure_origin(request.headers['origin'])
+        client_id, token = store.create_client(payload.label, payload.scopes, payload.datasets, payload.runs,
+            payload.days, payload.policy.model_dump(), enable=payload.enable)
+        return dict(id=client_id, token=token, url=runtime.origin + '/mcp')
 
     @app.patch('/api/settings/mcp/clients/{client_id}')
     def change_client(request: Request, client_id: str, payload: Client):
