@@ -1,6 +1,6 @@
 # Connect an assistant with MCP
 
-_Documentation updated: 2026-10-05. Source implementation remains unreleased; target deployment validation is outstanding._
+_Documentation updated: 2026-10-06. Execution and external-client release gates are tracked in the validation record._
 
 LoRA Pilot provides Streamable HTTP at `/mcp`, using the official Python SDK `mcp==2.3.0`. It starts disabled. Each connection has its own expiring bearer token, permissions, and selected datasets/runs. A ControlPilot browser cookie, Comfy token or Hugging Face token cannot authenticate MCP.
 
