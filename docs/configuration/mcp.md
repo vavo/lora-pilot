@@ -8,15 +8,26 @@ This version supports private clients that can send an `Authorization: Bearer �
 
 ## Enable read access
 
-Use an image built from source containing this implementation, and check its embedded commit. A mutable `latest` tag does not establish that it includes MCP. Set `MCP_PUBLIC_URL` to the exact HTTPS origin used by both the client and Settings, such as `https://pilot.example.com`. Omit `/mcp`, query strings and credentials. For loopback development, you can use `http://127.0.0.1:7878`. Apply the container environment change and keep the execution variables below at `0` for read-only use.
+Open **Settings → MCP** on an image containing this implementation. If ControlPilot has no password, the page asks you to set and confirm one. Otherwise enter your current ControlPilot password. Name the connection, select the datasets and runs it may inspect, and choose **Create connection**. This enables MCP and creates the credential together. The five read permissions are selected by default; no datasets or existing runs are shared until you select them. Write permissions remain behind the deployment gates below.
 
-Set a ControlPilot password and log in, then open **Settings → MCP**. Enter the current password, select **Enable MCP**, and choose **Apply**. Name a connection and select the permissions and objects it needs. Enter the current password again and choose **Create connection**. Copy the token into the client's protected credential or header configuration while it is visible; you will not be able to retrieve it later.
+Under **Copy this into your agent to set up the connection**, choose **Copy setup instructions**. The copied text includes the endpoint, Streamable HTTP transport and private bearer credential. Paste it into a trusted agent's private setup. The preview hides the token; the copy button includes it. Manual connection details are available underneath for clients that need separate URL/header fields. The credential is shown only at creation or rotation; rotate it from **Connections** if you need fresh instructions later.
 
-Configure the client with **Streamable HTTP**, the URL `https://pilot.example.com/mcp`, and an `Authorization: Bearer …` header containing that token. Let the client's SDK handle initialization and protocol negotiation. List the available tools and call `workspace_status` to check the connection.
+The **Try one of these** buttons copy four prompts:
 
-Do not put the token in a URL, prompt, committed configuration, browser local storage or shared log. The Settings page clears displayed credentials after a change or navigation. Read permission authorizes disclosure to the connected client; revocation cannot erase data it already received.
+- Check my LoRA Pilot workspace and tell me whether the training queue is paused.
+- Review the datasets I shared for missing captions, duplicate images and small images.
+- Which models are installed, and which catalog entries still need downloading?
+- Summarize the training runs I shared and their saved checkpoints.
 
-The HTTPS proxy must preserve the configured Host and Authorization header, forward the original scheme, and serve MCP without redirects. Uvicorn must trust only the actual proxy peer via `FORWARDED_ALLOW_IPS`; never use `*` on a publicly reachable backend. Pass that variable explicitly through your deployment override when needed. Requests seen as HTTP against an HTTPS configuration are refused. This implementation has not yet been tested through a real public proxy.
+Keep the copied credential out of shared conversations, URLs, committed configuration and logs. The setup instruction asks the agent to store it privately and avoid echoing it; your agent's handling and retention still matter. Settings does not save tokens in browser storage and clears displayed credentials on changes or navigation. Read permission authorizes disclosure to the connected client; revocation cannot erase data it already received.
+
+### Automatic address setup
+
+RunPod deployments derive the HTTPS address from their server-side `RUNPOD_POD_ID` and `PORTAL_PORT` (default `7878`). This uses the [documented RunPod HTTPS proxy format](https://docs.runpod.io/pods/configuration/expose-ports). Other deployments save the current HTTPS origin when the signed-in owner first creates a connection or enables MCP with their password. This activates the existing MCP transport without restarting ControlPilot. Loopback HTTP is supported for development.
+
+`MCP_PUBLIC_URL` is an optional explicit override: use an exact HTTPS origin such as `https://pilot.example.com`, without `/mcp`, queries or credentials. Priority is explicit override, detected RunPod address, then saved origin. Invalid configuration fails closed; a browser request cannot replace a configured origin. For a domain migration, set the override and restart ControlPilot rather than deleting its ledger.
+
+A custom HTTPS proxy must preserve Host and Authorization, forward the original scheme, and serve MCP without redirects. Uvicorn must trust only the actual proxy peer via `FORWARDED_ALLOW_IPS`; never use `*` on a publicly reachable backend. Pass that variable explicitly through your deployment override when needed. RunPod's detected HTTPS proxy is allowed to terminate TLS before the pod; this exception is restricted to the exact detected address and is disabled when `RUNPOD_TCP_PORT_<PORTAL_PORT>` reports a raw TCP mapping. Do not expose ControlPilot through raw TCP alongside the HTTPS proxy. Other public requests seen as plaintext HTTP are refused; spoofed forwarding headers do not establish trust.
 
 One configured origin is accepted. Browser `Origin: null` and foreign origins are refused; authenticated clients without Origin are supported. MCP has its own boundary and does not inherit Portal's wildcard CORS. Protect other exposed service ports separately.
 
@@ -65,7 +76,7 @@ The result's `artifact_id` identifies `GET /mcp-artifacts/{artifact_id}` on the 
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `MCP_PUBLIC_URL` | empty | Exact public HTTPS origin, or loopback HTTP; empty means unavailable |
+| `MCP_PUBLIC_URL` | empty | Optional exact public HTTPS origin override; otherwise detect RunPod or save the owner-confirmed origin |
 | `MCP_EXECUTION_ENABLED` | `0` | Operator opts into write tools |
 | `MCP_STORAGE_VERIFIED` | `0` | Operator has verified locks, atomic replace, file/directory fsync and permissions on the actual volume |
 | `MCP_GPU_VERIFIED` | `0` | Operator has completed the disposable target-image training/comparison/cancellation checks |
@@ -92,7 +103,7 @@ python -m apps.Portal.mcp_server.cli --workspace /workspace create-read-client \
   --label 'My private client' --dataset '1_my-dataset' --days 7
 ```
 
-The command verifies selected objects, acquires exclusive ownership, creates a read-only connection and enables MCP. It prints the credential once; protect that terminal output. Repeat `--dataset` or `--run` to grant other existing objects. It refuses a live Portal owner and never enables write tools. Restart Portal afterward. For emergency offline disable:
+For headless deployments outside RunPod, provide `MCP_PUBLIC_URL` when restarting Portal if no origin has previously been saved. The command verifies selected objects, acquires exclusive ownership, creates a read-only connection and enables MCP. It prints the credential once; protect that terminal output. Repeat `--dataset` or `--run` to grant other existing objects. It refuses a live Portal owner and never enables write tools. Restart Portal afterward. For emergency offline disable:
 
 ```bash
 python -m apps.Portal.mcp_server.cli --workspace /workspace disable

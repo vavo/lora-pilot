@@ -20,7 +20,7 @@ If you only care about the knobs that usually matter:
 
 ## MCP connections
 
-`MCP_PUBLIC_URL` is empty by default and must be an exact HTTPS origin (loopback HTTP is allowed for development). `MCP_EXECUTION_ENABLED`, `MCP_STORAGE_VERIFIED`, `MCP_GPU_VERIFIED` and `MCP_WRITE_BUDGET_BYTES` default to `0`. The first three must all equal `1` to expose write tools; a positive explicit byte budget is required for allocations. These flags attest to completed release checks; they do not perform those checks. See [MCP setup and limits](mcp.md) before enabling access.
+`MCP_PUBLIC_URL` is an optional exact HTTPS origin override (loopback HTTP is allowed for development). When empty, MCP detects the RunPod HTTPS address or saves the origin confirmed by the owner in Settings. MCP remains disabled until the owner enables it or creates a connection. `MCP_EXECUTION_ENABLED`, `MCP_STORAGE_VERIFIED`, `MCP_GPU_VERIFIED` and `MCP_WRITE_BUDGET_BYTES` default to `0`. The first three must all equal `1` to expose write tools; a positive explicit byte budget is required for allocations. These flags attest to completed release checks; they do not perform those checks. See [MCP setup and limits](mcp.md) before enabling access.
 
 ## Workspace storage capacity
 

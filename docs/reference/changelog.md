@@ -1,10 +1,12 @@
 # Changelog
 
-_Last updated: 2026-10-05_
+_Last updated: 2026-10-06_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Current unreleased work
+
+MCP setup now configures its address automatically, offers inline password setup when needed, and creates/enables a connection together. Copy the private agent setup instructions, then choose one of four example prompts. Read access is the default; datasets and runs remain explicitly selected. No manual `MCP_PUBLIC_URL` setting is required for normal RunPod setup.
 
 VS Code Server is now an [optional install](../components/code-server.md) from **ControlPilot → Services**. The default Docker image no longer bundles the editor. Choose **Install VS Code**, wait for verification to finish, then **Start service**. The executable persists in the workspace, existing editor data is preserved, and fresh workspaces leave autostart off. Port 8443 remains reserved so installation does not require recreating a standard Compose container.
 

@@ -20,7 +20,8 @@ function dom() {
       classList:{add(){},remove(){},toggle(){}},querySelectorAll:()=>[]});
     return nodes.get(id);
   };
-  return {node,document:{getElementById:node,querySelectorAll:()=>[]}};
+  return {node,document:{getElementById:node,querySelectorAll:selector=>selector.includes('settings-mcp-')
+    ? [...fs.readFileSync('apps/Portal/static/views/settings.html','utf8').matchAll(/id="(settings-mcp-[^"]+)"/g)].map(match=>node(match[1])) : []}};
 }
 
 test('the latest navigation wins even when older fetches finish later',async()=>{
@@ -48,7 +49,7 @@ test('login loads saved settings before unlocking and opening a screen',async()=
 });
 
 test('saving a credential or shutdown defaults preserves edits in other settings groups',async()=>{
-  const {node,document}=dom();const themes=[{value:'dark',checked:false},{value:'light',checked:true}];document.querySelectorAll=s=>s.includes('settings-theme')?themes:[];
+  const {node,document}=dom();const themes=[{value:'dark',checked:false},{value:'light',checked:true}];const query=document.querySelectorAll;document.querySelectorAll=s=>s.includes('settings-theme')?themes:query(s);
   const page=vm.createContext({window:{refreshControlPilotSettings(){throw Error('Must not reset appearance');}},document,URL,location:{origin:'http://localhost'},
     fetchJson:async path=>path==='/api/settings'?{theme:'light',shutdown_default_hours:0,comfy_access:{}}:{set:true}});
   lifecycle(page);

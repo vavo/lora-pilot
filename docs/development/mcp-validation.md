@@ -95,3 +95,16 @@ Validation ran on macOS with Python 3.12.11 and `mcp==2.3.0`, using temporary wo
 | Optional build configuration | `make build-check` | Unavailable: local Docker daemon stopped; no image/build configuration changed |
 
 Initial full-suite attempts identified missing disposable-environment dependencies and sandbox restrictions on loopback sockets. After installing the required dependencies and allowing the local test sockets, the complete suite passed. The security tests establish recovery at the work cap, intact replay records, released download slots/descriptors, fair access for another connection and responsive resource dispatch. They do not establish target-volume durability, deployed proxy behavior, GPU execution or external-client compatibility; the release gates above remain open.
+
+
+## Setup follow-up: 2026-10-06
+
+The setup changes in `1e91754` and `d0b2352`, plus the plaintext-setup guard, replace the manual public-URL prerequisite with trusted RunPod discovery or an owner-confirmed saved HTTPS origin. The UI provides inline password setup, atomic connection creation/enablement, private copy instructions and four read-only examples. The earlier fingerprint describes the original implementation, not this follow-up.
+
+Validation used disposable local workspaces and synthetic credentials; it did not create a connection to user data or enable GPU writes:
+
+- All 408 Python tests passed, including 53 MCP tests. Seven new setup cases cover owner/password/CSRF checks, missing-password disclosure limits, invalid configuration, forged origins and forwarding headers, URL persistence and permissions, RunPod proxy handling, and an official SDK client connecting after setup without a server restart.
+- All 61 JavaScript tests passed. Six new MCP UI tests exercise explicit data selection, default read scopes, password confirmation, atomic enablement, safe preview versus credential copying, retry after rejection, duplicate submission, late responses, tab cleanup, clipboard fallback and refusal to request passwords over public plaintext HTTP. Existing Settings fixture selectors were updated to include the MCP controls.
+- The rendered Settings view and real MCP backend were exercised in a local browser with synthetic owner authentication: create a scoped connection, rotate its token, copy the credential-bearing instructions, and inspect the masked preview. Mobile inspection at 390 × 844 showed no horizontal overflow; no browser console warnings/errors were reported. The inline password path is covered by UI regression tests, not a change to a live owner's password.
+
+The custom-proxy, independent-client, persistent-volume and GPU release gates above remain separate from these checks. Normal setup leaves execution flags off.

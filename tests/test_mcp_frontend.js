@@ -21,7 +21,7 @@ class Element {
 const ready = () => ({password_required: false, available: true, enabled: false, url: '', csrf: 'csrf-fixture',
   scopes: ['datasets:inspect', 'models:read', 'operations:read', 'runs:read', 'workspace:read'],
   datasets: ['1_selected', '2_private'], runs: [], clients: [], approvals: []});
-async function page(state = ready(), mutation = async () => ({token: 'lp_fixture_only', url: 'https://pilot.example/mcp'})) {
+async function page(state = ready(), mutation = async () => ({token: 'lp_fixture_only', url: 'https://pilot.example/mcp'}), origin = 'https://pilot.example') {
   const nodes = new Map();
   for (const match of html.matchAll(/<([a-z]+)[^>]*id="([^"]+)"[^>]*>/g)) {
     const element = new Element(match[1]); element.id = match[2];
@@ -33,7 +33,7 @@ async function page(state = ready(), mutation = async () => ({token: 'lp_fixture
     const el = get('settings-tab-' + name); el.setAttribute('aria-controls', 'settings-panel-' + name); return el;
   });
   const requests = [], copied = [];
-  const context = {AbortController, URL, console, location: {origin: 'https://pilot.example'},
+  const context = {AbortController, URL, console, location: {origin},
     document: {getElementById: get, createElement: tag => new Element(tag), createTextNode: text => new Element('text'),
       querySelectorAll: selector => selector.includes('settings-theme') ? [] : selector.includes('settings-mcp-') ? [...nodes.values()].filter(el => el.id.startsWith('settings-mcp-')) : tabs},
     navigator: {clipboard: {writeText: async text => copied.push(text)}},
@@ -123,4 +123,15 @@ test('clipboard fallback exposes credentials only for manual copying and clears 
   p.context.navigator.clipboard.writeText = async text => p.copied.push(text);
   await p.mcp('examples').fire('click', {target: {closest: () => ({textContent: 'Review my shared datasets.'})}});
   assert.equal(p.copied.at(-1), 'Review my shared datasets.');
+});
+
+
+test('public plaintext setup never asks for or submits a password', async () => {
+  const p = await page({password_required: true}, undefined, 'http://public.example');
+  assert.equal(p.mcp('password-setup').hidden, true);
+  assert.equal(p.mcp('set-password').disabled, true);
+  assert.equal(p.mcp('create').disabled, true);
+  p.mcp('new-password').value = p.mcp('confirm-password').value = 'test-only-password';
+  await p.mcp('set-password').onclick(); assert.equal(p.requests.length, 0);
+  assert.match(p.mcp('status').textContent, /HTTPS/);
 });

@@ -48,17 +48,19 @@ Comfy access status contains `enabled`, `token_set` and `gateway_path`. A protec
 
 MCP is a separate SDK endpoint at `/mcp`, absent from Portal OpenAPI. It uses scoped MCP bearer credentials and strict origin/host rules, independent of Portal cookies and wildcard CORS. `/mcp-artifacts/{artifact_id}` serves authorized private ZIP downloads with the same credential. See [MCP setup, tools and release gates](../configuration/mcp.md).
 
-The Settings routes below also live outside Portal OpenAPI. They require an enabled ControlPilot password and authenticated owner cookie. Mutations additionally require the current `password` in the JSON body, exact configured `Origin`/Host, and `X-MCP-CSRF` from the status response. Bearer MCP credentials cannot administer connections. All responses are non-cacheable; requests are limited to 64 KiB.
+The Settings routes below also live outside Portal OpenAPI. They require an enabled ControlPilot password and authenticated owner cookie, except that status returns only `password_required: true`, `enabled: false` and the known `url` when no password is set. Mutations additionally require the current `password` in the JSON body, same `Origin`/Host (matching the configured origin when one exists), and `X-MCP-CSRF` from the status response. Bearer MCP credentials cannot administer connections. All responses are non-cacheable; requests are limited to 64 KiB.
 
 | Method | Path | Input/result |
 |---|---|---|
-| `GET` | `/api/settings/mcp` | Enabled/available/execution flags, endpoint, CSRF token, eligible objects/scopes, connections without token digests, pending approval disclosures |
+| `GET` | `/api/settings/mcp` | `password_required`, enabled/available/execution flags, endpoint, CSRF token, eligible objects/scopes, connections without token digests, pending approval disclosures |
 | `POST` | `/api/settings/mcp` | `password`, `enabled`; claim ledger ownership and change global access |
-| `POST` | `/api/settings/mcp/clients` | `password`, `label`, `scopes`, optional `datasets`, `runs`, `days` (1–30), `policy`; returns `id` and one-time `token` |
+| `POST` | `/api/settings/mcp/clients` | `password`, `label`, `scopes`, optional `datasets`, `runs`, `days` (1–30), `policy`, `enable` (default false); returns `id`, one-time `token` and `url`. `enable: true` enables MCP atomically with credential creation |
 | `PATCH` | `/api/settings/mcp/clients/{client_id}` | Same grant fields; preserves identity/token, renews expiry and invalidates plans/queued authorization |
 | `DELETE` | `/api/settings/mcp/clients/{client_id}` | `password`; permanently revoke connection |
 | `POST` | `/api/settings/mcp/clients/{client_id}/rotate` | `password`; replace credential, returning the new `token` once |
 | `POST` | `/api/settings/mcp/approvals/{plan_id}` | `password`, `approve`; approve/reject pending current plan |
+
+The first authorized enable or client creation pins the current HTTPS origin when none is configured and activates MCP without a restart. An explicit `MCP_PUBLIC_URL` or detected RunPod origin cannot be overridden by the request. Creation defaults to leaving global enablement unchanged for API compatibility; the Settings UI sends `enable: true`. This field is not accepted on grant edits.
 
 `policy` is `{ "enabled": false, "max_steps": 100, "max_seconds": 1800, "max_bytes": 8589934592 }` by default. Enabled policies auto-approve plans only within the connection's selected scopes, objects and bounds. Steps are 1–600, seconds 60–3600, bytes 1–34359738368. Grant changes require all fields that should remain selected. Disabling the ControlPilot password while MCP is enabled returns 409. Running work is preserved when MCP access is disabled or revoked.
 

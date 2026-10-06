@@ -1,5 +1,7 @@
 Unreleased (October 6th 2026)
 
+MCP setup now detects the RunPod address or saves the address confirmed by the owner, without requiring a manual MCP_PUBLIC_URL setting or a restart. Settings guides password setup, creates and enables a scoped read-only connection in one action, and provides private copyable agent instructions with four example prompts. Credentials clear on navigation; data grants and write-operation approval gates remain explicit.
+
 Fixed ComfyUI failing at startup with an import error in ControlPilot's services/comfy.py. The launcher now keeps the two Python module namespaces separate and upgrades the existing access-protection hook without disabling protection or changing workspace data.
 
 VS Code Server is now optional: removed from the default Docker image and available through Services → Install VS Code. The checksum-verified editor persists in the workspace; fresh workspaces keep auto-start off and existing editor data is preserved. Install it, then choose Start service. Existing workspaces can reinstall after an image upgrade without losing settings, extensions or their password. Port 8443 remains available for the optional editor.

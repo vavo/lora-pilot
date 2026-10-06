@@ -432,6 +432,8 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
   const mcpElements = new Map([...document.querySelectorAll('[id^="settings-mcp-"]')].map(element => [element.id.slice('settings-mcp-'.length), element]));
   const mcp = name => mcpElements.get(name);
   let mcpCsrf = '';
+  const mcpOrigin = new URL(location.origin);
+  const mcpSecure = mcpOrigin.protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(mcpOrigin.hostname);
   let mcpEditing = null, mcpBusy = false, mcpLoaded = false, mcpAvailable = false, mcpView = 0;
   const mcpSelected = name => [...mcp(name).querySelectorAll('input:checked')].map(input => input.value);
   function clearMcpSecrets() {
@@ -439,9 +441,9 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
     mcp('token-result').hidden = true;
   }
   function mcpControls() {
-    mcp('create').disabled = mcpBusy || !mcpAvailable;
-    mcp('save').disabled = mcpBusy || !mcpCsrf || (!mcpAvailable && !mcp('enabled').checked);
-    mcp('set-password').disabled = mcpBusy;
+    mcp('create').disabled = mcpBusy || !mcpAvailable || !mcpSecure;
+    mcp('save').disabled = mcpBusy || !mcpSecure || !mcpCsrf || (!mcpAvailable && !mcp('enabled').checked);
+    mcp('set-password').disabled = mcpBusy || !mcpSecure;
   }
   function mcpSetupText(token) {
     return `Add an MCP server named "lora-pilot" to this agent.
@@ -492,6 +494,10 @@ Connect and list the available tools.`;
       mcp('connection-form').hidden = !!value.password_required;
       mcp('enabled').checked = value.enabled; mcp('url').value = value.url || new URL('/mcp', location.origin).href;
       mcpControls();
+      if (!mcpSecure) {
+        mcp('password-setup').hidden = true; mcp('ready').hidden = true; mcp('connection-form').hidden = true;
+        clearMcpSecrets(); mcp('status').textContent = 'Open ControlPilot over HTTPS to set up MCP securely.'; return;
+      }
       if (value.password_required) {
         clearMcpSecrets(); mcpLoaded = false;
         mcp('clients').replaceChildren(); mcp('approvals').replaceChildren();
@@ -549,7 +555,7 @@ Connect and list the available tools.`;
     }
   }
   async function updateMcp(path, method, body) {
-    if (mcpBusy) return;
+    if (mcpBusy || !mcpSecure) return;
     const password = mcp('password').value, view = mcpView;
     clearMcpSecrets();
     if (!password) { mcp('status').textContent = 'Enter your current ControlPilot password to authorize this change.'; return; }
@@ -577,7 +583,7 @@ Connect and list the available tools.`;
   mcp('cancel-edit').onclick = () => { if (!mcpBusy) resetMcpForm(); };
   mcp('refresh').onclick = refreshMcp;
   mcp('set-password').onclick = async () => {
-    if (mcpBusy) return;
+    if (mcpBusy || !mcpSecure) return;
     const password = mcp('new-password').value.trim(), view = mcpView;
     if (password.length < 8 || password !== mcp('confirm-password').value.trim()) {
       mcp('status').textContent = 'Enter matching passwords with at least 8 characters.'; return;
