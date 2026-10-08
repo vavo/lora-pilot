@@ -68,6 +68,7 @@ celerybeat.pid
 /playwright-report/
 /test-results/
 /output/playwright/
+/output/pdf/
 htmlcov/
 .tox/
 .nox/
