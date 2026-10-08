@@ -30,10 +30,10 @@ class LibraryRequest(BaseModel):
     action: Literal['copy', 'move'] = 'copy'
 
 
-def create_router(workspace, models, resolve_dataset, resolve_config, model_name, legacy_conflicts, invalidate_datasets=lambda: None):
+def create_router(workspace, models, resolve_dataset, resolve_config, model_name, legacy_conflicts, invalidate_datasets=lambda: None, model_entries=lambda: []):
     router = APIRouter(prefix='/api/training')
     workspace, models = Path(workspace).resolve(), Path(models).resolve()
-    recipe = GuidedTraining(workspace, models, resolve_dataset, resolve_config, model_name)
+    recipe = GuidedTraining(workspace, models, resolve_dataset, resolve_config, model_name, model_entries)
     queue = TrainingRuns(under(workspace, workspace / 'config/training'), recipe.prepare, recipe.launch,
                          legacy_conflicts)
     router.include_router(create_first_lora_router(workspace, queue, recipe, invalidate_datasets))
@@ -144,12 +144,21 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         return StreamingResponse(chunks(), background=BackgroundTask(stream.close), media_type='application/octet-stream', headers={
             'Content-Length': str(info.st_size), 'Content-Disposition': "attachment; filename*=UTF-8''" + quote(filename, safe='')})
 
+    @router.get('/base-models')
+    def base_models(family: str = 'sdxl'):
+        if family not in FAMILY_NOTES:
+            raise HTTPException(400, 'Unknown training model family')
+        return {'models': [{key: value for key, value in item.items() if key != 'path'}
+                           for item in recipe.base_models(family)]}
+
     @router.post('/preflight')
     def preflight(req: TrainingRequest):
         config = None
         if req.source_run_id:
             ready()
             old = queue.get(req.source_run_id)
+            if req.base_model != old['spec'].get('base_model', ''):
+                raise HTTPException(400, 'Clear the saved configuration before changing the base model')
             if old['spec']['family'] != req.family:
                 raise HTTPException(400, 'Saved configuration belongs to a different model family')
             config = old['template']
@@ -168,6 +177,8 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         spec = req.model_dump()
         if req.source_run_id:
             old = queue.get(req.source_run_id)
+            if req.base_model != old['spec'].get('base_model', ''):
+                raise HTTPException(400, 'Clear the saved configuration before changing the base model')
             if old['spec']['family'] != req.family:
                 raise HTTPException(400, 'Saved configuration belongs to a different model family')
             spec['_template'] = dict(old['template'])

@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from apps.Portal.services.guided_training import GuidedTraining, FLUX_MODELS, MODEL_FILES, TRAINING_SCRIPTS
 from apps.Portal.services.lora_comparison import ComparisonRequest, graph, result_images
 from apps.Portal.services.training_api import create_router
-from apps.Portal.services import gpu_guard
+from apps.Portal.services import gpu_guard, models as model_catalog
 
 
 class GuidedTrainingTests(unittest.TestCase):
@@ -39,6 +39,89 @@ class GuidedTrainingTests(unittest.TestCase):
         self.rid = 'a' * 32
         self.directory = self.root / 'config/training' / self.rid
         self.directory.mkdir(parents=True)
+
+    def catalog(self):
+        manifest = Path(__file__).resolve().parents[1] / 'config/models.manifest'
+        entries = model_catalog.parse_manifest(manifest, manifest, self.models, self.root / 'config', read_only=True)
+        # Small fixture weights retain real manifest identities and destinations.
+        entries = [entry.model_copy(update={'expected_size_bytes': 7}) for entry in entries]
+        self.recipe.model_entries = lambda: entries
+        return entries
+
+    def test_base_model_choices_filter_families_and_reject_unsafe_paths(self):
+        entries = self.catalog()
+        choices = self.recipe.base_models('sdxl')
+        self.assertEqual(len(choices), 10)
+        self.assertIn('realvisxl-v5', [item['id'] for item in choices])
+        self.assertNotIn('sdxl-refiner', [item['id'] for item in choices])
+        self.assertNotIn('juggernaut-xl-lightning', [item['id'] for item in choices])
+        self.assertEqual(len(self.recipe.base_models('sd15')), 6)
+        self.assertEqual([item['id'] for item in self.recipe.base_models('flux1')], ['flux1-dev'])
+        for family, selected in [('sd15', 'pony-xl'), ('sdxl', 'sdxl-refiner'), ('flux1', 'flux1-fill-dev')]:
+            with self.subTest(family=family, selected=selected), self.assertRaises(HTTPException):
+                self.recipe.template(dict(self.spec, family=family, base_model=selected))
+        entry = next(item for item in entries if item.name == 'realvisxl-v5')
+        entry.subdir = '../outside'
+        self.assertNotIn('realvisxl-v5', [item['id'] for item in self.recipe.base_models('sdxl')])
+
+    def test_selected_checkpoint_download_checks_and_no_vae_dependencies(self):
+        self.catalog()
+        spec = dict(self.spec, family='sdxl', base_model='realvisxl-v5')
+        path = Path(self.recipe.template(spec)['pretrained_model_name_or_path'])
+        self.assertEqual(path.name, 'RealVisXL_V5.0_fp16.safetensors')
+        self.assertEqual(self.recipe.requirements(spec)['missing'][0]['model_name'], 'realvisxl-v5')
+        path.write_bytes(b'partial')
+        self.assertEqual(self.recipe.requirements(spec)['missing'], [])
+        path.write_bytes(b'x')
+        self.assertEqual(self.recipe.requirements(spec)['missing'][0]['model_name'], 'realvisxl-v5')
+        for selected in ('realistic-vision', 'realistic-vision-v6-sd15'):
+            config = self.recipe.template(dict(self.spec, family='sd15', base_model=selected))
+            self.assertTrue(config['vae'].endswith('/vae/vae-ft-mse/diffusion_pytorch_model.safetensors'))
+            checks = self.recipe.requirements(dict(self.spec, family='sd15', base_model=selected), config)
+            self.assertIn('vae', [item['key'] for item in checks['missing']])
+        path.unlink()
+        path.symlink_to(self.config)
+        with self.assertRaises(HTTPException):
+            self.recipe.template(spec)
+
+    def test_selected_base_survives_queue_reuse_launch_and_comparison(self):
+        entries = self.catalog()
+        self.addCleanup(setattr, gpu_guard, 'managed_conflicts', gpu_guard.managed_conflicts)
+        router, queue = create_router(self.root, self.models, self.resolve_dataset, lambda _: self.config,
+                                     lambda _: 'base', lambda: [], model_entries=lambda: entries)
+        start = queue.start
+        queue.start = lambda: start(background=False)
+        self.addCleanup(queue.close)
+        app = FastAPI(); app.include_router(router)
+        spec = dict(self.spec, family='sdxl', base_model='pony-xl')
+        path = Path(self.recipe.template(spec)['pretrained_model_name_or_path'])
+        path.write_bytes(b'fixture')
+        with TestClient(app) as client:
+            choices = client.get('/api/training/base-models?family=sdxl').json()['models']
+            self.assertTrue(next(item for item in choices if item['id'] == 'pony-xl')['installed'])
+            self.assertTrue(all('path' not in item for item in choices))
+            self.assertEqual(client.get('/api/training/base-models?family=unknown').status_code, 400)
+            self.assertEqual(client.post('/api/training/preflight', json=spec).json()['missing'], [])
+            response = client.post('/api/training/runs', json=spec)
+            self.assertEqual(response.status_code, 200, response.text)
+            rid = response.json()['id']
+            run = queue.get(rid)
+            self.assertEqual(run['spec']['base_model'], 'pony-xl')
+            repeated = client.post(f'/api/training/runs/{rid}/repeat').json()
+            reused = client.post('/api/training/runs', json=dict(spec, source_run_id=rid)).json()
+            for identifier in (rid, repeated['id'], reused['id']):
+                self.assertEqual(queue.get(identifier)['template']['pretrained_model_name_or_path'], str(path))
+            changed = dict(spec, source_run_id=rid, base_model='realvisxl-v5')
+            for endpoint in ('preflight', 'runs'):
+                self.assertEqual(client.post('/api/training/' + endpoint, json=changed).status_code, 400)
+            with patch('subprocess.Popen'):
+                self.recipe.launch(run, io.BytesIO())
+            effective = tomllib.loads((queue.directory(rid) / 'effective.toml').read_text())
+            self.assertEqual(effective['pretrained_model_name_or_path'], str(path))
+            registry = ComparisonGraphTests().registry()
+            registry['CheckpointLoaderSimple']['input']['required']['ckpt_name'] = [[path.name, 'base.safetensors']]
+            workflow = graph(run, ComparisonRequest(prompt='portrait'), 'trained.safetensors', registry)
+            self.assertEqual(workflow['1']['inputs']['ckpt_name'], path.name)
 
     def checkpoint(self, path):
         header = json.dumps({'weight': {'dtype': 'U8', 'shape': [1], 'data_offsets': [0, 1]}}).encode()

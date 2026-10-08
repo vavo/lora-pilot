@@ -7,7 +7,7 @@ window.trainingWorkspace = (() => {
   let draft = null, preferSetup = false;
   let sourceRun = null, comparisonBusy = false, historySignature = '';
   let exportRun = null, exportImagesSignature = '';
-  let hardware = {}, suggestedHardware = null;
+  let hardware = {}, suggestedHardware = null, baseModel = '';
   const hardwareFields = {train_batch_size: 'tp-hw-batch', gradient_accumulation_steps: 'tp-hw-accumulation', network_dim: 'tp-hw-rank', blocks_to_swap: 'tp-hw-swap'};
   const $ = id => document.getElementById(id);
   const api = (screen, path, body) => screen.json(`/api/training${path}`, body === undefined ? {} : {
@@ -24,7 +24,7 @@ window.trainingWorkspace = (() => {
   function spec() {
     return { dataset_name: $('tp-dataset')?.value || 'preflight', output_name: $('tp-output')?.value || 'preview',
       family: $('tp-family')?.value || 'sdxl', profile: $('tp-profile')?.value || 'regular',
-      toml_path: $('tp-toml')?.value || '', source_run_id: sourceRun, hardware: {...hardware} };
+      toml_path: $('tp-toml')?.value || '', source_run_id: sourceRun, base_model: baseModel, hardware: {...hardware} };
   }
   function saveDraft() {
     try {
@@ -40,10 +40,46 @@ window.trainingWorkspace = (() => {
       $('tp-output').value = normalizeOutputName(value.output_name);
     }
     sourceRun = value.source_run_id;
+    baseModel = value.base_model || '';
     hardware = value.hardware || {}; renderHardware();
     updateEpochExample($('tp-output').value);
     $('tp-draft-status').textContent = !explicitDataset && value.dataset_name && !$('tp-dataset').value
       ? 'Draft restored. Its dataset is unavailable; choose a dataset before training.' : 'Draft restored from this browser.';
+  }
+  async function loadBaseModels() {
+    const screen = trainingScreen.latest('base-models');
+    const family = spec().family;
+    const select = $('tp-base-model');
+    select.disabled = true;
+    $('tp-base-model-note').textContent = 'Loading compatible base models…';
+    try {
+      const data = await api(screen, `/base-models?family=${encodeURIComponent(family)}`);
+      if (!screen.active) return;
+      const fallback = element('option', sourceRun ? 'Saved run base model' : family === 'sdxl' ? 'Configured checkpoint' : 'Recipe default');
+      fallback.value = '';
+      select.replaceChildren(fallback);
+      for (const model of data.models) {
+        const option = element('option', `${model.label} · ${model.installed ? 'Installed' : 'Not installed'}`);
+        option.value = model.id;
+        select.append(option);
+      }
+      const selected = data.models.find(model => model.id === baseModel);
+      if (baseModel && !selected) {
+        const unavailable = element('option', `${baseModel} · Unavailable in catalog`);
+        unavailable.value = baseModel; select.append(unavailable);
+      }
+      select.value = baseModel;
+      $('tp-summary-base-model').textContent = selected?.label || baseModel || fallback.textContent;
+      $('tp-base-model-note').textContent = selected
+        ? selected.installed ? 'Installed. Training and comparisons will use this checkpoint.' : 'This checkpoint needs downloading. Start training will offer to download missing files.'
+        : baseModel ? 'This saved choice is no longer in the catalog. Choose another model for a new setup.'
+        : sourceRun ? 'Using the checkpoint stored with this run. Choosing another model uses the current recipe.'
+        : 'Keep the default or choose another compatible checkpoint. Training and comparisons use the same base model.';
+    } catch (error) {
+      if (screen.active) $('tp-base-model-note').textContent = `Base model list unavailable: ${error.message || error}`;
+    } finally {
+      if (screen.active) select.disabled = false;
+    }
   }
   function formState() {
     const family = spec().family;
@@ -59,6 +95,7 @@ window.trainingWorkspace = (() => {
     if (!trainingScreen?.active || !$('tp-page')) return;
     formState();
     loadHardware();
+    loadBaseModels();
     const screen = trainingScreen.latest("preflight");
     $('tp-check-model').textContent = 'Checking model requirements…';
     try {
@@ -332,6 +369,7 @@ window.trainingWorkspace = (() => {
         $('tp-output').value = run.spec.output_name; $('tp-profile').value = run.spec.profile;
         document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.checked = input.value === run.spec.profile);
         hardware = run.spec.hardware || {};
+        baseModel = run.spec.base_model || '';
         sourceRun = id; preferSetup = true; saveDraft();
         tpDismissedRunId = selected; if (tpLastData) renderTpResult(tpLastData);
         preflight(); $('tp-setup').scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -410,7 +448,7 @@ window.trainingWorkspace = (() => {
     if (linkedRun) { selected = linkedRun; window.pendingTrainingRun = null; tpDismissedRunId = null; }
     comparisonFormRun = null;
     exportRun = null; exportImagesSignature = '';
-    hardware = {}; suggestedHardware = null;
+    hardware = {}; suggestedHardware = null; baseModel = '';
     historySignature = ''; sourceRun = null;
     preferSetup = !!explicitDataset && !linkedRun;
     try {
@@ -434,7 +472,8 @@ window.trainingWorkspace = (() => {
         preferSetup = true; preflight();
       } catch { $('tp-draft-status').textContent = 'Browser storage is unavailable; the saved draft could not be cleared.'; }
     };
-    $('tp-family').onchange = () => { sourceRun = null; hardware = {}; saveDraft(); preflight(); };
+    $('tp-base-model').onchange = () => { baseModel = $('tp-base-model').value; sourceRun = null; saveDraft(); preflight(); };
+    $('tp-family').onchange = () => { sourceRun = null; hardware = {}; baseModel = ''; saveDraft(); preflight(); };
     document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.addEventListener('change', () => { hardware = {}; saveDraft(); preflight(); }));
     Object.entries(hardwareFields).forEach(([key, id]) => $(id).onchange = () => {
       if (!$(id).reportValidity()) return;
@@ -442,7 +481,7 @@ window.trainingWorkspace = (() => {
     });
     $('tp-hardware-apply').onclick = () => { if (suggestedHardware) { hardware = {...suggestedHardware}; saveDraft(); renderHardware(); } };
     $('tp-hardware-reset').onclick = () => { hardware = {}; saveDraft(); renderHardware(); };
-    $('tp-current-defaults').onclick = () => { sourceRun = null; saveDraft(); preflight(); };
+    $('tp-current-defaults').onclick = () => { sourceRun = null; baseModel = ''; saveDraft(); preflight(); };
     $('tp-history-search').value = historySearch; $('tp-history-family').value = historyFamily; $('tp-history-state').value = historyState;
     const filter = () => { historySearch = $('tp-history-search').value; historyFamily = $('tp-history-family').value; historyState = $('tp-history-state').value; offset = 0; historySignature = ''; refresh(); };
     $('tp-history-search').oninput = () => { clearTimeout(filterTimer); filterTimer = screen.timeout(filter, 250); };

@@ -1,3 +1,7 @@
+Unreleased (October 9th 2026)
+
+- Added a compatible base-model selector to Guided training, with 10 SDXL and 6 SD 1.5 choices, installed/download status, saved selections and matching comparison models.
+
 v2.6 (October 9th 2026)
 
 - Added optional scoped MCP access with guided setup, dataset and run permissions, expiring credentials, and approval controls for training, comparisons and exports.

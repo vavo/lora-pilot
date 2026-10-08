@@ -154,3 +154,15 @@ test('guided drafts retain each newly supported model family', () => {
     assert.equal(draft.read().family, family);
   }
 });
+
+
+test('base model choices survive drafts without accepting paths or unrelated fields', () => {
+  const store = storage(), draft = context.createTrainingDraft(store);
+  const spec = {family:'sdxl', profile:'regular', dataset_name:'portraits', output_name:'Portrait'};
+  draft.save({...spec, base_model:'realvisxl-v5'});
+  assert.equal(context.createTrainingDraft(store).read().base_model, 'realvisxl-v5');
+  draft.save({...spec, base_model:'/outside/model.safetensors'});
+  assert.equal(draft.read().base_model, '');
+  draft.save(spec);
+  assert.equal(draft.read().base_model, '');
+});

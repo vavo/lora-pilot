@@ -4,6 +4,10 @@ _Last updated: 2026-10-09_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
+## Unreleased
+
+Guided training adds a compatible base-model selector with installed/download status, saved choices and comparisons using the selected checkpoint.
+
 ## Current release: v2.6
 
 ControlPilot adds scoped MCP connections, a redesigned Dashboard, Settings and Services, and an integrated Caption images editor. Guided training now includes FLUX.1 dev, a persistent queue, checkpoint recovery, searchable history and comparison grids. Dataset quality reports, the orange robot starter guide and experiment exports support the full training workflow.

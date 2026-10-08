@@ -13,6 +13,7 @@ function createTrainingDraft(storage) {
     }
     return {version: 1, family: value.family, profile: value.profile, hardware,
       dataset_name: value.dataset_name, output_name: value.output_name,
+      base_model: typeof value.base_model === 'string' && /^[a-z0-9.-]{0,100}$/.test(value.base_model) ? value.base_model : '',
       source_run_id: /^[a-f0-9]{32}$/.test(value.source_run_id || '') ? value.source_run_id : null};
   }
   return {

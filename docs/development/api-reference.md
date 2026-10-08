@@ -225,6 +225,7 @@ The guided interface uses `/api/training`. These routes follow ControlPilot auth
 
 | Method | Path | Behavior |
 |---|---|---|
+| `GET` | `/api/training/base-models?family=sdxl` | Lists compatible catalog IDs, labels, installation status and expected sizes for the selected family. |
 | `POST` | `/api/training/preflight` | Checks recipe model files and reports detected GPU conflicts. |
 | `GET` | `/api/training/runs` | Returns filtered, paginated run summaries, total matches, queued count, pause state, conflicts, and active run ID. |
 | `POST` | `/api/training/runs` | Saves a configuration snapshot and queues a uniquely identified run. |
@@ -244,7 +245,7 @@ The run listing accepts `search` (LoRA or dataset name, up to 200 characters), `
 
 `GET /api/training/runs/{id}/artifacts/{filename}` streams an eligible checkpoint as an attachment. Queued or active runs return HTTP 409; missing or linked checkpoints are excluded. The endpoint does not move or publish the file.
 
-Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path`. Supported families are `sdxl`, `flux1`, `sd15`, `sd35_medium`, and `sd35_large`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family; the chosen profile is applied to the new run.
+Preflight and run creation accept `dataset_name`, `output_name`, `family`, `profile`, and optional `toml_path` and `base_model`. `base_model` is a compatible catalog ID returned by `/api/training/base-models`; an empty or omitted value preserves the configured recipe default. Unsupported or cross-family IDs are rejected. Supported families are `sdxl`, `flux1`, `sd15`, `sd35_medium`, and `sd35_large`; profiles are `quick_test`, `regular`, and `high_quality`. `output_name` begins with an ASCII letter or digit and contains at most 80 letters, digits, underscores, or hyphens. Optional `source_run_id` selects a saved configuration from the same family and base-model selection; the chosen profile is applied to the new run. Clear `source_run_id` before changing `base_model`.
 
 Only `dataset_name` and `output_name` are required; `family` defaults to `sdxl`, `profile` to `regular`, and `toml_path` to empty. Hardware override ranges are batch size 1–8, accumulation 1–16, network dimension 4–128 and blocks to swap 0–35.
 

@@ -3979,6 +3979,8 @@ _training_router, _training_queue = create_training_router(
     lambda path: models_service.model_name_for_expected_path(path, MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR),
     _legacy_training_conflicts,
     _invalidate_dataset_list_cache,
+    model_entries=lambda: models_service.parse_manifest(
+        MANIFEST if MANIFEST.exists() else DEFAULT_MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR, read_only=True),
 )
 app.include_router(_training_router)
 

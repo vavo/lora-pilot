@@ -17,6 +17,7 @@ except ImportError:
     from dpipe_api import toml
 from .training_runs import under
 from .lora_comparison import checkpoint_order
+from .model_files import file_paths, valid_file
 
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.webp', '.bmp'}
 FLUX_MODELS = {
@@ -47,11 +48,31 @@ MODEL_FILES = {
 TRAINING_SCRIPTS = {'flux1': 'flux_train_network.py', 'sd15': 'train_network.py',
                     'sd35_medium': 'sd3_train_network.py', 'sd35_large': 'sd3_train_network.py'}
 FAMILY_NOTES = {
-    'sdxl': 'SDXL uses your configured checkpoint and VAE with the existing Kohya profiles.',
+    'sdxl': 'SDXL uses the selected checkpoint and your configured VAE with the existing Kohya profiles.',
     'flux1': 'FLUX.1 dev uses full-size weights, AE, CLIP-L and FP16 T5. Block swapping needs substantial system memory.',
-    'sd15': 'SD 1.5 uses its base checkpoint with the included text encoder and VAE. Training and comparisons use 512-pixel images.',
+    'sd15': 'SD 1.5 uses the selected checkpoint at 512-pixel resolution. A separate VAE is required for checkpoints without one.',
     'sd35_medium': 'SD 3.5 Medium uses full-size weights with the included VAE, CLIP-L, CLIP-G and FP16 T5. Allow substantial GPU and system memory.',
     'sd35_large': 'SD 3.5 Large uses full-size weights with the included VAE, CLIP-L, CLIP-G and FP16 T5. Block swapping needs substantial system memory.',
+}
+
+
+# Standard single-file weights supported by the existing guided recipes.
+BASE_MODELS = {
+    'sdxl': {
+        'sdxl-base': 'SDXL 1.0 Base', 'sdxl-base-0.9vae': 'SDXL 1.0 · original VAE',
+        'realvisxl-v3': 'RealVisXL v3', 'realvisxl-v4': 'RealVisXL v4', 'realvisxl-v5': 'RealVisXL v5',
+        'juggernaut-xl-v9': 'Juggernaut XL v9', 'pony-xl': 'Pony Diffusion XL v6',
+        'cyberrealistic-xl-v10': 'CyberRealistic XL v10', 'analog-madness-xl': 'Analog Madness XL',
+        'opendalle-xl': 'OpenDalle v1.1',
+    },
+    'sd15': {
+        'sd15-base': 'SD 1.5 Base', 'realistic-vision': 'Realistic Vision v5.1',
+        'realistic-vision-v6-sd15': 'Realistic Vision v6', 'epicrealism': 'epiCRealism',
+        'rev-animated': 'Rev Animated v1.2.2', 'toonyou': 'ToonYou',
+    },
+    'flux1': {'flux1-dev': 'FLUX.1 dev'},
+    'sd35_medium': {'sd3.5-medium': 'SD 3.5 Medium'},
+    'sd35_large': {'sd3.5-large': 'SD 3.5 Large'},
 }
 
 
@@ -82,18 +103,50 @@ class TrainingRequest(BaseModel):
     output_name: str = Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
     family: Literal['sdxl', 'flux1', 'sd15', 'sd35_medium', 'sd35_large'] = 'sdxl'
     profile: Literal['quick_test', 'regular', 'high_quality'] = 'regular'
+    base_model: str = Field(default='', max_length=100, pattern=r'^[a-z0-9.-]*$')
     toml_path: str = ''
     source_run_id: str | None = Field(default=None, pattern=r'^[a-f0-9]{32}$')
     hardware: HardwareOverrides = Field(default_factory=HardwareOverrides)
 
 
 class GuidedTraining:
-    def __init__(self, workspace, models, resolve_dataset, resolve_config, model_name):
+    def __init__(self, workspace, models, resolve_dataset, resolve_config, model_name, model_entries=lambda: []):
         self.workspace = Path(workspace).resolve()
         self.models = Path(models).resolve()
         self.resolve_dataset = resolve_dataset
         self.resolve_config = resolve_config
         self.model_name = model_name
+        self.model_entries = model_entries
+
+    def base_models(self, family):
+        choices = []
+        labels = BASE_MODELS.get(family, {})
+        for entry in self.model_entries():
+            if entry.name not in labels or entry.kind != 'hf_file':
+                continue
+            try:
+                path, _ = file_paths(entry.kind, entry.source, entry.subdir, self.models)
+                path = under(self.models, path)
+                if path.suffix != '.safetensors':
+                    continue
+            except (ValueError, HTTPException):
+                continue
+            size = entry.expected_size_bytes if entry.size_is_exact else None
+            choices.append(dict(id=entry.name, label=labels[entry.name], path=str(path),
+                                installed=valid_file(path, size), size_bytes=size))
+        return choices
+
+    def with_base_model(self, spec, config):
+        selected = spec.get('base_model')
+        if not selected:
+            return config
+        choice = next((item for item in self.base_models(spec['family']) if item['id'] == selected), None)
+        if not choice:
+            raise HTTPException(400, 'Choose a compatible base model from the current catalog')
+        config = dict(config, pretrained_model_name_or_path=choice['path'])
+        if spec['family'] == 'sd15' and selected in {'realistic-vision', 'realistic-vision-v6-sd15'}:
+            config['vae'] = str(self.models / 'vae/vae-ft-mse/diffusion_pytorch_model.safetensors')
+        return config
 
     def recovery(self, run):
         if run['status'] not in {'stopped', 'failed', 'interrupted', 'cancelled'}:
@@ -152,10 +205,10 @@ class GuidedTraining:
                 else:
                     config.update(network_module='networks.lora_sd3', weighting_scheme='uniform',
                                   blocks_to_swap=16 if family == 'sd35_medium' else 32)
-            return config
+            return self.with_base_model(spec, config)
         path = self.resolve_config(spec.get('toml_path', ''))
         try:
-            return tomllib.loads(path.read_text())
+            return self.with_base_model(spec, tomllib.loads(path.read_text()))
         except (OSError, ValueError):
             raise HTTPException(400, 'Training configuration is missing or invalid TOML')
 
@@ -163,12 +216,20 @@ class GuidedTraining:
         config = config if config is not None else self.template(spec)
         files = MODEL_FILES.get(spec['family'])
         keys = list(files) if files else ['pretrained_model_name_or_path', 'vae']
+        if config.get('vae') and 'vae' not in keys:
+            keys.append('vae')
+        selected = next((item for item in self.base_models(spec['family'])
+                         if item['id'] == spec.get('base_model')), None) if spec.get('base_model') else None
         items = []
         for key in keys:
             raw = config.get(key, '')
             path = under(self.models, Path(raw)) if raw else None
             exists = bool(path and path.is_file() and path.stat().st_size > 0)
-            name = files[key][0] if files else self.model_name(path) if path else None
+            name = files[key][0] if files and key in files else self.model_name(path) if path else None
+            if key == 'pretrained_model_name_or_path' and spec.get('base_model'):
+                name = spec['base_model']
+                if selected and str(path) == selected['path']:
+                    exists = selected['installed']
             items.append(dict(kind=key, key=key, value=str(path) if path else '', exists=exists,
                               model_name=name, reason=None if exists else 'Required model file is missing'))
         return {'items': items, 'missing': [item for item in items if not item['exists']]}
