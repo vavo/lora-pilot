@@ -44,6 +44,4 @@ Connect an assistant through the [MCP setup guide](configuration/mcp.md). It cov
 
 The [changelog](reference/changelog.md) records completed source changes and published releases. Read the [v2.5.8 release notes](releases/v2.5.8.md) for that version's scope and upgrade context. Current source documentation also describes later unreleased work; check the running build's commit before assuming a mutable Docker tag includes a feature.
 
-The [product roadmap](product/roadmap.md) separates implemented work, delivery verification, and proposed priorities. [Product ideas](product/ideas.md) explores possible additions without promising a release date. The September 21 source batch adds checkpoint downloads, actionable errors, training timing, searchable history, and reviewed storage cleanup. Image publication and live GPU validation for that batch remain separate delivery steps.
-
 Visit the [GitHub repository](https://github.com/vavo/lora-pilot) for source, [Docker Hub](https://hub.docker.com/r/notrius/lora-pilot) for images, and [GitHub Discussions](https://github.com/vavo/lora-pilot/discussions) to discuss workflows. Report a reproducible problem through [Issues](https://github.com/vavo/lora-pilot/issues), including the running build identity and relevant sanitized details.

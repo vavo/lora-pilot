@@ -1,87 +1,20 @@
-Unreleased (October 6th 2026)
+Unreleased (October 8th 2026)
 
-MCP setup now detects the RunPod address or saves the address confirmed by the owner, without requiring a manual MCP_PUBLIC_URL setting or a restart. Settings guides password setup, creates and enables a scoped read-only connection in one action, and provides private copyable agent instructions with four example prompts. Credentials clear on navigation; data grants and write-operation approval gates remain explicit.
-
-Fixed ComfyUI failing at startup with an import error in ControlPilot's services/comfy.py. The launcher now keeps the two Python module namespaces separate and upgrades the existing access-protection hook without disabling protection or changing workspace data.
-
-VS Code Server is now optional: removed from the default Docker image and available through Services → Install VS Code. The checksum-verified editor persists in the workspace; fresh workspaces keep auto-start off and existing editor data is preserved. Install it, then choose Start service. Existing workspaces can reinstall after an image upgrade without losing settings, extensions or their password. Port 8443 remains available for the optional editor.
-
-ControlPilot adds optional MCP access for compatible assistant clients. Owners can grant expiring access to selected datasets and runs, review proposed operations, rotate credentials and revoke connections from Settings. Read tools inspect workspace, dataset, model and run summaries. Training, comparison and private exports require separate execution gates and approval or a bounded unattended policy. MCP starts disabled; target GPU, persistent-volume and public-proxy validation remain outstanding. OAuth-only clients, shell access and deletion tools are outside this implementation.
-
-Services now uses a selectable directory with All, Running and Stopped filters. Select a tool to see its controls, startup preference, version and recent log output. Running tools with a browser interface also have an Open shortcut beside their row. The private Copilot sidecar has no public application link.
-
-ControlPilot service metadata now comes from one shared registry, with checks against Supervisor program names, launchers and logs. Service links follow configured ports, Copilot uses its configured sidecar port, and AI Toolkit honors its UI port override. Invalid or mismatched Supervisor status output remains unknown instead of being treated as a valid process state.
-
-ControlPilot adds a read-only dataset quality report before guided training, an optional first-LoRA guide using the eight original orange robot video images, editable GPU settings informed by matching completed runs, and portable experiment ZIPs with a file preview. Exports exclude datasets, logs, credentials and local paths. GPU measurements are local observations; unmeasured suggestions are labeled explicitly.
-
-Refreshed the README with TensorBoard run discovery, removed the dated release/build-status block and duplicate quick-start snippet, and kept installation instructions in the Installation section.
-
-TensorBoard buttons now offer a recent-run picker with exact run filters, separate server/log status, last-write timestamps and a guarded Start action. Trainer attribution excludes overlapping roots, ControlPilot Dpipe runs register their actual output directories, and TensorBoard startup preserves real log directories.
-
-The Dashboard keeps spending in the compact workspace overview, with the main dataset and training actions directly below. Storage usage now has a visual bar on the Dashboard, in Hardware details and on the Storage page. Unavailable capacity uses a distinct unknown state. Mount paths and billing explanations no longer occupy the dashboard.
-
-ControlPilot now uses RunPod REST v2 for scheduled pod shutdown, with backend-only credentials, eligibility checks and a fixed action for each countdown. Auto chooses the action from the actual workspace mount instead of volume environment hints. Failed RunPod requests never fall back to host shutdown.
-
-Dashboard and Storage can show the allocated persistent or network-volume capacity reported by RunPod alongside measured workspace usage. Whole-volume free space remains unknown. The Dashboard adds the current hourly rate, an estimated session cost and recorded pod charges for today in UTC. Volume and billing permissions are optional; unavailable features leave local tools usable. Provider responses are reduced to selected fields before reaching the browser.
-
-ComfyUI access protection now rejects unauthenticated requests at its native listener, including provider proxies reaching port 5555 through localhost. ControlPilot and MediaPilot authenticate their internal requests automatically. Browser login and external API tokens continue to use the ControlPilot gateway.
-
-Caption images now brings TagPilot into ControlPilot’s light and dark design. Dataset actions, individual image tools, a dedicated settings screen, and bulk-processing choices remain visible and accessible. The editor shows 50 images per page, while bulk actions and export cover the whole dataset. Image previews now include Previous and Next controls with left/right arrow-key navigation across page boundaries. Photo imports also accept matching .txt annotations.
-
-Training and ComfyUI can now use the GPU concurrently. GPU occupancy and unavailable telemetry are advisory during training preflight, while managed training jobs remain serialized. Try My LoRA comparisons can also run alongside training. Storage cleanup retains its workload protection.
-
-Stopped guided training runs now offer Resume training when a saved optimizer state is available, or Continue from checkpoint for older weight-only saves. Continuations receive separate output folders and retain the original history. New guided runs save recovery state at checkpoint intervals. Queue resume still controls dispatch; it does not restart stopped runs.
-
-Dashboard and Storage no longer present a shared network filesystem or RunPod host bind mount as the workspace allocation. Unknown volume capacity is labeled explicitly; an optional WORKSPACE_STORAGE_CAPACITY_GB setting provides a configured capacity with estimated remaining space. Failed usage measurements no longer appear as an empty workspace.
-
-Training results now offer distinct Move and Copy actions for the LoRA library. Moving verifies all destinations before removing originals, and moved checkpoints remain available for downloads and comparisons. Try my LoRA defaults to a labeled grid with the base model first, each saved checkpoint in training order, and the final file. The ComfyUI handoff captures its workflow before initial graph restoration clears the URL fragment and confirms loading, with a manual download fallback.
-
-SDXL tokenizer preflight now downloads into the cache used by Transformers. SDXL profiles keep VAE encoding in full precision to prevent invalid latents seen in Quick Test runs.
-
-The collapsed sidebar now uses sun and moon icons for theme selection. Mobile navigation keeps the theme controls visible while the page links scroll. The build and activity bar can be minimized with its close control and reopened from an activity icon beside Copilot. This browser remembers the choice, and the icon indicates active work or pending completion notices while the bar is hidden.
-
-ControlPilot screens now share one lifecycle for request cancellation, stale-response protection, cleanup, and serial polling. Leaving a screen or opening the password gate cancels its pending browser work. Docs tabs, training preflight, and other competing reads discard superseded responses, while workspace activity continues across navigation. Cancelling browser work does not cancel backend jobs already accepted. Added a developer guide and regression coverage for these boundaries.
-
-Guided training now offers direct checkpoint downloads for finished runs, including checkpoints saved before a failure or stop. History supports name and dataset search, model-family and status filters, and pagination across all saved runs. Selected runs show elapsed time, preparation stages, and cautious remaining-time estimates from fresh trainer progress.
-
-Recognized training and model-download failures now explain useful next actions, while preserving technical details. Storage has a new usage overview and a reviewed cleanup flow for individual checkpoints, private dataset snapshots, and training caches from finished guided runs. Cleanup requires explicit selection and confirmation, rechecks file identity and workload status, and protects original datasets, shared models, linked files, and run history. General application caches and other tools' outputs remain outside cleanup scope.
-
-Updated the documentation home and ControlPilot guide for downloads, timing, history filters, and Storage. Added a product roadmap that separates implemented work from delivery verification and proposed priorities, plus an ideas document for exploratory features. Both are linked from the documentation home.
-
-The September 21 implementation through source commit e70a86b passed 229 Python tests and 8 frontend tests, with local browser checks for desktop, mobile, light, and dark layouts. Cleanup checks used disposable files. The local Docker build check was blocked by a stopped Docker daemon; that implementation task did not publish a new image or validate training on a live GPU.
-
-ControlPilot now shows image build identity and offers Copy diagnostics with the commit, build date, detected GPU memory and installed service versions. The support summary excludes credentials, URLs, workspace paths, dataset names and logs. New builds embed their identity in the final image layer; older images report unavailable metadata as unknown.
-
-A global activity bar keeps guided training, legacy TrainPilot, managed Diffusion Pipe and model downloads visible across pages. Completion and failure notices link back to the run or Downloads view. Temporary status failures retain the last known activity and identify it as stale.
-
-Unfinished guided training choices now return after navigation or refresh. The browser saves the dataset, model family, profile, LoRA name and any reused configuration reference. Clear draft resets the form, successful queue submission clears the submitted draft, and a missing dataset requires a new selection. Drafts stay in this browser and are separate from persistent run history.
-
-Added guided FLUX.1 dev training alongside SDXL, with separate Kohya recipes and explicit model requirements. The catalog includes the full CLIP-L and FP16 T5 encoders required by this recipe.
-
-Added a persistent guided training queue and history. Runs use unique output directories and private dataset staging. Users can pause dispatch, cancel waiting work, stop managed training, inspect configuration and logs, repeat runs, or reuse saved settings. Restart recovery marks active work interrupted and pauses pending work for inspection. GPU and ComfyUI workload checks coordinate ControlPilot launches; external tools remain outside its ownership.
-
-Added Try my LoRA after successful training. Native ComfyUI workflows compare the same prompt and seed with and without the selected LoRA, then display both images. Users can also load the prepared graph into ComfyUI or download its JSON. Submission tracking prevents accidental duplicate jobs after uncertain network responses.
-
-Added `/api/training` endpoints while preserving the legacy TrainPilot API. Local regression tests and browser checks cover queue recovery, file retention, comparison state, and responsive layouts. GPU training and generation require validation in a new image on target hardware.
-
-
-ControlPilot now follows the path from dataset preparation to a usable LoRA. The Dashboard puts upload, training, ComfyUI, and Gallery actions beside a compact status summary. The sidebar groups tools under Prepare, Train, Create, and Manage, with Light and Dark controls available on desktop and mobile.
-
-The Datasets page now shows image previews and matched caption coverage. Its next-step actions open the selected collection in Caption images or Guided training. Upload progress, empty states, and a separate Manage menu make preparation easier to follow.
-
-Guided training now brings the dataset, LoRA name, profile, and run summary into one form, with configuration and logs in expandable sections. Successful runs show their saved files and can copy them into the shared LoRA library while preserving originals. Persistent history now survives ControlPilot restarts, with saved configuration, logs, status, and output references.
-
-Models now opens Settings directly on Connections and returns to the selected catalog family. The Hugging Face token control distinguishes saved credentials from a new entry without revealing saved secrets.
-
-Added a dataset preview endpoint, caption-coverage API fields, completed-run metadata, and regression coverage for preview path safety, caption matching, result states, and file movement. That earlier UI batch passed 178 tests and local browser checks with sample data. The September 21 validation record above covers the subsequent implementation.
-
-Updated the ControlPilot, dataset, training, and API documentation to match this workflow. Local QA reports, browser-test output, downloaded models, and environment overrides stay outside version control; the bundled model manifest and environment examples remain trackable.
-
-Redesigned ControlPilot Settings with General, Access & security, Connections, and Shutdown tabs. Added a single General preferences save, keyboard tab navigation, and responsive layouts while retaining the sidebar theme switch and existing credential controls.
-
-Fixed broken images in ControlPilot Docs. Screenshots and diagrams now load relative to their article, and the README logo uses the bundled static asset. Documentation images remain behind ControlPilot authentication.
-
-- Fixed the Models page failing with HTTP 500 in Docker images: resolve workflow assets from the bundled image directory, with the repository path retained for local development. Added API regression coverage for both layouts.
+- Added optional scoped MCP access with guided setup, dataset and run permissions, expiring credentials, and approval controls for training, comparisons and exports.
+- Redesigned ControlPilot's Dashboard, Settings and Services, with grouped navigation, mobile theme controls, shared service definitions and direct tool links.
+- Added build identity, sanitized support diagnostics, a collapsible global activity indicator and saved training drafts.
+- Integrated Caption images into ControlPilot's light and dark themes, with dataset imports, bulk tagging and captioning, dedicated settings, 50-image pages and keyboard preview navigation.
+- Added dataset previews, caption coverage, quality reports and an orange robot first-LoRA guide.
+- Added guided FLUX.1 dev training alongside SDXL, a persistent training queue, searchable history, checkpoint recovery, downloads and portable experiment exports.
+- Added training progress estimates, actionable failure messages and editable GPU suggestions informed by completed local runs. Training and ComfyUI can run concurrently.
+- Added Move and Copy actions for the LoRA library and comparison grids covering all checkpoints; fixed prepared workflows opening empty in ComfyUI.
+- Migrated RunPod shutdown to REST v2 and added optional storage allocation and spending information, with credentials kept on the backend.
+- Added visual storage usage and reviewed cleanup of completed training files; corrected workspace capacity reporting on shared RunPod storage.
+- Made VS Code Server an optional, persistent install from Services and improved TensorBoard run discovery and status reporting.
+- Bundled pinned ComfyUI-GGUF and VideoHelperSuite extensions, including OpenCV and imageio-ffmpeg dependencies.
+- Fixed ComfyUI startup imports and direct-port access protection, SDXL tokenizer caching and VAE precision, and Diffusion Pipe output-path validation.
+- Standardized screen request cancellation and stale-response handling; fixed the Models page HTTP 500 error and broken documentation images.
+- Updated setup, training, API and MCP documentation, with detailed validation records kept separate from release notes.
 
 v2.5.8 (September 8th 2026)
 
