@@ -42,6 +42,6 @@ Connect an assistant through the [MCP setup guide](configuration/mcp.md). It cov
 
 ## Follow product development
 
-The [changelog](reference/changelog.md) records completed source changes and published releases. Read the [v2.5.8 release notes](releases/v2.5.8.md) for that version's scope and upgrade context. Current source documentation also describes later unreleased work; check the running build's commit before assuming a mutable Docker tag includes a feature.
+The [changelog](reference/changelog.md) records completed source changes and published releases. Read the [v2.6 release notes](releases/v2.6.md) for the current release and upgrade details. Check the running build's commit before assuming a mutable Docker tag includes a feature.
 
 Visit the [GitHub repository](https://github.com/vavo/lora-pilot) for source, [Docker Hub](https://hub.docker.com/r/notrius/lora-pilot) for images, and [GitHub Discussions](https://github.com/vavo/lora-pilot/discussions) to discuss workflows. Report a reproducible problem through [Issues](https://github.com/vavo/lora-pilot/issues), including the running build identity and relevant sanitized details.

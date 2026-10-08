@@ -1,4 +1,4 @@
-v2.6 (October 8th 2026)
+v2.6 (October 9th 2026)
 
 - Added optional scoped MCP access with guided setup, dataset and run permissions, expiring credentials, and approval controls for training, comparisons and exports.
 - Redesigned ControlPilot's Dashboard, Settings and Services, with grouped navigation, mobile theme controls, shared service definitions and direct tool links.
