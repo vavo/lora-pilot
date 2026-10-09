@@ -2,7 +2,7 @@
 function createTrainingDraft(storage) {
   const key = 'lora-pilot.training-draft.v1';
   function clean(value) {
-    if (!value || value.version !== 1 || !['sdxl', 'flux1', 'sd15', 'sd35_medium', 'sd35_large'].includes(value.family) ||
+    if (!value || value.version !== 1 || !['sdxl', 'flux1', 'sd15', 'sd35_medium', 'sd35_large', 'anima', 'lumina2', 'hunyuan_image21'].includes(value.family) ||
         !['quick_test', 'regular', 'high_quality'].includes(value.profile) ||
         typeof value.dataset_name !== 'string' || value.dataset_name.length > 255 ||
         typeof value.output_name !== 'string' || value.output_name.length > 80) return null;

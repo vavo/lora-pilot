@@ -1,16 +1,20 @@
 # TrainPilot
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-09_
 
 A useful training experiment should leave you with more than a file named `final_final`. It should tell you what you trained, which settings you used, and what changed in the result. Guided training brings that whole loop into ControlPilot: prepare a run, keep its history, and compare your LoRA with the original model.
 
 ## Choose the model you want to teach
 
-Open **Guided training** and choose **SDXL**, **FLUX.1 dev**, **SD 1.5**, **SD 3.5 Medium**, or **SD 3.5 Large**. Each uses a model-specific Kohya recipe. SDXL keeps your saved checkpoint and VAE configuration as the default. FLUX.1 dev uses its diffusion model, autoencoder, CLIP-L encoder, and full FP16 T5 encoder. An inference-oriented quantized model is not a replacement for those training weights.
+Open **Guided training** and choose **SDXL**, **FLUX.1 dev**, **SD 1.5**, **SD 3.5 Medium**, **SD 3.5 Large**, **Anima**, **Lumina-Image 2.0**, or **HunyuanImage 2.1**. Each uses a model-specific Kohya recipe. SDXL keeps your saved checkpoint and VAE configuration as the default. FLUX.1 dev uses its diffusion model, autoencoder, CLIP-L encoder, and full FP16 T5 encoder. An inference-oriented quantized model is not a replacement for those training weights.
 
-The **Base model** selector offers compatible checkpoints from the model catalog. SDXL choices include its official base weights, RealVisXL v3–v5, Juggernaut XL v9, Pony Diffusion XL v6, CyberRealistic XL v10, Analog Madness XL and OpenDalle. SD 1.5 choices include its base weights, Realistic Vision v5.1/v6, epiCRealism, Rev Animated and ToonYou. Installed checkpoints are labeled; starting training offers to download missing files. Realistic Vision also requires the separate SD 1.5 MSE VAE. Refiners, distilled Turbo/Lightning variants and quantized inference weights are excluded from these recipes.
+Choose one model family and keep the same three profiles: Quick test, Balanced and Extended. The family determines its required weights and training recipe. Your choice is saved with the draft and queued run. Existing runs retain their saved base checkpoint when repeated or reused.
 
-Your choice returns with the unfinished draft and stays with the queued run, repeated runs and comparisons. Changing model family resets the selection. Choosing a different base model after **Use settings** returns to the current recipe rather than mixing it with the saved configuration. Leave the selector on its default to preserve existing behavior. This selector is part of the current unreleased source; v2.6 images need an update to include it.
+Anima uses its base v1.0 weights, Qwen3-0.6B encoder and Qwen-Image VAE. Lumina-Image 2.0 uses its BF16 diffusion model, Gemma 2 encoder and the same autoencoder as FLUX. Kohya also downloads the Gemma tokenizer: accept access to `google/gemma-2-2b` on Hugging Face and save your Hugging Face token in Settings before starting.
+
+HunyuanImage 2.1 uses the original full-size Tencent weights, the full Qwen2.5-VL encoder, byT5 and its dedicated image VAE. Its recipe starts with 18 swapped blocks; you can lower that to zero in hardware settings when enough GPU memory is available. Block swapping also needs substantial system memory. These are image-training recipes, not HunyuanVideo training.
+
+The three new families work with queueing, saved configurations, checkpoint recovery and downloads. Built-in comparison generation is unavailable for them until matching workflows are integrated. HunyuanImage LoRAs also require Kohya's bundled `networks/convert_hunyuan_image_lora_to_comfy.py` conversion script before use in ComfyUI; keep the original checkpoint for further training. Model files are downloaded when requested, not bundled in the image. These additions require a build newer than v2.6 and have not yet been validated by completed GPU training runs.
 
 ControlPilot checks the required model paths before adding a run. When missing files match the catalog, it offers to download them. Gated downloads may require a Hugging Face token and access approved on the model's page. A successful file check means the required paths exist; it does not establish that the weights are valid or that a run will fit your GPU.
 

@@ -9,6 +9,8 @@ window.modelFamilies = [
   { id: "sdxl", title: "SDXL", task: "images", summary: "A familiar starting point", tags: ["Image generation", "LoRA training"], description: "Explore base models, refiners and community checkpoints.", training: true },
   { id: "zimage", title: "Z-Image Turbo", task: "images", match: "z-image", summary: "Fast image generation", tags: ["Image generation"], description: "Find the diffusion model, text encoder and VAE." },
   { id: "qwen", title: "Qwen Image", task: "editing", match: "qwen-image", summary: "Edit images with instructions", tags: ["Image editing"], description: "Browse the image editing models in your catalog.", editing: true },
+  { id: "anima", title: "Anima", task: "images", match: "anima", summary: "Illustration and LoRA training", tags: ["Image generation", "LoRA training"], description: "Find the base model, Qwen3 encoder and Qwen-Image VAE.", training: true },
+  { id: "lumina2", title: "Lumina-Image 2.0", task: "images", match: "lumina2", summary: "Image generation and LoRA training", tags: ["Image generation", "LoRA training"], description: "Find the diffusion model and Gemma 2 encoder. Uses the shared FLUX autoencoder.", training: true },
   { id: "hunyuanimage", title: "HunyuanImage", task: "images", match: "hunyuanimage", summary: "Image generation", tags: ["Image generation"], description: "Choose a model pack or ComfyUI components." },
   { id: "ideogram", title: "Ideogram", task: "images", match: "ideogram", summary: "Image generation", tags: ["Image generation"], description: "Browse diffusion models and text encoders." },
   { id: "lens", title: "Lens", task: "images", match: "lens", summary: "Image generation", tags: ["Image generation"], description: "Find the model and its text encoder." },

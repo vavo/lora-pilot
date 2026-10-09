@@ -34,6 +34,22 @@ SD3_ENCODERS = {
     't5xxl': FLUX_MODELS['t5xxl'],
 }
 MODEL_FILES = {
+    'anima': {
+        'pretrained_model_name_or_path': ('anima-base', 'diffusion_models/anima-base-v1.0.safetensors'),
+        'qwen3': ('anima-qwen3', 'text_encoders/qwen_3_06b_base.safetensors'),
+        'vae': ('anima-vae', 'vae/qwen_image_vae.safetensors'),
+    },
+    'lumina2': {
+        'pretrained_model_name_or_path': ('lumina2-base', 'diffusion_models/lumina_2_model_bf16.safetensors'),
+        'gemma2': ('lumina2-gemma2', 'text_encoders/gemma_2_2b_fp16.safetensors'),
+        'ae': FLUX_MODELS['ae'],
+    },
+    'hunyuan_image21': {
+        'pretrained_model_name_or_path': ('hunyuanimage-2.1-training', 'diffusion_models/hunyuanimage2.1.safetensors'),
+        'text_encoder': ('hunyuanimage-2.1-qwen-encoder', 'text_encoders/qwen_2.5_vl_7b.safetensors'),
+        'byt5': ('hunyuanimage-2.1-byt5', 'text_encoders/byt5_small_glyphxl_fp16.safetensors'),
+        'vae': ('hunyuanimage-2.1-comfy-vae', 'vae/hunyuan_image_2.1_vae_fp16.safetensors'),
+    },
     'flux1': FLUX_MODELS,
     'sd15': {'pretrained_model_name_or_path': ('sd15-base', 'checkpoints/v1-5-pruned-emaonly.safetensors')},
     'sd35_medium': {
@@ -45,9 +61,13 @@ MODEL_FILES = {
         **SD3_ENCODERS,
     },
 }
-TRAINING_SCRIPTS = {'flux1': 'flux_train_network.py', 'sd15': 'train_network.py',
+TRAINING_SCRIPTS = {'anima': 'anima_train_network.py', 'lumina2': 'lumina_train_network.py',
+                    'hunyuan_image21': 'hunyuan_image_train_network.py', 'flux1': 'flux_train_network.py', 'sd15': 'train_network.py',
                     'sd35_medium': 'sd3_train_network.py', 'sd35_large': 'sd3_train_network.py'}
 FAMILY_NOTES = {
+    'anima': 'Anima uses its base weights, Qwen3 encoder and Qwen-Image VAE. Built-in comparisons are not available for this family yet.',
+    'lumina2': 'Lumina-Image 2.0 uses full-size weights, Gemma 2 and the FLUX autoencoder. Accept google/gemma-2-2b access on Hugging Face and add your token in Settings for its tokenizer. Built-in comparisons are not available yet.',
+    'hunyuan_image21': 'HunyuanImage 2.1 uses full-size weights, Qwen2.5-VL, byT5 and its image VAE. Block swapping needs substantial system memory. Built-in comparisons are not available yet.',
     'sdxl': 'SDXL uses the selected checkpoint and your configured VAE with the existing Kohya profiles.',
     'flux1': 'FLUX.1 dev uses full-size weights, AE, CLIP-L and FP16 T5. Block swapping needs substantial system memory.',
     'sd15': 'SD 1.5 uses the selected checkpoint at 512-pixel resolution. A separate VAE is required for checkpoints without one.',
@@ -101,7 +121,7 @@ class HardwareOverrides(BaseModel):
 class TrainingRequest(BaseModel):
     dataset_name: str = Field(min_length=1, max_length=200)
     output_name: str = Field(pattern=r'^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$')
-    family: Literal['sdxl', 'flux1', 'sd15', 'sd35_medium', 'sd35_large'] = 'sdxl'
+    family: Literal['sdxl', 'flux1', 'sd15', 'sd35_medium', 'sd35_large', 'anima', 'lumina2', 'hunyuan_image21'] = 'sdxl'
     profile: Literal['quick_test', 'regular', 'high_quality'] = 'regular'
     base_model: str = Field(default='', max_length=100, pattern=r'^[a-z0-9.-]*$')
     toml_path: str = ''
@@ -202,6 +222,17 @@ class GuidedTraining:
                 if family == 'flux1':
                     config.update(network_module='networks.lora_flux', blocks_to_swap=18,
                                   guidance_scale=1.0, timestep_sampling='flux_shift', model_prediction_type='raw')
+                elif family == 'anima':
+                    config.update(network_module='networks.lora_anima', network_alpha=1, timestep_sampling='sigmoid',
+                                  discrete_flow_shift=1.0, vae_chunk_size=64, vae_disable_cache=True)
+                elif family == 'lumina2':
+                    config.update(network_module='networks.lora_lumina', timestep_sampling='nextdit_shift',
+                                  discrete_flow_shift=6.0, model_prediction_type='raw',
+                                  system_prompt='You are an assistant designed to generate high-quality images based on user prompts.')
+                elif family == 'hunyuan_image21':
+                    config.update(network_module='networks.lora_hunyuan_image', network_alpha=1,
+                                  attn_mode='torch', split_attn=True, model_prediction_type='raw',
+                                  discrete_flow_shift=5.0, blocks_to_swap=18)
                 else:
                     config.update(network_module='networks.lora_sd3', weighting_scheme='uniform',
                                   blocks_to_swap=16 if family == 'sd35_medium' else 32)
@@ -262,8 +293,10 @@ class GuidedTraining:
             raise HTTPException(409, 'The dataset changed while preparing recovery. Repeat the original run instead.')
         config = raw.get('_template') or self.template(spec)
         config = dict(config)
+        if spec['family'] == 'hunyuan_image21' and (spec['hardware']['blocks_to_swap'] or 0) > 18:
+            raise HTTPException(400, 'HunyuanImage 2.1 supports up to 18 swapped blocks in the guided recipe')
         config.update({key: value for key, value in spec['hardware'].items() if value is not None
-                       and (key != 'blocks_to_swap' or spec['family'] == 'flux1')})
+                       and (key != 'blocks_to_swap' or spec['family'] in {'flux1', 'hunyuan_image21'})})
         if spec['hardware']['network_dim'] is not None:
             config['network_alpha'] = min(config.get('network_alpha', config['network_dim']), config['network_dim'])
         if raw.get('_recovery'):

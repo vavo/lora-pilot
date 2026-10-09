@@ -35,10 +35,20 @@ def checkpoint_order(name):
     return (0, int(match[1]), name) if match else (1, 0, name)
 
 
+
+def comparison_unavailable(family):
+    if family == 'hunyuan_image21':
+        return 'Built-in comparisons are not available for HunyuanImage 2.1 yet. Download the checkpoints and convert a copy with Kohya’s convert_hunyuan_image_lora_to_comfy.py before using a matching ComfyUI workflow.'
+    if family in {'anima', 'lumina2'}:
+        return 'Built-in comparisons are not available for this model family yet. Download your checkpoints and use a matching ComfyUI workflow.'
+    return None
+
 def graph(run, request, lora_name, registry):
     nodes = {}
     config = run['template']
     family = run['spec']['family']
+    if reason := comparison_unavailable(family):
+        raise HTTPException(400, reason)
     flux = family == 'flux1'
     sd3 = family in {'sd35_medium', 'sd35_large'}
 

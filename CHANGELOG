@@ -1,6 +1,6 @@
 Unreleased (October 9th 2026)
 
-- Added a compatible base-model selector to Guided training, with 10 SDXL and 6 SD 1.5 choices, installed/download status, saved selections and matching comparison models.
+- Added Anima, Lumina-Image 2.0 and HunyuanImage 2.1 to Guided training, with model downloads, family-specific Kohya recipes and saved queue settings. Kept three quality profiles per family; built-in comparisons remain unavailable for the new families.
 
 v2.6 (October 9th 2026)
 

@@ -13,7 +13,7 @@ window.trainingWorkspace = (() => {
   const api = (screen, path, body) => screen.json(`/api/training${path}`, body === undefined ? {} : {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
-  const familyName = family => ({sdxl: 'SDXL', flux1: 'FLUX.1 dev', sd15: 'SD 1.5', sd35_medium: 'SD 3.5 Medium', sd35_large: 'SD 3.5 Large'}[family] || family) + ' · Kohya';
+  const familyName = family => ({sdxl: 'SDXL', flux1: 'FLUX.1 dev', sd15: 'SD 1.5', sd35_medium: 'SD 3.5 Medium', sd35_large: 'SD 3.5 Large', anima: 'Anima', lumina2: 'Lumina-Image 2.0', hunyuan_image21: 'HunyuanImage 2.1'}[family] || family) + ' · Kohya';
   const element = (tag, text, className = '') => {
     const node = document.createElement(tag); node.textContent = text; node.className = className; return node;
   };
@@ -46,41 +46,6 @@ window.trainingWorkspace = (() => {
     $('tp-draft-status').textContent = !explicitDataset && value.dataset_name && !$('tp-dataset').value
       ? 'Draft restored. Its dataset is unavailable; choose a dataset before training.' : 'Draft restored from this browser.';
   }
-  async function loadBaseModels() {
-    const screen = trainingScreen.latest('base-models');
-    const family = spec().family;
-    const select = $('tp-base-model');
-    select.disabled = true;
-    $('tp-base-model-note').textContent = 'Loading compatible base models…';
-    try {
-      const data = await api(screen, `/base-models?family=${encodeURIComponent(family)}`);
-      if (!screen.active) return;
-      const fallback = element('option', sourceRun ? 'Saved run base model' : family === 'sdxl' ? 'Configured checkpoint' : 'Recipe default');
-      fallback.value = '';
-      select.replaceChildren(fallback);
-      for (const model of data.models) {
-        const option = element('option', `${model.label} · ${model.installed ? 'Installed' : 'Not installed'}`);
-        option.value = model.id;
-        select.append(option);
-      }
-      const selected = data.models.find(model => model.id === baseModel);
-      if (baseModel && !selected) {
-        const unavailable = element('option', `${baseModel} · Unavailable in catalog`);
-        unavailable.value = baseModel; select.append(unavailable);
-      }
-      select.value = baseModel;
-      $('tp-summary-base-model').textContent = selected?.label || baseModel || fallback.textContent;
-      $('tp-base-model-note').textContent = selected
-        ? selected.installed ? 'Installed. Training and comparisons will use this checkpoint.' : 'This checkpoint needs downloading. Start training will offer to download missing files.'
-        : baseModel ? 'This saved choice is no longer in the catalog. Choose another model for a new setup.'
-        : sourceRun ? 'Using the checkpoint stored with this run. Choosing another model uses the current recipe.'
-        : 'Keep the default or choose another compatible checkpoint. Training and comparisons use the same base model.';
-    } catch (error) {
-      if (screen.active) $('tp-base-model-note').textContent = `Base model list unavailable: ${error.message || error}`;
-    } finally {
-      if (screen.active) select.disabled = false;
-    }
-  }
   function formState() {
     const family = spec().family;
     $('tp-summary-engine').textContent = familyName(family);
@@ -95,7 +60,6 @@ window.trainingWorkspace = (() => {
     if (!trainingScreen?.active || !$('tp-page')) return;
     formState();
     loadHardware();
-    loadBaseModels();
     const screen = trainingScreen.latest("preflight");
     $('tp-check-model').textContent = 'Checking model requirements…';
     try {
@@ -120,7 +84,8 @@ window.trainingWorkspace = (() => {
       gradient_accumulation_steps: profile === 'high_quality' ? 1 : 2, network_dim: {quick_test:32, regular:48, high_quality:64}[profile]}
       : {train_batch_size:1, gradient_accumulation_steps:1, network_dim:{quick_test:16, regular:32, high_quality:64}[profile], blocks_to_swap:18};
     Object.entries(hardwareFields).forEach(([key, id]) => $(id).value = hardware[key] ?? defaults[key] ?? 0);
-    $('tp-hw-swap-label').hidden = family !== 'flux1';
+    $('tp-hw-swap-label').hidden = !['flux1', 'hunyuan_image21'].includes(family);
+    $('tp-hw-swap').max = family === 'hunyuan_image21' ? 18 : 35;
     $('tp-hardware-choice').textContent = Object.values(hardware).some(value => value != null) ? 'Using your edited settings for this run.' : 'Using the profile defaults.';
   }
   async function loadHardware() {
@@ -237,11 +202,12 @@ window.trainingWorkspace = (() => {
       $('tp-compare-strength').value = data.request?.strength ?? 1;
       $('tp-compare-artifact').value = data.request?.all_checkpoints ? '' : (data.request?.artifact || '');
     }
+    const unavailable = current?.comparison_unavailable;
     const active = ['queued', 'running', 'submitting', 'unknown'].includes(data.status);
-    $('tp-compare-generate').disabled = comparisonBusy || active || !current?.artifacts?.length;
-    $('tp-compare-open').disabled = comparisonBusy || !current?.artifacts?.length;
+    $('tp-compare-generate').disabled = !!unavailable || comparisonBusy || active || !current?.artifacts?.length;
+    $('tp-compare-open').disabled = !!unavailable || comparisonBusy || !current?.artifacts?.length;
     $('tp-compare-reset').hidden = !['unknown', 'submitting', 'unavailable'].includes(data.status);
-    $('tp-compare-status').textContent = data.error || comparisonError || ({ none: '', queued: 'Comparison queued in ComfyUI…', running: 'Generating the baseline and checkpoint images…', succeeded: 'Same prompt and seed. Baseline first, then each checkpoint in training order.' }[data.status] ?? data.status);
+    $('tp-compare-status').textContent = unavailable || data.error || comparisonError || ({ none: '', queued: 'Comparison queued in ComfyUI…', running: 'Generating the baseline and checkpoint images…', succeeded: 'Same prompt and seed. Baseline first, then each checkpoint in training order.' }[data.status] ?? data.status);
     const images = $('tp-compare-images');
     const signature = JSON.stringify(data.images || []);
     if (images.dataset.signature === signature) return;
@@ -328,7 +294,7 @@ window.trainingWorkspace = (() => {
     if (!screen?.active) return;
     if (tpStarting || !tpStatusKnown) return;
     for (const [key, id] of Object.entries(hardwareFields)) {
-      if (key === 'blocks_to_swap' && spec().family !== 'flux1') continue;
+      if (key === 'blocks_to_swap' && !['flux1', 'hunyuan_image21'].includes(spec().family)) continue;
       if (!$(id).reportValidity()) { $('tp-hardware').open = true; return; }
     }
     const request = spec();
@@ -472,7 +438,6 @@ window.trainingWorkspace = (() => {
         preferSetup = true; preflight();
       } catch { $('tp-draft-status').textContent = 'Browser storage is unavailable; the saved draft could not be cleared.'; }
     };
-    $('tp-base-model').onchange = () => { baseModel = $('tp-base-model').value; sourceRun = null; saveDraft(); preflight(); };
     $('tp-family').onchange = () => { sourceRun = null; hardware = {}; baseModel = ''; saveDraft(); preflight(); };
     document.querySelectorAll('[name="tp-profile-choice"]').forEach(input => input.addEventListener('change', () => { hardware = {}; saveDraft(); preflight(); }));
     Object.entries(hardwareFields).forEach(([key, id]) => $(id).onchange = () => {

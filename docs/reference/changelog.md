@@ -6,7 +6,7 @@ The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release hist
 
 ## Unreleased
 
-Guided training adds a compatible base-model selector with installed/download status, saved choices and comparisons using the selected checkpoint.
+Guided training adds Anima, Lumina-Image 2.0 and HunyuanImage 2.1 with model downloads, Kohya recipes and saved queue settings. Each family keeps the same three quality profiles. Built-in comparisons are not yet available for these three families.
 
 ## Current release: v2.6
 

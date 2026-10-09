@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from . import gpu_guard
 from .training_timing import timing
 from .guided_training import GuidedTraining, TrainingRequest, FAMILY_NOTES
-from .lora_comparison import ComparisonRequest, checkpoint_order, comparison_outputs, comfy, graph, result_images
+from .lora_comparison import ComparisonRequest, checkpoint_order, comparison_outputs, comparison_unavailable, comfy, graph, result_images
 from .training_runs import TrainingRuns, under, write_json, now
 from .experiment_export import ExportRequest, export_plan, build_archive, preview_token
 from .training_performance import gpu_snapshot, recommendation
@@ -75,6 +75,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         data = {key: value for key, value in run.items() if key not in {'template', 'dataset_fingerprint', 'process_identity'}}
         recovery = recipe.recovery(run)
         data['recovery_option'] = {key: value for key, value in recovery.items() if key != 'path'} if recovery else None
+        data['comparison_unavailable'] = comparison_unavailable(run['spec']['family'])
         if detail:
             data['library_destination'] = str(models / 'loras/ControlPilot' / run['id'])
             data['comparison_workflow'] = (queue.directory(run['id']) / 'comparison-workflow.json').is_file()
@@ -322,6 +323,8 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
         ready()
         with queue.lock:
             run = queue.get(run_id)
+            if reason := comparison_unavailable(run['spec']['family']):
+                raise HTTPException(400, reason)
             selected = [item['name'] for item in artifacts(run)] if req.all_checkpoints else [req.artifact]
             if not selected or any(name is None for name in selected):
                 raise HTTPException(400, 'Select a checkpoint or compare all checkpoints')

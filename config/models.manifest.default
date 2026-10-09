@@ -167,3 +167,13 @@ ltx-2.5-gemma4-12b-int8|hf_file|Lightricks/LTX-2.5:text_encoders/gemma4-12b-with
 ltx-2.5-spatial-upscaler|hf_file|Lightricks/LTX-2.5:latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors|latent_upscale_models||995778752
 minimax-h3-fl2va-int8|hf_file|Comfy-Org/MiniMax-H3:diffusion_models/minimax_h3_fl2va_pruned_int8_convrot.safetensors|diffusion_models||20970379616
 minimax-h3-turbo-lora|hf_file|lightx2v/Minimax-h3-Turbo:minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensors|loras||1956193000
+
+# Guided Kohya training: full-size image-model weights and encoders
+anima-base|hf_file|circlestone-labs/Anima:split_files/diffusion_models/anima-base-v1.0.safetensors|diffusion_models||4182218328
+anima-qwen3|hf_file|circlestone-labs/Anima:split_files/text_encoders/qwen_3_06b_base.safetensors|text_encoders||1192135096
+anima-vae|hf_file|circlestone-labs/Anima:split_files/vae/qwen_image_vae.safetensors|vae||253806246
+lumina2-base|hf_file|Comfy-Org/Lumina_Image_2.0_Repackaged:split_files/diffusion_models/lumina_2_model_bf16.safetensors|diffusion_models||5219585680
+lumina2-gemma2|hf_file|Comfy-Org/Lumina_Image_2.0_Repackaged:split_files/text_encoders/gemma_2_2b_fp16.safetensors|text_encoders||5232958283
+hunyuanimage-2.1-training|hf_file|tencent/HunyuanImage-2.1:dit/hunyuanimage2.1.safetensors|diffusion_models||34851687040
+hunyuanimage-2.1-qwen-encoder|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b.safetensors|text_encoders||16584415576
+hunyuanimage-2.1-byt5|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors|text_encoders||438643184

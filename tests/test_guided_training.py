@@ -257,6 +257,103 @@ class GuidedTrainingTests(unittest.TestCase):
                     self.assertEqual(dataset['resolution'], 512 if family == 'sd15' else 1024)
                     self.assertTrue(Path(dataset['subsets'][0]['image_dir'], 'a.png').is_file())
 
+    def test_image_family_recipes_launch_with_saved_state_and_correct_components(self):
+        cases = {
+            'anima': ('anima_train_network.py', 'networks.lora_anima', 1.0),
+            'lumina2': ('lumina_train_network.py', 'networks.lora_lumina', 6.0),
+            'hunyuan_image21': ('hunyuan_image_train_network.py', 'networks.lora_hunyuan_image', 5.0),
+        }
+        kohya = self.root / 'kohya/sd-scripts'
+        kohya.mkdir(parents=True)
+        for index, (family, (script, network, shift)) in enumerate(cases.items(), 1):
+            for _, relative in MODEL_FILES[family].values():
+                path = self.models / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'fixture')
+            (kohya / script).touch()
+            for profile, steps, rank in [('quick_test', 600, 16), ('regular', 1200, 32), ('high_quality', 2400, 64)]:
+                with self.subTest(family=family, profile=profile):
+                    spec = dict(self.spec, family=family, profile=profile)
+                    rid = f'{index * 10000 + steps:032x}'
+                    directory = self.root / 'config/training' / rid
+                    directory.mkdir()
+                    run = self.recipe.prepare(spec, rid, directory)
+                    run.update(id=rid, status='stopped')
+                    config = run['template']
+                    self.assertEqual((config['network_module'], config['discrete_flow_shift']), (network, shift))
+                    self.assertEqual((config['max_train_steps'], config['network_dim']), (steps, rank))
+                    self.assertEqual(config['mixed_precision'], 'bf16')
+                    self.assertTrue(config['network_train_unet_only'])
+                    self.assertTrue(config['cache_text_encoder_outputs_to_disk'])
+                    self.assertNotIn('weighting_scheme', config)
+                    state = self.state(Path(run['output_dir']), 200)
+                    run['recovery'] = self.recipe.recovery(run)
+                    with patch.dict('os.environ', KOHYA_ROOT=str(kohya.parent)), patch('subprocess.Popen') as launch:
+                        self.recipe.launch(run, io.BytesIO())
+                    self.assertEqual(launch.call_args.args[0][2], str(kohya / script))
+                    effective = tomllib.loads((directory / 'effective.toml').read_text())
+                    self.assertEqual(effective['resume'], str(state))
+                    self.assertTrue(effective['save_state'])
+                    dataset = tomllib.loads((directory / 'dataset.toml').read_text())['datasets'][0]
+                    self.assertEqual(dataset['resolution'], 1024)
+                    self.assertTrue(Path(dataset['subsets'][0]['image_dir'], 'a.txt').is_file())
+                    if family == 'anima':
+                        self.assertTrue(config['vae_disable_cache'])
+                        self.assertEqual(config['timestep_sampling'], 'sigmoid')
+                    elif family == 'lumina2':
+                        self.assertEqual(config['timestep_sampling'], 'nextdit_shift')
+                        self.assertIn('high-quality images', config['system_prompt'])
+                    else:
+                        self.assertEqual(config['network_alpha'], 1)
+                        self.assertEqual(config['blocks_to_swap'], 18)
+                        self.assertEqual(config['attn_mode'], 'torch')
+
+    def test_image_family_comparison_rejection_precedes_library_and_comfy_access(self):
+        self.addCleanup(setattr, gpu_guard, 'managed_conflicts', gpu_guard.managed_conflicts)
+        router, queue = create_router(self.root, self.models, self.resolve_dataset, lambda _: self.config, lambda _: 'base', lambda: [])
+        start = queue.start
+        queue.start = lambda: start(background=False)
+        self.addCleanup(queue.close)
+        app = FastAPI(); app.include_router(router)
+        with TestClient(app) as client:
+            for family in ['anima', 'lumina2', 'hunyuan_image21']:
+                spec = dict(self.spec, family=family)
+                preflight = client.post('/api/training/preflight', json=spec)
+                self.assertEqual(preflight.status_code, 200)
+                self.assertTrue(preflight.json()['missing'])
+                self.assertEqual(client.post('/api/training/runs', json=spec).status_code, 400)
+                for _, relative in MODEL_FILES[family].values():
+                    path = self.models / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b'fixture')
+                result = client.post('/api/training/runs', json=spec)
+                self.assertEqual(result.status_code, 200, result.text)
+                rid = result.json()['id']
+                run = queue.get(rid)
+                self.checkpoint(Path(run['output_dir']) / 'portrait.safetensors')
+                run['status'] = 'succeeded'; queue.save(run)
+                self.assertIn('not available', client.get(f'/api/training/runs/{rid}').json()['comparison_unavailable'])
+                with patch('apps.Portal.services.training_api.comfy') as comfy:
+                    response = client.post(f'/api/training/runs/{rid}/comparison/prepare', json={'prompt': 'portrait', 'all_checkpoints': True})
+                    self.assertEqual(response.status_code, 400)
+                    comfy.assert_not_called()
+                self.assertFalse((self.models / 'loras/ControlPilot' / rid).exists())
+                with self.assertRaises(HTTPException):
+                    graph(run, ComparisonRequest(prompt='portrait'), ['portrait.safetensors'], {})
+
+    def test_hunyuan_swapping_is_editable_and_bounded(self):
+        spec = dict(self.spec, family='hunyuan_image21', hardware={'blocks_to_swap': 19})
+        with self.assertRaises(HTTPException) as error:
+            self.recipe.prepare(spec, self.rid, self.directory)
+        self.assertIn('18 swapped blocks', error.exception.detail)
+        for _, relative in MODEL_FILES['hunyuan_image21'].values():
+            path = self.models / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'fixture')
+        spec['hardware']['blocks_to_swap'] = 0
+        run = self.recipe.prepare(spec, self.rid, self.directory)
+        self.assertEqual(run['template']['blocks_to_swap'], 0)
+
     def test_guided_model_requirements_match_download_destinations(self):
         from test_models_manifest import manifest_entries, MANIFEST
         entries = manifest_entries(MANIFEST)
@@ -280,7 +377,7 @@ class GuidedTrainingTests(unittest.TestCase):
         self.addCleanup(queue.close)
         app = FastAPI(); app.include_router(router)
         with TestClient(app) as client:
-            for family in ['sd15', 'sd35_medium', 'sd35_large']:
+            for family in ['sd15', 'sd35_medium', 'sd35_large', 'anima', 'lumina2', 'hunyuan_image21']:
                 for _, relative in MODEL_FILES[family].values():
                     path = self.models / relative
                     path.parent.mkdir(parents=True, exist_ok=True)

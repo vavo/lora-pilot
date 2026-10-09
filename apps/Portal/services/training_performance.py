@@ -53,8 +53,8 @@ def recommendation(family, profile, runs, gpu=None):
     total = gpu['total_mib'] if gpu else 0
     defaults = dict(train_batch_size=1 if family != 'sdxl' or total < 23000 else 2 if total < 46000 else 4,
                     gradient_accumulation_steps=1 if family != 'sdxl' else 2, network_dim=rank)
-    if family == 'flux1':
-        defaults['blocks_to_swap'] = 18 if total < 46000 else 0
+    if family in {'flux1', 'hunyuan_image21'}:
+        defaults['blocks_to_swap'] = 18 if total < (80000 if family == 'hunyuan_image21' else 46000) else 0
     match = None
     revision = build_identity()['revision']
     if gpu:
