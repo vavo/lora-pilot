@@ -179,6 +179,7 @@
 :root[data-theme="dark"] .tp-completion-steps { color:#72d5a0; }
 @media (max-width:768px) { .tp-completion-steps { gap:16px; flex-wrap:wrap; font-size:14px; } .dash-launch-row h4 { font-size:18px; } .tp-result-files th, .tp-result-files td { padding:10px; font-size:13px; } }
 
+#tp-hardware-evidence { margin-bottom:20px; }
 .tp-history, .tp-comparison { margin-top:24px; }
 .tp-history-heading { display:flex; justify-content:space-between; align-items:center; gap:16px; }
 .tp-history-list { display:grid; gap:12px; margin:20px 0; }

@@ -24,6 +24,11 @@ def read_pin(path, name):
 
 
 class BuildPinTests(unittest.TestCase):
+    def test_copilot_cli_pin_matches_across_build_entrypoints(self):
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            with self.subTest(path=path):
+                self.assertEqual(read_pin(path, "COPILOT_CLI_VERSION"), "1.0.94")
+
     def test_kohya_installer_resolves_requirements_from_checkout(self):
         install_text = (ROOT / "scripts/build/install-kohya.sh").read_text()
         self.assertIn("cd /opt/pilot/repos/kohya_ss", install_text)

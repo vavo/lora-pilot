@@ -284,7 +284,7 @@ See full details in [`CHANGELOG`](CHANGELOG).
 - InvokeAI - The fancy pants option
 - Diffusion Pipe - Training powerhouse
 - TensorBoard - Visualization tool
-- GitHub Copilot SDK/CLI - assistant foundation
+- GitHub Copilot CLI - assistant foundation
 
 ## 📜 License
 MIT License - go wild, make cool stuff, just don't blame us if your AI starts writing poetry about toast.
