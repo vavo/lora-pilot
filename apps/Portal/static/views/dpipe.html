@@ -1,57 +1,54 @@
 <style>
-  .dp-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
-  .dp-row { display:flex; gap:10px; flex-wrap:wrap; }
-  .dp-row .field { min-width: 120px; }
-  .dp-card { padding:12px; }
-  .dp-card h4 { margin-top:0; margin-bottom:10px; }
+  .dp-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:28px; }
+  .dp-grid + .dp-grid { margin-top:28px; }
+  .dp-grid.dp-paths { grid-template-columns:1fr; }
+  .dp-card { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; align-content:start; min-width:0; }
+  .dp-card h4 { grid-column:1 / -1; margin:0; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .dp-card .dp-row { display:contents; }
+  .dp-card .field { min-width:0; margin:0; }
+  .dp-card .input, .dp-card .select { width:100%; min-width:0; min-height:44px; box-sizing:border-box; }
+  .dp-card .status-check { grid-column:1 / -1; }
+  .dp-paths .dp-card { grid-template-columns:1fr; }
+  .dp-paths .field { display:grid; grid-template-columns:150px minmax(0, 1fr); gap:16px; align-items:center; }
+  .dp-paths .field label { margin:0; }
   .dp-log { max-height:300px; background:#0f172a; color:#e2e8f0; }
-  .dp-card .input,
-  .dp-card .select {
-    width: min(100%, 300px);
-    min-height: 44px;
-  }
-
-  @media (max-width: 760px) {
-    .dp-card .input,
-    .dp-card .select {
-      width: 100%;
-    }
+  @media (max-width:1000px) { .dp-grid { grid-template-columns:1fr; } }
+  @media (max-width:600px) {
+    .dp-card, .dp-paths .field { grid-template-columns:1fr; }
+    .dp-paths .field { gap:6px; }
   }
 </style>
 
 <h2>Train with dpipes</h2>
-<div class="alert mb-12">
-  <strong>Experimental:</strong> This integration is under active development. Expect rough edges and use at your own risk.
-</div>
 
 <div class="card">
-  <div class="dp-grid">
-    <div class="panel dp-card stack-sm">
-      <h4>Paths</h4>
-      <div class="field"><label>Dataset Path</label><input id="dp-dataset" class="input" type="text" value="/workspace/datasets" /></div>
-      <div class="field"><label>Config Path</label><input id="dp-config" class="input" type="text" value="/workspace/configs" /></div>
-      <div class="field"><label>Output Path</label><input id="dp-output" class="input" type="text" value="/workspace/outputs" /></div>
+  <div class="dp-grid dp-paths">
+    <div class="dp-card">
+      <h4 data-help="These paths tell the advanced trainer where to read data and where to save its configuration and checkpoints.">Paths</h4>
+      <div class="field"><label data-help="Folder containing the training images and captions.">Dataset Path</label><input id="dp-dataset" class="input" type="text" value="/workspace/datasets" /></div>
+      <div class="field"><label data-help="Folder containing the training configuration files.">Config Path</label><input id="dp-config" class="input" type="text" value="/workspace/configs" /></div>
+      <div class="field"><label data-help="Folder where checkpoints and other training outputs are saved.">Output Path</label><input id="dp-output" class="input" type="text" value="/workspace/outputs" /></div>
     </div>
 
-    <div class="panel dp-card stack-sm">
-      <h4>Model Paths</h4>
-      <div class="field"><label>Transformer</label><input id="dp-transformer" class="input" type="text" value="/workspace/models/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors" /></div>
-      <div class="field"><label>VAE</label><input id="dp-vae" class="input" type="text" value="/workspace/models/hunyuan_video_vae_fp32.safetensors" /></div>
-      <div class="field"><label>LLM</label><input id="dp-llm" class="input" type="text" value="/workspace/models/llava-llama-3-8b-text-encoder-tokenizer" /></div>
-      <div class="field"><label>CLIP</label><input id="dp-clip" class="input" type="text" value="/workspace/models/clip-vit-large-patch14" /></div>
+    <div class="dp-card">
+      <h4 data-help="The advanced trainer needs the model components separately. These paths must point to files or folders that already exist in the pod.">Model Paths</h4>
+      <div class="field"><label data-help="The main network being adapted by the LoRA.">Transformer</label><input id="dp-transformer" class="input" type="text" value="/workspace/models/hunyuan_video_720_cfgdistill_fp8_e4m3fn.safetensors" /></div>
+      <div class="field"><label data-help="The decoder that turns the model's latent representation into video frames.">VAE</label><input id="dp-vae" class="input" type="text" value="/workspace/models/hunyuan_video_vae_fp32.safetensors" /></div>
+      <div class="field"><label data-help="The language model used to understand text prompts or captions.">LLM</label><input id="dp-llm" class="input" type="text" value="/workspace/models/llava-llama-3-8b-text-encoder-tokenizer" /></div>
+      <div class="field"><label data-help="The text encoder used to turn prompts into conditioning signals.">CLIP</label><input id="dp-clip" class="input" type="text" value="/workspace/models/clip-vit-large-patch14" /></div>
     </div>
   </div>
 
-  <div class="dp-grid mt-12">
-    <div class="panel dp-card">
-      <h4>Training</h4>
+  <div class="dp-grid">
+    <div class="dp-card">
+      <h4 data-help="These values control how long training runs and how strongly the LoRA is updated. If you are new to this screen, use guided training instead.">Training</h4>
       <div class="dp-row">
-        <div class="field"><label>Epochs</label><input id="dp-epochs" class="input" type="number" value="1000" /></div>
-        <div class="field"><label>Batch</label><input id="dp-batch" class="input" type="number" value="1" /></div>
-        <div class="field"><label>LR</label><input id="dp-lr" class="input" type="number" step="0.00001" value="0.00002" /></div>
-        <div class="field"><label>GAS</label><input id="dp-gas" class="input" type="number" value="4" /></div>
-        <div class="field"><label>Rank</label><input id="dp-rank" class="input" type="number" value="32" /></div>
-        <div class="field"><label>LoRA dtype</label>
+        <div class="field"><label data-help="How many complete passes the trainer makes over the dataset.">Epochs</label><input id="dp-epochs" class="input" type="number" value="1000" /></div>
+        <div class="field"><label data-help="How many samples are processed together. Larger values need more GPU memory.">Batch</label><input id="dp-batch" class="input" type="number" value="1" /></div>
+        <div class="field"><label data-help="Learning rate: how large each update is. Too high can make training unstable; too low can make it crawl.">LR</label><input id="dp-lr" class="input" type="number" step="0.00001" value="0.00002" /></div>
+        <div class="field"><label data-help="Gradient accumulation steps. This simulates a larger batch by combining several smaller updates.">GAS</label><input id="dp-gas" class="input" type="number" value="4" /></div>
+        <div class="field"><label data-help="LoRA rank: the capacity available for what the adapter can learn.">Rank</label><input id="dp-rank" class="input" type="number" value="32" /></div>
+        <div class="field"><label data-help="The numeric format used by the LoRA weights. bfloat16 is a practical default on modern GPUs.">LoRA dtype</label>
           <select id="dp-dtype" class="select">
             <option value="bfloat16" selected>bfloat16</option>
             <option value="float16">float16</option>
@@ -61,29 +58,29 @@
         </div>
       </div>
       <div class="dp-row mt-8">
-        <div class="field"><label>Save every (epochs)</label><input id="dp-save-every" class="input" type="number" value="2" /></div>
-        <div class="field"><label>Eval every (epochs)</label><input id="dp-eval-every" class="input" type="number" value="1" /></div>
-        <div class="field"><label>Checkpoint mins</label><input id="dp-ckpt-mins" class="input" type="number" value="120" /></div>
-        <div class="field"><label>Warmup steps</label><input id="dp-warmup" class="input" type="number" value="100" /></div>
-        <div class="field"><label>Grad clip</label><input id="dp-gradclip" class="input" type="number" step="0.1" value="1.0" /></div>
-        <div class="field"><label>Steps/print</label><input id="dp-steps-print" class="input" type="number" value="1" /></div>
+        <div class="field"><label data-help="How often to save a checkpoint, measured in epochs.">Save every (epochs)</label><input id="dp-save-every" class="input" type="number" value="2" /></div>
+        <div class="field"><label data-help="How often to run evaluation, measured in epochs.">Eval every (epochs)</label><input id="dp-eval-every" class="input" type="number" value="1" /></div>
+        <div class="field"><label data-help="Maximum time between checkpoint saves, even if an epoch takes longer than expected.">Checkpoint mins</label><input id="dp-ckpt-mins" class="input" type="number" value="120" /></div>
+        <div class="field"><label data-help="Number of gentle starter steps before the full learning rate is used.">Warmup steps</label><input id="dp-warmup" class="input" type="number" value="100" /></div>
+        <div class="field"><label data-help="Limits unusually large updates to help keep training stable.">Grad clip</label><input id="dp-gradclip" class="input" type="number" step="0.1" value="1.0" /></div>
+        <div class="field"><label data-help="How often to print progress information in the log.">Steps/print</label><input id="dp-steps-print" class="input" type="number" value="1" /></div>
       </div>
     </div>
 
-    <div class="panel dp-card stack-sm">
-      <h4>Dataset</h4>
-      <div class="field"><label>Resolutions JSON</label><input id="dp-res" class="input" type="text" value="[512]" /></div>
-      <div class="field"><label>Frame buckets</label><input id="dp-frames" class="input" type="text" value="[1,33]" /></div>
-      <div class="field"><label>AR buckets</label><input id="dp-ar" class="input" type="text" value="" placeholder="optional JSON list" /></div>
-      <div class="field"><label>Num repeats</label><input id="dp-repeats" class="input" type="number" value="10" /></div>
-      <label class="status status-check"><input type="checkbox" id="dp-resume" /> Resume from last checkpoint</label>
-      <label class="status status-check"><input type="checkbox" id="dp-double" /> Train only double blocks</label>
+    <div class="dp-card">
+      <h4 data-help="These settings describe the shapes and sampling behavior used when preparing your training data.">Dataset</h4>
+      <div class="field"><label data-help="A JSON list of target image or video resolutions, for example [512].">Resolutions JSON</label><input id="dp-res" class="input" type="text" value="[512]" /></div>
+      <div class="field"><label data-help="A JSON list of frame counts to train on, for example [1,33].">Frame buckets</label><input id="dp-frames" class="input" type="text" value="[1,33]" /></div>
+      <div class="field"><label data-help="Optional JSON list of aspect-ratio buckets. Leave empty to use the default behavior.">AR buckets</label><input id="dp-ar" class="input" type="text" value="" placeholder="optional JSON list" /></div>
+      <div class="field"><label data-help="How many times each dataset item is repeated before the next item is sampled.">Num repeats</label><input id="dp-repeats" class="input" type="number" value="10" /></div>
+      <label class="status status-check" data-help="Continue from the newest checkpoint instead of starting from the beginning."><input type="checkbox" id="dp-resume" /> Resume from last checkpoint</label>
+      <label class="status status-check" data-help="Train only the transformer's double blocks. This is an advanced memory or speed choice."><input type="checkbox" id="dp-double" /> Train only double blocks</label>
     </div>
 
-    <div class="panel dp-card stack-sm">
-      <h4>Optimizer</h4>
+    <div class="dp-card">
+      <h4 data-help="The optimizer decides how model weights are updated after each training step. The default is a reasonable starting point.">Optimizer</h4>
       <div class="field">
-        <label>Optimizer</label>
+        <label data-help="Choose the algorithm that applies training updates. Keep the default unless you have a specific reason to change it.">Optimizer</label>
         <select id="dp-optim" class="select">
           <option value="adamw_optimi" selected>adamw_optimi</option>
           <option value="adamw">adamw</option>
@@ -94,21 +91,21 @@
           <option value="offload">offload</option>
         </select>
       </div>
-      <div class="field"><label>Betas</label><input id="dp-betas" class="input" type="text" value="[0.9,0.99]" /></div>
+      <div class="field"><label data-help="Momentum values used by Adam-style optimizers. The default is usually fine.">Betas</label><input id="dp-betas" class="input" type="text" value="[0.9,0.99]" /></div>
       <div class="dp-row">
-        <div class="field"><label>Weight Decay</label><input id="dp-wd" class="input" type="number" step="0.0001" value="0.01" /></div>
-        <div class="field"><label>Eps</label><input id="dp-eps" class="input" type="number" step="0.0000001" value="0.00000001" /></div>
+        <div class="field"><label data-help="A small regularization value that discourages overly large weights.">Weight Decay</label><input id="dp-wd" class="input" type="number" step="0.0001" value="0.01" /></div>
+        <div class="field"><label data-help="A tiny stabilizer used in the optimizer's calculations.">Eps</label><input id="dp-eps" class="input" type="number" step="0.0000001" value="0.00000001" /></div>
       </div>
     </div>
 
-    <div class="panel dp-card stack-sm">
-      <h4>Evaluation & Misc</h4>
+    <div class="dp-card">
+      <h4 data-help="Optional evaluation and tracking controls. You can leave these at their defaults for a basic run.">Evaluation &amp; Misc</h4>
       <div class="dp-row">
-        <div class="field"><label>Video clip mode</label><input id="dp-vmode" class="input" type="text" value="single_middle" /></div>
-        <div class="field"><label>Eval MB/GPU</label><input id="dp-eval-mb" class="input" type="number" value="1" /></div>
-        <div class="field"><label>Eval GAS</label><input id="dp-eval-gas" class="input" type="number" value="1" /></div>
+        <div class="field"><label data-help="Selects which part of a video clip is used during evaluation.">Video clip mode</label><input id="dp-vmode" class="input" type="text" value="single_middle" /></div>
+        <div class="field"><label data-help="Evaluation batch size per GPU. Lower it if evaluation runs out of memory.">Eval MB/GPU</label><input id="dp-eval-mb" class="input" type="number" value="1" /></div>
+        <div class="field"><label data-help="Gradient accumulation used only during evaluation.">Eval GAS</label><input id="dp-eval-gas" class="input" type="number" value="1" /></div>
       </div>
-      <label class="status status-check"><input type="checkbox" id="dp-enable-wandb" /> Enable Wandb</label>
+      <label class="status status-check" data-help="Send training metrics to Weights &amp; Biases. Only enable this if you have configured a Wandb account and key."><input type="checkbox" id="dp-enable-wandb" /> Enable Wandb</label>
       <input id="dp-wandb-name" class="input is-hidden" type="text" placeholder="wandb run name" />
       <input id="dp-wandb-proj" class="input is-hidden" type="text" placeholder="wandb tracker name" />
       <input id="dp-wandb-key" class="input is-hidden" type="text" placeholder="wandb api key" />

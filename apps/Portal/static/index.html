@@ -225,7 +225,7 @@
       .shutdown-notice { justify-content: space-between; }
     }
   </style>
-  <link rel="stylesheet" href="/css/journey.css?v=20261003a" />
+  <link rel="stylesheet" href="/css/journey.css?v=20261009a" />
 </head>
 <body>
   <div class="topbar">
@@ -337,7 +337,7 @@
         <button id="shutdown-notice-cancel" type="button" title="Cancel scheduled shutdown">Cancel</button>
       </div>
       <div id="workspace-bar" class="workspace-bar" hidden>
-        <div class="workspace-status-row"><button id="workspace-build" class="workspace-build" type="button" aria-label="Build identity and diagnostics">Build unknown</button>
+        <div class="workspace-status-row"><button id="workspace-build" class="workspace-build" type="button" aria-label="Build identity and diagnostics" hidden></button>
           <details id="workspace-activity" class="workspace-activity"><summary id="workspace-activity-label">Activity · Checking…</summary><div id="workspace-activity-list" class="workspace-activity-list"></div></details>
           <button id="workspace-minimize" class="workspace-minimize" type="button" title="Minimize build and activity" aria-label="Minimize build and activity" aria-controls="workspace-bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
         <div id="workspace-notice" class="workspace-notice" role="status" hidden><span id="workspace-notice-text"></span><button id="workspace-notice-view" type="button">View task</button><button id="workspace-notice-dismiss" class="secondary" type="button">Dismiss</button></div>
@@ -425,7 +425,7 @@
     <textarea id="diagnostics-summary" readonly aria-label="Sanitized support summary"></textarea>
     <p id="diagnostics-status" role="status"></p><div class="row gap-12"><button id="diagnostics-copy" type="button" disabled>Copy diagnostics</button><button id="diagnostics-close" class="secondary" type="button">Close</button></div>
   </dialog>
-  <script src="/js/workspace-status.js?v=20260921d"></script>
+  <script src="/js/workspace-status.js?v=20261009a"></script>
   <script src="/js/utils.js?v=20261003-services"></script>
   <script src="/js/screen-lifecycle.js?v=20260921c"></script>
   <script src="/js/dashboard.js?v=20260925b"></script>
@@ -434,10 +434,11 @@
   <script src="/js/models.js?v=20260921c"></script>
   <script src="/js/dataset-quality.js?v=20261003a"></script>
   <script src="/js/first-lora.js?v=20261003a"></script>
-  <script src="/js/datasets.js?v=20261003a"></script>
+  <script src="/js/datasets.js?v=20261009a"></script>
   <script src="/js/comfyui.js?v=20261003-services"></script>
   <script src="/js/storage.js?v=20260925b"></script>
   <script src="/js/task-feedback.js?v=20260921a"></script>
+  <script src="/js/training-help.js?v=20261009a"></script>
   <script src="/js/trainpilot.js?v=20261003a"></script>
   <script src="/js/training-draft.js?v=20261009b"></script>
   <script src="/js/training-workspace.js?v=20261009b"></script>

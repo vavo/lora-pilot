@@ -141,11 +141,14 @@ window.workspaceStatus = (() => {
     };
     $('workspace-notice-dismiss').onclick = () => { notices.shift(); signature = ''; render(last); };
     const generation = epoch;
+    $('workspace-build').hidden = true;
     fetchJson('/api/build').then(data => {
       if (generation !== epoch) return;
-      $('workspace-build').textContent = `Build ${data.revision ? data.revision.slice(0, 8) : 'unknown'}`;
+      const revision = typeof data.revision === 'string' ? data.revision.trim() : '';
+      $('workspace-build').hidden = !revision || revision.toLowerCase() === 'unknown';
+      $('workspace-build').textContent = revision ? `Build ${revision.slice(0, 8)}` : '';
       $('workspace-build').title = `Build date: ${data.built_at || 'unknown'} · Open diagnostics`;
-    }).catch(() => { if (generation === epoch) $('workspace-build').textContent = 'Build unavailable'; });
+    }).catch(() => { if (generation === epoch) $('workspace-build').hidden = true; });
     poll(generation);
   }
   function stop() {

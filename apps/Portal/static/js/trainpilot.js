@@ -9,6 +9,7 @@ window.initTrainpilot = async function (screen = window.createScreenLifecycle())
   const guideReady = window.firstLora.init(screen);
   tpStarting = false; tpMoving = false;
   const page = document.getElementById('tp-page');
+  window.initTrainingHelp?.(page || document);
   tpStatusKnown = false;
   bindTpControls();
   const explicitDataset = window.pendingTrainDataset;

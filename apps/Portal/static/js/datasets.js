@@ -80,12 +80,12 @@ async function loadDatasets() {
         if (d.images && !missing) openTrainingDataset(d.name);
         else openTagpilotDataset(d.name);
       });
-      const menu = document.createElement("details");
-      menu.className = "ds-menu";
-      const summary = document.createElement("summary");
-      summary.textContent = "Manage";
-      menu.append(summary, datasetActionButton("Rename", "secondary", "rename", d.name), datasetActionButton("Delete", "danger", "del", d.name));
-      actions.append(next, menu);
+      const remove = datasetActionButton("", "danger", "del", d.name);
+      remove.classList.add("ds-delete");
+      remove.setAttribute("aria-label", `Delete dataset ${d.display || d.name}`);
+      remove.title = "Delete dataset";
+      remove.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
+      actions.append(next, datasetActionButton("Rename", "ghost", "rename", d.name), remove);
       const review = datasetActionButton('Check quality', 'ghost', 'quality', d.name);
       review.onclick = () => window.reviewDataset(d.name, datasetsScreen);
       actions.prepend(review);

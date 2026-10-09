@@ -46,6 +46,7 @@ const DP_FIELDS = [
 window.initDpipe = function (screen = window.createScreenLifecycle()) {
   dpScreen = screen;
   dpStarting = false;
+  window.initTrainingHelp?.(document);
   const status = document.getElementById("dp-status");
   if (status) status.textContent = "Checking training status…";
   loadDpipeSettings();

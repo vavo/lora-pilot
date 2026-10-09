@@ -33,6 +33,12 @@
 .journey-page .field label, .tp-label { font-weight:650; font-size:16px; color:var(--text); }
 .journey-page .field { gap:10px; }
 .journey-note { color:var(--muted); font-size:14px; margin:8px 0 0; }
+.field-help { position:relative; display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; margin-left:5px; padding:0; border:0; border-radius:50%; background:var(--pill); color:var(--muted); vertical-align:-3px; cursor:help; }
+.field-help svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.field-help::after { content:attr(data-tooltip); position:absolute; z-index:30; top:calc(100% + 9px); left:0; width:max-content; max-width:min(290px, calc(100vw - 40px)); padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--text); box-shadow:0 8px 24px #0003; font-size:13px; font-weight:400; line-height:1.45; text-align:left; white-space:normal; opacity:0; pointer-events:none; transform:translateY(-3px); transition:opacity .12s ease, transform .12s ease; }
+.field-help:hover::after, .field-help:focus-visible::after { opacity:1; transform:translateY(0); }
+.dp-card h4 .field-help { margin-left:7px; }
+@media (max-width:600px) { .field-help::after { position:fixed; top:auto; left:20px; right:20px; bottom:20px; width:auto; max-width:none; transform:translateY(3px); } .field-help:hover::after, .field-help:focus-visible::after { transform:translateY(0); } }
 .journey-icon .nav-icon, .journey-icon .nav-icon svg { width:28px; height:28px; color:inherit; }
 .journey-icon { color:var(--journey-accent); flex-shrink:0; }
 .journey-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:24px; }
@@ -89,14 +95,13 @@
 .ds-name small { display:block; color:var(--muted); margin-top:6px; }
 .ds-previews { display:flex; gap:6px; }
 .ds-previews img { width:56px; height:64px; border-radius:6px; object-fit:cover; }
-.ds-caption-state { display:block; margin-top:5px; color:var(--muted); font-size:12px; }
+.ds-caption-state { white-space:nowrap; display:block; margin-top:5px; color:var(--muted); font-size:12px; }
 .ds-caption-state.incomplete { color:#986200; }
 :root[data-theme="dark"] .ds-caption-state.incomplete { color:#f6bf59; }
-.ds-actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-.ds-menu { position:relative; }
-.ds-menu summary { cursor:pointer; color:var(--muted); font-size:13px; }
-.ds-menu[open] { min-width:100px; }
-.ds-menu button { display:block; margin-top:8px; }
+.ds-actions { display:flex; gap:10px; align-items:center; flex-wrap:nowrap; overflow-x:auto; padding:2px; }
+.journey-page .ds-actions .btn { flex-shrink:0; white-space:nowrap; font-size:14px; padding:10px 12px; }
+.journey-page .ds-actions .ds-delete { display:inline-flex; align-items:center; justify-content:center; padding:10px; min-width:40px; }
+
 .ds-next { margin-top:24px; padding:24px; border-radius:10px; background:var(--journey-selected); display:flex; justify-content:space-between; align-items:center; gap:20px; }
 .ds-next p { margin:6px 0 0; color:var(--muted); font-size:14px; }
 #ds-modal .modal-card { max-height:85vh; }
