@@ -77,6 +77,13 @@ secrets.*
 build/
 *.tar.gz
 
+# Local outputs and marketing/video production
+/output/
+/marketing/
+/video-production/
+/creative-production/
+/LoraPilot_Ads/
+
 # Large files
 *.pt
 *.pth

@@ -67,8 +67,7 @@ celerybeat.pid
 # Testing
 /playwright-report/
 /test-results/
-/output/playwright/
-/output/pdf/
+/output/
 htmlcov/
 .tox/
 .nox/
@@ -130,3 +129,9 @@ aidocs/
 
 # Local build service config
 depot.json
+
+# Marketing and video production belong outside this repository
+/marketing/
+/video-production/
+/creative-production/
+/LoraPilot_Ads/
