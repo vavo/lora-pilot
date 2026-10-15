@@ -52,6 +52,29 @@ logs/
 # Runtime/work dir (local volume contents)
 workspace/
 .rcs/
+/apps/MediaPilot/data/
+
+# Local databases, including SQLite journals and WAL files
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
+
+# Private plans and local agent notes
+/aidocs/
+/docs/product/
+/design-qa.md
+/WINDOWS_WSL_INSTALLER_PLAN.md
+/docs/development/dockerfile-refactor-plan.md
+/docs/development/2026-07-05-lora-pilot-value-suggestions.md
+/depot.json
+
+# Generated QA reports and documentation builds
+**/test-results/
+**/playwright-report/
+/docs/_build/
 
 # Test/lint caches
 .pytest_cache/
