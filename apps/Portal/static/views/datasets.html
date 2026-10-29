@@ -1,5 +1,38 @@
 <div class="journey-page">
-<header class="journey-heading"><h2>Datasets</h2><p>Bring your images. We’ll help you prepare them for training.</p></header>
+<header class="journey-heading"><h2>Datasets</h2><p>Bring your images, or create a new collection for training.</p></header>
+<section class="journey-surface db-intro">
+  <h3>Create a dataset</h3><p>Start with a character description or a photo. Generate different views, check consistency and add captions on this machine.</p>
+  <button id="db-open" class="btn primary" type="button" aria-expanded="false" aria-controls="dataset-builder">Create a dataset</button>
+</section>
+<section id="dataset-builder" class="journey-surface db-builder" hidden aria-labelledby="db-title">
+  <h3 id="db-title">Build your training images</h3>
+  <p class="journey-note">First approve a reference, then review the variations. Identity checks are suggestions; look closely at faces before keeping an image.</p>
+  <form id="db-form">
+    <div class="db-fields">
+      <label>Dataset name<input id="db-name" class="input" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\-]*" placeholder="my_character"></label>
+      <label>Trigger word<input id="db-trigger" class="input" required maxlength="40" pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="ohwxperson"><small>Use this word in prompts after training.</small></label>
+      <label>Number of images<input id="db-count" class="input" type="number" min="4" max="40" value="24" required></label>
+      <label>Start from<select id="db-source" class="select"><option value="prompt">A description</option><option value="photo">My photo</option></select></label>
+      <label>What should the LoRA learn?<select id="db-goal" class="select"><option value="identity">Person / identity</option><option value="character">Character with a fixed look</option></select></label>
+    </div>
+    <label id="db-prompt-label">Describe your character<textarea id="db-prompt" class="input" rows="3" maxlength="2000" placeholder="An adult woman with short curly brown hair, freckles and green eyes, natural portrait photography" required></textarea></label>
+    <label id="db-photo-label" hidden>Reference photo<input id="db-photo" class="input" type="file" accept="image/png,image/jpeg,image/webp"><small>One clear photo, 256 px or larger, up to 32 MB. Unseen details may be invented.</small></label>
+    <div class="row wrap gap-12 db-options"><label><input id="db-clothes" type="checkbox" checked> Vary clothes</label><label><input id="db-hair" type="checkbox"> Vary hairstyle</label></div>
+    <p class="journey-note">Prompt input creates four SDXL references. Variations use Qwen Image Edit, with up to three attempts per image. Local captions and visual checks run on CPU and may take a long time for larger sets. Images stay on your pod; GPU time is still billed by your host. Use photos you have permission to use.</p>
+    <p id="db-preflight" role="status" class="journey-note">Checking models and ComfyUI…</p>
+    <div class="row wrap gap-12"><button id="db-create" type="submit" class="btn primary" disabled>Create reference</button><button id="db-recheck" type="button" class="journey-link">Check again</button><a href="#models" id="db-models" class="journey-link">Open Models</a></div>
+  </form>
+  <p id="db-error" role="alert" class="status"></p>
+  <label id="db-jobs-label" class="db-jobs" hidden>Saved creation jobs<select id="db-jobs" class="select"><option value="">Choose a job</option></select></label>
+  <section id="db-job" hidden aria-labelledby="db-job-title">
+    <h3 id="db-job-title"></h3><p id="db-progress" role="status"></p>
+    <div class="row wrap gap-12"><button id="db-pause" class="btn ghost" type="button" hidden>Pause after current image</button><button id="db-resume" class="btn ghost" type="button" hidden>Resume / retry unfinished images</button></div>
+    <div id="db-reference" class="db-reference"></div>
+    <div id="db-images" class="db-images"></div>
+    <div id="db-finish-wrap" hidden><label><input id="db-reviewed" type="checkbox"> I have reviewed the kept images and their captions.</label><p id="db-accepted" class="journey-note"></p><button id="db-finish" type="button" class="btn primary" disabled>Save dataset &amp; open guided training</button></div>
+    <button id="db-train" type="button" class="btn primary" hidden>Open dataset in guided training</button>
+  </section>
+</section>
 <section class="ds-upload-intro">
   <div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div>
   <div><h3>Start with your images</h3><p>Upload a ZIP containing your images and optional matching .txt captions.</p>

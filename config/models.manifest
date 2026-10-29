@@ -146,6 +146,9 @@ ltx-2.5-video-vae-bf16|hf_file|Lightricks/LTX-2.5:vae/ltx-2.5-video-vae-bf16.saf
 ltx-2.5-audio-vae-bf16|hf_file|Lightricks/LTX-2.5:vae/ltx-2.5-audio-vae-bf16.safetensors|vae||364866540
 
 # --- Qwen Image Models ---
+# Dataset builder native Qwen editing and offline captioning
+dataset-qwen-edit|hf_file|Comfy-Org/Qwen-Image-Edit:split_files/diffusion_models/qwen_image_edit_2511_fp8mixed.safetensors|diffusion_models||20533762817
+dataset-local-captioner|hf_repo|Qwen/Qwen3-VL-2B-Instruct|text_encoders/Qwen3-VL-2B-Instruct|*.json,*.safetensors,*.txt,README.md|4266647442
 qwen-image-edit-2511|hf_repo|Qwen/Qwen-Image-Edit-2511|diffusers/qwen-image-edit-2511|model_index.json,processor/*,scheduler/*.json,text_encoder/*.json,text_encoder/*.safetensors,tokenizer/*,transformer/*.json,transformer/*.safetensors,vae/*.json,vae/*.safetensors,README.md|57720461873
 
 # --- Text Encoders ---

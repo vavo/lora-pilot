@@ -59,6 +59,7 @@ try:
     from .services.storage_capacity import workspace_capacity
     from .services import gpu_guard
     from .services.dataset_quality import review_dataset
+    from .services.dataset_builder import create_router as create_dataset_builder_router
     from .services import service_registry, code_server
 except (ImportError, ValueError):
     try:
@@ -77,6 +78,7 @@ except (ImportError, ValueError):
         from services.storage_capacity import workspace_capacity
         from services import gpu_guard
         from services.dataset_quality import review_dataset
+        from services.dataset_builder import create_router as create_dataset_builder_router
         from services import service_registry, code_server
     except ImportError:
         from apps.Portal.services import models as models_service  # type: ignore
@@ -94,6 +96,7 @@ except (ImportError, ValueError):
         from apps.Portal.services.storage_capacity import workspace_capacity
         from apps.Portal.services import gpu_guard
         from apps.Portal.services.dataset_quality import review_dataset
+        from apps.Portal.services.dataset_builder import create_router as create_dataset_builder_router
         from apps.Portal.services import service_registry, code_server
 
 WORKSPACE_ROOT = Path(os.environ.get("WORKSPACE_ROOT", "/workspace"))
@@ -3983,6 +3986,10 @@ _training_router, _training_queue = create_training_router(
         MANIFEST if MANIFEST.exists() else DEFAULT_MANIFEST, DEFAULT_MANIFEST, MODELS_DIR, CONFIG_DIR, read_only=True),
 )
 app.include_router(_training_router)
+
+_dataset_builder_router, _dataset_builder = create_dataset_builder_router(
+    WORKSPACE_ROOT, MODELS_DIR, _invalidate_dataset_list_cache)
+app.include_router(_dataset_builder_router)
 
 
 def _other_training_activity():

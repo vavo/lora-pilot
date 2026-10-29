@@ -6,6 +6,7 @@ window.initDatasets = async function (screen = window.createScreenLifecycle()) {
   datasetsScreen = screen;
   dsUploading = false;
   wireUpload();
+  window.initDatasetBuilder?.(screen);
   window.firstLora.init(screen);
   await loadDatasets();
 };

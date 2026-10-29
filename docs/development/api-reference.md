@@ -1,6 +1,6 @@
 # API Reference
 
-_Last updated: 2026-10-03_
+_Last updated: 2026-10-29_
 
 ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`). This reference covers first-party routes in ControlPilot, embedded MediaPilot and the internal Copilot sidecar. Upstream applications such as ComfyUI keep their own API contracts.
 
@@ -148,6 +148,30 @@ Model pull actions take no body. Blocking pull returns `status` and `output`; ba
 Workflow plan accepts `{"optional":[]}` (optional file `name` values from the workflow catalog, not manifest model IDs). Inspect `files`, `can_install`, and `plan_id`; install requires the same selection plus `plan_id`. A stale/missing plan or failed checks returns 409. Success returns `jobs` and `installed_count`.
 
 Set the Hugging Face token with JSON `{"token":"..."}`; empty clears it. The legacy `token` query parameter takes precedence when both are supplied. Prefer JSON to keep the token out of URLs.
+
+## Dataset builder API
+
+These routes use ControlPilot's existing `/api/*` authentication. Generation is asynchronous, with one process-local worker and persistent job state under `/workspace/config/dataset-builder`. Native ComfyUI handles image generation; the offline core-venv CPU worker handles captions and visual checks.
+
+| Method | Path | Input and result |
+|---|---|---|
+| `GET` | `/api/dataset-builder/preflight` | Query `source=prompt` or `photo`; returns `ready`, missing model IDs, problems and recipe version |
+| `GET` | `/api/dataset-builder/jobs` | Up to 100 most recently updated jobs |
+| `POST` | `/api/dataset-builder/jobs` | Multipart `spec` JSON string and optional `photo`; returns saved job, not completion |
+| `GET` | `/api/dataset-builder/jobs/{id}` | Job state, candidates, reviews, captions, attempt counts and `accepted_count` |
+| `GET` | `/api/dataset-builder/jobs/{id}/images/{filename}` | PNG for a reference or current candidate belonging to the job |
+| `POST` | `/api/dataset-builder/jobs/{id}/reference` | `{"file":"reference-0.png"}`; explicit reference approval starts variations |
+| `POST` | `/api/dataset-builder/jobs/{id}/pause` | Stops after the current image; never sends a global ComfyUI interrupt |
+| `POST` | `/api/dataset-builder/jobs/{id}/resume` | Recovers pending work and retries unfinished generation/checks within attempt limits |
+| `PATCH` | `/api/dataset-builder/jobs/{id}/images/{slot}` | Zero-based slot; `{"accepted":true,"caption":"trigger, a portrait"}`; requires completed local review |
+| `POST` | `/api/dataset-builder/jobs/{id}/images/{slot}/regenerate` | Regenerates only that shot; maximum three generated candidates per shot |
+| `POST` | `/api/dataset-builder/jobs/{id}/finish` | Requires exactly the requested accepted/captioned count; publishes dataset and returns its `dataset` name; does not launch training |
+
+`spec` fields: `name` (1–64 letters/numbers/underscores/hyphens, starts alphanumeric), `trigger` (1–40 letters/numbers/underscores, starts with a letter), `source` (`prompt` default or `photo`), `prompt` (up to 2,000 characters; required for prompt input), `count` (4–40, default 24), `goal` (`identity` default or `character`), `vary_clothes` (default true), and `vary_hair` (default false). Fixed-character mode ignores clothing/hair variation flags. Images are decoded, EXIF-normalized and saved as RGB PNG with a maximum 1,536-pixel long edge.
+
+Statuses are `generating_reference`, `reference_review`, `generating`, `checking`, `pausing`, `paused`, `review`, `failed`, and `saved`. Interrupted active jobs report paused after a restart. No prompt is silently resubmitted when the original HTTP outcome is uncertain. A ComfyUI prompt can be polled for an hour per resume; the local review batch has a two-hour timeout. `failed` is resumable when its underlying dependency is fixed. Saved jobs are immutable; finishing the same saved job is idempotent. Existing unrelated datasets and symlink paths are rejected.
+
+The UI requires human contact-sheet confirmation before calling `finish`; API clients must provide their own review step. Automated acceptance is heuristic, not a guarantee of identity or training quality. Missing local review results cannot count as accepted images.
 
 ## Dataset + TagPilot API
 

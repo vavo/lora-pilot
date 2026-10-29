@@ -1,6 +1,6 @@
 # Dataset Preparation
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-10-29_
 
 A folder of photographs can become the starting point for a character you can place in new scenes or a visual style you can use across a project. Before training, you decide what the examples have in common and what should remain free to change. That decision shapes the dataset you build.
 
@@ -21,6 +21,45 @@ ControlPilot keeps datasets under `/workspace/datasets` and displays folders wit
 Use a distinct name for a new revision if you want to retain the previous collection. Uploading another ZIP with the same name replaces the matching dataset after the archive passes import validation. The stored ZIP is a convenient snapshot, but it shares the workspace with the working files. Keep a copy elsewhere for backup.
 
 The dataset browser recognizes PNG, JPEG, WebP, BMP, and GIF extensions. Recognition in this browser does not establish support in a trainer, so check the requirements of your chosen training workflow. For an image dataset, confirm that the files open as the still images you expect.
+
+## Create images from a description or photo
+
+Open **Datasets → Create a dataset**. This first version is for a person or character, not a general-purpose style or product dataset generator.
+
+1. Give the collection a name, a trigger word and a target of **4–40 images**.
+2. Choose **A description** to generate four SDXL reference candidates, or **My photo** to upload one clear reference. Uploads must be at least 256 pixels on both sides, below 40 megapixels and no larger than 32 MiB. Use photos you have permission to use.
+3. Select **Person / identity** to allow clothing changes and optionally hairstyle changes. **Character with a fixed look** keeps the original clothing and hairstyle. Backgrounds, lighting, framing and viewpoints vary in both modes.
+4. Approve a reference. Every Qwen variation uses that original image, not the previous generated image, to limit cumulative identity drift.
+5. Review the contact sheet and edit captions. Local checks flag uncertain or changed identity, visible defects, low detail, small images and near-duplicates. Clean candidates are provisionally kept; flagged candidates get up to three generation attempts per shot, then require your decision. **Keep image & caption** explicitly overrides a warning; **Exclude** prevents publication until that slot has an accepted replacement. The three-attempt limit includes manual regenerations.
+6. Confirm that you reviewed the images, then choose **Save dataset & open guided training**. Saving requires the exact requested number of accepted, captioned images. Training opens with the dataset selected; it does not start automatically.
+
+Checks are fallible suggestions, not identity verification or a promise of a perfect dataset. Inspect faces, hands and profiles at full size. One photo cannot establish unseen physical details, and synthetic variations may reinforce the generator's mistakes. Local captions describe visible content and include your trigger word; review them before training.
+
+### Models and runtime requirements
+
+Start ComfyUI in **Services** and install these entries from **Models**. The builder checks native node availability, model filenames and required weight sizes before starting; it never installs models automatically.
+
+| Models entry | Use | Download size |
+|---|---|---|
+| `sdxl-base` | Four references from a description; not needed for photo input | About 6.9 GB |
+| `dataset-qwen-edit` | Qwen Image Edit 2511 FP8 diffusion model | About 20.5 GB |
+| `hunyuanimage-2.1-comfy-qwen-encoder-fp8` | Shared Qwen image text/vision encoder | About 9.4 GB |
+| `anima-vae` | Shared Qwen VAE | About 0.25 GB |
+| `dataset-local-captioner` | Qwen3-VL-2B-Instruct for local checks and captions | About 4.3 GB |
+
+The native [ComfyUI Qwen Image Edit 2511 recipe](https://docs.comfy.org/tutorials/image/qwen/qwen-image-edit-2511) uses 40-step editing. V1 does not use a Lightning or multi-angle LoRA, FLUX reference generation, partner nodes or paid captioning APIs. Weight file sizes are not GPU-memory requirements: ComfyUI offloading, resolution and other running tasks affect the GPU and system RAM needed. Validate a four-image job on your hardware before requesting a large set.
+
+Captioning uses the Apache-2.0 [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) model in a separate CPU process using the core environment and local weights, with Hugging Face offline mode enabled. Allow system RAM for roughly 4.3 GB of captioner weights plus inference overhead, in addition to ComfyUI's memory needs. This stage can be slow on pod CPUs. GPU generation and idle pod time can still incur provider charges; the attempt limit is not a monetary spending cap.
+
+On RunPod, LoRA Pilot already runs inside the pod's container. No Docker command or nested Docker daemon is involved.
+
+### Pausing and recovery
+
+Only one dataset-creation job runs at a time. You can navigate elsewhere and return to **Saved creation jobs**. **Pause after current image** stops scheduling subsequent images; it does not interrupt unrelated ComfyUI work. The local captioning worker can be stopped and resumed. Jobs persist in `/workspace/config/dataset-builder/<job-id>/`, including reference images, candidates, API workflows, review results and `vision.log`.
+
+After a Portal restart, **Resume** reuses any saved ComfyUI prompt ID or completed image. Keep ComfyUI's history available until the job finishes. A missing prompt remains pending for up to an hour per resume; an uncertain submission with no returned prompt ID is not automatically repeated. Inspect ComfyUI's queue/history before starting another job in that case.
+
+Completed datasets are published under `/workspace/datasets/1_<name>/` with PNG images, matching `.txt` captions and `generation.json` provenance. An existing dataset is never intentionally replaced; rename it in Datasets before saving another collection with that name. Creation-job files and ComfyUI outputs remain available separately and consume disk space. The builder does not delete them automatically.
 
 ## Describe the image you can see
 
