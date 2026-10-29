@@ -90,6 +90,7 @@
                     </span>
                     Save to workspace
                 </button>
+                <button type="button" id="save-training-button" hidden>Save &amp; open guided training</button>
             </div>
         </header>
         <div class="dataset-details">
@@ -240,6 +241,7 @@
                             Default model
                         </label>
                         <select id="tag-default-model">
+                            <option value="local">Local Qwen3-VL (CPU, no API key)</option>
                             <option value="gemini">
                                 Gemini
                             </option>
@@ -410,6 +412,7 @@
                             Default model
                         </label>
                         <select id="caption-default-model">
+                            <option value="local">Local Qwen3-VL (CPU, no API key)</option>
                             <option value="gemini">
                                 Gemini
                             </option>
@@ -815,6 +818,9 @@
     </div>
     <script>
         let dataset = [];
+        let generationRecord = null;
+        let sessionTagModel = null;
+        let sessionCaptionModel = null;
         const IMAGES_PER_PAGE = 50;
         let currentPage = 0;
         let previewReturnFocus = null;
@@ -849,9 +855,9 @@ The final output MUST be a comma-separated list of tags. No comments, no 'Here i
 
 Expected outcome is a human-readable continuous text consisting of several sentences without the use of numbering or bullet points.`;
 
-        const TEXT_MODEL_IDS = ['gemini', 'grok', 'openai', 'claude', 'vllm'];
+        const TEXT_MODEL_IDS = ['local', 'gemini', 'grok', 'openai', 'claude', 'vllm'];
         const TAG_MODEL_IDS = [...TEXT_MODEL_IDS, 'deepdanbooru', 'wd14'];
-        const API_KEY_MODEL_IDS = [...TEXT_MODEL_IDS, 'wd14'];
+        const API_KEY_MODEL_IDS = [...TEXT_MODEL_IDS.filter(model => model !== 'local'), 'wd14'];
         const DEEPDANBOORU_API_BASE = 'https://hysts-deepdanbooru.hf.space/gradio_api';
         const VLLM_DEFAULT_MODEL = 'Qwen/Qwen3-8B';
         const VLLM_MODEL_PRESETS = [
@@ -916,6 +922,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         const taggerSection = document.getElementById('tagger-section');
         const exportButton = document.getElementById('export-button');
         const saveWorkspaceButton = document.getElementById('save-workspace-button');
+        const saveTrainingButton = document.getElementById('save-training-button');
         const resetButton = document.getElementById('reset-button');
         const clearTagsButton = document.getElementById('clear-tags-button');
         const tagAllButton = document.getElementById('tag-all-button');
@@ -998,7 +1005,9 @@ Expected outcome is a human-readable continuous text consisting of several sente
         imageUpload.addEventListener('change', handleImageUpload);
         zipUpload.addEventListener('change', handleZipUpload);
         exportButton.addEventListener('click', handleExport);
-        saveWorkspaceButton.addEventListener('click', handleSaveToWorkspace);
+        saveWorkspaceButton.addEventListener('click', () => handleSaveToWorkspace());
+        saveTrainingButton.hidden = window.parent === window;
+        saveTrainingButton.addEventListener('click', () => handleSaveToWorkspace(true));
         resetButton.addEventListener('click', handleReset);
         clearTagsButton.addEventListener('click', handleClearTags);
         tagAllButton.addEventListener('click', openTagSettings);
@@ -1064,6 +1073,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function getSavedTagModel() {
+            if (sessionTagModel) return sessionTagModel;
             const saved = localStorage.getItem('tagModel');
             if (isTagModel(saved)) return saved;
             const legacy = localStorage.getItem('selectedModel');
@@ -1072,6 +1082,7 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function getSavedCaptionModel() {
+            if (sessionCaptionModel) return sessionCaptionModel;
             const saved = localStorage.getItem('captionModel');
             if (isCaptionModel(saved)) return saved;
             const legacy = localStorage.getItem('selectedModel');
@@ -1149,6 +1160,8 @@ Expected outcome is a human-readable continuous text consisting of several sente
         }
 
         function saveSettings() {
+            sessionTagModel = tagDefaultModel.value;
+            sessionCaptionModel = captionDefaultModel.value;
             localStorage.setItem('tagModel', tagDefaultModel.value);
             localStorage.setItem('captionModel', captionDefaultModel.value);
             localStorage.setItem('selectedModel', tagDefaultModel.value);
@@ -1325,6 +1338,7 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         const TEXT_PROVIDERS = {
+            local: { name: 'Local Qwen3-VL (CPU)' },
             gemini: {
                 name: 'Gemini',
                 async request({ apiKey, promptText, imageData, imageMimeType }) {
@@ -1553,8 +1567,21 @@ Limit the caption to ${maxWords} words or fewer.`;
             });
         }
 
-        async function generateImageText(imageFile, promptText, model = getModel()) {
+        async function generateImageText(imageFile, promptText, model = getModel(), mode = 'tags') {
             const imageMimeType = getImageMimeType(imageFile);
+
+            if (model === 'local') {
+                const form = new FormData();
+                form.append('image', imageFile);
+                form.append('provider', 'local');
+                form.append('mode', mode);
+                form.append('prompt', promptText);
+                const response = await fetch('/api/tagpilot/generate', {method: 'POST', body: form});
+                if (!response.ok) throw new Error(await parseResponseError(response));
+                const result = await response.json();
+                if (!result.text?.trim()) throw new Error('Local TagPilot returned no text');
+                return result.text.trim();
+            }
 
             if (model === 'deepdanbooru') {
                 return requestDeepDanbooru(imageFile, imageMimeType);
@@ -1603,7 +1630,7 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         async function generateCaption(imageFile, maxWords = getCaptionWordLimit(), model = getCaptionModel()) {
-            const caption = await generateImageText(imageFile, buildCaptionPrompt(maxWords), model);
+            const caption = await generateImageText(imageFile, buildCaptionPrompt(maxWords), model, 'caption');
             return trimCaptionToWordLimit(caption, maxWords);
         }
 
@@ -1763,6 +1790,13 @@ Limit the caption to ${maxWords} words or fewer.`;
                 }
                 const data = await response.json();
                 const files = Array.isArray(data?.files) ? data.files : [];
+                generationRecord = data.generation || null;
+                if (generationRecord?.spec?.trigger) {
+                    currentTriggerWord = generationRecord.preparation?.trigger ?? generationRecord.spec.trigger;
+                    triggerWordInput.value = currentTriggerWord;
+                    sessionTagModel = sessionCaptionModel = 'local';
+                    tagDefaultModel.value = captionDefaultModel.value = 'local';
+                }
 
                 const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif'];
                 const imageFiles = [];
@@ -1796,7 +1830,8 @@ Limit the caption to ${maxWords} words or fewer.`;
                         const mimeType = String(file?.mime || 'application/octet-stream');
                         const imageFile = base64ToFile(b64, name, mimeType);
                         const tags = (textFiles.get(baseName) || currentTriggerWord || '').trim();
-                        dataset.push(createDatasetItem(imageFile, tags, 'tags'));
+                        const format = generationRecord?.preparation?.formats?.[name];
+                        dataset.push(createDatasetItem(imageFile, tags, format === 'tags' ? 'tags' : generationRecord ? 'caption' : 'tags'));
                     } catch (error) {
                         console.error('Failed to load item', file?.name, error);
                     }
@@ -1936,6 +1971,8 @@ Limit the caption to ${maxWords} words or fewer.`;
             currentPage = 0;
             clearFileObjectUrls();
             dataset = [];
+            generationRecord = null;
+            sessionTagModel = sessionCaptionModel = null;
             nextDatasetItemId = 1;
             imageUpload.value = '';
             zipUpload.value = '';
@@ -1955,16 +1992,21 @@ Limit the caption to ${maxWords} words or fewer.`;
             showNotification("Cleared all tags.");
         }
 
-        async function handleExport() {
-            if (dataset.length === 0) return showNotification("No images to export");
-
+        async function datasetArchive() {
             const zip = new JSZip();
             dataset.forEach(item => {
                 zip.file(item.file.name, item.file);
                 const txtName = item.file.name.replace(/\.[^/.]+$/, ".txt");
-                zip.file(txtName, item.tags);
+                if (!isBlankOrTriggerOnly(item.tags, currentTriggerWord)) zip.file(txtName, item.tags);
             });
-            const blob = await zip.generateAsync({type:"blob"});
+            if (generationRecord) zip.file('generation.json', JSON.stringify({...generationRecord,
+                preparation: {trigger: currentTriggerWord, formats: Object.fromEntries(dataset.map(item => [item.file.name, item.type]))}}, null, 2));
+            return zip.generateAsync({type:"blob"});
+        }
+
+        async function handleExport() {
+            if (dataset.length === 0) return showNotification("No images to export");
+            const blob = await datasetArchive();
             const url = createTransientObjectUrl(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -1974,34 +2016,25 @@ Limit the caption to ${maxWords} words or fewer.`;
             showNotification("Exported ZIP");
         }
 
-        async function handleSaveToWorkspace() {
+        async function handleSaveToWorkspace(continueTraining = false) {
             if (dataset.length === 0) return showNotification("No images to save");
+            if (continueTraining && dataset.some(item => isBlankOrTriggerOnly(item.tags, currentTriggerWord))) {
+                return showNotification('Add captions or tags to every image before continuing to training.');
+            }
 
             const name = datasetNameInput.value.trim() || 'dataset';
             showLoader('Saving to /workspace/datasets...');
 
             try {
-                const total = dataset.length;
-                for (let i = 0; i < total; i++) {
-                    const item = dataset[i];
-                    const form = new FormData();
-                    form.append('file', item.file);
-                    form.append('tags', item.tags || '');
-                    if (i === 0) form.append('reset', 'true');
-                    if (i === total - 1) form.append('done', 'true');
-
-                    const response = await fetch(`/api/tagpilot/save-item?name=${encodeURIComponent(name)}`, {
-                        method: 'POST',
-                        body: form
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await parseResponseError(response);
-                        throw new Error(errorText || `Request failed (${response.status})`);
-                    }
-                }
+                const form = new FormData();
+                form.append('file', await datasetArchive(), 'dataset.zip');
+                const response = await fetch(`/api/tagpilot/save?name=${encodeURIComponent(name)}`, {method: 'POST', body: form});
+                if (!response.ok) throw new Error(await parseResponseError(response));
+                const saved = await response.json();
+                datasetNameInput.value = saved.name;
 
                 showNotification(`Saved ${dataset.length} image(s) to /workspace/datasets`);
+                if (continueTraining) window.parent.postMessage({type: 'tagpilot:train', dataset: saved.name}, window.location.origin);
             } catch (error) {
                 console.error('Save to workspace failed:', error);
                 showNotification('Save failed: ' + (error?.message || 'unknown error'));
@@ -2085,7 +2118,8 @@ Limit the caption to ${maxWords} words or fewer.`;
             const model = kind === 'tag' ? tagDefaultModel : captionDefaultModel;
             document.getElementById(`${kind}-batch-summary`).textContent = `${dataset.length} images · Model: ${model.selectedOptions[0].textContent}`;
             const limit = kind === 'tag' ? `${getTagLimit()} tags` : `${getCaptionWordLimit()} words`;
-            document.getElementById(`${kind}-batch-details`).textContent = `Maximum length: ${limit}\nTrigger word: ${currentTriggerWord || 'None'}`;
+            document.getElementById(`${kind}-batch-details`).textContent = `Maximum length: ${limit}\nTrigger word: ${currentTriggerWord || 'None'}` +
+                (model.value === 'local' ? '\nRuns on this machine, without an API key. CPU processing can take several minutes per image.' : '');
         }
 
         function stopBatchProcessing() {
@@ -2108,6 +2142,7 @@ Limit the caption to ${maxWords} words or fewer.`;
             progressPanel.querySelector('button').focus();
 
             let processed = 0;
+            const errors = [];
             const total = dataset.length;
             progressText.textContent = `0 / ${total}`;
             progressBar.style.width = '0%';
@@ -2117,6 +2152,7 @@ Limit the caption to ${maxWords} words or fewer.`;
                     await processItem(dataset[i], i);
                 } catch (e) {
                     console.error(e);
+                    errors.push(e.message || String(e));
                 }
                 processed++;
                 updateBatchProgress(progressBar, progressText, processed, total);
@@ -2125,7 +2161,7 @@ Limit the caption to ${maxWords} words or fewer.`;
             renderTagViewer();
             isBatchProcessing = false;
             closeModal();
-            showNotification(completeMessage);
+            showNotification(errors.length ? `${errors.length} image(s) failed: ${errors[0]}` : completeMessage, errors.length ? 12000 : 3000);
         }
 
         async function startBatchTagging() {
@@ -2175,7 +2211,8 @@ Limit the caption to ${maxWords} words or fewer.`;
                     if (!shouldProcessBatchItem(item, mode)) return;
 
                     const caption = await generateCaption(item.file, maxWords);
-                    let final = mode === 'overwrite' ? caption : (item.tags ? item.tags + " " + caption : caption);
+                    let final = mode === 'append' && !isBlankOrTriggerOnly(item.tags, currentTriggerWord)
+                        ? item.tags + " " + caption : caption;
                     if (currentTriggerWord && !final.startsWith(currentTriggerWord)) final = currentTriggerWord + ", " + final;
                     item.tags = final;
                     item.type = 'caption';
@@ -2206,7 +2243,7 @@ Limit the caption to ${maxWords} words or fewer.`;
                 ? `${start + 1}–${end} of ${dataset.length} · Page ${currentPage + 1} of ${pages}` : 'Page 1 of 1';
             document.getElementById('page-prev').disabled = currentPage === 0;
             document.getElementById('page-next').disabled = currentPage >= pages - 1;
-            [exportButton, saveWorkspaceButton, tagAllButton, captionAllButton, clearTagsButton, resetButton]
+            [exportButton, saveWorkspaceButton, saveTrainingButton, tagAllButton, captionAllButton, clearTagsButton, resetButton]
                 .forEach(button => button.disabled = dataset.length === 0);
             taggerSection.classList.toggle('hidden', dataset.length === 0);
             tagViewerSection.classList.toggle('hidden', dataset.length === 0);

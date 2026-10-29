@@ -1,7 +1,7 @@
 <div class="journey-page">
 <header class="journey-heading"><h2>Datasets</h2><p>Bring your images, or create a new collection for training.</p></header>
 <section class="journey-surface db-intro">
-  <h3>Create a dataset</h3><p>Start with a character description or a photo. Generate different views, check consistency and add captions on this machine.</p>
+  <h3>Create a dataset</h3><p>Start with a character description or a photo. Generate different views, check consistency, then caption and tag in TagPilot.</p>
   <button id="db-open" class="btn primary" type="button" aria-expanded="false" aria-controls="dataset-builder">Create a dataset</button>
 </section>
 <section id="dataset-builder" class="journey-surface db-builder" hidden aria-labelledby="db-title">
@@ -29,8 +29,8 @@
     <div class="row wrap gap-12"><button id="db-pause" class="btn ghost" type="button" hidden>Pause after current image</button><button id="db-resume" class="btn ghost" type="button" hidden>Resume / retry unfinished images</button></div>
     <div id="db-reference" class="db-reference"></div>
     <div id="db-images" class="db-images"></div>
-    <div id="db-finish-wrap" hidden><label><input id="db-reviewed" type="checkbox"> I have reviewed the kept images and their captions.</label><p id="db-accepted" class="journey-note"></p><button id="db-finish" type="button" class="btn primary" disabled>Save dataset &amp; open guided training</button></div>
-    <button id="db-train" type="button" class="btn primary" hidden>Open dataset in guided training</button>
+    <div id="db-finish-wrap" hidden><label><input id="db-reviewed" type="checkbox"> I have reviewed the kept images.</label><p id="db-accepted" class="journey-note"></p><button id="db-finish" type="button" class="btn primary" disabled>Continue to TagPilot</button></div>
+    <button id="db-train" type="button" class="btn primary" hidden>Open dataset in TagPilot</button>
   </section>
 </section>
 <section class="ds-upload-intro">

@@ -1,6 +1,7 @@
 Unreleased (October 29th 2026)
 
-- Added a first-version dataset builder in ControlPilot: description or photo input, reference approval, native Qwen Image Edit variations, offline CPU captions and consistency warnings, caption editing, resumable bounded jobs, and exact-count handoff to Guided training. Added the required models to the catalogue. GPU generation and local vision-model inference still require acceptance testing on a pod.
+- Added a first-version dataset builder in ControlPilot: description or photo input, reference approval, native Qwen Image Edit variations, offline consistency warnings, resumable bounded jobs, and exact-count handoff to TagPilot. Captioning and tagging stay in TagPilot, with a local Qwen3-VL provider sharing the vision worker, preserved generation records, and save-before-training handoff. Added the required models to the catalogue. GPU generation and local vision-model inference still require acceptance testing on a pod.
+- TagPilot now reuses its ZIP save API for complete-collection saves and reports failed batch requests instead of claiming completion.
 - Updated the bundled GitHub Copilot CLI to 1.0.94.
 - Added Anima, Lumina-Image 2.0 and HunyuanImage 2.1 to Guided training, with model downloads, family-specific Kohya recipes and saved queue settings. Kept three quality profiles per family; built-in comparisons remain unavailable for the new families.
 

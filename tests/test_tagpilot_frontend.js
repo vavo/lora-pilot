@@ -29,7 +29,7 @@ function setup(length) {
     currentPage:0, IMAGES_PER_PAGE:50, currentPreviewItemId:null, previewReturnFocus:null,
     document:{getElementById:get,createElement:node, activeElement:node()},
     imageGrid:node(), taggerSection:node(), tagViewerSection:node(), placeholder:node(),
-    exportButton:node(), saveWorkspaceButton:node(), tagAllButton:node(), captionAllButton:node(), clearTagsButton:node(), resetButton:node(),
+    exportButton:node(), saveWorkspaceButton:node(), saveTrainingButton:node(), tagAllButton:node(), captionAllButton:node(), clearTagsButton:node(), resetButton:node(),
     previewModal:node(), previewImage:node(), previewClose:node(), cropModal:node(), tagSettingsModal:node(), captionSettingsModal:node(), settingsModal:node(),
     getFileObjectUrl:file=>`blob:${file.name}`, revokeFileObjectUrl(){}, ensureDatasetItemIds(){},
     rendered:[], renderTagsInCard(wrapper,id){page.rendered.push({id,tags:page.dataset.find(item=>item.id===id).tags});},
@@ -138,4 +138,79 @@ test('photo import pairs text sidecars and skips duplicates without any network 
   assert.equal(page.dataset[0].tags,'subject, imported caption, café');
   await page.handleImageUpload({target:{files:[photo,sidecar],value:'selected'}});
   assert.equal(page.dataset.length,1);
+});
+
+test('local generation uses TagPilot API and requires no external provider or browser key', async()=>{
+  const calls=[];
+  const page=vm.createContext({FormData, getImageMimeType:()=> 'image/png',
+    fetch:async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>({text:'A local caption.'})};}});
+  vm.runInContext(source('generateImageText'),page);
+  const result=await page.generateImageText(new Blob(['image']), 'Describe it', 'local', 'caption');
+  assert.equal(result,'A local caption.');
+  assert.equal(calls[0].url,'/api/tagpilot/generate');
+  assert.equal(calls[0].options.body.get('mode'),'caption');
+  assert.equal(calls[0].options.body.get('provider'),'local');
+});
+
+test('saving uses the existing ZIP API and opens training only after success', async()=>{
+  const calls=[], messages=[], notices=[];
+  const page=vm.createContext({dataset:[{tags:'person, portrait'}],currentTriggerWord:'person',
+    datasetNameInput:{value:'1_generated'},FormData,
+    datasetArchive:async()=>new Blob(['zip']),showLoader(){},hideLoader(){},
+    showNotification:text=>notices.push(text),isBlankOrTriggerOnly:text=>text==='person',
+    parseResponseError:async()=> 'Save rejected',console:{error(){}},
+    window:{location:{origin:'https://pilot.test'},parent:{postMessage:(...args)=>messages.push(args)}},
+    fetch:async(url)=>{calls.push(url);return {ok:true,json:async()=>({name:'1_generated'})};}});
+  vm.runInContext(source('handleSaveToWorkspace'),page);
+  page.dataset[0].tags='person'; await page.handleSaveToWorkspace(true);
+  assert.equal(calls.length,0); assert.equal(messages.length,0);
+  page.dataset[0].tags='person, portrait';
+  page.fetch=async()=>({ok:false}); await page.handleSaveToWorkspace(true);
+  assert.equal(messages.length,0); assert.match(notices.at(-1),/Save rejected/);
+  page.fetch=async url=>{calls.push(url);return {ok:true,json:async()=>({name:'1_generated'})};};
+  await page.handleSaveToWorkspace(true);
+  assert.equal(calls[0],'/api/tagpilot/save?name=1_generated');
+  assert.equal(messages[0][0].dataset,'1_generated');
+  assert.equal(messages[0][1],'https://pilot.test');
+});
+
+test('archive shares export/save logic and keeps provenance, edited trigger and annotation modes',async()=>{
+  const files={};
+  const page=vm.createContext({dataset:[{file:{name:'001.png'},tags:'edited, portrait',type:'caption'}],
+    currentTriggerWord:'edited',generationRecord:{id:'job',spec:{trigger:'original'}},
+    isBlankOrTriggerOnly:text=>!text || text==='edited',
+    JSZip:class {file(name,data){files[name]=data;}async generateAsync(){return 'zip';}}});
+  vm.runInContext(source('datasetArchive'),page);
+  await page.datasetArchive();
+  assert.equal(files['001.txt'],'edited, portrait');
+  const record=JSON.parse(files['generation.json']);
+  assert.equal(record.spec.trigger,'original');assert.equal(record.preparation.trigger,'edited');
+  assert.equal(record.preparation.formats['001.png'],'caption');
+  delete files['001.txt'];page.dataset[0].tags='edited';await page.datasetArchive();
+  assert.equal(files['001.txt'],undefined);
+});
+
+test('ControlPilot accepts handoff only from its active same-origin TagPilot frame',()=>{
+  const frame={contentWindow:{}}, handlers={}, opened=[];
+  let cleanup;
+  const screen={active:true,onCleanup:fn=>cleanup=fn};
+  const page=vm.createContext({window:{location:{origin:'https://pilot.test'},
+    addEventListener:(name,fn)=>handlers[name]=fn,removeEventListener:name=>delete handlers[name],
+    loadSection:name=>opened.push(name)},document:{querySelector:()=>frame}});
+  vm.runInContext(fs.readFileSync('apps/Portal/static/js/tagpilot.js','utf8'),page);
+  page.window.initTagpilot(screen);
+  const event={origin:'https://pilot.test',source:frame.contentWindow,data:{type:'tagpilot:train',dataset:'1_generated'}};
+  handlers.message({...event,origin:'https://other.test'});handlers.message({...event,source:{}});
+  assert.equal(opened.length,0);
+  handlers.message(event); assert.equal(page.window.pendingTrainDataset,'1_generated');
+  assert.deepEqual(opened,['trainpilot']);
+  screen.active=false; handlers.message(event);assert.equal(opened.length,1);
+  cleanup();assert.equal(handlers.message,undefined);
+});
+
+test('failed local batches report failure instead of claiming caption completion',async()=>{
+  const {page}=setup(1);const notices=[];page.showNotification=text=>notices.push(text);page.console={error(){}};
+  await page.runBatchProcessing({configPanel:node(),progressPanel:node(),progressBar:node(),progressText:node(),
+    closeModal(){},completeMessage:'Captioning complete',processItem:async()=>{throw new Error('Install local model');}});
+  assert.equal(notices[0],'1 image(s) failed: Install local model');
 });

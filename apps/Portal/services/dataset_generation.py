@@ -1,5 +1,6 @@
 """Small native ComfyUI graphs for the dataset builder (no partner nodes)."""
 from fastapi import HTTPException
+from .tagpilot_local import MODEL_NAME as CAPTION_MODEL
 
 RECIPE_VERSION = 'qwen-2511-v1'
 MODEL_FILES = {
@@ -8,7 +9,6 @@ MODEL_FILES = {
     'anima-vae': ('vae', 'qwen_image_vae.safetensors'),
 }
 CHECKPOINT = 'sd_xl_base_1.0.safetensors'
-CAPTION_MODEL = 'Qwen3-VL-2B-Instruct'
 MODEL_SIZES = {'dataset-qwen-edit': 20533762817, 'hunyuanimage-2.1-comfy-qwen-encoder-fp8': 9384670680,
                'anima-vae': 253806246, 'sdxl-base': 6938078334}
 

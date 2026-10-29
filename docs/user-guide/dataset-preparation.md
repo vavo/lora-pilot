@@ -1,6 +1,6 @@
 # Dataset Preparation
 
-_Last updated: 2026-10-29_
+_Last updated: 2026-10-30_
 
 A folder of photographs can become the starting point for a character you can place in new scenes or a visual style you can use across a project. Before training, you decide what the examples have in common and what should remain free to change. That decision shapes the dataset you build.
 
@@ -30,8 +30,10 @@ Open **Datasets → Create a dataset**. This first version is for a person or ch
 2. Choose **A description** to generate four SDXL reference candidates, or **My photo** to upload one clear reference. Uploads must be at least 256 pixels on both sides, below 40 megapixels and no larger than 32 MiB. Use photos you have permission to use.
 3. Select **Person / identity** to allow clothing changes and optionally hairstyle changes. **Character with a fixed look** keeps the original clothing and hairstyle. Backgrounds, lighting, framing and viewpoints vary in both modes.
 4. Approve a reference. Every Qwen variation uses that original image, not the previous generated image, to limit cumulative identity drift.
-5. Review the contact sheet and edit captions. Local checks flag uncertain or changed identity, visible defects, low detail, small images and near-duplicates. Clean candidates are provisionally kept; flagged candidates get up to three generation attempts per shot, then require your decision. **Keep image & caption** explicitly overrides a warning; **Exclude** prevents publication until that slot has an accepted replacement. The three-attempt limit includes manual regenerations.
-6. Confirm that you reviewed the images, then choose **Save dataset & open guided training**. Saving requires the exact requested number of accepted, captioned images. Training opens with the dataset selected; it does not start automatically.
+5. Review the contact sheet. Local checks flag uncertain or changed identity, visible defects, low detail, small images and near-duplicates. Clean candidates are provisionally kept; flagged candidates get up to three generation attempts per shot, then require your decision. **Keep image** explicitly overrides a warning; **Exclude** prevents publication until that slot has an accepted replacement. The three-attempt limit includes manual regenerations.
+6. Confirm that you reviewed the images, then choose **Continue to TagPilot**. This saves exactly the requested accepted image count and opens the existing caption/tag editor with the dataset and trigger word loaded. New images have no caption files yet; TagPilot starts their text with your trigger word.
+7. In TagPilot, choose **Caption all** or **Tag all**, review the text and edit it there. Generated datasets select **Local Qwen3-VL (CPU, no API key)** for this session; existing nonempty captions are skipped by default. You can explicitly choose another provider in TagPilot settings.
+8. Choose **Save & open guided training**. TagPilot requires text beyond the trigger for every image and waits for a successful workspace save before opening training with that dataset selected. Training does not start automatically.
 
 Checks are fallible suggestions, not identity verification or a promise of a perfect dataset. Inspect faces, hands and profiles at full size. One photo cannot establish unseen physical details, and synthetic variations may reinforce the generator's mistakes. Local captions describe visible content and include your trigger word; review them before training.
 
@@ -59,7 +61,7 @@ Only one dataset-creation job runs at a time. You can navigate elsewhere and ret
 
 After a Portal restart, **Resume** reuses any saved ComfyUI prompt ID or completed image. Keep ComfyUI's history available until the job finishes. A missing prompt remains pending for up to an hour per resume; an uncertain submission with no returned prompt ID is not automatically repeated. Inspect ComfyUI's queue/history before starting another job in that case.
 
-Completed datasets are published under `/workspace/datasets/1_<name>/` with PNG images, matching `.txt` captions and `generation.json` provenance. An existing dataset is never intentionally replaced; rename it in Datasets before saving another collection with that name. Creation-job files and ComfyUI outputs remain available separately and consume disk space. The builder does not delete them automatically.
+Accepted image sets are published under `/workspace/datasets/1_<name>/` with PNG images and `generation.json` provenance. New jobs have no `.txt` files until TagPilot saves annotations, so Datasets does not report them as already captioned. Older creation jobs retain existing caption drafts. The builder never replaces an existing dataset; rename it in Datasets before publishing another collection with that name. Reopening a saved creation job loads the workspace dataset in TagPilot, without copying stale job captions over your edits. TagPilot saves and exports preserve provenance and the edited trigger word. Creation-job files and ComfyUI outputs remain separately and consume disk space; the builder does not delete them automatically.
 
 ## Describe the image you can see
 
@@ -73,11 +75,11 @@ LoRA Pilot saves captions as plain `.txt` files beside their images. An image na
 
 ## Save a version you can trust
 
-Use TagPilot's workspace save action and wait for its completion message. That action writes the loaded collection back to the selected dataset, sending images and their text in sequence. It resets the destination at the start, so load the complete collection you intend to keep before saving over an existing dataset. An interrupted save may leave an incomplete working copy.
+Use TagPilot's workspace save action and wait for its completion message. Saving packages the complete collection into a ZIP and uses the existing archive-save API. The server validates and extracts the archive before replacing the destination. Load the complete collection you intend to keep before saving over an existing dataset. The archive is assembled in browser memory; very large collections need sufficient browser memory and remain subject to upload limits.
 
 After saving, reopen the dataset and check an image near the end of the collection as well as the first one. Confirm that the captions match and that the number of images makes sense. The completed save also creates a ZIP snapshot in `/workspace/datasets/ZIPs`.
 
-For terminal work, run `ls /workspace/datasets/1_ceramic_teapot` inside the pod or container to inspect the saved files. If you automate imports, the corresponding entry points are `POST /api/datasets/create` and `POST /api/datasets/upload`. TagPilot uses `POST /api/tagpilot/save-item` for its sequential save flow. The [API reference](../development/api-reference.md) provides the wider interface context.
+For terminal work, run `ls /workspace/datasets/1_ceramic_teapot` inside the pod or container to inspect the saved files. If you automate imports, the corresponding entry points are `POST /api/datasets/create` and `POST /api/datasets/upload`. TagPilot uses `POST /api/tagpilot/save`; the item-save API remains available for existing clients. The [API reference](../development/api-reference.md) provides the wider interface context.
 
 ## Carry the same collection into training
 

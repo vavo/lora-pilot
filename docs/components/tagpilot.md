@@ -1,6 +1,6 @@
 # Caption images with TagPilot
 
-_Last updated: 2026-09-23_
+_Last updated: 2026-10-30_
 
 A training image tells the model what something looks like. Its caption helps explain what it is looking at. TagPilot brings those two parts together, so you can move from a folder of photos to a dataset you understand and trust.
 
@@ -32,7 +32,11 @@ Choose **Preview image** for a larger view. Previous and Next buttons, or the le
 
 Choose **Skip existing** to process only images with no text or just the trigger word. **Append** adds generated text to existing annotations. **Overwrite** replaces them. During processing, the dialog shows progress and a Stop control. Stopping prevents subsequent images from starting; an in-flight provider request can still finish.
 
-TagPilot supports Gemini, Grok, OpenAI, Claude, and OpenAI-compatible vLLM endpoints for tags and captions. DeepDanbooru and WD1.4 provide additional tagging options. WD1.4 uses a Replicate API key, while DeepDanbooru does not require a key.
+TagPilot supports local Qwen3-VL, Gemini, Grok, OpenAI, Claude, and OpenAI-compatible vLLM endpoints for tags and captions. DeepDanbooru and WD1.4 provide additional tagging options. WD1.4 uses a Replicate API key, while DeepDanbooru does not require a key.
+
+For offline captions or tags, install `dataset-local-captioner` in **Models**, then select **Local Qwen3-VL (CPU, no API key)**. It uses the core environment, keeps images on this machine, and never falls back to a cloud provider. CPU inference may take minutes per image. The worker loads and releases the model per request and serializes access with the dataset builder's consistency checks to avoid overlapping model allocations. Missing weights and failed requests are reported; batch errors are not reported as successful completion.
+
+**Datasets → Create a dataset → Continue to TagPilot** opens the accepted images here, carrying their trigger word and generation record. The local provider is selected for this session without overwriting your saved preferences. Captioning, tagging, text editing, batch controls and provider settings all remain in TagPilot; the builder only generates and reviews images.
 
 ## Set defaults once, then concentrate on the dataset
 
@@ -50,9 +54,11 @@ Changing the name before saving creates or updates that destination. It does not
 
 Edits are not automatically saved. Save or export before refreshing, leaving Caption images, or closing the browser. Once saved, the dataset is available to Guided training and the other training tools sharing your workspace.
 
+Inside ControlPilot, **Save & open guided training** saves first and opens the same dataset in training only after success. Every image must have a caption or tags beyond the trigger word. Generated datasets retain `generation.json`, including the original generation record and preparation metadata for the edited trigger and annotation modes, in both the workspace and ZIP. Returning through the builder reopens these saved edits; it does not regenerate captions.
+
 ## Integration and troubleshooting
 
-ControlPilot serves TagPilot through its existing port, normally 7878. Loading uses `GET /api/tagpilot/load`; workspace saving streams files through `POST /api/tagpilot/save-item`. Gemini, Grok, and OpenAI generation uses `POST /api/tagpilot/generate`, which returns provider failures as structured API errors.
+ControlPilot serves TagPilot through its existing port, normally 7878. Loading uses `GET /api/tagpilot/load`; workspace saving and exporting share the same ZIP creation logic. Saving uses `POST /api/tagpilot/save`, which validates the complete archive before replacing the dataset. Large collections require browser memory for the archive and are subject to the configured archive limits. The item-save endpoint remains for existing API clients. Local generation uses `POST /api/tagpilot/generate`, which also supports server-configured Gemini, Grok and OpenAI providers and returns provider failures as structured API errors.
 
 If loading or saving fails, check the ControlPilot service log and available workspace storage. If generation fails, check the selected provider, its credentials and quota, and the model’s availability to that account. For vLLM, also check that the endpoint is reachable and the model identifier matches the running server.
 

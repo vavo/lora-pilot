@@ -151,21 +151,21 @@ Set the Hugging Face token with JSON `{"token":"..."}`; empty clears it. The leg
 
 ## Dataset builder API
 
-These routes use ControlPilot's existing `/api/*` authentication. Generation is asynchronous, with one process-local worker and persistent job state under `/workspace/config/dataset-builder`. Native ComfyUI handles image generation; the offline core-venv CPU worker handles captions and visual checks.
+These routes use ControlPilot's existing `/api/*` authentication. Generation is asynchronous, with one process-local worker and persistent job state under `/workspace/config/dataset-builder`. Native ComfyUI handles image generation. TagPilot's offline core-venv CPU worker supplies consistency checks in review mode; caption/tag generation and editing belong to TagPilot.
 
 | Method | Path | Input and result |
 |---|---|---|
 | `GET` | `/api/dataset-builder/preflight` | Query `source=prompt` or `photo`; returns `ready`, missing model IDs, problems and recipe version |
 | `GET` | `/api/dataset-builder/jobs` | Up to 100 most recently updated jobs |
 | `POST` | `/api/dataset-builder/jobs` | Multipart `spec` JSON string and optional `photo`; returns saved job, not completion |
-| `GET` | `/api/dataset-builder/jobs/{id}` | Job state, candidates, reviews, captions, attempt counts and `accepted_count` |
+| `GET` | `/api/dataset-builder/jobs/{id}` | Job state, candidates, reviews, attempt counts and `accepted_count`; older jobs may retain caption drafts |
 | `GET` | `/api/dataset-builder/jobs/{id}/images/{filename}` | PNG for a reference or current candidate belonging to the job |
 | `POST` | `/api/dataset-builder/jobs/{id}/reference` | `{"file":"reference-0.png"}`; explicit reference approval starts variations |
 | `POST` | `/api/dataset-builder/jobs/{id}/pause` | Stops after the current image; never sends a global ComfyUI interrupt |
 | `POST` | `/api/dataset-builder/jobs/{id}/resume` | Recovers pending work and retries unfinished generation/checks within attempt limits |
-| `PATCH` | `/api/dataset-builder/jobs/{id}/images/{slot}` | Zero-based slot; `{"accepted":true,"caption":"trigger, a portrait"}`; requires completed local review |
+| `PATCH` | `/api/dataset-builder/jobs/{id}/images/{slot}` | Zero-based slot; `{"accepted":true}`; requires completed local review; captions are edited in TagPilot |
 | `POST` | `/api/dataset-builder/jobs/{id}/images/{slot}/regenerate` | Regenerates only that shot; maximum three generated candidates per shot |
-| `POST` | `/api/dataset-builder/jobs/{id}/finish` | Requires exactly the requested accepted/captioned count; publishes dataset and returns its `dataset` name; does not launch training |
+| `POST` | `/api/dataset-builder/jobs/{id}/finish` | Requires exactly the requested accepted/reviewed count; publishes images and trigger metadata for TagPilot, retaining older caption drafts but not writing placeholder sidecars; returns `dataset`; does not launch training |
 
 `spec` fields: `name` (1–64 letters/numbers/underscores/hyphens, starts alphanumeric), `trigger` (1–40 letters/numbers/underscores, starts with a letter), `source` (`prompt` default or `photo`), `prompt` (up to 2,000 characters; required for prompt input), `count` (4–40, default 24), `goal` (`identity` default or `character`), `vary_clothes` (default true), and `vary_hair` (default false). Fixed-character mode ignores clothing/hair variation flags. Images are decoded, EXIF-normalized and saved as RGB PNG with a maximum 1,536-pixel long edge.
 
@@ -186,9 +186,9 @@ The UI requires human contact-sheet confirmation before calling `finish`; API cl
 | `GET` | `/api/tagpilot/load` | Query: required `name`, optional `offset` and `limit`; returns base64 files |
 | `POST` | `/api/tagpilot/save` | Query `name` + multipart `file` |
 | `POST` | `/api/tagpilot/save-item` | Required query `name` plus multipart fields below |
-| `GET` | `/api/tagpilot/providers` | Provider status for Gemini/Grok/OpenAI; does not expose secret values |
+| `GET` | `/api/tagpilot/providers` | Provider status for local Qwen3-VL/Gemini/Grok/OpenAI; local configured means weights are installed; does not expose secret values |
 | `POST` | `/api/tagpilot/providers/{provider}/key` | Saves or clears the provider key in `/workspace/config/secrets.env` |
-| `POST` | `/api/tagpilot/generate` | Multipart image input; generates tags or a caption through Gemini/Grok/OpenAI |
+| `POST` | `/api/tagpilot/generate` | Multipart image input; generates tags or a caption through local Qwen3-VL/Gemini/Grok/OpenAI |
 
 Dataset entries retain `name`, `display`, `images`, `size_bytes`, `has_tags`, and `path`, and add `captioned_images` and `preview_files`. Caption coverage counts images with a matching nonempty `.txt` or `.caption` file in the same directory. `preview_files` contains up to three relative image paths; URL-encode the dataset name and query value when requesting a preview.
 
@@ -196,7 +196,7 @@ The preview route preserves aspect ratio within 180 by 180 pixels and returns `i
 
 Dataset create normalizes names to `1_<name>` and returns `status`/`path`; an existing name returns 400. ZIP upload derives the dataset name from the archive filename and replaces an existing dataset of that name. TagPilot ZIP save also replaces the dataset contents. Default archive limits are 700 MiB uploaded, 10,000 members, 4 GiB extracted total, 2 GiB per member and a 100:1 compression ratio; configuration can override them. Invalid archive paths/symlinks are rejected. Dataset deletion removes its directory and attempts to remove matching ZIPs.
 
-TagPilot load returns `name`, `files`, `offset`, `limit`, `total`, and `returned`; each file has `name`, `mime` and `b64`. Offset defaults to 0. Limit defaults to `TAGPILOT_LOAD_DEFAULT_LIMIT` (0, meaning all files); positive limits cap at `TAGPILOT_LOAD_MAX_LIMIT` (1,000). Negative pagination values return 400.
+TagPilot load returns `name`, `files`, `generation`, `offset`, `limit`, `total`, and `returned`; each file has `name`, `mime` and `b64`. `generation` contains the dataset's `generation.json` record when available (bounded to 1 MiB), otherwise null. TagPilot includes it in save/export archives, adding `preparation.trigger` and `preparation.formats` without changing the original generation spec. ZIP save returns `status`, canonical `name`, `path` and `zip`. Offset defaults to 0. Limit defaults to `TAGPILOT_LOAD_DEFAULT_LIMIT` (0, meaning all files); positive limits cap at `TAGPILOT_LOAD_MAX_LIMIT` (1,000). Negative pagination values return 400.
 
 Provider-key writes take JSON `{"api_key":"..."}`; empty clears the key. Generation defaults to `mode=tags` and an empty prompt. It returns text, not a generated image.
 
@@ -212,7 +212,7 @@ Item save writes a matching `.txt` caption and returns `status`, `path`, `file` 
 `/api/tagpilot/generate` multipart fields:
 
 - `image`
-- `provider`: `gemini`, `grok`, or `openai`
+- `provider`: `local`, `gemini`, `grok`, or `openai`
 - `mode`: `tags` or `caption`
 - `prompt` (optional)
 
@@ -222,7 +222,7 @@ Successful responses return:
 {"text":"tag, caption, or provider output","provider":"openai","model":"gpt-5.4-mini"}
 ```
 
-Missing provider keys and invalid inputs return `400`. Upstream provider failures return JSON `424` responses so reverse proxies do not convert provider errors into generic gateway pages.
+Missing provider keys and invalid inputs return `400`. Provider failures return JSON `424` responses so reverse proxies do not convert provider errors into generic gateway pages. `local` requires `dataset-local-captioner`, not an API key. It runs offline on CPU in the core venv, sharing a process lock with builder checks. Each image request has a 30-minute timeout including any lock wait, accepts up to 32 MiB/40 megapixels, and releases its model process afterward. It never falls back to a cloud provider.
 
 ## Copilot API (through ControlPilot)
 

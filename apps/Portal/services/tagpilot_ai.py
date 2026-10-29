@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import base64
+import asyncio
 import mimetypes
 import os
 from dataclasses import dataclass
 from typing import Any, Mapping
+
+from . import tagpilot_local
 
 
 MAX_OUTPUT_TOKENS = 300
@@ -34,6 +37,7 @@ class ProviderSpec:
 
 
 PROVIDERS: dict[str, ProviderSpec] = {
+    "local": ProviderSpec(id="local", name="Local Qwen3-VL (CPU)", secret_name="", models=(tagpilot_local.MODEL_NAME,)),
     "openai": ProviderSpec(
         id="openai",
         name="OpenAI",
@@ -67,7 +71,10 @@ def provider_spec(provider: str) -> ProviderSpec:
 
 
 def secret_name_for_provider(provider: str) -> str:
-    return provider_spec(provider).secret_name
+    secret = provider_spec(provider).secret_name
+    if not secret:
+        raise ValueError('The local provider does not use an API key')
+    return secret
 
 
 def provider_status(environ: Mapping[str, str] | None = None) -> dict[str, list[dict[str, Any]]]:
@@ -78,7 +85,8 @@ def provider_status(environ: Mapping[str, str] | None = None) -> dict[str, list[
             {
                 "id": spec.id,
                 "name": spec.name,
-                "configured": bool((env.get(spec.secret_name) or "").strip()),
+                "configured": (tagpilot_local.model_ready(tagpilot_local.model_directory(env))
+                               if spec.id == 'local' else bool((env.get(spec.secret_name) or "").strip())),
                 "models": list(_candidate_models(spec, env)),
             }
         )
@@ -152,6 +160,11 @@ async def generate(
     resolved_prompt = prompt.strip() or _default_prompt(mode)
     env = environ if environ is not None else os.environ
 
+    if provider_id == 'local':
+        try:
+            return await asyncio.to_thread(tagpilot_local.generate, image_bytes, resolved_prompt, env)
+        except RuntimeError as exc:
+            raise ProviderRequestError(str(exc)) from exc
     if provider_id == "openai":
         return await _generate_openai(resolved_prompt, image_bytes, mime_type, env)
     if provider_id == "gemini":

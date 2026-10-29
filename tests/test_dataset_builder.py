@@ -11,7 +11,7 @@ from PIL import Image
 
 from apps.Portal.services.dataset_builder import DatasetBuilder, create_router, image_checks, safe_path
 from apps.Portal.services.dataset_generation import MODEL_FILES, MODEL_SIZES, reference_graph, variation_graph, shot_plan, validate_graph
-from apps.Portal.services.dataset_vision import parse_review
+from apps.Portal.services.tagpilot_local import parse_review
 
 
 def photo_bytes():
@@ -82,21 +82,23 @@ class DatasetBuilderTests(unittest.TestCase):
         self.assertIn('Free space', response.json()['detail'])
         self.assertFalse(self.builder.root.exists())
 
-    def test_finish_only_publishes_exact_accepted_captioned_count(self):
+    def test_finish_publishes_exact_accepted_count_for_tagpilot(self):
         job = self.prepare_review(self.create())
+        for item in job['items']:
+            item.pop('caption', None)
         job['items'][0]['accepted'] = False; self.builder.save(job)
         url = f'/api/dataset-builder/jobs/{job["id"]}'
         self.assertEqual(self.client.post(url + '/finish').status_code, 409)
         self.assertFalse((self.root / 'datasets/1_character').exists())
-        result = self.client.patch(url + '/images/0', json={'accepted': True, 'caption': 'ohwxperson, revised caption'})
+        result = self.client.patch(url + '/images/0', json={'accepted': True})
         self.assertEqual(result.status_code, 200, result.text)
         result = self.client.post(url + '/finish')
         self.assertEqual(result.status_code, 200, result.text)
         self.assertEqual(result.json()['dataset'], '1_character')
         target = self.root / 'datasets/1_character'
         self.assertEqual(len(list(target.glob('*.png'))), 4)
-        self.assertEqual(len(list(target.glob('*.txt'))), 4)
-        self.assertEqual((target / '001.txt').read_text(), 'ohwxperson, revised caption\n')
+        self.assertEqual(len(list(target.glob('*.txt'))), 0)
+        self.assertEqual(json.loads((target / 'generation.json').read_text())['spec']['trigger'], 'ohwxperson')
         self.assertTrue((target / 'generation.json').is_file())
         self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': False, 'caption': 'x'}).status_code, 409)
 
@@ -179,7 +181,9 @@ class DatasetBuilderTests(unittest.TestCase):
         for item in job['items']:
             item['review'] = None
             item['accepted'] = False
-        results = {item['file']: {'identity': 'uncertain', 'issues': ['face partly hidden'], 'caption': 'a profile portrait'}
+        for item in job['items']:
+            item.pop('caption', None)
+        results = {item['file']: {'identity': 'uncertain', 'issues': ['face partly hidden']}
                    for item in job['items']}
         def worker(*args, **kwargs):
             self.assertEqual(kwargs['env']['HF_HUB_OFFLINE'], '1')
@@ -188,7 +192,7 @@ class DatasetBuilderTests(unittest.TestCase):
         with patch('apps.Portal.services.dataset_builder.subprocess.Popen', side_effect=worker):
             self.builder.review(job)
         self.assertTrue(all(not item['accepted'] for item in job['items']))
-        self.assertTrue(all(item['caption'].startswith('ohwxperson, ') for item in job['items']))
+        self.assertTrue(all('caption' not in item for item in job['items']))
         self.assertIn('Identity uncertain', ' '.join(job['items'][0]['warnings']))
         self.assertIn('Very similar', ' '.join(job['items'][1]['warnings']))
         self.assertIsNone(self.builder.vision_process)
@@ -241,7 +245,8 @@ class DatasetBuilderTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             parse_review('{"identity":"perfect", "issues":[], "caption":"a person"}')
         with self.assertRaises(ValueError):
-            parse_review('{"identity":"consistent", "issues":[], "caption":""}')
+            parse_review('{"identity":"consistent", "issues":"not a list"}')
+        self.assertEqual(parse_review('{"identity":"consistent", "issues":[]}'), {'identity': 'consistent', 'issues': []})
         data = parse_review('```json\n{"identity":"uncertain", "issues":["face hidden"], "caption":"a rear view"}\n```')
         self.assertEqual(data['identity'], 'uncertain')
 

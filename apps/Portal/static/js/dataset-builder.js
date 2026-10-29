@@ -6,18 +6,16 @@ window.initDatasetBuilder = function (screen) {
   const api = '/api/dataset-builder';
   const running = job => ['generating_reference', 'generating', 'checking', 'pausing'].includes(job?.status);
   let selected = null, busy = false, ready = false;
-  const drafts = new Map();
   const error = message => { if (screen.active) el('error').textContent = message; };
   const imageUrl = (job, file) => `${api}/jobs/${job.id}/images/${encodeURIComponent(file)}`;
 
   function controls() {
     el('create').disabled = busy || !ready || running(selected);
     el('jobs').disabled = busy;
-    const complete = selected?.items.length === selected?.spec.count && selected?.items.every(x => x.accepted && x.caption && x.review);
-    const unsaved = selected?.items.some(item => drafts.has(`${selected.id}/${item.slot}`));
-    el('finish').disabled = busy || !complete || unsaved || !el('reviewed').checked;
+    const complete = selected?.items.length === selected?.spec.count && selected?.items.every(x => x.accepted && x.review);
+    el('finish').disabled = busy || !complete || !el('reviewed').checked;
     if (selected) el('accepted').textContent = `${selected.accepted_count} of ${selected.spec.count} images kept. ` +
-      (unsaved ? 'Save your edited captions before continuing.' : 'All requested images need a caption before saving.');
+      'Next: caption and tag these images in TagPilot.';
     el('pause').disabled = busy;
     el('resume').disabled = busy;
   }
@@ -38,7 +36,7 @@ window.initDatasetBuilder = function (screen) {
       const result = await request.json(`${api}/preflight?source=${el('source').value}`);
       if (!request.active) return;
       ready = result.ready;
-      el('preflight').textContent = ready ? 'Models and ComfyUI are ready. Captioning and consistency checks run locally.' : result.problems.join(' ');
+      el('preflight').textContent = ready ? 'Models and ComfyUI are ready. Consistency checks run locally; captions and tags are handled in TagPilot.' : result.problems.join(' ');
     } catch (exc) { if (request.active) el('preflight').textContent = exc.message; }
     if (request.active) controls();
   }
@@ -96,29 +94,22 @@ window.initDatasetBuilder = function (screen) {
       const link = document.createElement('a'); link.href = imageUrl(job, item.file); link.target = '_blank'; link.rel = 'noopener';
       const img = document.createElement('img'); img.src = link.href; img.alt = item.shot; img.loading = 'lazy'; link.append(img);
       const state = document.createElement('p'); state.className = 'journey-note';
-      state.textContent = (item.accepted ? 'Kept' : item.review ? 'Needs your review' : 'Waiting for local captioning and checks') +
+      state.textContent = (item.accepted ? 'Kept' : item.review ? 'Needs your review' : 'Waiting for local checks') +
         ` · ${item.attempts}/3 attempts used`;
       const warnings = document.createElement('ul');
       for (const warning of item.warnings || []) { const li = document.createElement('li'); li.textContent = warning; warnings.append(li); }
-      const label = document.createElement('label'); label.textContent = 'Caption';
-      const caption = document.createElement('textarea'); caption.className = 'input'; caption.rows = 4;
-      const draftKey = `${job.id}/${item.slot}`;
-      caption.maxLength = 2000; caption.value = drafts.get(draftKey) ?? item.caption ?? ''; caption.disabled = active || saved || !item.review;
-      caption.addEventListener('input', () => { drafts.set(draftKey, caption.value); el('reviewed').checked = false; controls(); });
-      label.append(caption);
       const actions = document.createElement('div'); actions.className = 'row wrap gap-8';
       const update = async accepted => {
         selected = await screen.json(`${api}/jobs/${job.id}/images/${item.slot}`, {
           method: 'PATCH', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({accepted, caption: caption.value.trim()})
+          body: JSON.stringify({accepted})
         });
-        drafts.delete(draftKey);
         el('reviewed').checked = false;
       };
-      actions.append(button(item.accepted ? 'Save caption' : 'Keep image & caption', () => update(true), active || saved || !item.review),
+      actions.append(button('Keep image', () => update(true), active || saved || !item.review || item.accepted),
                      button('Exclude', () => update(false), active || saved || !item.review || !item.accepted),
-                     button('Regenerate', async () => { selected = await post(`images/${item.slot}/regenerate`); drafts.delete(draftKey); el('reviewed').checked = false; }, active || saved || !item.review || item.attempts >= 3));
-      card.append(heading, link, state, warnings, label, actions); el('images').append(card);
+                     button('Regenerate', async () => { selected = await post(`images/${item.slot}/regenerate`); el('reviewed').checked = false; }, active || saved || !item.review || item.attempts >= 3));
+      card.append(heading, link, state, warnings, actions); el('images').append(card);
     }
     controls();
   }
@@ -165,8 +156,8 @@ window.initDatasetBuilder = function (screen) {
   el('pause').onclick = () => action(async () => { const result = await post('pause'); selected.message = result.message; });
   el('resume').onclick = () => action(async () => { selected = await post('resume'); el('reviewed').checked = false; });
   el('reviewed').onchange = controls;
-  el('finish').onclick = () => action(async () => { selected = await post('finish'); openTrainingDataset(selected.dataset); });
-  el('train').onclick = () => openTrainingDataset(selected.dataset);
+  el('finish').onclick = () => action(async () => { selected = await post('finish'); openTagpilotDataset(selected.dataset); });
+  el('train').onclick = () => openTagpilotDataset(selected.dataset);
   screen.poll(async () => {
     if (!selected || !running(selected) || busy || root.hidden) return;
     const jobId = selected.id;

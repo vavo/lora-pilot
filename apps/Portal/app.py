@@ -1759,9 +1759,17 @@ def tagpilot_load(name: str, offset: int = 0, limit: int = _TAGPILOT_LOAD_DEFAUL
         files.append({"name": rel, "mime": mime, "b64": b64})
         selected += 1
         total += 1
+    generation = None
+    metadata = _safe_dataset_path(target / 'generation.json')
+    if metadata.is_file() and not metadata.is_symlink() and metadata.stat().st_size <= 1024 * 1024:
+        try:
+            generation = json.loads(metadata.read_text())
+        except (ValueError, OSError):
+            pass
     return {
         "name": target.name,
         "files": files,
+        "generation": generation,
         "offset": offset,
         "limit": limit,
         "total": total,
@@ -1862,7 +1870,7 @@ def tagpilot_save(name: str, file: UploadFile = File(...)):
         if staging_dir is not None:
             shutil.rmtree(staging_dir, ignore_errors=True)
     _invalidate_dataset_list_cache()
-    return {"status": "saved", "path": str(target), "zip": str(dest)}
+    return {"status": "saved", "name": target.name, "path": str(target), "zip": str(dest)}
 
 
 @app.post("/api/tagpilot/save-item")

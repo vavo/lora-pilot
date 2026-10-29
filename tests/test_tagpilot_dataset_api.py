@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 import tempfile
 import unittest
 import zipfile
@@ -15,6 +16,28 @@ except ModuleNotFoundError as exc:
 
 
 class TagPilotDatasetApiTests(unittest.TestCase):
+    def test_archive_save_and_reload_preserve_generated_dataset(self):
+        dataset_dir = portal_app._DATASET_ROOT / '1_generated'
+        dataset_dir.mkdir(parents=True)
+        (dataset_dir / 'old.txt').write_text('old collection')
+        provenance = {'id': 'generation-job', 'spec': {'trigger': 'original'},
+                      'preparation': {'trigger': 'edited', 'formats': {'001.png': 'caption'}}}
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, 'w') as output:
+            output.writestr('001.png', b'image')
+            output.writestr('001.txt', 'edited, a reviewed portrait')
+            output.writestr('generation.json', json.dumps(provenance))
+        archive.seek(0)
+        saved = portal_app.tagpilot_save('1_generated', portal_app.UploadFile(file=archive, filename='dataset.zip'))
+        self.assertEqual(saved['name'], '1_generated')
+        loaded = portal_app.tagpilot_load(saved['name'])
+        self.assertEqual(loaded['generation'], provenance)
+        self.assertEqual({item['name'] for item in loaded['files']}, {'001.png', '001.txt'})
+        self.assertEqual((dataset_dir / '001.txt').read_text(), 'edited, a reviewed portrait')
+        self.assertFalse((portal_app._DATASET_ROOT / '1_1_generated').exists())
+        with zipfile.ZipFile(saved['zip']) as snapshot:
+            self.assertEqual(json.loads(snapshot.read('generation.json')), provenance)
+
     def setUp(self):
         if portal_app is None:
             self.skipTest("FastAPI is not installed in this test environment")

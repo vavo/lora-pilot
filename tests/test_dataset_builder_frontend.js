@@ -26,7 +26,7 @@ function fixture(ready = true) {
   const page = vm.createContext({window: {}, document: {getElementById: el, createElement: tag => new Element(tag)},
     Option: function (textContent, value) { return Object.assign(new Element('option'), {textContent, value}); },
     FormData, AbortController, DOMException, setTimeout: () => 0, clearTimeout() {},
-    openTrainingDataset: name => handoffs.push(name)});
+    openTagpilotDataset: name => handoffs.push(name)});
   page.window.fetchJson = async (url, options = {}) => {
     calls.push([url, options]);
     if (url.includes('preflight')) return {ready, problems: ready ? [] : ['Install required models']};
@@ -58,21 +58,18 @@ test('dataset name patterns work with modern browser Unicode-set validation', ()
   assert.equal(regex.test('../escape'), false);
 });
 
-test('builder preserves other caption drafts and gates the exact-count training handoff', async () => {
+test('builder has no caption editor and hands the exact reviewed count to TagPilot', async () => {
   const {el, handoffs} = fixture(); await settle();
-  const second = card(el, 1); second.caption.value = 'trigger, edited second image'; second.caption.handlers.input();
-  await card(el, 0).button('Keep image & caption').onclick();
-  assert.equal(card(el, 1).caption.value, 'trigger, edited second image');
+  assert.equal(card(el, 0).caption, undefined);
   el('reviewed').checked = true; el('reviewed').onchange();
   assert.equal(el('finish').disabled, true);
-  assert.match(el('accepted').textContent, /Save your edited captions/);
-  await card(el, 1).button('Save caption').onclick();
+  await card(el, 0).button('Keep image').onclick();
   assert.equal(el('reviewed').checked, false);
   el('reviewed').checked = true; el('reviewed').onchange();
   assert.equal(el('finish').disabled, false);
   await el('finish').onclick();
   assert.deepEqual(handoffs, ['1_sample']);
-  assert.equal(card(el, 0).caption.disabled, true);
+  assert.equal(card(el, 0).button('Keep image').disabled, true);
 });
 
 test('missing dependencies disable creation and photo/fixed-look inputs stay consistent', async () => {

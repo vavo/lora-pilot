@@ -22,6 +22,7 @@ from .comfy_access import internal_headers
 from .dataset_generation import (CAPTION_MODEL, CHECKPOINT, MODEL_FILES, MODEL_SIZES, RECIPE_VERSION,
                                  reference_graph, shot_plan, validate_graph, variation_graph)
 from .service_registry import local_url
+from .tagpilot_local import model_ready
 from .training_runs import now, write_json
 
 MAX_IMAGE = 32 * 1024 ** 2
@@ -45,7 +46,6 @@ class ReferenceChoice(BaseModel):
 
 class ImageChoice(BaseModel):
     accepted: bool
-    caption: str = Field(min_length=1, max_length=2000)
 
 
 def safe_path(root, *parts):
@@ -160,11 +160,7 @@ class DatasetBuilder:
             if not path.is_file() or path.stat().st_size != MODEL_SIZES[name]:
                 missing.append(name)
         caption = self.models / 'text_encoders' / CAPTION_MODEL
-        required = ['config.json', 'preprocessor_config.json', 'video_preprocessor_config.json',
-                    'tokenizer_config.json', 'tokenizer.json', 'chat_template.json', 'model.safetensors']
-        shards = {'model.safetensors': 4255140312}
-        if (not all((caption / name).is_file() for name in required)
-                or any(not (caption / name).is_file() or (caption / name).stat().st_size != size for name, size in shards.items())):
+        if not model_ready(caption):
             missing.append('dataset-local-captioner')
         checkpoint = self.models / 'checkpoints' / CHECKPOINT
         if source == 'prompt' and (not checkpoint.is_file() or checkpoint.stat().st_size != MODEL_SIZES['sdxl-base']):
@@ -180,7 +176,7 @@ class DatasetBuilder:
         except HTTPException as exc:
             problems.append(str(exc.detail))
         return dict(ready=not problems, missing=missing, problems=problems, recipe=RECIPE_VERSION,
-                    captioning='Local Qwen3-VL on CPU; no external captioning API.')
+                    captioning='Caption and tag the accepted images in TagPilot using local Qwen3-VL on CPU.')
 
     def require_ready(self, source):
         result = self.preflight(source)
@@ -300,7 +296,7 @@ class DatasetBuilder:
         items = [x for x in job['items'] if x.get('file') and not x.get('review')]
         if not items:
             return
-        job['status'], job['message'] = 'checking', 'Writing captions and checking identity locally on CPU. This can take several minutes.'
+        job['status'], job['message'] = 'checking', 'Checking identity locally on CPU. This can take several minutes.'
         self.save(job)
         write_json(safe_path(directory, 'vision-request.json'), dict(reference=job['reference'], goal=job['spec']['goal'], items=items))
         result_path = safe_path(directory, 'vision-result.json')
@@ -309,7 +305,7 @@ class DatasetBuilder:
         python = str(core) if core.exists() else sys.executable
         log_path = safe_path(directory, 'vision.log')
         with os.fdopen(os.open(log_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600), 'w') as log:
-            proc = subprocess.Popen([python, str(Path(__file__).with_name('dataset_vision.py')), str(directory),
+            proc = subprocess.Popen([python, str(Path(__file__).with_name('tagpilot_local.py')), str(directory),
                                      str(self.models / 'text_encoders' / CAPTION_MODEL)], stdout=log, stderr=log,
                                     env={**os.environ, 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1'})
             self.vision_process = proc
@@ -329,7 +325,7 @@ class DatasetBuilder:
         for item in items:
             result = results.get(item['file'])
             if not result or 'error' in result:
-                item['warnings'] = ['Local checks incomplete. Resume to retry captioning.']
+                item['warnings'] = ['Local checks incomplete. Resume to retry consistency checks.']
                 continue
             fingerprint, warnings = image_checks(safe_path(directory, item['file']))
             for other in job['items']:
@@ -340,11 +336,10 @@ class DatasetBuilder:
             if result['identity'] != 'consistent':
                 warnings.append('Identity ' + result['identity'] + ': compare with the reference before keeping.')
             warnings.extend(result['issues'])
-            item.update(review=result, warnings=warnings, caption=(job['spec']['trigger'] + ', ' + result['caption'])[:2000],
-                        accepted=not warnings)
+            item.update(review=result, warnings=warnings, accepted=not warnings)
         self.save(job)
         if not self.stop.is_set() and any(not x.get('review') for x in items):
-            raise RuntimeError('Local captioning/checks did not finish. Check the job vision.log, then Resume to retry. No external API was used.')
+            raise RuntimeError('Local checks did not finish. Check the job vision.log, then Resume to retry. No external API was used.')
 
     def work(self, job):
         try:
@@ -409,8 +404,8 @@ class DatasetBuilder:
         self.idle()
         if job['status'] == 'saved':
             return self.public(job)
-        if len(job['items']) != job['spec']['count'] or any(not x.get('accepted') or not x.get('caption', '').strip() or not x.get('review') for x in job['items']):
-            raise HTTPException(409, 'Keep and caption every requested image before saving. Flagged images need your review.')
+        if len(job['items']) != job['spec']['count'] or any(not x.get('accepted') or not x.get('review') for x in job['items']):
+            raise HTTPException(409, 'Keep every requested image before opening TagPilot. Flagged images need your review.')
         directory = self.directory(job['id'])
         datasets = safe_path(self.workspace, 'datasets')
         datasets.mkdir(parents=True, exist_ok=True)
@@ -428,9 +423,10 @@ class DatasetBuilder:
                 basename = f'{item["slot"] + 1:03d}'
                 photo = safe_path(target, basename + '.png')
                 caption = safe_path(target, basename + '.txt')
-                matches = (matches and photo.is_file() and caption.is_file()
+                draft = (item.get('caption') or '').strip()
+                matches = (matches and photo.is_file()
                            and photo.read_bytes() == safe_path(directory, item['file']).read_bytes()
-                           and caption.read_text() == item['caption'].strip() + '\n')
+                           and (caption.is_file() and caption.read_text() == draft + '\n' if draft else not caption.exists()))
             if not matches:
                 raise HTTPException(409, 'That dataset name already exists. Rename it in Datasets before saving this version.')
             return self.mark_saved(job, name)
@@ -440,7 +436,12 @@ class DatasetBuilder:
             source = safe_path(directory, item['file'])
             basename = f'{item["slot"] + 1:03d}'
             shutil.copyfile(source, safe_path(staging, basename + '.png'))
-            safe_path(staging, basename + '.txt').write_text(item['caption'].strip() + '\n')
+            # Preserve drafts from older jobs; new jobs are captioned only in TagPilot.
+            caption = safe_path(staging, basename + '.txt')
+            if (item.get('caption') or '').strip():
+                caption.write_text(item['caption'].strip() + '\n')
+            else:
+                caption.unlink(missing_ok=True)
         write_json(safe_path(staging, 'generation.json'), job)
         # Atomic publication within /workspace: incomplete jobs never appear as training datasets.
         if target.exists():
@@ -449,7 +450,7 @@ class DatasetBuilder:
         return self.mark_saved(job, name)
 
     def mark_saved(self, job, name):
-        job.update(status='saved', dataset=name, message='Dataset saved. Ready for guided training.')
+        job.update(status='saved', dataset=name, message='Images saved. Open TagPilot to caption, tag and prepare for training.')
         self.save(job)
         self.invalidate()
         return self.public(job)
@@ -532,8 +533,8 @@ def create_router(workspace, models, invalidate=lambda: None):
             job = builder.read(job_id)
             builder.idle(job)
             if slot < 0 or slot >= len(job['items']) or not job['items'][slot].get('review'):
-                raise HTTPException(409, 'Wait for local checks and captions before reviewing this image')
-            job['items'][slot].update(accepted=choice.accepted, caption=choice.caption, user_reviewed=True)
+                raise HTTPException(409, 'Wait for local checks before reviewing this image')
+            job['items'][slot].update(accepted=choice.accepted, user_reviewed=True)
             builder.save(job)
             return builder.public(job)
 

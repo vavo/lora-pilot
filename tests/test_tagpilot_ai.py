@@ -18,6 +18,10 @@ class TagPilotAITests(unittest.TestCase):
             {
                 "providers": [
                     {
+                        "id": "local", "name": "Local Qwen3-VL (CPU)", "configured": False,
+                        "models": ["Qwen3-VL-2B-Instruct"],
+                    },
+                    {
                         "id": "openai",
                         "name": "OpenAI",
                         "configured": True,
