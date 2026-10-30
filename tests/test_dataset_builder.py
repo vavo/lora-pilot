@@ -21,6 +21,24 @@ def photo_bytes():
 
 
 class DatasetBuilderTests(unittest.TestCase):
+    def test_plan_matches_the_existing_recipe_without_creating_a_job(self):
+        for count in (4, 24, 40):
+            response = self.client.get('/api/dataset-builder/plan', params={'count': count})
+            self.assertEqual(response.status_code, 200)
+            plan = response.json()
+            self.assertEqual(sum(plan['framing'].values()), count)
+            self.assertEqual(sum(plan['angles'].values()), count)
+            for shot in shot_plan(count, 'identity', True, False):
+                frame, angle = shot['shot'].split(', ', 1)
+                self.assertIn(frame, plan['framing'])
+                self.assertIn(angle, plan['angles'])
+        fixed = self.client.get('/api/dataset-builder/plan?goal=character&vary_clothes=true&vary_hair=true').json()
+        self.assertFalse(fixed['vary_clothes'])
+        self.assertFalse(fixed['vary_hair'])
+        self.assertFalse((self.root / 'config' / 'dataset-builder').exists())
+        for query in ('count=3', 'count=41', 'goal=unsupported'):
+            self.assertEqual(self.client.get('/api/dataset-builder/plan?' + query).status_code, 422)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

@@ -247,7 +247,7 @@ test('failed checkpoint stops before the next provider request and overlapping s
 
 test('draft snapshot includes edits and provenance, never credentials or settings',async()=>{
   const {page}=setup(1);let snapshot;
-  Object.assign(page,{draftWrites:0,draftError:'',datasetNameInput:{value:'1_sample'},currentTriggerWord:'edited',
+  Object.assign(page,{draftWrites:0,draftError:'',draftBypass:false,datasetNameInput:{value:'1_sample'},currentTriggerWord:'edited',
     generationRecord:{spec:{trigger:'original'}},draftStore:{save:async value=>{snapshot=structuredClone(value);}},
     apiKeys:{openai:'must-not-be-saved'}});
   vm.runInContext(source('saveBrowserDraft'),page);
@@ -255,4 +255,7 @@ test('draft snapshot includes edits and provenance, never credentials or setting
   assert.equal(snapshot.trigger,'edited');assert.equal(snapshot.items[0].tags,'tag 1');
   assert.equal(snapshot.generation.spec.trigger,'original');
   assert.equal(JSON.stringify(snapshot).includes('must-not-be-saved'),false);
+  page.draftBypass=true;snapshot=null;
+  assert.equal(await page.saveBrowserDraft(),true);
+  assert.equal(snapshot,null);
 });

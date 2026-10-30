@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" integrity="sha384-AMJcAgMUmNt1Zo4ranquGLeT5m7yOrVbtNsNk0oZohvxqKk6RRzXHqlEaS9gFXR7" crossorigin="anonymous" referrerpolicy="no-referrer">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js" integrity="sha384-jzwsV9ieM/KUDMeo+d8dc+jm0GEl7ywPNwg10alB5BodVuC/Kx9RpEnyrl2Om9zH" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/css/preparation-steps.css">
     <script>
         (function initTagPilotTheme() {
             document.documentElement.classList.toggle("embedded", window.parent !== window);
@@ -93,11 +94,13 @@
                 <button type="button" id="save-training-button" hidden>Save &amp; open guided training</button>
             </div>
         </header>
+        <ol class="preparation-steps" aria-label="Dataset to training"><li>Reference</li><li>Review images</li><li aria-current="step">Caption in TagPilot</li><li>Train</li></ol>
         <section id="draft-recovery" class="draft-recovery" aria-label="Browser draft">
             <p id="draft-status" role="status">Checking for a browser draft…</p>
             <button id="draft-restore" type="button" hidden>Restore draft</button>
             <button id="draft-discard" type="button" hidden>Discard draft</button>
             <button id="draft-resume" type="button" hidden>Resume unfinished images</button>
+            <button id="draft-without" type="button" hidden>Continue without recovery</button>
             <p class="hint">Drafts stay in this browser, not in your training folder. Save to workspace when ready. Reloading pauses captioning; API keys are never saved in drafts.</p>
         </section>
         <div class="dataset-details">
@@ -836,7 +839,7 @@
         let notificationTimer = null;
         let currentTriggerWord = "";
         let isBatchProcessing = false;
-        let batchDraft = null, savedDraft = null, draftReady = false, draftWrites = 0, draftError = '', batchBusy = false;
+        let batchDraft = null, savedDraft = null, draftReady = false, draftWrites = 0, draftError = '', batchBusy = false, draftBypass = false;
         const draftStore = createTagPilotDraftStore();
         let cropper = null;
         let currentCropItemId = null;
@@ -1043,8 +1046,11 @@ Expected outcome is a human-readable continuous text consisting of several sente
             if (batchDraft?.kind === 'tags') { openTagSettings(); void startBatchTagging(batchDraft); }
             else if (batchDraft) { openCaptionSettings(); void startBatchCaptioning(batchDraft); }
         };
+        document.getElementById('draft-without').onclick = () => {
+            draftBypass = true; draftReady = true; showDraftStatus();
+        };
         window.addEventListener('beforeunload', event => {
-            if (dataset.length && (draftWrites || draftError)) { event.preventDefault(); event.returnValue = ''; }
+            if (dataset.length && (draftWrites || draftError || draftBypass)) { event.preventDefault(); event.returnValue = ''; }
         });
         tagViewerHeader.addEventListener('click', () => {
             tagViewerContent.classList.toggle('expanded');
@@ -2153,7 +2159,8 @@ Limit the caption to ${maxWords} words or fewer.`;
             document.getElementById('draft-restore').hidden = !savedDraft;
             document.getElementById('draft-discard').hidden = !savedDraft;
             document.getElementById('draft-resume').hidden = !batchDraft || batchBusy || batchDraft.pending.length === 0;
-            document.getElementById('draft-status').textContent = draftError || (savedDraft
+            document.getElementById('draft-without').hidden = !draftError || draftBypass || batchBusy;
+            document.getElementById('draft-status').textContent = draftBypass ? 'Recovery is off. Keep this page open and save or export before leaving.' : draftError || (savedDraft
                 ? `A draft of ${savedDraft.name || 'Untitled dataset'} is available. Restore it to recover edits and unfinished captions.`
                 : draftWrites ? 'Saving browser draft…' : batchDraft?.pending.length
                     ? `${isBatchProcessing ? 'Captioning' : 'Paused'} · ${batchDraft.pending.length} images unfinished. ${batchDraft.error || ''}`
@@ -2161,6 +2168,7 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         async function saveBrowserDraft() {
+            if (draftBypass) return true;
             if (!draftReady) return false;
             draftWrites++; showDraftStatus();
             try {
@@ -2231,7 +2239,7 @@ Limit the caption to ${maxWords} words or fewer.`;
                 } catch (e) {
                     console.error(e);
                     errors.push(e.message || String(e));
-                    batch.error = errors[errors.length - 1];
+                    batch.error = 'The last image failed. Check the selected provider before resuming.';
                     isBatchProcessing = false;
                 }
                 if (!await saveBrowserDraft()) isBatchProcessing = false;

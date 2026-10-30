@@ -6,6 +6,7 @@
 </section>
 <section id="dataset-builder" class="journey-surface db-builder" hidden aria-labelledby="db-title">
   <h3 id="db-title">Build your training images</h3>
+  <ol class="preparation-steps" aria-label="Dataset to training"><li data-prepare-step="1" aria-current="step">Reference</li><li data-prepare-step="2">Review images</li><li>Caption in TagPilot</li><li>Train</li></ol>
   <p class="journey-note">First approve a reference, then review the variations. Identity checks are suggestions; look closely at faces before keeping an image.</p>
   <form id="db-form">
     <div class="db-fields">
@@ -18,7 +19,9 @@
     <label id="db-prompt-label">Describe your character<textarea id="db-prompt" class="input" rows="3" maxlength="2000" placeholder="An adult woman with short curly brown hair, freckles and green eyes, natural portrait photography" required></textarea></label>
     <label id="db-photo-label" hidden>Reference photo<input id="db-photo" class="input" type="file" accept="image/png,image/jpeg,image/webp"><small>One clear photo, 256 px or larger, up to 32 MB. Unseen details may be invented.</small></label>
     <div class="row wrap gap-12 db-options"><label><input id="db-clothes" type="checkbox" checked> Vary clothes</label><label><input id="db-hair" type="checkbox"> Vary hairstyle</label></div>
-    <p class="journey-note">Prompt input creates four SDXL references. Variations use Qwen Image Edit, with up to three attempts per image. Local captions and visual checks run on CPU and may take a long time for larger sets. Images stay on your pod; GPU time is still billed by your host. Use photos you have permission to use.</p>
+    <section class="db-plan" aria-labelledby="db-plan-title"><h4 id="db-plan-title">Your planned image mix</h4><p id="db-plan" role="status">Loading the shot plan…</p><p class="journey-note">This is what we will ask for, not a check of the finished images. Review the results before training.</p></section>
+    <p class="journey-note">Use photos you have permission to use. Images stay on your pod; GPU time is still billed by your host.</p>
+    <details class="db-details"><summary>How generation works</summary><p class="journey-note">A description creates four SDXL references to choose from. Qwen Image Edit makes the variations, with up to three attempts per image. Local consistency checks and TagPilot captions run on CPU and can take several minutes per image.</p></details>
     <p id="db-preflight" role="status" class="journey-note">Checking models and ComfyUI…</p>
     <div class="row wrap gap-12"><button id="db-create" type="submit" class="btn primary" disabled>Create reference</button><button id="db-recheck" type="button" class="journey-link">Check again</button><a href="#models" id="db-models" class="journey-link">Open Models</a></div>
   </form>
@@ -32,6 +35,13 @@
     <div id="db-finish-wrap" hidden><label><input id="db-reviewed" type="checkbox"> I have reviewed the kept images.</label><p id="db-accepted" class="journey-note"></p><button id="db-finish" type="button" class="btn primary" disabled>Continue to TagPilot</button></div>
     <button id="db-train" type="button" class="btn primary" hidden>Open dataset in TagPilot</button>
   </section>
+  <dialog id="db-compare" class="db-compare" aria-labelledby="db-compare-title">
+    <div class="db-compare-heading"><h3 id="db-compare-title">Compare with your reference</h3><button id="db-compare-close" type="button" class="btn ghost">Close</button></div>
+    <p class="journey-note">Check the face and defining features. Clothes and backgrounds may differ if you requested variations.</p>
+    <div class="db-compare-images"><figure><img id="db-compare-reference" alt="Approved reference"><figcaption>Approved reference</figcaption></figure><figure><img id="db-compare-image" alt="Selected variation"><figcaption id="db-compare-shot"></figcaption></figure></div>
+    <p id="db-compare-state" role="status"></p><ul id="db-compare-warnings"></ul>
+    <div id="db-compare-actions" class="row wrap gap-8"></div>
+  </dialog>
 </section>
 <section class="ds-upload-intro">
   <div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div>

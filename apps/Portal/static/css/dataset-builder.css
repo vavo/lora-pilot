@@ -14,7 +14,24 @@
 .db-image { min-width:0; border:1px solid var(--border); border-radius:10px; padding:16px; }
 .db-image h4 { margin:0 0 12px; font-size:15px; }
 .db-image ul { padding-left:20px; font-size:14px; line-height:1.5; }
-.db-image textarea { resize:vertical; }
+.db-plan { border:1px solid var(--border); padding:16px; border-radius:10px; }
+.db-plan h4 { margin:0; }
+.db-plan p { line-height:1.6; }
+.db-details { margin:16px 0; }
+.db-compare { width:min(960px, calc(100% - 32px)); max-height:90dvh; box-sizing:border-box; overflow:auto; padding:24px; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:12px; }
+.db-compare::backdrop { background:rgb(0 0 0 / 65%); }
+.db-compare-images { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.db-compare figure { margin:0; min-width:0; }
+.db-compare img { width:100%; height:min(48dvh, 460px); object-fit:contain; }
+.db-compare figcaption { margin-top:8px; line-height:1.5; }
+.db-compare-heading { display:flex; align-items:start; justify-content:space-between; gap:16px; }
+.db-compare-heading h3 { margin-top:0; }
+@media (max-width:600px) {
+  .db-compare { padding:16px; }
+  .db-compare-images { gap:10px; }
+  .db-compare img { height:28dvh; }
+  .db-compare figcaption { font-size:13px; }
+}
 .db-image .row { margin-top:14px; }
 .db-image .btn { font-size:13px; padding:8px 10px; }
 #db-error { color:var(--danger,#b42318); overflow-wrap:anywhere; }

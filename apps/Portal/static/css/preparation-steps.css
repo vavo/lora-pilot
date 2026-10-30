@@ -1,0 +1,5 @@
+.preparation-steps { display:flex; flex-wrap:wrap; gap:8px 18px; list-style:none; padding:0; margin:16px 0 24px; counter-reset:prepare-step; font-size:14px; line-height:1.5; }
+.preparation-steps li { counter-increment:prepare-step; padding:6px 0; border-bottom:2px solid transparent; }
+.preparation-steps li::before { content:counter(prepare-step) ". "; }
+.preparation-steps [aria-current="step"] { border-bottom-color:currentColor; font-weight:700; }
+.preparation-steps[hidden] { display:none; }

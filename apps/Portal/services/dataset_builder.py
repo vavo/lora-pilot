@@ -9,11 +9,12 @@ import sys
 import threading
 import time
 import uuid
+from collections import Counter
 from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
 from PIL import Image, ImageFilter, ImageOps, ImageStat
 from pydantic import BaseModel, Field, ValidationError
@@ -464,6 +465,16 @@ def create_router(workspace, models, invalidate=lambda: None):
     @router.get('/preflight')
     def preflight(source: Literal['prompt', 'photo'] = 'prompt'):
         return builder.preflight(source)
+
+    @router.get('/plan')
+    def plan(count: int = Query(24, ge=4, le=40), goal: Literal['identity', 'character'] = 'identity',
+             vary_clothes: bool = True, vary_hair: bool = False):
+        shots = shot_plan(count, goal, vary_clothes, vary_hair)
+        return {'count': count,
+                'framing': dict(Counter(item['shot'].split(', ', 1)[0] for item in shots)),
+                'angles': dict(Counter(item['shot'].split(', ', 1)[1] for item in shots)),
+                'vary_clothes': goal == 'identity' and vary_clothes,
+                'vary_hair': goal == 'identity' and vary_hair}
 
     @router.get('/jobs')
     def jobs():

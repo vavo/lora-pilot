@@ -156,6 +156,7 @@ These routes use ControlPilot's existing `/api/*` authentication. Generation is 
 | Method | Path | Input and result |
 |---|---|---|
 | `GET` | `/api/dataset-builder/preflight` | Query `source=prompt` or `photo`; returns `ready`, missing model IDs, problems and recipe version |
+| `GET` | `/api/dataset-builder/plan` | Query `count` (4–40, default 24), `goal`, `vary_clothes`, `vary_hair`; returns framing/viewpoint counts and effective variation choices from the existing recipe, without creating a job or running inference; planned, not verified coverage |
 | `GET` | `/api/dataset-builder/jobs` | Up to 100 most recently updated jobs |
 | `POST` | `/api/dataset-builder/jobs` | Multipart `spec` JSON string and optional `photo`; returns saved job, not completion |
 | `GET` | `/api/dataset-builder/jobs/{id}` | Job state, candidates, reviews, attempt counts and `accepted_count`; older jobs may retain caption drafts |

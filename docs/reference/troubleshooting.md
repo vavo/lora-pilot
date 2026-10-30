@@ -38,7 +38,7 @@ ControlPilot lists dataset folders under `/workspace/datasets` with the `1_` pre
 
 ZIP imports reject absolute paths, parent-directory traversal, and symbolic links. Rebuild a rejected archive from ordinary files with relative paths. A malformed archive, an upload limit, or insufficient disk space can also prevent import, so read the returned error rather than assuming the naming convention is the cause.
 
-TagPilot saves the loaded collection in sequence through `/api/tagpilot/save-item`. Its first request resets the destination, and the final request creates a ZIP snapshot. If saving stops partway through, inspect the resulting dataset before training on it. Preserve your source files, reload the complete intended collection, and wait for the save completion message. The [dataset guide](../user-guide/dataset-preparation.md) explains that flow.
+TagPilot saves the complete collection as a ZIP through `/api/tagpilot/save`, which validates the archive before replacing the destination. Wait for the save confirmation before training. If captioning was interrupted by a refresh, choose **Restore draft**, then **Resume unfinished images**; this browser draft is separate from your saved workspace dataset. If browser recovery is unavailable, keep the page open and save or export. The [dataset guide](../user-guide/dataset-preparation.md) explains that flow.
 
 ## Copilot is unavailable or a request does not finish
 

@@ -5,12 +5,12 @@ window.initDatasetBuilder = function (screen) {
   const el = id => document.getElementById('db-' + id);
   const api = '/api/dataset-builder';
   const running = job => ['generating_reference', 'generating', 'checking', 'pausing'].includes(job?.status);
-  let selected = null, busy = false, ready = false;
+  let selected = null, busy = false, ready = false, planReady = false, comparisonSlot = null;
   const error = message => { if (screen.active) el('error').textContent = message; };
   const imageUrl = (job, file) => `${api}/jobs/${job.id}/images/${encodeURIComponent(file)}`;
 
   function controls() {
-    el('create').disabled = busy || !ready || running(selected);
+    el('create').disabled = busy || !ready || !planReady || running(selected);
     el('jobs').disabled = busy;
     const complete = selected?.items.length === selected?.spec.count && selected?.items.every(x => x.accepted && x.review);
     el('finish').disabled = busy || !complete || !el('reviewed').checked;
@@ -41,6 +41,25 @@ window.initDatasetBuilder = function (screen) {
     if (request.active) controls();
   }
 
+  async function showPlan() {
+    const request = screen.latest('builder-plan');
+    planReady = false; controls();
+    el('plan').textContent = 'Updating the planned image mix…';
+    const params = new URLSearchParams({count: el('count').value, goal: el('goal').value,
+      vary_clothes: el('clothes').checked, vary_hair: el('hair').checked});
+    try {
+      const plan = await request.json(`${api}/plan?${params}`);
+      if (!request.active) return;
+      const framing = Object.entries(plan.framing).map(([label, count]) => `${count} × ${label}`).join(' · ');
+      const angles = Object.keys(plan.angles).join(', ');
+      el('plan').textContent = `${plan.count} images: ${framing}. Views: ${angles}. ` +
+        (plan.vary_clothes ? 'Vary clothes. ' : 'Keep reference clothes. ') +
+        (plan.vary_hair ? 'Include hairstyle changes.' : 'Keep reference hairstyle.');
+      planReady = true;
+    } catch (exc) { if (request.active) el('plan').textContent = 'Choose 4–40 images. If the plan cannot load, use Check again.'; }
+    if (request.active) controls();
+  }
+
   function sourceChanged() {
     const photo = el('source').value === 'photo';
     el('prompt-label').hidden = photo; el('prompt').required = !photo;
@@ -63,12 +82,52 @@ window.initDatasetBuilder = function (screen) {
     });
   }
 
+  function friendlyWarning(warning) {
+    if (warning.startsWith('Identity uncertain:')) return 'The face could not be matched confidently. Compare it with your reference before keeping.';
+    if (warning.startsWith('Identity inconsistent:')) return 'The person may look different from your reference. Check the face and defining features.';
+    return warning;
+  }
+
+  function imageActions(job, item) {
+    const active = running(job), saved = job.status === 'saved';
+    const update = async accepted => {
+      selected = await screen.json(`${api}/jobs/${job.id}/images/${item.slot}`, {
+        method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({accepted})
+      });
+      el('reviewed').checked = false;
+    };
+    return [button('Keep image', () => update(true), active || saved || !item.review || item.accepted),
+      button('Exclude', () => update(false), active || saved || !item.review || !item.accepted),
+      button('Regenerate', async () => { selected = await post(`images/${item.slot}/regenerate`); el('reviewed').checked = false; }, active || saved || !item.review || item.attempts >= 3)];
+  }
+
+  function renderComparison() {
+    const item = selected?.items.find(item => item.slot === comparisonSlot);
+    if (!item?.file || !selected.reference) return;
+    el('compare-reference').src = imageUrl(selected, selected.reference);
+    el('compare-image').src = imageUrl(selected, item.file);
+    el('compare-shot').textContent = `${item.slot + 1}. ${item.shot}`;
+    el('compare-state').textContent = (item.accepted ? 'Kept for training. ' : 'Not kept yet. ') +
+      (item.review ? 'Your decision matters more than the automatic check.' : 'Waiting for local checks.');
+    el('compare-warnings').replaceChildren();
+    for (const warning of item.warnings || []) {
+      const li = document.createElement('li'); li.textContent = friendlyWarning(warning); el('compare-warnings').append(li);
+    }
+    const restoreFocus = el('compare-actions').contains(document.activeElement);
+    el('compare-actions').replaceChildren(...imageActions(selected, item));
+    if (restoreFocus) el('compare-close').focus();
+  }
+
   function render(job) {
     selected = job;
     el('job').hidden = false;
     el('job-title').textContent = job.spec.name;
     el('progress').textContent = job.message;
     const active = running(job), saved = job.status === 'saved';
+    root.querySelectorAll('[data-prepare-step]').forEach(step => {
+      if (step.dataset.prepareStep === (job.reference ? '2' : '1')) step.setAttribute('aria-current', 'step');
+      else step.removeAttribute('aria-current');
+    });
     const option = Array.from(el('jobs').options).find(option => option.value === job.id);
     if (option) option.textContent = `${job.spec.name} · ${job.status.replaceAll('_', ' ')}`;
     el('pause').hidden = !active;
@@ -97,20 +156,15 @@ window.initDatasetBuilder = function (screen) {
       state.textContent = (item.accepted ? 'Kept' : item.review ? 'Needs your review' : 'Waiting for local checks') +
         ` · ${item.attempts}/3 attempts used`;
       const warnings = document.createElement('ul');
-      for (const warning of item.warnings || []) { const li = document.createElement('li'); li.textContent = warning; warnings.append(li); }
+      for (const warning of item.warnings || []) { const li = document.createElement('li'); li.textContent = friendlyWarning(warning); warnings.append(li); }
       const actions = document.createElement('div'); actions.className = 'row wrap gap-8';
-      const update = async accepted => {
-        selected = await screen.json(`${api}/jobs/${job.id}/images/${item.slot}`, {
-          method: 'PATCH', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({accepted})
-        });
-        el('reviewed').checked = false;
-      };
-      actions.append(button('Keep image', () => update(true), active || saved || !item.review || item.accepted),
-                     button('Exclude', () => update(false), active || saved || !item.review || !item.accepted),
-                     button('Regenerate', async () => { selected = await post(`images/${item.slot}/regenerate`); el('reviewed').checked = false; }, active || saved || !item.review || item.attempts >= 3));
+      const compare = button('Compare with reference', () => {}, !job.reference);
+      compare.dataset.compareSlot = item.slot;
+      compare.onclick = () => { comparisonSlot = item.slot; renderComparison(); el('compare').showModal(); };
+      actions.append(compare, ...imageActions(job, item));
       card.append(heading, link, state, warnings, actions); el('images').append(card);
     }
+    if (el('compare').open) renderComparison();
     controls();
   }
 
@@ -124,15 +178,17 @@ window.initDatasetBuilder = function (screen) {
 
   el('open').onclick = () => {
     root.hidden = !root.hidden; el('open').setAttribute('aria-expanded', String(!root.hidden));
-    if (!root.hidden) { sourceChanged(); void action(listJobs); }
+    if (!root.hidden) { sourceChanged(); void showPlan(); void action(listJobs); }
   };
   el('source').onchange = sourceChanged;
   el('goal').onchange = () => {
     const fixed = el('goal').value === 'character';
     el('clothes').disabled = fixed; el('hair').disabled = fixed;
     if (fixed) { el('clothes').checked = false; el('hair').checked = false; }
+    void showPlan();
   };
-  el('recheck').onclick = check;
+  for (const name of ['count', 'clothes', 'hair']) el(name).onchange = showPlan;
+  el('recheck').onclick = () => { void check(); void showPlan(); };
   el('models').onclick = event => { event.preventDefault(); window.loadSection('models'); };
   el('form').onsubmit = event => {
     event.preventDefault();
@@ -158,6 +214,13 @@ window.initDatasetBuilder = function (screen) {
   el('reviewed').onchange = controls;
   el('finish').onclick = () => action(async () => { selected = await post('finish'); openTagpilotDataset(selected.dataset); });
   el('train').onclick = () => openTagpilotDataset(selected.dataset);
+  el('compare-close').onclick = () => el('compare').close();
+  el('compare').onclick = event => { if (event.target === el('compare')) el('compare').close(); };
+  el('compare').onclose = () => {
+    el('images').querySelector(`[data-compare-slot="${comparisonSlot}"]`)?.focus();
+    comparisonSlot = null;
+  };
+  screen.onCleanup(() => { if (el('compare').open) el('compare').close(); });
   screen.poll(async () => {
     if (!selected || !running(selected) || busy || root.hidden) return;
     const jobId = selected.id;
