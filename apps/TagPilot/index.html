@@ -93,6 +93,13 @@
                 <button type="button" id="save-training-button" hidden>Save &amp; open guided training</button>
             </div>
         </header>
+        <section id="draft-recovery" class="draft-recovery" aria-label="Browser draft">
+            <p id="draft-status" role="status">Checking for a browser draft…</p>
+            <button id="draft-restore" type="button" hidden>Restore draft</button>
+            <button id="draft-discard" type="button" hidden>Discard draft</button>
+            <button id="draft-resume" type="button" hidden>Resume unfinished images</button>
+            <p class="hint">Drafts stay in this browser, not in your training folder. Save to workspace when ready. Reloading pauses captioning; API keys are never saved in drafts.</p>
+        </section>
         <div class="dataset-details">
             <div class="dataset-field">
                 <label id="dataset-name-label" for="dataset-name-input">
@@ -187,12 +194,12 @@
                 Add photos or import a dataset ZIP with existing captions to get started.
             </p>
             <p class="hint">
-                Your images stay in this session until you save or export.
+                Save to workspace or export to keep a copy outside this browser.
             </p>
         </div>
         <footer class="workspace-footer">
             <p class="hint">
-                Edits are kept in this session until you save or export.
+                Browser drafts are for recovery. Save or export to keep your training dataset.
             </p>
             <nav aria-label="Image pages">
                 <button type="button" id="page-prev" class="">
@@ -816,6 +823,7 @@
             </button>
         </div>
     </div>
+    <script src="draft.js"></script>
     <script>
         let dataset = [];
         let generationRecord = null;
@@ -828,6 +836,8 @@
         let notificationTimer = null;
         let currentTriggerWord = "";
         let isBatchProcessing = false;
+        let batchDraft = null, savedDraft = null, draftReady = false, draftWrites = 0, draftError = '', batchBusy = false;
+        const draftStore = createTagPilotDraftStore();
         let cropper = null;
         let currentCropItemId = null;
         let currentPreviewItemId = null;
@@ -1012,17 +1022,30 @@ Expected outcome is a human-readable continuous text consisting of several sente
         clearTagsButton.addEventListener('click', handleClearTags);
         tagAllButton.addEventListener('click', openTagSettings);
         captionAllButton.addEventListener('click', openCaptionSettings);
-        startTaggingBtn.addEventListener('click', startBatchTagging);
+        startTaggingBtn.addEventListener('click', () => startBatchTagging());
         cancelTaggingBtn.addEventListener('click', closeTagSettings);
         document.getElementById('close-tagging').addEventListener('click', closeTagSettings);
         stopTaggingBtn.addEventListener('click', stopBatchProcessing);
-        startCaptioningBtn.addEventListener('click', startBatchCaptioning);
+        startCaptioningBtn.addEventListener('click', () => startBatchCaptioning());
         cancelCaptioningBtn.addEventListener('click', closeCaptionSettings);
         document.getElementById('close-captioning').addEventListener('click', closeCaptionSettings);
         stopCaptioningBtn.addEventListener('click', stopBatchProcessing);
         previewClose.addEventListener('click', hidePreview);
         previewCropButton.addEventListener('click', cropPreviewImage);
         triggerWordInput.addEventListener('input', handleTriggerWordChange);
+        datasetNameInput.addEventListener('input', () => { void saveBrowserDraft(); });
+        document.getElementById('draft-restore').onclick = restoreBrowserDraft;
+        document.getElementById('draft-discard').onclick = () => {
+            if (!confirm('Discard the recovered browser draft? Saved workspace files will not change.')) return;
+            savedDraft = null; draftReady = true; void saveBrowserDraft();
+        };
+        document.getElementById('draft-resume').onclick = () => {
+            if (batchDraft?.kind === 'tags') { openTagSettings(); void startBatchTagging(batchDraft); }
+            else if (batchDraft) { openCaptionSettings(); void startBatchCaptioning(batchDraft); }
+        };
+        window.addEventListener('beforeunload', event => {
+            if (dataset.length && (draftWrites || draftError)) { event.preventDefault(); event.returnValue = ''; }
+        });
         tagViewerHeader.addEventListener('click', () => {
             tagViewerContent.classList.toggle('expanded');
             tagViewerArrow.classList.toggle('expanded');
@@ -1965,6 +1988,7 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         function handleReset() {
+            if (batchBusy) return showNotification('Stop the batch and wait for the current image before resetting.');
             if (dataset.length && !confirm('Reset this session? Unsaved images, tags and captions will be discarded.')) return;
             hidePreview();
             cancelCrop();
@@ -1972,6 +1996,7 @@ Limit the caption to ${maxWords} words or fewer.`;
             clearFileObjectUrls();
             dataset = [];
             generationRecord = null;
+            batchDraft = null;
             sessionTagModel = sessionCaptionModel = null;
             nextDatasetItemId = 1;
             imageUpload.value = '';
@@ -2017,6 +2042,7 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         async function handleSaveToWorkspace(continueTraining = false) {
+            if (batchBusy) return showNotification('Wait for the current batch to finish or pause before saving.');
             if (dataset.length === 0) return showNotification("No images to save");
             if (continueTraining && dataset.some(item => isBlankOrTriggerOnly(item.tags, currentTriggerWord))) {
                 return showNotification('Add captions or tags to every image before continuing to training.');
@@ -2032,6 +2058,7 @@ Limit the caption to ${maxWords} words or fewer.`;
                 if (!response.ok) throw new Error(await parseResponseError(response));
                 const saved = await response.json();
                 datasetNameInput.value = saved.name;
+                await saveBrowserDraft();
 
                 showNotification(`Saved ${dataset.length} image(s) to /workspace/datasets`);
                 if (continueTraining) window.parent.postMessage({type: 'tagpilot:train', dataset: saved.name}, window.location.origin);
@@ -2122,8 +2149,49 @@ Limit the caption to ${maxWords} words or fewer.`;
                 (model.value === 'local' ? '\nRuns on this machine, without an API key. CPU processing can take several minutes per image.' : '');
         }
 
+        function showDraftStatus() {
+            document.getElementById('draft-restore').hidden = !savedDraft;
+            document.getElementById('draft-discard').hidden = !savedDraft;
+            document.getElementById('draft-resume').hidden = !batchDraft || batchBusy || batchDraft.pending.length === 0;
+            document.getElementById('draft-status').textContent = draftError || (savedDraft
+                ? `A draft of ${savedDraft.name || 'Untitled dataset'} is available. Restore it to recover edits and unfinished captions.`
+                : draftWrites ? 'Saving browser draft…' : batchDraft?.pending.length
+                    ? `${isBatchProcessing ? 'Captioning' : 'Paused'} · ${batchDraft.pending.length} images unfinished. ${batchDraft.error || ''}`
+                    : 'Browser draft saved. Review your captions, then save to workspace.');
+        }
+
+        async function saveBrowserDraft() {
+            if (!draftReady) return false;
+            draftWrites++; showDraftStatus();
+            try {
+                await draftStore.save({items: dataset, name: datasetNameInput.value, trigger: currentTriggerWord,
+                    generation: generationRecord, batch: batchDraft});
+                draftError = '';
+                return true;
+            } catch (error) {
+                draftError = 'Draft recovery unavailable: ' + error.message + ' Keep this page open and save or export your work.';
+                return false;
+            } finally { draftWrites--; showDraftStatus(); }
+        }
+
+        function restoreBrowserDraft() {
+            if (!savedDraft || (dataset.length && !confirm('Replace this browser session with the recovered draft? Workspace files will not change.'))) return;
+            clearFileObjectUrls();
+            dataset = savedDraft.items;
+            datasetNameInput.value = savedDraft.name;
+            currentTriggerWord = savedDraft.trigger;
+            triggerWordInput.value = currentTriggerWord;
+            generationRecord = savedDraft.generation;
+            batchDraft = savedDraft.batch;
+            nextDatasetItemId = Math.max(0, ...dataset.map(item => Number(item.id.replace('item-', '')) || 0)) + 1;
+            currentPage = 0; savedDraft = null; draftReady = true;
+            if (generationRecord) sessionTagModel = sessionCaptionModel = 'local';
+            render(); showDraftStatus();
+        }
+
         function stopBatchProcessing() {
             isBatchProcessing = false;
+            showDraftStatus();
         }
 
         function shouldProcessBatchItem(item, mode) {
@@ -2135,7 +2203,13 @@ Limit the caption to ${maxWords} words or fewer.`;
             progressText.textContent = `${processed} / ${total}`;
         }
 
-        async function runBatchProcessing({ configPanel, progressPanel, progressBar, progressText, closeModal, completeMessage, processItem }) {
+        async function runBatchProcessing({ configPanel, progressPanel, progressBar, progressText, closeModal, completeMessage, processItem, batch }) {
+            if (batchBusy) return;
+            if (!draftReady) return showNotification('Restore or discard the previous draft before starting. If recovery is unavailable, close other TagPilot tabs and reload.');
+            if (batchDraft?.pending.length && batchDraft !== batch && !confirm('Start a new batch instead of resuming the unfinished one? Completed captions will stay in this draft.')) return;
+            batchBusy = true;
+            batchDraft = batch;
+            if (!await saveBrowserDraft()) { batchBusy = false; showDraftStatus(); return; }
             configPanel.classList.add('hidden');
             progressPanel.classList.remove('hidden');
             isBatchProcessing = true;
@@ -2143,32 +2217,47 @@ Limit the caption to ${maxWords} words or fewer.`;
 
             let processed = 0;
             const errors = [];
-            const total = dataset.length;
+            const total = batch.pending.length;
             progressText.textContent = `0 / ${total}`;
             progressBar.style.width = '0%';
 
-            for (let i = 0; i < total && isBatchProcessing; i++) {
+            for (const id of [...batch.pending]) {
+                if (!isBatchProcessing) break;
+                const item = findDatasetItemById(id);
                 try {
-                    await processItem(dataset[i], i);
+                    if (item) await processItem(item);
+                    batch.pending = batch.pending.filter(pending => pending !== id);
+                    batch.error = '';
                 } catch (e) {
                     console.error(e);
                     errors.push(e.message || String(e));
+                    batch.error = errors[errors.length - 1];
+                    isBatchProcessing = false;
                 }
+                if (!await saveBrowserDraft()) isBatchProcessing = false;
                 processed++;
                 updateBatchProgress(progressBar, progressText, processed, total);
             }
 
             renderTagViewer();
             isBatchProcessing = false;
+            batchBusy = false;
             closeModal();
-            showNotification(errors.length ? `${errors.length} image(s) failed: ${errors[0]}` : completeMessage, errors.length ? 12000 : 3000);
+            showDraftStatus();
+            showNotification(errors.length ? `Paused: ${errors[0]}` : batch.pending.length ? 'Paused. Completed captions are kept; resume when ready.' : completeMessage, errors.length ? 12000 : 3000);
         }
 
-        async function startBatchTagging() {
-            const maxTags = getTagLimit();
-            const mode = document.querySelector('input[name="tag-mode"]:checked').value;
+        function newBatchDraft(kind, mode, limit, model, prompt) {
+            return {kind, mode, limit, model, prompt, pending: dataset.filter(item => shouldProcessBatchItem(item, mode)).map(item => item.id)};
+        }
+
+        async function startBatchTagging(recovered = null) {
+            const batch = recovered || newBatchDraft('tags', document.querySelector('input[name="tag-mode"]:checked').value,
+                getTagLimit(), getTagModel(), buildTagPrompt(getTagLimit()));
+            const {limit: maxTags, mode} = batch;
 
             await runBatchProcessing({
+                batch,
                 configPanel: tagSettingsConfig,
                 progressPanel: tagSettingsProgress,
                 progressBar: tagProgressBar,
@@ -2178,7 +2267,9 @@ Limit the caption to ${maxWords} words or fewer.`;
                 async processItem(item, index) {
                     if (!shouldProcessBatchItem(item, mode)) return;
 
-                    const newTags = await generateTags(item.file, maxTags);
+                    const before = item.tags;
+                    const newTags = await generateImageText(item.file, batch.prompt, batch.model, 'tags');
+                    if (item.tags !== before) return; // Keep edits made while the request was running.
                     let tags = parseTags(newTags);
                     if (mode === 'append') {
                         tags = mergeTags(item.tags, tags);
@@ -2196,11 +2287,13 @@ Limit the caption to ${maxWords} words or fewer.`;
             });
         }
 
-        async function startBatchCaptioning() {
-            const maxWords = getCaptionWordLimit();
-            const mode = document.querySelector('input[name="caption-mode"]:checked').value;
+        async function startBatchCaptioning(recovered = null) {
+            const batch = recovered || newBatchDraft('caption', document.querySelector('input[name="caption-mode"]:checked').value,
+                getCaptionWordLimit(), getCaptionModel(), buildCaptionPrompt(getCaptionWordLimit()));
+            const {limit: maxWords, mode} = batch;
 
             await runBatchProcessing({
+                batch,
                 configPanel: captionSettingsConfig,
                 progressPanel: captionSettingsProgress,
                 progressBar: captionProgressBar,
@@ -2210,7 +2303,9 @@ Limit the caption to ${maxWords} words or fewer.`;
                 async processItem(item, index) {
                     if (!shouldProcessBatchItem(item, mode)) return;
 
-                    const caption = await generateCaption(item.file, maxWords);
+                    const before = item.tags;
+                    const caption = trimCaptionToWordLimit(await generateImageText(item.file, batch.prompt, batch.model, 'caption'), maxWords);
+                    if (item.tags !== before) return;
                     let final = mode === 'append' && !isBlankOrTriggerOnly(item.tags, currentTriggerWord)
                         ? item.tags + " " + caption : caption;
                     if (currentTriggerWord && !final.startsWith(currentTriggerWord)) final = currentTriggerWord + ", " + final;
@@ -2299,6 +2394,7 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         function renderTagViewer() {
+            void saveBrowserDraft();
             tagViewerList.innerHTML = '';
             const map = new Map();
             dataset.forEach(item => {
@@ -2530,6 +2626,12 @@ Limit the caption to ${maxWords} words or fewer.`;
         }
 
         (async function initFromQuery() {
+            try {
+                savedDraft = await draftStore.open();
+                if (!savedDraft?.items.length) savedDraft = null;
+                draftReady = !savedDraft;
+            } catch (error) { draftError = error.message + ' Draft recovery is unavailable; keep this page open.'; }
+            showDraftStatus();
             const params = new URLSearchParams(window.location.search);
             const datasetName = params.get('dataset');
             if (datasetName) {

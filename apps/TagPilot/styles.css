@@ -172,6 +172,10 @@ fieldset { padding: 0; border: 0; margin: 20px 0; }
 }
 
 
+.draft-recovery { border:1px solid var(--border); border-radius:10px; padding:12px 18px; margin-bottom:20px; }
+.draft-recovery p { margin:6px 0; overflow-wrap:anywhere; }
+.draft-recovery button { margin:6px 8px 6px 0; }
+
 @media (min-width: 651px) and (max-width: 800px) {
     .settings-columns { display: block; }
     .settings-columns > div + div { border: 0; padding: 0; }

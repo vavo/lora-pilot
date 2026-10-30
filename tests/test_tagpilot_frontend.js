@@ -34,6 +34,7 @@ function setup(length) {
     getFileObjectUrl:file=>`blob:${file.name}`, revokeFileObjectUrl(){}, ensureDatasetItemIds(){},
     rendered:[], renderTagsInCard(wrapper,id){page.rendered.push({id,tags:page.dataset.find(item=>item.id===id).tags});},
     renderTagViewer(){},setSingleProcessing(){}, console,
+    draftReady:true, batchBusy:false, batchDraft:null, saveBrowserDraft:async()=>true, showDraftStatus(){},
   });
   for (const name of ['findDatasetItemById','findDatasetItemIndexById','pageBounds','render','changePage','removeImage','showPreview','hidePreview','navigatePreview','handleDialogKeydown','cropPreviewImage','runBatchProcessing','updateBatchProgress','shouldProcessBatchItem']) {
     vm.runInContext(source(name),page);
@@ -119,7 +120,7 @@ test('bulk processing includes all pages and honors skip, append, overwrite sele
   assert.equal(page.shouldProcessBatchItem(page.dataset[100],'overwrite'),true);
   const seen=[];page.showNotification=()=>{};
   const progress=node();
-  await page.runBatchProcessing({configPanel:node(),progressPanel:node(),progressBar:node(),progressText:progress,closeModal(){},completeMessage:'Done',processItem:async item=>seen.push(item.id)});
+  await page.runBatchProcessing({batch:{pending:page.dataset.map(item=>item.id)}, configPanel:node(),progressPanel:node(),progressBar:node(),progressText:progress,closeModal(){},completeMessage:'Done',processItem:async item=>seen.push(item.id)});
   assert.equal(seen.length,101);assert.equal(seen.at(-1),'item-101');
   assert.equal(progress.textContent,'101 / 101');
 });
@@ -155,7 +156,7 @@ test('local generation uses TagPilot API and requires no external provider or br
 test('saving uses the existing ZIP API and opens training only after success', async()=>{
   const calls=[], messages=[], notices=[];
   const page=vm.createContext({dataset:[{tags:'person, portrait'}],currentTriggerWord:'person',
-    datasetNameInput:{value:'1_generated'},FormData,
+    datasetNameInput:{value:'1_generated'},FormData,batchBusy:false,saveBrowserDraft:async()=>true,
     datasetArchive:async()=>new Blob(['zip']),showLoader(){},hideLoader(){},
     showNotification:text=>notices.push(text),isBlankOrTriggerOnly:text=>text==='person',
     parseResponseError:async()=> 'Save rejected',console:{error(){}},
@@ -210,7 +211,48 @@ test('ControlPilot accepts handoff only from its active same-origin TagPilot fra
 
 test('failed local batches report failure instead of claiming caption completion',async()=>{
   const {page}=setup(1);const notices=[];page.showNotification=text=>notices.push(text);page.console={error(){}};
-  await page.runBatchProcessing({configPanel:node(),progressPanel:node(),progressBar:node(),progressText:node(),
+  await page.runBatchProcessing({batch:{pending:['item-1']},configPanel:node(),progressPanel:node(),progressBar:node(),progressText:node(),
     closeModal(){},completeMessage:'Captioning complete',processItem:async()=>{throw new Error('Install local model');}});
-  assert.equal(notices[0],'1 image(s) failed: Install local model');
+  assert.equal(notices[0],'Paused: Install local model');
+  assert.deepEqual(page.batchDraft.pending,['item-1']);
+});
+
+test('batch checkpoints results and resumes only unfinished images, including append mode',async()=>{
+  const {page}=setup(3), snapshots=[];
+  page.showNotification=()=>{};
+  page.saveBrowserDraft=async()=>{snapshots.push(structuredClone({batch:page.batchDraft,items:page.dataset}));return true;};
+  const options={configPanel:node(),progressPanel:node(),progressBar:node(),progressText:node(),closeModal(){},completeMessage:'Done'};
+  await page.runBatchProcessing({...options,batch:{kind:'caption',mode:'append',pending:['item-1','item-2','item-3']},processItem:async item=>{
+    item.tags+=' appended';page.isBatchProcessing=false;
+  }});
+  assert.deepEqual(page.batchDraft.pending,['item-2','item-3']);
+  assert.equal(snapshots.at(-1).items[0].tags,'tag 1 appended');
+  const recovered=structuredClone(snapshots.at(-1));
+  page.dataset=recovered.items;page.batchDraft=recovered.batch;
+  await page.runBatchProcessing({...options,batch:page.batchDraft,processItem:async item=>{item.tags+=' appended';}});
+  assert.deepEqual(page.dataset.map(item=>item.tags),['tag 1 appended','tag 2 appended','tag 3 appended']);
+  assert.equal(page.batchDraft.pending.length,0);
+});
+
+test('failed checkpoint stops before the next provider request and overlapping starts are ignored',async()=>{
+  const {page}=setup(3), seen=[];
+  page.showNotification=()=>{};
+  let saves=0;
+  page.saveBrowserDraft=async()=>++saves===1;
+  const options={batch:{pending:['item-1','item-2','item-3']},configPanel:node(),progressPanel:node(),progressBar:node(),progressText:node(),closeModal(){},completeMessage:'Done',processItem:async item=>seen.push(item.id)};
+  await Promise.all([page.runBatchProcessing(options),page.runBatchProcessing(options)]);
+  assert.deepEqual(seen,['item-1']);
+  assert.equal(page.batchDraft.pending.length,2);
+});
+
+test('draft snapshot includes edits and provenance, never credentials or settings',async()=>{
+  const {page}=setup(1);let snapshot;
+  Object.assign(page,{draftWrites:0,draftError:'',datasetNameInput:{value:'1_sample'},currentTriggerWord:'edited',
+    generationRecord:{spec:{trigger:'original'}},draftStore:{save:async value=>{snapshot=structuredClone(value);}},
+    apiKeys:{openai:'must-not-be-saved'}});
+  vm.runInContext(source('saveBrowserDraft'),page);
+  await page.saveBrowserDraft();
+  assert.equal(snapshot.trigger,'edited');assert.equal(snapshot.items[0].tags,'tag 1');
+  assert.equal(snapshot.generation.spec.trigger,'original');
+  assert.equal(JSON.stringify(snapshot).includes('must-not-be-saved'),false);
 });
