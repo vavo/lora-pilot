@@ -11,7 +11,7 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
 ![ControlPilot dashboard with workspace status and dataset, training, generation, and gallery shortcuts](docs/assets/images/home/dashboard.png)
 
-*Dashboard design preview from [lorapilot.com](https://lorapilot.com/). Interfaces vary with the installed image.*
+*Dashboard design from [lorapilot.com](https://lorapilot.com/).*
 
 ## Why LoRA Pilot
 - **Three proven LoRA trainer stacks** in one place: Kohya SS, AI Toolkit, and Diffusion Pipe (plus TrainPilot for quick Kohya setup).
@@ -81,7 +81,7 @@ Nice quality-of-life bits:
 ## Installation
 
 ### Option 1: RunPod template (fastest)
-- One-click deploy: https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n
+- One-click deploy: https://get.runpod.io/lorapilot
 
 ### Option 2: Local Docker (Compose)
 ```bash
@@ -297,6 +297,6 @@ Made with ❤️ and way too much coffee by vavo
 ## Project links
 - GitHub repo: https://github.com/vavo/lora-pilot
 - Docker Hub image: https://hub.docker.com/r/notrius/lora-pilot
-- RunPod template: https://console.runpod.io/deploy?template=gg1utaykxa&ref=o3idfm0n
+- RunPod template: https://get.runpod.io/lorapilot
 
 ---
