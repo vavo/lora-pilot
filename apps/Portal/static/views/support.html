@@ -2,7 +2,33 @@
 <style>
   .support-card { line-height: 1.6; }
   .bmc-image { height: 60px; width: 217px; }
+  .support-lab { display: grid; grid-template-columns: 2fr 3fr; margin-bottom: 16px; border-radius: 14px; overflow: hidden; background: #192424; color: #fff6e7; }
+  .support-lab-art { background: url("/diffusion-lab-robot.webp") center / cover; }
+  .support-lab-copy { padding: clamp(18px, 3vw, 38px); }
+  .support-lab-copy h3 { margin: 6px 0; font: 750 clamp(30px, 4vw, 54px)/1.05 system-ui, sans-serif; letter-spacing: -.045em; }
+  .support-lab-copy p { max-width: 48ch; margin: 12px 0; line-height: 1.5; }
+  .support-lab-label { font: 700 12px/1.4 monospace; text-transform: uppercase; letter-spacing: .1em; color: #ffbc8b; }
+  .support-lab .btn { background: #ffbc8b; border-color: #ffbc8b; color: #251b15; }
+  @media (max-width: 700px) {
+    .support-lab { grid-template-columns: 1fr; }
+    .support-lab-art { height: clamp(140px, 40vw, 220px); }
+  }
 </style>
+<section class="support-lab" aria-labelledby="support-lab-title">
+  <div class="support-lab-art" aria-hidden="true"></div>
+  <div class="support-lab-copy">
+    <span class="support-lab-label">Creator community on Skool</span>
+    <h3 id="support-lab-title">Diffusion Lab</h3>
+    <p>Keep a character consistent across shots, or rescue a take that didn’t work. Try the techniques in 9 video lessons and 5 hands-on labs, then compare settings and results with other creators.</p>
+    <p>Standard membership starts at an introductory <strong>US$19/month</strong>. Get worksheets, project discussions, and <strong>new content and free workflows weekly</strong>.</p>
+    <a class="btn" href="https://www.skool.com/diffusion-lab-6413/about" target="_blank" rel="noopener">Explore Diffusion Lab on Skool ↗</a>
+  </div>
+</section>
+<section class="card support-card" aria-labelledby="support-channel-title">
+  <h3 id="support-channel-title">Stable Diffusion for Masses</h3>
+  <p>Follow the free YouTube tutorials: build the orange robot’s dataset, train its LoRA, then direct it in ComfyUI.</p>
+  <a class="btn secondary" href="https://www.youtube.com/@StableDiffusionforMasses" target="_blank" rel="noopener">Watch on YouTube ↗</a>
+</section>
 <div class="card support-card">
   <p>Made with ❤️ and way too much coffee by vavo.</p>
   <p>If you need help or have questions, feel free to reach out or open an issue on GitHub.</p>
