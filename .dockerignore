@@ -65,9 +65,17 @@ workspace/
 # Private plans and local agent notes
 /aidocs/
 /docs/product/
+/docs/internal/
+**/backlog/
+**/plans/
+**/BACKLOG.md
+**/backlog.md
+**/*-backlog.md
+/*_PLAN.md
+/*-plan.md
+/docs/development/*-plan.md
+/docs/development/mcp-validation.md
 /design-qa.md
-/WINDOWS_WSL_INSTALLER_PLAN.md
-/docs/development/dockerfile-refactor-plan.md
 /docs/development/2026-07-05-lora-pilot-value-suggestions.md
 /depot.json
 

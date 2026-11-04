@@ -32,6 +32,4 @@ Use [contributing](contributing.md) for the contribution process, while treating
 
 The [screen lifecycle guide](screen-lifecycle.md) explains how ControlPilot owns requests, prevents stale responses, and cleans up work when users navigate between pages.
 
-The [MCP setup guide](../configuration/mcp.md) documents the private Streamable HTTP implementation. The [implementation plan](mcp-implementation-plan.md) and [test plan](mcp-test-plan.md) retain the wider roadmap; [validation evidence](mcp-validation.md) records implemented coverage and the OAuth, storage and GPU release gates still outstanding.
-
-The [stable MCP address proposal](stable-mcp-address-plan.md) covers an optional supporter service with manual activation and automatic reconnection after pod replacement. It is a design proposal, not a deployed feature.
+The [MCP setup guide](../configuration/mcp.md) covers private Streamable HTTP connections, supported clients and the checks required before enabling writes.

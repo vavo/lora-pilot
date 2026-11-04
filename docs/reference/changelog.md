@@ -16,7 +16,7 @@ ControlPilot adds scoped MCP connections, a redesigned Dashboard, Settings and S
 
 RunPod integration moves to REST v2 with optional storage and spending information. Storage gains visual usage and reviewed cleanup. VS Code becomes an optional persistent install, while ComfyUI gains bundled GGUF and VideoHelperSuite extensions. Reliability fixes cover startup, access protection, training, model loading and screen navigation.
 
-See the root [CHANGELOG](../../CHANGELOG) for the complete release summary, the [MCP validation record](../development/mcp-validation.md) for integration checks, and the [build guide](../development/building.md) for image publication. Verify an image's revision before deploying it.
+See the root [CHANGELOG](../../CHANGELOG) for the complete release summary, the [MCP setup guide](../configuration/mcp.md) for execution limits, and the [build guide](../development/building.md) for image publication. Verify an image's revision before deploying it.
 
 ## Published release notes
 

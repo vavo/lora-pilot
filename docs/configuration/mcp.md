@@ -1,10 +1,10 @@
 # Connect an assistant with MCP
 
-_Documentation updated: 2026-10-06. Execution and external-client release gates are tracked in the validation record._
+_Documentation updated: 2026-10-06._
 
 LoRA Pilot provides Streamable HTTP at `/mcp`, using the official Python SDK `mcp==2.3.0`. It starts disabled. Each connection has its own expiring bearer token, permissions, and selected datasets/runs. A ControlPilot browser cookie, Comfy token or Hugging Face token cannot authenticate MCP.
 
-This version supports private clients that can send an `Authorization: Bearer …` header. OAuth discovery/login, a stdio bridge, model installation, recovery, shell access and deletion tools are not implemented. Do not configure an OAuth-only connector against this endpoint. See [validation and remaining release gates](../development/mcp-validation.md).
+This version supports private clients that can send an `Authorization: Bearer …` header. OAuth discovery/login, a stdio bridge, model installation, recovery, shell access and deletion tools are not implemented. Do not configure an OAuth-only connector against this endpoint. Before enabling writes, check the [execution limits](#execution-release-gates-and-limits).
 
 ## Enable read access
 
