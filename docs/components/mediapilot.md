@@ -81,9 +81,9 @@ Metadata is extracted from image metadata and ComfyUI prompt JSON where availabl
 3. MediaPilot generates a temporary archive and streams it.
 
 ### 3. Send selected images to ComfyUI upscale queue
-1. Configure `MEDIAPILOT_UPSCALE_WORKFLOW_FILE`.
-2. Use placeholder `__INPUT_IMAGE__` for input image and `__OUTPUT_PREFIX__` for output prefix.
-3. Select images and run bulk upscale.
+With ComfyUI running, select one or more images and click **Upscale selected**. The bundled workflow doubles each image’s width and height using Lanczos resizing. It needs no model download. Finished images appear in the `mediapilot-upscaled` folder under ComfyUI outputs.
+
+For a different upscaler, place an API-format workflow at `/workspace/apps/MediaPilot/comfy_upscale_workflow.json` or set `MEDIAPILOT_UPSCALE_WORKFLOW_FILE` to its absolute path. Use `__INPUT_IMAGE__` for the uploaded image and `__OUTPUT_PREFIX__` for the output prefix. A missing custom path or invalid custom workflow reports an error instead of queuing a different workflow.
 
 ## ⌨️ Keyboard Shortcuts
 

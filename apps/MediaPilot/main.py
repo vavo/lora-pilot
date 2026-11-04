@@ -77,11 +77,8 @@ ALLOW_ORIGINS = [
 MAX_BULK_DOWNLOAD_FILES = env_int("MEDIAPILOT_MAX_BULK_DOWNLOAD_FILES", 500)
 MAX_BULK_UPSCALE_FILES = env_int("MEDIAPILOT_MAX_BULK_UPSCALE_FILES", 50)
 COMFY_API_URL = os.environ.get("MEDIAPILOT_COMFY_API_URL", "http://127.0.0.1:8188").rstrip("/")
-UPSCALE_WORKFLOW_FILE = resolve_path(
-    os.environ.get(
-        "MEDIAPILOT_UPSCALE_WORKFLOW_FILE",
-        os.path.join(BASE_DIR, "comfy_upscale_workflow.json"),
-    )
+UPSCALE_WORKFLOW_FILE = os.environ.get(
+    "MEDIAPILOT_UPSCALE_WORKFLOW_FILE", os.path.join(BASE_DIR, "comfy_upscale_workflow.json")
 )
 UPSCALE_INPUT_PLACEHOLDER = os.environ.get("MEDIAPILOT_UPSCALE_INPUT_PLACEHOLDER", "__INPUT_IMAGE__")
 UPSCALE_OUTPUT_PLACEHOLDER = os.environ.get(
@@ -758,13 +755,20 @@ def sanitize_output_prefix(filename: str) -> str:
 
 
 def load_upscale_workflow_template() -> Dict[str, Any]:
-    if not os.path.isfile(UPSCALE_WORKFLOW_FILE):
+    path = Path(resolve_path(UPSCALE_WORKFLOW_FILE))
+    default = Path(BASE_DIR) / "comfy_upscale_workflow.json"
+    # Older .env files use ./comfy_upscale_workflow.json even when Portal starts elsewhere.
+    if Path(UPSCALE_WORKFLOW_FILE) == Path(default.name) and not os.path.lexists(path):
+        path = default
+    if path == default and not os.path.lexists(path):
+        path = default.with_suffix(".example.json")
+    if not path.is_file():
         raise HTTPException(
             status_code=500,
-            detail=f"Upscale workflow file not found: {UPSCALE_WORKFLOW_FILE}",
+            detail=f"Upscale workflow file not found: {path}",
         )
     try:
-        with open(UPSCALE_WORKFLOW_FILE, "r", encoding="utf-8") as handle:
+        with path.open(encoding="utf-8") as handle:
             workflow = json.load(handle)
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=500, detail=f"Invalid workflow JSON: {exc}") from exc

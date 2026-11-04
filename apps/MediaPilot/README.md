@@ -122,14 +122,9 @@ Examples:
 
 ## Comfy Upscale Workflow
 
-To use batch upscale:
+Start ComfyUI, select images and click **Upscale selected**. The bundled `comfy_upscale_workflow.example.json` runs a 2× Lanczos resize without extra models or nodes. Results are saved under `mediapilot-upscaled/` in ComfyUI outputs.
 
-1. Start from `comfy_upscale_workflow.example.json` or export your own Comfy workflow in API JSON format.
-2. Save it to `MEDIAPILOT_UPSCALE_WORKFLOW_FILE` (default: `./comfy_upscale_workflow.json`).
-3. In the workflow JSON, use:
-   - `__INPUT_IMAGE__` where the input image filename should go (usually `LoadImage.inputs.image`)
-   - `__OUTPUT_PREFIX__` where output prefix should go (usually `SaveImage.inputs.filename_prefix`)
-4. Use the new gallery bulk action button (upscale icon) after selecting images.
+To override it, save your own API-format workflow as `comfy_upscale_workflow.json` beside `main.py`, or set `MEDIAPILOT_UPSCALE_WORKFLOW_FILE` to its absolute path. Use `__INPUT_IMAGE__` for the uploaded filename and `__OUTPUT_PREFIX__` for the saved image prefix.
 
 ## Notes
 
