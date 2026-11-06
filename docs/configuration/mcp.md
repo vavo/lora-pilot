@@ -29,6 +29,8 @@ RunPod deployments derive the HTTPS address from their server-side `RUNPOD_POD_I
 
 A custom HTTPS proxy must preserve Host and Authorization, forward the original scheme, and serve MCP without redirects. Uvicorn must trust only the actual proxy peer via `FORWARDED_ALLOW_IPS`; never use `*` on a publicly reachable backend. Pass that variable explicitly through your deployment override when needed. RunPod's detected HTTPS proxy is allowed to terminate TLS before the pod; this exception is restricted to the exact detected address and is disabled when `RUNPOD_TCP_PORT_<PORTAL_PORT>` reports a raw TCP mapping. Do not expose ControlPilot through raw TCP alongside the HTTPS proxy. Other public requests seen as plaintext HTTP are refused; spoofed forwarding headers do not establish trust.
 
+If RunPod rewrites Host to an internal shared-network IPv4 address and port, ControlPilot accepts it only from a known proxy peer with a single matching public `X-Forwarded-Host` and `X-Forwarded-Proto: https`. The RunPod launcher preserves the socket peer. The default peers observed on the tested deployment were `100.64.1.64,100.64.1.67,100.64.1.68`; these are not a provider-wide guarantee. If your deployment uses other verified ingress peers, set `MCP_RUNPOD_PROXY_PEERS` to the complete comma-separated list of exact peer IPs and restart ControlPilot. Do not add client or shared network ranges.
+
 One configured origin is accepted. Browser `Origin: null` and foreign origins are refused; authenticated clients without Origin are supported. MCP has its own boundary and does not inherit Portal's wildcard CORS. Protect other exposed service ports separately.
 
 ## Choose permissions

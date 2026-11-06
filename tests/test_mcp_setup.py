@@ -2,6 +2,8 @@
 import asyncio
 import json
 import os
+import subprocess
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -16,6 +18,19 @@ from apps.Portal.mcp_server.server import Runtime, public_origin
 
 
 class SetupTests(Workspace):
+    def test_launcher_preserves_socket_peer_only_for_runpod_origin(self):
+        script = (Path(__file__).resolve().parents[1] / 'scripts/portal.sh').read_text()
+        script = script.replace('source /opt/venvs/core/bin/activate', ':').replace(
+            '/workspace/config/secrets.env', '/dev/null').replace('exec uvicorn ', "printf '%s\\n' ")
+        for pod, origin, expected in [('fixture', '', True), ('fixture', 'https://fixture-7878.proxy.runpod.net/', True),
+                                      ('fixture', 'https://custom.example', False), ('', '', False)]:
+            with self.subTest(pod=pod, origin=origin):
+                args = subprocess.check_output(['bash', '-c', script], text=True, env={
+                    'PATH': os.defpath, 'RUNPOD_POD_ID': pod, 'MCP_PUBLIC_URL': origin, 'PORTAL_RELOAD': '1'
+                }).splitlines()
+                self.assertEqual('--no-proxy-headers' in args, expected)
+                self.assertIn('--reload', args)
+
     def setUp(self):
         super().setUp()
         environment = patch.dict(os.environ, {'RUNPOD_POD_ID': '', 'PORTAL_PORT': '7878'}, clear=False)
@@ -110,7 +125,7 @@ class SetupTests(Workspace):
             self.runtime = Runtime(self.facade, '')
             self.runtime.setup_sdk()
         origin = self.runtime.origin
-        with TestClient(self.app(), base_url=origin.replace('https://', 'http://'), raise_server_exceptions=False) as client:
+        with TestClient(self.app(), base_url=origin.replace('https://', 'http://'), client=('100.64.1.64', 41234), raise_server_exceptions=False) as client:
             headers = {**self.owner(client), 'Origin': origin}
             response = client.post('/api/settings/mcp/clients', headers=headers, json=self.connection())
             self.assertEqual(response.status_code, 200, response.text)
@@ -119,6 +134,68 @@ class SetupTests(Workspace):
             self.assertEqual(client.post('/mcp', headers={'Origin': 'https://evil.example'}, json={}).status_code, 403)
         with patch.dict(os.environ, {'RUNPOD_POD_ID': 'fixturepod', 'RUNPOD_TCP_PORT_7878': '34567'}):
             self.assertFalse(Runtime(self.facade, '').accepts_transport({'scheme': 'http'}))
+
+    def test_runpod_rewritten_host_owner_setup_and_sdk_roundtrip(self):
+        async def run():
+            with patch.dict(os.environ, {'RUNPOD_POD_ID': 'fixturepod', 'RUNPOD_TCP_PORT_7878': ''}):
+                self.runtime = Runtime(self.facade, '')
+            app = self.app()
+            await self.runtime.start()
+            origin = self.runtime.origin
+            proxy = {'Host': '100.65.17.138:60269', 'X-Forwarded-Host': urlsplit(origin).netloc,
+                     'X-Forwarded-Proto': 'https'}
+            try:
+                async def after_tls_termination(scope, receive, send):
+                    await app(dict(scope, scheme='http'), receive, send)
+
+                transport = httpx2.ASGITransport(app=after_tls_termination, client=('100.64.1.68', 59912),
+                                                 raise_app_exceptions=False)
+                async with httpx2.AsyncClient(transport=transport, base_url=origin, headers=proxy) as owner:
+                    self.assertEqual((await owner.get('/api/settings/mcp')).status_code, 403)
+                    owner.cookies.set('owner', 'session')
+                    status = await owner.get('/api/settings/mcp')
+                    self.assertEqual(status.status_code, 200, status.text)
+                    headers = {'Origin': origin, 'X-MCP-CSRF': status.json()['csrf']}
+                    for bad in ({'Origin': 'https://foreign.example'}, {'X-MCP-CSRF': 'invalid'}):
+                        denied = await owner.post('/api/settings/mcp/clients', headers={**headers, **bad},
+                                                  json=self.connection())
+                        self.assertEqual(denied.status_code, 403)
+                    created = await owner.post('/api/settings/mcp/clients', headers=headers, json=self.connection())
+                    self.assertEqual(created.status_code, 200, created.text)
+                    self.assertEqual(created.json()['url'], origin + '/mcp')
+                async with httpx2.AsyncClient(transport=transport, headers={**proxy,
+                        'Authorization': 'Bearer ' + created.json()['token']}) as http:
+                    async with Client(streamable_http_client(origin + '/mcp', http_client=http)) as agent:
+                        self.assertEqual([t.name for t in (await agent.list_tools()).tools], ['workspace_status'])
+            finally:
+                await self.runtime.stop()
+        asyncio.run(run())
+
+    def test_forwarded_identity_cannot_be_spoofed_or_ambiguous(self):
+        host = 'fixturepod-7878.proxy.runpod.net'
+        proxy = [('Host', '100.65.17.138:60269'), ('X-Forwarded-Host', host), ('X-Forwarded-Proto', 'https')]
+        peer = ('100.64.1.67', 40900)
+        for pod, tcp, address, headers in [
+            ('', '', peer, proxy), ('fixturepod', '34567', peer, proxy),
+            ('fixturepod', '', ('203.0.113.7', 5555), proxy),
+            ('fixturepod', '', ('127.0.0.1', 5555), proxy + [('X-Forwarded-For', peer[0] + ':40900')]),
+            ('fixturepod', '', (peer[0], 0), proxy),
+            ('fixturepod', '', peer, proxy + [proxy[1]]),
+            ('fixturepod', '', peer, proxy + [proxy[2]]),
+            ('fixturepod', '', peer, proxy[:2]),
+            ('fixturepod', '', peer, [proxy[0], ('X-Forwarded-Host', host + ', evil.test'), proxy[2]]),
+            ('fixturepod', '', peer, [proxy[0], proxy[1], ('X-Forwarded-Proto', 'http')]),
+            ('fixturepod', '', peer, [('Host', 'evil.test'), *proxy[1:]]),
+        ]:
+            with self.subTest(pod=pod, tcp=tcp, address=address, headers=headers), patch.dict(os.environ,
+                    {'RUNPOD_POD_ID': pod, 'RUNPOD_TCP_PORT_7878': tcp}):
+                self.runtime = Runtime(self.facade, 'https://' + host)
+                self.runtime.setup_sdk()
+                with TestClient(self.app(), base_url='http://' + host, client=address) as client:
+                    client.cookies.set('owner', 'session')
+                    expected = 400 if len(headers) != len(dict(headers)) else 403
+                    self.assertEqual(client.get('/api/settings/mcp', headers=headers).status_code, expected)
+                    self.assertEqual(client.post('/mcp', headers=headers, json={}).status_code, expected)
 
     def test_setup_activates_existing_sdk_lifespan_without_restart(self):
         async def run():

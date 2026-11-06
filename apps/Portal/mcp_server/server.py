@@ -1,6 +1,7 @@
 """Official SDK transport with a separate, fail-closed ASGI boundary."""
 import json
 import hashlib
+import ipaddress
 import os
 import re
 import threading
@@ -18,6 +19,7 @@ from .files import Rejected
 
 MAX_BODY = 64 * 1024
 DOWNLOAD_SEND_TIMEOUT = 30
+RUNPOD_UPSTREAM_NET = ipaddress.IPv4Network('100.64.0.0/10')
 
 
 def public_origin(value):
@@ -68,6 +70,8 @@ class Runtime:
         self.facade, self.store = facade, facade.store
         self.failure = None
         self.runpod_proxy = None
+        self.proxy_peers = {ip.strip() for ip in os.environ.get(
+            'MCP_RUNPOD_PROXY_PEERS', '100.64.1.64,100.64.1.67,100.64.1.68').split(',') if ip.strip()}
         try:
             detected = runpod_origin()
             port = os.environ.get('PORTAL_PORT', '7878')
@@ -98,8 +102,31 @@ class Runtime:
 
     def accepts_transport(self, scope, origin=None):
         origin = origin or self.origin
-        return (not origin or not origin.startswith('https://') or scope.get('scheme') == 'https'
-                or origin == self.runpod_proxy)
+        return not origin or not origin.startswith('https://') or scope.get('scheme') == 'https'
+
+    def proxy_scope(self, scope, headers):
+        # The packaged RunPod launcher preserves the socket peer.
+        peer = scope.get('client')
+        if (not self.runpod_proxy or self.origin != self.runpod_proxy or not peer
+                or not peer[1] or peer[0] not in self.proxy_peers):
+            return scope
+        host = headers.get(b'host', '')
+        if host == self.host and not ({b'x-forwarded-host', b'x-forwarded-proto'} & headers.keys()):
+            return dict(scope, scheme='https')  # Proxy preserved the public Host.
+        if headers.get(b'x-forwarded-host') != self.host or headers.get(b'x-forwarded-proto') != 'https':
+            return scope
+        if host != self.host:
+            address, _, port = host.rpartition(':')
+            try:
+                if (ipaddress.IPv4Address(address) not in RUNPOD_UPSTREAM_NET
+                        or not re.fullmatch('[0-9]{1,5}', port) or not 0 < int(port) < 65536):
+                    return scope
+            except ValueError:
+                return scope
+        # The owner app and SDK must see the same server-pinned authority.
+        headers[b'host'] = self.host
+        return dict(scope, scheme='https', headers=[(k, self.host.encode() if k.lower() == b'host' else v)
+                                                    for k, v in scope['headers']])
 
     def configure_origin(self, origin):
         origin = public_origin(origin)
@@ -240,9 +267,11 @@ class Runtime:
         headers = {}
         for key, value in scope['headers']:
             key = key.lower()
-            if key in headers and key in {b'authorization', b'host', b'origin', b'content-length', b'content-type'}:
+            if key in headers and key in {b'authorization', b'host', b'origin', b'content-length', b'content-type',
+                                          b'x-forwarded-host', b'x-forwarded-proto'}:
                 return await reject(400, 'INVALID_REQUEST')
             headers[key] = value.decode('latin1')
+        scope = self.proxy_scope(scope, headers)
         if headers.get(b'host') != self.host or (b'origin' in headers and headers[b'origin'] != self.origin):
             return await reject(403, 'NOT_AUTHORIZED')
         if not self.accepts_transport(scope):
@@ -427,9 +456,11 @@ class Boundary:
             headers = {}
             for key, value in scope['headers']:
                 key = key.lower()
-                if key in headers and key in {b'host', b'origin', b'content-length', b'content-type', b'x-mcp-csrf'}:
+                if key in headers and key in {b'host', b'origin', b'content-length', b'content-type', b'x-mcp-csrf',
+                                              b'x-forwarded-host', b'x-forwarded-proto'}:
                     return await JSONResponse({'detail': 'Invalid request'}, status_code=400)(scope, receive, send)
                 headers[key] = value.decode('latin1')
+            scope = self.runtime.proxy_scope(scope, headers)
             if ((self.runtime.host and headers.get(b'host') != self.runtime.host) or headers.get(b'content-encoding')
                     or scope.get('query_string')
                     or not self.runtime.accepts_transport(scope)):
