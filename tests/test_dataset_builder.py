@@ -22,7 +22,7 @@ def photo_bytes():
 
 class DatasetBuilderTests(unittest.TestCase):
     def test_plan_matches_the_existing_recipe_without_creating_a_job(self):
-        for count in (4, 24, 40):
+        for count in (4, 15, 30, 50, 100):
             response = self.client.get('/api/dataset-builder/plan', params={'count': count})
             self.assertEqual(response.status_code, 200)
             plan = response.json()
@@ -36,19 +36,22 @@ class DatasetBuilderTests(unittest.TestCase):
         self.assertFalse(fixed['vary_clothes'])
         self.assertFalse(fixed['vary_hair'])
         self.assertFalse((self.root / 'config' / 'dataset-builder').exists())
-        for query in ('count=3', 'count=41', 'goal=unsupported'):
+        for query in ('count=3', 'count=101', 'goal=unsupported'):
             self.assertEqual(self.client.get('/api/dataset-builder/plan?' + query).status_code, 422)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
-        router, self.builder = create_router(self.root, self.root / 'models')
+        self.downloads = Mock()
+        router, self.builder = create_router(self.root, self.root / 'models', downloads=self.downloads)
+        self.missing = patch.object(self.builder, 'missing_models', return_value=[])
+        self.missing.start(); self.addCleanup(self.missing.stop)
         app = FastAPI(); app.include_router(router)
         self.client = TestClient(app); self.addCleanup(self.client.close)
         self.ready = patch.object(self.builder, 'require_ready')
         self.ready.start(); self.addCleanup(self.ready.stop)
-        capacity = patch('apps.Portal.services.dataset_builder.shutil.disk_usage', return_value=Mock(free=1024 ** 3))
+        capacity = patch('apps.Portal.services.dataset_builder.shutil.disk_usage', return_value=Mock(free=64 * 1024 ** 3))
         capacity.start(); self.addCleanup(capacity.stop)
 
     def create(self, **extra):
@@ -82,6 +85,36 @@ class DatasetBuilderTests(unittest.TestCase):
             self.assertEqual(len(start.call_args.args[0]['items']), 4)
         self.assertEqual(self.client.post(f'/api/dataset-builder/jobs/{job["id"]}/reference', json={'file': '../state.json'}).status_code, 409)
 
+    def test_setup_failure_resumes_uploaded_photo_without_generating_candidates(self):
+        self.builder.missing_models.return_value = ['anima-vae']
+        self.downloads.start.side_effect = [{'state': 'error'}, {'state': 'queued'}]
+        self.downloads.status.return_value = {'state': 'done'}
+        with patch.object(self.builder, 'generate') as generate:
+            job = self.create()
+            self.builder.thread.join(3)
+            failed = self.builder.read(job['id'])
+            self.assertEqual((failed['phase'], failed['status']), ('setup', 'failed'))
+            self.assertNotIn('anima-vae', failed['message'])
+            result = self.client.post(f'/api/dataset-builder/jobs/{job["id"]}/resume')
+            self.assertEqual(result.status_code, 200, result.text)
+            self.builder.thread.join(3)
+            done = self.builder.read(job['id'])
+            self.assertEqual(done['status'], 'reference_review')
+            self.assertEqual(done['references'], ['reference-upload.png'])
+            generate.assert_not_called()
+
+    def test_prompt_setup_continues_into_reference_generation(self):
+        self.builder.missing_models.return_value = ['anima-vae']
+        self.downloads.start.return_value = {'state': 'done'}
+        with patch.object(self.builder, 'generate') as generate:
+            response = self.client.post('/api/dataset-builder/jobs', data={'spec': json.dumps(
+                dict(name='portrait', trigger='ohwx', source='prompt', count=100, prompt='An orange robot'))})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.builder.thread.join(3)
+            self.downloads.start.assert_called_once_with('anima-vae', 'anima-vae')
+            self.assertEqual(self.builder.read(response.json()['id'])['status'], 'reference_review')
+            self.assertEqual(generate.call_count, 4)
+
     def test_invalid_upload_and_name_cannot_escape_workspace(self):
         for name in ['../outside', '/tmp/outside', 'bad name']:
             result = self.client.post('/api/dataset-builder/jobs', data={'spec': json.dumps(dict(name=name, trigger='x', source='photo'))},
@@ -90,6 +123,15 @@ class DatasetBuilderTests(unittest.TestCase):
         result = self.client.post('/api/dataset-builder/jobs', data={'spec': json.dumps(dict(name='valid', trigger='x', source='photo'))},
                                   files={'photo': ('fake.png', b'not an image')})
         self.assertEqual(result.status_code, 400)
+
+    def test_first_download_checks_storage_before_starting(self):
+        self.builder.missing_models.return_value = ['dataset-qwen-edit']
+        with patch('apps.Portal.services.dataset_builder.shutil.disk_usage', return_value=Mock(free=5 * 1024 ** 3)):
+            response = self.client.post('/api/dataset-builder/jobs', data={'spec': json.dumps(
+                dict(name='test', trigger='ohwx', prompt='An orange robot'))})
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('model download', response.json()['detail'])
+        self.downloads.start.assert_not_called()
 
     def test_low_disk_space_blocks_before_creating_job(self):
         with patch('apps.Portal.services.dataset_builder.shutil.disk_usage', return_value=Mock(free=0)):
@@ -159,7 +201,7 @@ class DatasetBuilderTests(unittest.TestCase):
         job = self.create()
         job.update(status='generating', pending={'file': 'candidate.png', 'prompt_id': 'already-submitted'})
         self.builder.save(job)
-        restarted = DatasetBuilder(self.root, self.root / 'models')
+        restarted = DatasetBuilder(self.root, self.root / 'models', downloads=self.downloads)
         restored = restarted.read(job['id'])
         self.assertEqual(restored['status'], 'paused')
         self.assertEqual(restored['pending']['prompt_id'], 'already-submitted')
@@ -287,7 +329,8 @@ class DatasetBuilderTests(unittest.TestCase):
             self.assertEqual(rows[name][2].split(':', 1)[1].split('/')[-1], filename)
             self.assertEqual(rows[name][3], folder)
             self.assertEqual(int(rows[name][5]), MODEL_SIZES[name])
-        self.assertEqual(int(rows['sdxl-base'][5]), MODEL_SIZES['sdxl-base'])
+        for name in ('sdxl-base', 'dataset-local-captioner'):
+            self.assertEqual(int(rows[name][5]), MODEL_SIZES[name])
 
     def test_image_checks_find_duplicates(self):
         path = self.root / 'image.png'; path.write_bytes(photo_bytes())
@@ -295,9 +338,11 @@ class DatasetBuilderTests(unittest.TestCase):
         self.assertEqual(image_checks(path)[0], image_checks(other)[0])
 
     def test_missing_dependencies_are_actionable(self):
+        self.missing.stop()
         with patch.object(self.builder, 'request', side_effect=HTTPException(503, 'Start ComfyUI in Services')):
             result = self.builder.preflight('prompt')
         self.assertFalse(result['ready'])
         self.assertIn('dataset-local-captioner', result['missing'])
         self.assertIn('sdxl-base', result['missing'])
         self.assertIn('Start ComfyUI in Services', result['problems'])
+        self.assertEqual(set(self.builder.missing_models('photo')), set(result['missing']) - {'sdxl-base'})

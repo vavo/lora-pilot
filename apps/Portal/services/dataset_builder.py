@@ -27,7 +27,7 @@ from .tagpilot_local import model_ready
 from .training_runs import now, write_json
 
 MAX_IMAGE = 32 * 1024 ** 2
-ACTIVE = {'generating_reference', 'generating', 'checking', 'pausing'}
+ACTIVE = {'preparing', 'generating_reference', 'generating', 'checking', 'pausing'}
 
 
 class BuildSpec(BaseModel):
@@ -35,7 +35,7 @@ class BuildSpec(BaseModel):
     trigger: str = Field(pattern=r'^[A-Za-z][A-Za-z0-9_]{0,39}$')
     source: Literal['prompt', 'photo'] = 'prompt'
     prompt: str = Field(default='', max_length=2000)
-    count: int = Field(default=24, ge=4, le=40)
+    count: int = Field(default=30, ge=4, le=100)
     goal: Literal['identity', 'character'] = 'identity'
     vary_clothes: bool = True
     vary_hair: bool = False
@@ -93,7 +93,8 @@ def image_checks(path):
 
 
 class DatasetBuilder:
-    def __init__(self, workspace, models, invalidate=lambda: None):
+    def __init__(self, workspace, models, invalidate=lambda: None, *, downloads):
+        self.downloads = downloads
         self.workspace, self.models = Path(workspace), Path(models)
         self.root = safe_path(self.workspace, 'config', 'dataset-builder')
         self.invalidate = invalidate
@@ -139,7 +140,7 @@ class DatasetBuilder:
         result = dict(job)
         result['accepted_count'] = sum(bool(x.get('accepted')) for x in job['items'])
         if self.stop.is_set() and self.active_id == job['id'] and job['status'] in ACTIVE:
-            result.update(status='pausing', message='Pausing after the current image. Other ComfyUI jobs will not be interrupted.')
+            result.update(status='pausing', message='Pausing setup.' if job['phase'] == 'setup' else 'Pausing after the current image. Other ComfyUI jobs will not be interrupted.')
         return result
 
     def request(self, method, path, **kwargs):
@@ -154,7 +155,7 @@ class DatasetBuilder:
         except (httpx.HTTPError, ValueError) as exc:
             raise HTTPException(503, 'ComfyUI is unavailable. Start it in Services and retry.') from exc
 
-    def preflight(self, source):
+    def missing_models(self, source):
         missing = []
         for name, (folder, filename) in MODEL_FILES.items():
             path = self.models / folder / filename
@@ -166,6 +167,10 @@ class DatasetBuilder:
         checkpoint = self.models / 'checkpoints' / CHECKPOINT
         if source == 'prompt' and (not checkpoint.is_file() or checkpoint.stat().st_size != MODEL_SIZES['sdxl-base']):
             missing.append('sdxl-base')
+        return missing
+
+    def preflight(self, source):
+        missing = self.missing_models(source)
         problems = []
         if missing:
             problems.append('Install missing models in Models: ' + ', '.join(missing))
@@ -182,7 +187,8 @@ class DatasetBuilder:
     def require_ready(self, source):
         result = self.preflight(source)
         if not result['ready']:
-            raise HTTPException(409, ' '.join(result['problems']))
+            raise HTTPException(409, 'Generation is not ready. Check that ComfyUI is running in Services and retry.' if not result['missing']
+                                else 'The downloaded models are incomplete. Check storage and retry setup.')
 
     def idle(self, job=None):
         if self.thread and self.thread.is_alive():
@@ -197,7 +203,13 @@ class DatasetBuilder:
                 raise HTTPException(400, 'Describe the character you want to create')
             if spec.source == 'photo' and not photo:
                 raise HTTPException(400, 'Choose a reference photo')
-            self.require_ready(spec.source)
+            missing = self.missing_models(spec.source)
+            if missing:
+                weight_bytes = sum(MODEL_SIZES[name] for name in missing)
+                if shutil.disk_usage(self.models if self.models.exists() else self.workspace).free < weight_bytes:
+                    raise HTTPException(409, 'Not enough space for the first model download. Free space in Storage and try again.')
+            else:
+                self.require_ready(spec.source)
             if shutil.disk_usage(self.workspace).free < (spec.count * 12 + 200) * 1024 ** 2:
                 raise HTTPException(409, 'Not enough workspace space for this dataset. Free space in Storage.')
             job_id = uuid.uuid4().hex
@@ -209,8 +221,10 @@ class DatasetBuilder:
             if spec.source == 'photo':
                 save_image(photo, safe_path(directory, 'reference-upload.png'))
                 job['references'] = ['reference-upload.png']
+            if missing:
+                job['phase'] = 'setup'
             self.save(job)
-            if spec.source == 'prompt':
+            if missing or spec.source == 'prompt':
                 self.start(job)
             return self.public(job)
 
@@ -222,6 +236,8 @@ class DatasetBuilder:
         self.active_id = job['id']
         job['status'] = 'generating_reference' if job['phase'] == 'reference' else 'generating'
         job['message'] = 'Queued for generation. You can leave this page and return later.'
+        if job['phase'] == 'setup':
+            job.update(status='preparing', message='Preparing your first reference. You can leave this page.')
         self.save(job)
         self.thread = threading.Thread(target=self.work, args=(job,), daemon=True)
         self.thread.start()
@@ -345,8 +361,26 @@ class DatasetBuilder:
     def work(self, job):
         try:
             directory = self.directory(job['id'])
+            if job['phase'] == 'setup':
+                source = job['spec']['source']
+                missing = self.missing_models(source)
+                for index, name in enumerate(missing, 1):
+                    if self.stop.is_set():
+                        raise RuntimeError('Setup paused. Resume when you are ready.')
+                    job['message'] = f'Downloading model {index} of {len(missing)}. You can leave this page.'
+                    self.save(job)
+                    pull = self.downloads.start(name, name)
+                    while pull['state'] in ('queued', 'running'):
+                        if self.stop.wait(1):
+                            raise RuntimeError('Setup paused. The current download can finish in the background.')
+                        pull = self.downloads.status(name)
+                    if pull['state'] != 'done':
+                        raise RuntimeError('A model download failed. Check free storage and your connection, then resume.')
+                self.require_ready(source)
+                job.update(phase='reference', status='generating_reference', message='Creating reference candidates.')
+                self.save(job)
             if job['phase'] == 'reference':
-                for index in range(len(job['references']), 4):
+                for index in range(len(job['references']), 4 if job['spec']['source'] == 'prompt' else 1):
                     if self.stop.is_set():
                         break
                     filename = f'reference-{index}.png'
@@ -457,8 +491,8 @@ class DatasetBuilder:
         return self.public(job)
 
 
-def create_router(workspace, models, invalidate=lambda: None):
-    builder = DatasetBuilder(workspace, models, invalidate)
+def create_router(workspace, models, invalidate=lambda: None, *, downloads):
+    builder = DatasetBuilder(workspace, models, invalidate, downloads=downloads)
     router = APIRouter(prefix='/api/dataset-builder')
     router.add_event_handler('shutdown', builder.close)
 
@@ -467,7 +501,7 @@ def create_router(workspace, models, invalidate=lambda: None):
         return builder.preflight(source)
 
     @router.get('/plan')
-    def plan(count: int = Query(24, ge=4, le=40), goal: Literal['identity', 'character'] = 'identity',
+    def plan(count: int = Query(30, ge=4, le=100), goal: Literal['identity', 'character'] = 'identity',
              vary_clothes: bool = True, vary_hair: bool = False):
         shots = shot_plan(count, goal, vary_clothes, vary_hair)
         return {'count': count,
@@ -488,7 +522,7 @@ def create_router(workspace, models, invalidate=lambda: None):
         try:
             options = BuildSpec.model_validate_json(spec)
         except ValidationError as exc:
-            raise HTTPException(422, 'Use a short dataset name and trigger word with letters, numbers or underscores, and 4–40 images.') from exc
+            raise HTTPException(422, 'Use a short dataset name and trigger word with letters, numbers or underscores, and 4–100 images.') from exc
         data = photo.file.read(MAX_IMAGE + 1) if photo else None
         return builder.create(options, data)
 
@@ -525,7 +559,8 @@ def create_router(workspace, models, invalidate=lambda: None):
         with builder.lock:
             job = builder.read(job_id)
             builder.idle(job)
-            builder.require_ready(job['spec']['source'] if job['phase'] == 'reference' else 'photo')
+            if job['phase'] != 'setup':
+                builder.require_ready(job['spec']['source'] if job['phase'] == 'reference' else 'photo')
             job.pop('retry_slots', None)
             builder.start(job)
             return builder.public(job)
@@ -536,7 +571,7 @@ def create_router(workspace, models, invalidate=lambda: None):
             if builder.active_id != job_id:
                 raise HTTPException(409, 'This job is not running')
             builder.stop.set()
-            return {'message': 'Pausing after the current image. Other ComfyUI jobs will not be interrupted.'}
+            return {'message': builder.public(builder.read(job_id))['message']}
 
     @router.patch('/jobs/{job_id}/images/{slot}')
     def choose(job_id: str, slot: int, choice: ImageChoice):

@@ -4,13 +4,13 @@ window.initDatasetBuilder = function (screen) {
   if (!root) return;
   const el = id => document.getElementById('db-' + id);
   const api = '/api/dataset-builder';
-  const running = job => ['generating_reference', 'generating', 'checking', 'pausing'].includes(job?.status);
-  let selected = null, busy = false, ready = false, planReady = false, comparisonSlot = null;
+  const running = job => ['preparing', 'generating_reference', 'generating', 'checking', 'pausing'].includes(job?.status);
+  let selected = null, busy = false, planReady = false, comparisonSlot = null;
   const error = message => { if (screen.active) el('error').textContent = message; };
   const imageUrl = (job, file) => `${api}/jobs/${job.id}/images/${encodeURIComponent(file)}`;
 
   function controls() {
-    el('create').disabled = busy || !ready || !planReady || running(selected);
+    el('create').disabled = busy || !planReady || running(selected);
     el('jobs').disabled = busy;
     const complete = selected?.items.length === selected?.spec.count && selected?.items.every(x => x.accepted && x.review);
     el('finish').disabled = busy || !complete || !el('reviewed').checked;
@@ -29,18 +29,6 @@ window.initDatasetBuilder = function (screen) {
     finally { if (screen.active) { busy = false; if (selected) render(selected); controls(); } }
   }
 
-  async function check() {
-    const request = screen.latest('builder-preflight');
-    ready = false; controls(); el('preflight').textContent = 'Checking models and ComfyUI…';
-    try {
-      const result = await request.json(`${api}/preflight?source=${el('source').value}`);
-      if (!request.active) return;
-      ready = result.ready;
-      el('preflight').textContent = ready ? 'Models and ComfyUI are ready. Consistency checks run locally; captions and tags are handled in TagPilot.' : result.problems.join(' ');
-    } catch (exc) { if (request.active) el('preflight').textContent = exc.message; }
-    if (request.active) controls();
-  }
-
   async function showPlan() {
     const request = screen.latest('builder-plan');
     planReady = false; controls();
@@ -56,7 +44,7 @@ window.initDatasetBuilder = function (screen) {
         (plan.vary_clothes ? 'Vary clothes. ' : 'Keep reference clothes. ') +
         (plan.vary_hair ? 'Include hairstyle changes.' : 'Keep reference hairstyle.');
       planReady = true;
-    } catch (exc) { if (request.active) el('plan').textContent = 'Choose 4–40 images. If the plan cannot load, use Check again.'; }
+    } catch (exc) { if (request.active) el('plan').textContent = 'The image plan could not load. Select an image count to retry.'; }
     if (request.active) controls();
   }
 
@@ -65,7 +53,6 @@ window.initDatasetBuilder = function (screen) {
     el('prompt-label').hidden = photo; el('prompt').required = !photo;
     el('photo-label').hidden = !photo; el('photo').required = photo;
     el('create').textContent = photo ? 'Use this photo' : 'Create reference';
-    void check();
   }
 
   function button(label, callback, disabled = false) {
@@ -131,6 +118,7 @@ window.initDatasetBuilder = function (screen) {
     const option = Array.from(el('jobs').options).find(option => option.value === job.id);
     if (option) option.textContent = `${job.spec.name} · ${job.status.replaceAll('_', ' ')}`;
     el('pause').hidden = !active;
+    el('pause').textContent = job.phase === 'setup' ? 'Pause setup' : 'Pause after current image';
     el('resume').hidden = active || saved || job.status === 'reference_review';
     el('reference').replaceChildren(); el('images').replaceChildren();
     el('finish-wrap').hidden = job.phase !== 'variations' || active || saved;
@@ -143,7 +131,7 @@ window.initDatasetBuilder = function (screen) {
       card.append(img, caption);
       if (!job.reference) card.append(button('Use this reference', async () => {
         selected = await post('reference', {file}); el('reviewed').checked = false;
-      }, active || !!job.pending));
+      }, active || job.phase !== 'reference' || !!job.pending));
       el('reference').append(card);
     }
     for (const item of job.items) {
@@ -178,7 +166,7 @@ window.initDatasetBuilder = function (screen) {
 
   el('open').onclick = () => {
     root.hidden = !root.hidden; el('open').setAttribute('aria-expanded', String(!root.hidden));
-    if (!root.hidden) { sourceChanged(); void showPlan(); void action(listJobs); }
+    if (!root.hidden) { el('name').focus(); sourceChanged(); void showPlan(); void action(listJobs); }
   };
   el('source').onchange = sourceChanged;
   el('goal').onchange = () => {
@@ -188,8 +176,7 @@ window.initDatasetBuilder = function (screen) {
     void showPlan();
   };
   for (const name of ['count', 'clothes', 'hair']) el(name).onchange = showPlan;
-  el('recheck').onclick = () => { void check(); void showPlan(); };
-  el('models').onclick = event => { event.preventDefault(); window.loadSection('models'); };
+
   el('form').onsubmit = event => {
     event.preventDefault();
     void action(async () => {

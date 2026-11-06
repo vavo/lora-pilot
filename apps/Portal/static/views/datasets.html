@@ -1,9 +1,18 @@
 <div class="journey-page">
 <header class="journey-heading"><h2>Datasets</h2><p>Bring your images, or create a new collection for training.</p></header>
+<div class="ds-entry-options">
 <section class="journey-surface db-intro">
   <h3>Create a dataset</h3><p>Start with a character description or a photo. Generate different views, check consistency, then caption and tag in TagPilot.</p>
   <button id="db-open" class="btn primary" type="button" aria-expanded="false" aria-controls="dataset-builder">Create a dataset</button>
 </section>
+<section class="ds-upload-intro">
+  <div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div>
+  <div><h3>Start with your images</h3><p>Upload a ZIP containing your images and optional matching .txt captions.</p>
+    <div class="row wrap gap-12"><button class="btn primary" id="ds-upload-open" onclick="openUploadModal()">Upload ZIP</button><button class="journey-link" onclick="createDatasetPrompt()">Create empty dataset</button></div>
+    <p class="journey-note">Your original files stay in your workspace.</p>
+  </div>
+</section>
+</div>
 <section id="dataset-builder" class="journey-surface db-builder" hidden aria-labelledby="db-title">
   <h3 id="db-title">Build your training images</h3>
   <ol class="preparation-steps" aria-label="Dataset to training"><li data-prepare-step="1" aria-current="step">Reference</li><li data-prepare-step="2">Review images</li><li>Caption in TagPilot</li><li>Train</li></ol>
@@ -12,7 +21,7 @@
     <div class="db-fields">
       <label>Dataset name<input id="db-name" class="input" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\-]*" placeholder="my_character"></label>
       <label>Trigger word<input id="db-trigger" class="input" required maxlength="40" pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="ohwxperson"><small>Use this word in prompts after training.</small></label>
-      <label>Number of images<input id="db-count" class="input" type="number" min="4" max="40" value="24" required></label>
+      <label>Number of images<select id="db-count" class="select"><option value="15">15 (minimum)</option><option value="30" selected>30 (basic)</option><option value="50">50 (optimal)</option><option value="100">100 (detailed)</option></select></label>
       <label>Start from<select id="db-source" class="select"><option value="prompt">A description</option><option value="photo">My photo</option></select></label>
       <label>What should the LoRA learn?<select id="db-goal" class="select"><option value="identity">Person / identity</option><option value="character">Character with a fixed look</option></select></label>
     </div>
@@ -22,8 +31,8 @@
     <section class="db-plan" aria-labelledby="db-plan-title"><h4 id="db-plan-title">Your planned image mix</h4><p id="db-plan" role="status">Loading the shot plan…</p><p class="journey-note">This is what we will ask for, not a check of the finished images. Review the results before training.</p></section>
     <p class="journey-note">Use photos you have permission to use. Images stay on your pod; GPU time is still billed by your host.</p>
     <details class="db-details"><summary>How generation works</summary><p class="journey-note">A description creates four SDXL references to choose from. Qwen Image Edit makes the variations, with up to three attempts per image. Local consistency checks and TagPilot captions run on CPU and can take several minutes per image.</p></details>
-    <p id="db-preflight" role="status" class="journey-note">Checking models and ComfyUI…</p>
-    <div class="row wrap gap-12"><button id="db-create" type="submit" class="btn primary" disabled>Create reference</button><button id="db-recheck" type="button" class="journey-link">Check again</button><a href="#models" id="db-models" class="journey-link">Open Models</a></div>
+    <p id="db-preflight" role="status" class="journey-note">Missing models download automatically when you start. First-time setup may need up to 42 GB.</p>
+    <div class="row wrap gap-12"><button id="db-create" type="submit" class="btn primary" disabled>Create reference</button></div>
   </form>
   <p id="db-error" role="alert" class="status"></p>
   <label id="db-jobs-label" class="db-jobs" hidden>Saved creation jobs<select id="db-jobs" class="select"><option value="">Choose a job</option></select></label>
@@ -43,14 +52,7 @@
     <div id="db-compare-actions" class="row wrap gap-8"></div>
   </dialog>
 </section>
-<section class="ds-upload-intro">
-  <div class="journey-icon" data-nav-icon="datasets" aria-hidden="true"></div>
-  <div><h3>Start with your images</h3><p>Upload a ZIP containing your images and optional matching .txt captions.</p>
-    <div class="row wrap gap-12"><button class="btn primary" id="ds-upload-open" onclick="openUploadModal()">Upload ZIP</button><button class="journey-link" onclick="createDatasetPrompt()">Create empty dataset</button></div>
-    <p class="journey-note">Your original files stay in your workspace.</p>
-  </div>
-</section>
-<div id="first-lora-guide"></div>
+<div id="first-lora-guide" data-title="Your first dataset - use this default dataset to train your first LoRA"></div>
 <div class="ds-list-heading"><h3>Your datasets</h3><span id="ds-count" class="journey-note"></span></div>
 <p id="ds-status" class="status" role="status">Loading datasets…</p>
 <div class="ds-table-wrap"><table id="ds-table" class="is-hidden">

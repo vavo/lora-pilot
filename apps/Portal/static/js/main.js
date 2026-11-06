@@ -218,7 +218,7 @@ contentEl?.addEventListener("click", async event => {
   if (!control) return;
   event.preventDefault();
   const mounted = await loadSection(control.dataset.openSection);
-  if (mounted && control.dataset.openUpload !== undefined) window.openUploadModal?.();
+  if (mounted && control.dataset.openBuilder !== undefined) document.getElementById('db-open')?.click();
 });
 
 // expose for other modules

@@ -5,7 +5,7 @@ window.firstLora = (() => {
     const host = document.getElementById('first-lora-guide');
     if (!host) return;
     const details = document.createElement('details'); details.className = 'tp-disclosure';
-    const summary = document.createElement('summary'); summary.textContent = 'Your first LoRA · meet the orange robot';
+    const summary = document.createElement('summary'); summary.textContent = host.dataset.title || 'Your first LoRA · meet the orange robot';
     const body = document.createElement('div'); body.className = 'first-lora-body';
     const image = document.createElement('img'); image.src = '/api/training/first-lora/preview'; image.alt = 'Orange robot sample from the LoRA Pilot videos';
     const content = document.createElement('div');

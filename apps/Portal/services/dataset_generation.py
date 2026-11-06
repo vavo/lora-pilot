@@ -10,7 +10,7 @@ MODEL_FILES = {
 }
 CHECKPOINT = 'sd_xl_base_1.0.safetensors'
 MODEL_SIZES = {'dataset-qwen-edit': 20533762817, 'hunyuanimage-2.1-comfy-qwen-encoder-fp8': 9384670680,
-               'anima-vae': 253806246, 'sdxl-base': 6938078334}
+               'anima-vae': 253806246, 'sdxl-base': 6938078334, 'dataset-local-captioner': 4266647442}
 
 
 def node(kind, **inputs):

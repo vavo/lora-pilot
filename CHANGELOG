@@ -1,5 +1,6 @@
 Unreleased (October 29th 2026)
 
+- Dataset creation now downloads missing models when you start a reference and offers 15, 30, 50 or 100 images. The dashboard opens the builder directly; ZIP upload remains a separate option.
 - Fixed MCP setup and agent connections on RunPod when its HTTPS proxy rewrites the Host header. Direct connections still require the configured host and transport.
 - Fixed MediaPilot’s Upscale selected action on fresh and upgraded workspaces. It uses the bundled 2× Lanczos workflow unless a custom workflow is configured.
 

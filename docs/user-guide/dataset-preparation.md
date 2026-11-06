@@ -26,7 +26,7 @@ The dataset browser recognizes PNG, JPEG, WebP, BMP, and GIF extensions. Recogni
 
 Open **Datasets → Create a dataset**. This first version is for a person or character, not a general-purpose style or product dataset generator.
 
-1. Give the collection a name, a trigger word and a target of **4–40 images**.
+1. Give the collection a name, a trigger word and a target of **15, 30, 50 or 100 images** (default: 30).
 2. Choose **A description** to generate four SDXL reference candidates, or **My photo** to upload one clear reference. Uploads must be at least 256 pixels on both sides, below 40 megapixels and no larger than 32 MiB. Use photos you have permission to use.
 3. Select **Person / identity** to allow clothing changes and optionally hairstyle changes. **Character with a fixed look** keeps the original clothing and hairstyle. Backgrounds, lighting, framing and viewpoints vary in both modes.
 4. Check **Your planned image mix** before generating: it shows framing counts, viewpoints and clothing/hair choices from the existing shot recipe. This is planned variety, not verified coverage of the output. Approve a reference. Every Qwen variation uses that original image, not the previous generated image, to limit cumulative identity drift.
@@ -39,7 +39,7 @@ Checks are fallible suggestions, not identity verification or a promise of a per
 
 ### Models and runtime requirements
 
-Start ComfyUI in **Services** and install these entries from **Models**. The builder checks native node availability, model filenames and required weight sizes before starting; it never installs models automatically.
+Choose **Create reference** (or **Use this photo**) to start. ControlPilot downloads only the missing models, then continues with your reference. You can leave the page and reopen the job later. ComfyUI must be running in **Services**.
 
 | Models entry | Use | Download size |
 |---|---|---|
@@ -49,7 +49,7 @@ Start ComfyUI in **Services** and install these entries from **Models**. The bui
 | `anima-vae` | Shared Qwen VAE | About 0.25 GB |
 | `dataset-local-captioner` | Qwen3-VL-2B-Instruct for local checks and captions | About 4.3 GB |
 
-The native [ComfyUI Qwen Image Edit 2511 recipe](https://docs.comfy.org/tutorials/image/qwen/qwen-image-edit-2511) uses 40-step editing. V1 does not use a Lightning or multi-angle LoRA, FLUX reference generation, partner nodes or paid captioning APIs. Weight file sizes are not GPU-memory requirements: ComfyUI offloading, resolution and other running tasks affect the GPU and system RAM needed. Validate a four-image job on your hardware before requesting a large set.
+The native [ComfyUI Qwen Image Edit 2511 recipe](https://docs.comfy.org/tutorials/image/qwen/qwen-image-edit-2511) uses 40-step editing. V1 does not use a Lightning or multi-angle LoRA, FLUX reference generation, partner nodes or paid captioning APIs. Weight file sizes are not GPU-memory requirements: ComfyUI offloading, resolution and other running tasks affect the GPU and system RAM needed. Try the 15-image preset on your hardware before requesting a large set.
 
 Captioning uses the Apache-2.0 [Qwen3-VL-2B-Instruct](https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct) model in a separate CPU process using the core environment and local weights, with Hugging Face offline mode enabled. Allow system RAM for roughly 4.3 GB of captioner weights plus inference overhead, in addition to ComfyUI's memory needs. This stage can be slow on pod CPUs. GPU generation and idle pod time can still incur provider charges; the attempt limit is not a monetary spending cap.
 

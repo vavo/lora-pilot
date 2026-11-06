@@ -3996,7 +3996,7 @@ _training_router, _training_queue = create_training_router(
 app.include_router(_training_router)
 
 _dataset_builder_router, _dataset_builder = create_dataset_builder_router(
-    WORKSPACE_ROOT, MODELS_DIR, _invalidate_dataset_list_cache)
+    WORKSPACE_ROOT, MODELS_DIR, _invalidate_dataset_list_cache, downloads=_model_downloads)
 app.include_router(_dataset_builder_router)
 
 

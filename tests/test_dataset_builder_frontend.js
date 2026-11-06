@@ -82,10 +82,10 @@ test('builder has no caption editor and hands the exact reviewed count to TagPil
   assert.equal(card(el, 0).button('Keep image').disabled, true);
 });
 
-test('missing dependencies disable creation and photo/fixed-look inputs stay consistent', async () => {
-  const {el} = fixture(false); await settle();
-  assert.equal(el('create').disabled, true);
-  assert.match(el('preflight').textContent, /Install required models/);
+test('opening the builder does not start downloads or block creation; photo/fixed-look inputs stay consistent', async () => {
+  const {el, calls} = fixture(false); await settle();
+  assert.equal(el('create').disabled, false);
+  assert.ok(calls.every(([, options]) => !options.method || options.method === 'GET'));
   el('source').value = 'photo'; el('source').onchange(); await settle();
   assert.equal(el('prompt').required, false); assert.equal(el('prompt-label').hidden, true);
   assert.equal(el('photo').required, true); assert.equal(el('photo-label').hidden, false);
