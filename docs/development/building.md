@@ -113,14 +113,14 @@ Stage 5: Final Image
 ARG COPILOT_CLI_VERSION=1.0.10
 ARG NODE_MAJOR=24
 ARG NPM_VERSION=11.18.0
-ARG JUPYTERLAB_VERSION=4.6.3
+ARG JUPYTERLAB_VERSION=4.6.5
 ARG IPYWIDGETS_VERSION=8.1.8
-ARG COMFYUI_REF=v0.34.0
+ARG COMFYUI_REF=v0.44.0
 ARG COMFYUI_MANAGER_REF=4.2.2
 ARG COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
 ARG KOHYA_REF=v26.0.0
 ARG DIFFPIPE_REF=8f83dbf25d03219df705570ec03e62be04bc402f
-ARG AI_TOOLKIT_REF=b36bb3998ae596a566d85513299696a3a78f0dcb
+ARG AI_TOOLKIT_REF=beb94824c51480a04d3c86c718603676fdef6938
 ARG CUDA_PROFILE=cu130
 ARG CUDA_BASE_IMAGE=nvidia/cuda:13.0.2-runtime-ubuntu22.04
 ARG TORCH_VERSION=2.11.0
@@ -145,7 +145,7 @@ ARG PYTHON_SOCKETIO_VERSION=5.16.3
 ARG WEBSOCKETS_VERSION=16.0
 ARG HTTPX_VERSION=0.28.1
 ARG TENSORBOARD_VERSION=2.21.0
-ARG INVOKEAI_VERSION=6.14.0
+ARG INVOKEAI_VERSION=6.14.4
 
 # Component installation
 ARG INSTALL_GPU_STACK=1
@@ -618,14 +618,14 @@ HF_HUB_VERSION=1.19.0
 COPILOT_CLI_VERSION=1.0.10
 NODE_MAJOR=24
 NPM_VERSION=11.18.0
-JUPYTERLAB_VERSION=4.6.3
+JUPYTERLAB_VERSION=4.6.5
 IPYWIDGETS_VERSION=8.1.8
-COMFYUI_REF=v0.34.0
+COMFYUI_REF=v0.44.0
 COMFYUI_MANAGER_REF=4.2.2
 COMFYUI_DOWNLOADER_REF=03146df738191004a8aad8264dca5c3530907f56
 KOHYA_REF=v26.0.0
 DIFFPIPE_REF=8f83dbf25d03219df705570ec03e62be04bc402f
-AI_TOOLKIT_REF=b36bb3998ae596a566d85513299696a3a78f0dcb
+AI_TOOLKIT_REF=beb94824c51480a04d3c86c718603676fdef6938
 TENSORBOARD_VERSION=2.21.0
 FASTAPI_VERSION=0.139.0
 UVICORN_VERSION=0.50.0
@@ -638,7 +638,7 @@ PYTHON_DOTENV_VERSION=1.2.2
 PYTHON_SOCKETIO_VERSION=5.16.3
 WEBSOCKETS_VERSION=16.0
 HTTPX_VERSION=0.28.1
-INVOKEAI_VERSION=6.14.0
+INVOKEAI_VERSION=6.14.4
 BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 VCS_REF=$(git rev-parse --short HEAD)
 VERSION=$(git describe --tags --always)
@@ -851,6 +851,6 @@ Was this helpful? [Suggest improvements on GitHub Discussions](https://github.co
 
 ### September 5 build review
 
-code-server is no longer installed during the image build. Services installs the optional, checksum-pinned 4.135.0 release into the persistent workspace; release pins live in `apps/Portal/services/code_server.py`. JupyterLab 4.6.3 remains the latest stable release checked on September 5, 2026. The system packages include FFmpeg, supplying the shared libraries required by AI Toolkit’s TorchCodec decoder; installing PyAV alone does not supply this system dependency.
+code-server is no longer installed during the image build. Services installs the optional, checksum-pinned 4.135.0 release into the persistent workspace; release pins live in `apps/Portal/services/code_server.py`. JupyterLab 4.6.5 remains the latest stable release checked on November 6, 2026. The system packages include FFmpeg, supplying the shared libraries required by AI Toolkit’s TorchCodec decoder; installing PyAV alone does not supply this system dependency.
 
 Validation: all 104 repository tests passed, build shell scripts passed `bash -n`, and the complete shared core dependency set resolved for Linux/Python 3.11 against both cu128 and cu130 (257 packages each). `make build-check` could not run because the local Docker daemon was unavailable; full image builds and native decoder/GPU checks remain pending.

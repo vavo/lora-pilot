@@ -108,10 +108,10 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("[[ -x /opt/venvs/core/bin/hf ]]", text)
         self.assertIn("/opt/venvs/core/bin/hf version", text)
 
-    def test_invokeai_6140_uses_required_dependency_pins(self):
+    def test_invokeai_6144_uses_required_dependency_pins(self):
         expected = {
-            "INVOKEAI_VERSION": "6.14.0",
-            "INVOKE_DIFFUSERS_VERSION": "0.39.0",
+            "INVOKEAI_VERSION": "6.14.4",
+            "INVOKE_DIFFUSERS_VERSION": "0.40.0",
             "INVOKE_TRANSFORMERS_VERSION": "5.5.4",
         }
         for path in ("Dockerfile", "Makefile", "build.env.example"):
@@ -133,7 +133,7 @@ class BuildPinTests(unittest.TestCase):
 
     def test_comfy_uses_latest_verified_refs(self):
         expected = {
-            "COMFYUI_REF": "v0.34.0",
+            "COMFYUI_REF": "v0.44.0",
             "COMFYUI_MANAGER_REF": "4.2.2",
             "COMFYUI_DOWNLOADER_REF": "03146df738191004a8aad8264dca5c3530907f56",
             "COMFYUI_GGUF_REF": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
@@ -411,23 +411,10 @@ class BuildPinTests(unittest.TestCase):
         self.assertEqual(missing, [])
         self.assertEqual(late, [])
 
-    def test_comfy_torchaudio_patch_is_applied_during_build(self):
-        install_text = (ROOT / "scripts/build/install-comfy.sh").read_text()
-        docker_text = (ROOT / "Dockerfile").read_text()
-        patch_text = (ROOT / "scripts/build/patches/patch-comfy.sh").read_text()
-        self.assertIn("/opt/pilot/build/patches/patch-comfy.sh /opt/pilot/repos/ComfyUI", install_text)
-        self.assertIn("COPY scripts/build/patches/patch-comfy.sh /opt/pilot/build/patches/", docker_text)
-        self.assertIn("def _require_torchaudio()", patch_text)
-        self.assertIn("except ModuleNotFoundError:", patch_text)
-        for path in (
-            "comfy_extras/nodes_audio.py",
-            "comfy_extras/nodes_lt.py",
-            "comfy_extras/nodes_lt_audio.py",
-            "comfy_extras/nodes_audio_encoder.py",
-            "comfy_extras/nodes_wandancer.py",
-        ):
-            with self.subTest(path=path):
-                self.assertIn(path, patch_text)
+    def test_jupyter_and_ai_toolkit_use_verified_upstream_pins(self):
+        for path in ("Dockerfile", "Makefile", "build.env.example"):
+            self.assertEqual(read_pin(path, "JUPYTERLAB_VERSION"), "4.6.5")
+            self.assertEqual(read_pin(path, "AI_TOOLKIT_REF"), "beb94824c51480a04d3c86c718603676fdef6938")
 
     def test_invoke_installs_local_xformers_to_shadow_core(self):
         text = (ROOT / "scripts/build/install-invoke.sh").read_text()

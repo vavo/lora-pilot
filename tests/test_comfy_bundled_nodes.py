@@ -57,10 +57,6 @@ printf 'dependency\n' > "$2/requirements.txt"
 printf 'comfyui_manager==test\n' > "$2/manager_requirements.txt"
 ''')
             checkout.chmod(0o755)
-            patch = pilot / 'build/patches/patch-comfy.sh'
-            patch.parent.mkdir()
-            patch.write_text('#!/bin/bash\nexit 0\n')
-            patch.chmod(0o755)
             python = Path(tmp) / 'venvs/core/bin/python'
             python.parent.mkdir(parents=True)
             python.write_text('#!/bin/bash\ncat >/dev/null\n')

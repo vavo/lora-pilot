@@ -15,7 +15,7 @@ AI Toolkit offers:
 - **Next.js Interface**: Modern web-based UI
 - **Gradio Backend**: Python-based training backend
 - **Workspace Integration**: Full integration with LoRA Pilot
-- **Isolated GPU Stack**: `/opt/venvs/ai-toolkit` installs its own Torch 2.11 stack for the selected CUDA profile, with TorchAO 0.17.0 and TorchCodec 0.11.1. It shares workspace data, not core Python packages. See [CUDA compatibility](../development/cuda-compatibility.md).
+- **Isolated GPU Stack**: `/opt/venvs/ai-toolkit` installs its own Torch 2.11 stack for the selected CUDA profile, with TorchAO 0.17.0 and TorchCodec 0.15.0. It shares workspace data, not core Python packages. See [CUDA compatibility](../development/cuda-compatibility.md).
 
 ##  Quick Start
 

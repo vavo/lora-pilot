@@ -33,17 +33,14 @@ if [[ "${AI_TOOLKIT_DIFFUSERS_VERSION}" != "git" ]]; then
   exit 1
 fi
 
-# Upstream pins target older Torch ABIs. Keep the selected 2.11 CUDA stack.
+# Adjust TorchAO for the selected 2.11 CUDA stack. Use upstream TorchCodec.
 /opt/venvs/ai-toolkit/bin/python - <<'PYTHON'
 from pathlib import Path
 path = Path("/opt/pilot/repos/ai-toolkit/requirements_base.txt")
 text = path.read_text()
-for old, new in (("torchao==0.10.0", "torchao==0.17.0"),
-                 ("torchcodec==0.9.1", "torchcodec==0.11.1")):
-    if old not in text:
-        raise SystemExit(f"AI Toolkit ABI patch target changed: {old}")
-    text = text.replace(old, new)
-path.write_text(text)
+if "torchao==0.10.0" not in text:
+    raise SystemExit("AI Toolkit TorchAO patch target changed")
+path.write_text(text.replace("torchao==0.10.0", "torchao==0.17.0"))
 PYTHON
 pip_install_unconstrained_in_venv /opt/venvs/ai-toolkit \
   --extra-index-url "${TORCH_INDEX_URL}" \

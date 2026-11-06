@@ -54,7 +54,7 @@ Open **Workflows → LoRA Pilot** for four official local-generation workflows:
 - `video_ltx2_5_t2v.json` and `video_ltx2_5_i2v.json`
 - `video_minimax_h3_t2v.json` and `video_minimax_h3_i2v.json`
 
-All required nodes are native to the bundled ComfyUI 0.34.0. Download the model
+All required nodes are native to the bundled ComfyUI 0.44.0. Download the model
 files listed in each workflow's metadata and notes, then select your input image
 for I2V. Weights are not included in the image, and these workflows do not use
 paid partner/API nodes.
