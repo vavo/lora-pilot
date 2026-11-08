@@ -1,5 +1,7 @@
 Unreleased (October 29th 2026)
 
+- Replaced the global build/activity bar with a blue notification bell beside Copilot. Added an unread count, five-second previews and recent notification history; diagnostics remain available inside the panel.
+
 - Dataset creation now distinguishes people from non-human characters, offers Photo/Illustration references, and starts with three trial edits of the approved reference. Image decisions remain available during background work; regeneration is user-controlled. Compare images with Previous/Next or arrow keys and save any kept subset to TagPilot, including while stopping a larger batch.
 
 - Updated the image to JupyterLab 4.6.5, ComfyUI 0.44.0, InvokeAI 6.14.4 and AI Toolkit revision beb94824.

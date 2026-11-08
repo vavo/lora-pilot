@@ -7,6 +7,11 @@ function createActivityTracker(storage, now = Date.now) {
   try { saved = JSON.parse(storage.getItem(key)); } catch {}
   let seen = new Map(Array.isArray(saved?.seen) ? saved.seen.filter(pair => Array.isArray(pair) && pair.length === 2 && pair.every(value => typeof value === 'string')).slice(-200) : []);
   const started = Number(saved?.started) || now();
+  let notifications = Array.isArray(saved?.notifications) ? saved.notifications.filter(item =>
+    item && typeof item.id === 'string' && typeof item.label === 'string' && terminal.has(item.state)).slice(-20) : [];
+  const save = () => {
+    try { storage.setItem(key, JSON.stringify({started, seen: [...seen], notifications})); } catch {}
+  };
   return {
     update(items) {
       const notices = [];
@@ -18,8 +23,14 @@ function createActivityTracker(storage, now = Date.now) {
         seen.delete(item.id); seen.set(item.id, item.state);
       }
       seen = new Map([...seen].slice(-200));
-      try { storage.setItem(key, JSON.stringify({started, seen: [...seen]})); } catch {}
+      notifications = [...notifications, ...notices.map(item => ({...item, unread:true}))].slice(-20);
+      save();
       return notices;
+    },
+    get notifications() { return notifications; },
+    markRead(id) {
+      notifications.forEach(item => { if (!id || item.id === id) item.unread = false; });
+      save();
     },
     active,
   };
@@ -27,18 +38,27 @@ function createActivityTracker(storage, now = Date.now) {
 
 window.workspaceStatus = (() => {
   const $ = id => document.getElementById(id);
-  let tracker, timer, epoch = 0, last = [], notices = [], signature = '';
-  let minimized = false, preferenceLoaded = false;
-  const preferenceKey = 'lora-pilot.workspace-minimized.v1';
-  function setMinimized(value, save = true) {
-    minimized = value;
-    $('workspace-bar').hidden = minimized;
-    $('workspace-restore').hidden = !minimized;
-    $('workspace-activity').open = false;
-    if (save) {
-      try { window.localStorage.setItem(preferenceKey, String(minimized)); } catch {}
-      (minimized ? $('workspace-restore') : $('workspace-minimize')).focus({preventScroll:true});
-    }
+  let tracker, timer, previewTimer, epoch = 0, last = [], signature = '', statusMessage = '';
+  function hidePreview() {
+    clearTimeout(previewTimer);
+    $('workspace-notice').hidden = true;
+  }
+  function expirePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(hidePreview, 5000);
+  }
+  function setOpen(open, focus = true) {
+    $('workspace-notifications').hidden = !open;
+    $('workspace-bell').setAttribute('aria-expanded', String(open));
+    if (open) { hidePreview(); tracker.markRead(); render(last, statusMessage); }
+    if (focus) (open ? $('workspace-notifications-close') : $('workspace-bell')).focus({preventScroll:true});
+  }
+  function outsideClick(event) {
+    if (!$('workspace-notifications').hidden && !$('workspace-notifications').contains(event.target) &&
+        !$('workspace-bell').contains(event.target)) setOpen(false, false);
+  }
+  function escapePanel(event) {
+    if (event.key === 'Escape' && !$('workspace-notifications').hidden) setOpen(false);
   }
   const text = (tag, value, className = '') => {
     const el = document.createElement(tag); el.textContent = value; el.className = className; return el;
@@ -48,27 +68,28 @@ window.workspaceStatus = (() => {
     if (!['trainpilot', 'dpipe', 'models'].includes(item.section)) return;
     if (item.run_id && /^[a-f0-9]{32}$/.test(item.run_id)) window.pendingTrainingRun = item.run_id;
     if (item.section === 'models') window.pendingModelDownloads = true;
-    $('workspace-activity').open = false;
+    tracker.markRead(item.id); hidePreview(); setOpen(false, false); render(last, statusMessage);
     window.loadSection(item.section);
   }
   function render(items, message = '') {
+    statusMessage = message;
+    const notices = tracker.notifications;
     const active = items.filter(item => tracker.active.has(item.state));
     const running = active.filter(item => item.state !== 'queued');
     const lead = running[0] || active[0];
     const pct = Number.isFinite(lead?.progress) ? ` · ${lead.progress}%` : '';
     $('workspace-activity-label').textContent = message || (active.length
-      ? `${active.length} active · ${lead.label}${pct}` : 'Activity · Idle');
-    const restore = $('workspace-restore');
-    restore.dataset.busy = String(active.length > 0);
-    restore.dataset.attention = String(notices.length > 0);
-    const noticeSummary = notices[0] ? ` · ${notices[0].label}: ${stateLabel[notices[0].state] || notices[0].state}` : '';
-    restore.title = `Show build and activity · ${$('workspace-activity-label').textContent}${noticeSummary}`;
-    restore.setAttribute('aria-label', restore.title);
+      ? `${active.length} active · ${lead.label}${pct}` : 'No active tasks');
+    const unread = notices.filter(item => item.unread).length;
+    $('workspace-unread').textContent = String(unread);
+    $('workspace-unread').hidden = !unread;
+    $('workspace-bell').setAttribute('aria-label', unread ? `Notifications, ${unread} unread` : 'Notifications');
     const next = JSON.stringify([items, notices, message]);
     if (signature === next) return;
     signature = next;
     const list = $('workspace-activity-list'); list.replaceChildren();
-    const recent = [...active, ...items.filter(item => !tracker.active.has(item.state)).slice(0, 10)];
+    const recent = [...active, ...[...notices].reverse(), ...items.filter(item => !tracker.active.has(item.state)).slice(0, 10)]
+      .filter((item, index, all) => all.findIndex(other => other.id === item.id) === index);
     if (message) list.append(text('p', message, 'journey-note'));
     if (!recent.length) list.append(text('p', 'Training and model downloads appear here.', 'journey-note'));
     for (const item of recent) {
@@ -76,12 +97,6 @@ window.workspaceStatus = (() => {
       const link = text('button', item.label, 'journey-link'); link.type = 'button'; link.onclick = () => openTask(item);
       row.append(link, text('span', `${stateLabel[item.state] || item.state}${Number.isFinite(item.progress) && tracker.active.has(item.state) ? ` · ${item.progress}%` : ''}`));
       list.append(row);
-    }
-    const notice = notices[0];
-    $('workspace-notice').hidden = !notice;
-    if (notice) {
-      $('workspace-notice-text').textContent = `${notice.label}: ${stateLabel[notice.state] || notice.state}${notices.length > 1 ? ` · ${notices.length - 1} more` : ''}`;
-      $('workspace-notice-view').onclick = () => { openTask(notice); notices.shift(); signature = ''; render(last); };
     }
   }
   async function poll(generation) {
@@ -92,7 +107,15 @@ window.workspaceStatus = (() => {
       const unavailable = data.unavailable || [];
       const affected = item => unavailable.includes(item.kind === 'download' ? 'Downloads' : item.id.startsWith('training:') ? 'Guided training' : 'Other training');
       last = [...data.items, ...last.filter(affected)];
-      notices.push(...tracker.update(data.items)); notices = notices.slice(-20);
+      const incoming = tracker.update(data.items);
+      if (!$('workspace-notifications').hidden) tracker.markRead();
+      else if (incoming.length) {
+        const notice = incoming[incoming.length - 1];
+        $('workspace-notice-text').textContent = `${notice.label}: ${stateLabel[notice.state] || notice.state}${incoming.length > 1 ? ` · ${incoming.length - 1} more` : ''}`;
+        $('workspace-notice-view').onclick = () => openTask(notice);
+        $('workspace-notice').hidden = false;
+        expirePreview();
+      }
       render(last, unavailable.length ? `${unavailable.join(', ')} status unavailable · showing last known activity`
         : data.paused && last.some(item => item.state === 'queued' && item.kind === 'training') ? 'Training queue paused · open activity for progress' : '');
     } catch {
@@ -102,6 +125,7 @@ window.workspaceStatus = (() => {
     }
   }
   async function showDiagnostics() {
+    setOpen(false, false);
     const dialog = $('workspace-diagnostics');
     dialog.showModal(); $('diagnostics-copy').disabled = true;
     $('diagnostics-summary').value = 'Collecting local diagnostics…';
@@ -121,15 +145,16 @@ window.workspaceStatus = (() => {
       try { storage = window.sessionStorage; } catch { storage = {getItem:()=>null, setItem(){}}; }
       tracker = createActivityTracker(storage);
     }
-    if (!preferenceLoaded) {
-      try { minimized = window.localStorage.getItem(preferenceKey) === 'true'; } catch {}
-      preferenceLoaded = true;
-    }
-    setMinimized(minimized, false);
-    $('workspace-minimize').onclick = () => setMinimized(true);
-    $('workspace-restore').onclick = () => setMinimized(false);
-    $('workspace-build').onclick = showDiagnostics;
+    $('workspace-bell').hidden = false;
+    $('workspace-bell').onclick = () => setOpen($('workspace-notifications').hidden);
+    $('workspace-notifications-close').onclick = () => setOpen(false);
+    $('workspace-diagnostics-open').onclick = showDiagnostics;
+    document.addEventListener('pointerdown', outsideClick);
+    document.addEventListener('keydown', escapePanel);
     $('diagnostics-close').onclick = () => $('workspace-diagnostics').close();
+    $('workspace-diagnostics').onclose = () => {
+      if (!$('workspace-bell').hidden) $('workspace-bell').focus({preventScroll:true});
+    };
     $('diagnostics-copy').onclick = async () => {
       try {
         await navigator.clipboard.writeText($('diagnostics-summary').value);
@@ -139,22 +164,21 @@ window.workspaceStatus = (() => {
         $('diagnostics-status').textContent = 'Clipboard unavailable. The summary is selected for manual copying.';
       }
     };
-    $('workspace-notice-dismiss').onclick = () => { notices.shift(); signature = ''; render(last); };
+    $('workspace-notice-dismiss').onclick = hidePreview;
+    $('workspace-notice').onmouseenter = $('workspace-notice').onfocusin = () => clearTimeout(previewTimer);
+    $('workspace-notice').onmouseleave = $('workspace-notice').onfocusout = expirePreview;
     const generation = epoch;
-    $('workspace-build').hidden = true;
-    fetchJson('/api/build').then(data => {
-      if (generation !== epoch) return;
-      const revision = typeof data.revision === 'string' ? data.revision.trim() : '';
-      $('workspace-build').hidden = !revision || revision.toLowerCase() === 'unknown';
-      $('workspace-build').textContent = revision ? `Build ${revision.slice(0, 8)}` : '';
-      $('workspace-build').title = `Build date: ${data.built_at || 'unknown'} · Open diagnostics`;
-    }).catch(() => { if (generation === epoch) $('workspace-build').hidden = true; });
+    render(last);
     poll(generation);
   }
   function stop() {
     epoch++; clearTimeout(timer);
-    if ($('workspace-bar')) $('workspace-bar').hidden = true;
-    if ($('workspace-restore')) $('workspace-restore').hidden = true;
+    hidePreview();
+    $('workspace-bell').hidden = true;
+    $('workspace-bell').setAttribute('aria-expanded', 'false');
+    $('workspace-notifications').hidden = true;
+    document.removeEventListener('pointerdown', outsideClick);
+    document.removeEventListener('keydown', escapePanel);
     if ($('workspace-diagnostics')?.open) $('workspace-diagnostics').close();
   }
   return {start, stop};

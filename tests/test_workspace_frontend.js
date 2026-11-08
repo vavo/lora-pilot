@@ -118,32 +118,90 @@ test('timing labels avoid estimates when the trainer has not reported one',()=>{
   assert.match(context.trainingTimeLabel({stage:'Training',elapsed_seconds:400,remaining_seconds:90}),/about 1m 30s remaining/);
 });
 
-test('workspace minimization persists, preserves activity notices, and hides controls when locked', async()=>{
-  const preferences=storage();let activity=[{id:'job',kind:'training',state:'running',section:'dpipe',label:'Fixture training',created_at:1}];
-  const createPage=()=>{
-    const nodes=new Map();const get=id=>{
-      if(!nodes.has(id))nodes.set(id,{hidden:false,dataset:{},textContent:'',attributes:{},replaceChildren(){},append(){},focus(){},setAttribute(key,value){this.attributes[key]=value;}});
-      return nodes.get(id);
-    };
-    let nextPoll;
-    const page=vm.createContext({window:{localStorage:preferences,sessionStorage:storage()},document:{getElementById:get,createElement:get},
-      setTimeout:callback=>{nextPoll=callback;return 1;},clearTimeout(){},
-      fetchJson:async path=>path==='/api/build'?{revision:'fixture'}:{items:activity},
-    });
-    vm.runInContext(fs.readFileSync('apps/Portal/static/js/workspace-status.js','utf8'),page);
-    return {page,get,poll:()=>nextPoll()};
+function notificationPage(session=storage()) {
+  const nodes=new Map(), timers=new Map(), listeners=new Map(), paths=[], opened=[];
+  let activity=[{id:'job',kind:'training',state:'running',section:'dpipe',label:'Fixture training',created_at:1}], timerId=0;
+  const get=id=>{
+    if(!nodes.has(id))nodes.set(id,{hidden:false,children:[],dataset:{},textContent:'',attributes:{},
+      replaceChildren(){this.children=[];},append(...children){this.children.push(...children);},
+      focus(){this.focused=true;},contains(target){return this===target;},setAttribute(key,value){this.attributes[key]=value;}});
+    return nodes.get(id);
   };
-  const first=createPage();first.page.window.workspaceStatus.start();await new Promise(resolve=>setImmediate(resolve));
-  first.get('workspace-minimize').onclick();assert.equal(first.get('workspace-bar').hidden,true);assert.equal(first.get('workspace-restore').hidden,false);
-  activity=[{...activity[0],state:'failed'}];await first.poll();
-  assert.equal(first.get('workspace-bar').hidden,true);assert.equal(first.get('workspace-restore').dataset.attention,'true');
-  assert.match(first.get('workspace-restore').attributes['aria-label'],/Failed/);
-  first.page.window.workspaceStatus.stop();assert.equal(first.get('workspace-restore').hidden,true);
-  const reloaded=createPage();reloaded.page.window.workspaceStatus.start();await new Promise(resolve=>setImmediate(resolve));
-  assert.equal(reloaded.get('workspace-bar').hidden,true);assert.equal(reloaded.get('workspace-restore').hidden,false);
-  reloaded.get('workspace-restore').onclick();assert.equal(reloaded.get('workspace-bar').hidden,false);assert.equal(reloaded.get('workspace-restore').hidden,true);
-  assert.equal(preferences.getItem('lora-pilot.workspace-minimized.v1'),'false');
-  reloaded.page.window.workspaceStatus.stop();
+  const page=vm.createContext({window:{sessionStorage:session,loadSection:section=>opened.push(section)},
+    document:{getElementById:get,createElement:tag=>({...get(tag),children:[]}),addEventListener:(name,fn)=>listeners.set(name,fn),removeEventListener:name=>listeners.delete(name)},
+    setTimeout:(callback,delay)=>{timers.set(++timerId,{callback,delay});return timerId;},clearTimeout:id=>timers.delete(id),
+    fetchJson:async path=>{paths.push(path);return {items:activity};},
+  });
+  vm.runInContext(fs.readFileSync('apps/Portal/static/js/workspace-status.js','utf8'),page);
+  return {page,get,timers,listeners,paths,opened,setItems:items=>activity=items,
+    transition:state=>{activity=[{...activity[0],state}];},
+    tick:async()=>{const entries=[...timers];timers.clear();for(const [,timer] of entries)await timer.callback();},
+    start:async()=>{page.window.workspaceStatus.start();await new Promise(resolve=>setImmediate(resolve));}};
+}
+
+test('bell shows unread count, preview expires, and history survives refresh without repeating notices', async()=>{
+  const session=storage(), first=notificationPage(session); await first.start();
+  assert.equal(first.get('workspace-bell').hidden,false);
+  assert.equal(first.get('workspace-notifications').hidden,true);
+  assert.equal(first.paths.includes('/api/build'),false);
+  first.transition('failed');await first.tick();
+  assert.equal(first.get('workspace-unread').textContent,'1');
+  assert.equal(first.get('workspace-notice').hidden,false);
+  assert.match(first.get('workspace-notice-text').textContent,/Failed/);
+  assert.ok([...first.timers.values()].every(timer=>timer.delay===5000));
+  await first.tick();
+  assert.equal(first.get('workspace-notice').hidden,true);
+  assert.equal(first.get('workspace-unread').textContent,'1');
+  const reloaded=notificationPage(session);reloaded.transition('failed');await reloaded.start();
+  assert.equal(reloaded.get('workspace-unread').textContent,'1');
+  assert.equal(reloaded.get('workspace-notice').hidden,true);
+  reloaded.get('workspace-bell').onclick();
+  assert.equal(reloaded.get('workspace-notifications').hidden,false);
+  assert.equal(reloaded.get('workspace-unread').hidden,true);
+  assert.equal(reloaded.get('workspace-bell').attributes['aria-expanded'],'true');
+  assert.equal(reloaded.get('workspace-activity-list').children.length,1);
+  const readAgain=notificationPage(session);readAgain.transition('failed');await readAgain.start();
+  assert.equal(readAgain.get('workspace-unread').hidden,true);
+});
+
+test('open panel reads incoming notices, task links work, and locking hides everything', async()=>{
+  const ui=notificationPage();await ui.start();ui.get('workspace-bell').onclick();
+  ui.transition('succeeded');await ui.tick();
+  assert.equal(ui.get('workspace-unread').hidden,true);
+  assert.equal(ui.get('workspace-notice').hidden,true);
+  ui.listeners.get('keydown')({key:'Escape'});
+  assert.equal(ui.get('workspace-notifications').hidden,true);
+  assert.equal(ui.get('workspace-bell').focused,true);
+  ui.get('workspace-bell').onclick();ui.listeners.get('pointerdown')({target:{}});
+  assert.equal(ui.get('workspace-notifications').hidden,true);
+  ui.transition('running');await ui.tick();ui.transition('failed');await ui.tick();
+  ui.get('workspace-notice-view').onclick();
+  assert.deepEqual(ui.opened,['dpipe']);
+  assert.equal(ui.get('workspace-unread').hidden,true);
+  ui.page.window.workspaceStatus.stop();
+  for(const id of ['workspace-bell','workspace-notice','workspace-notifications'])assert.equal(ui.get(id).hidden,true);
+  assert.equal(ui.timers.size,0);assert.equal(ui.listeners.size,0);
+});
+
+test('preview interaction pauses its timeout and dismissal retains unread history', async()=>{
+  const ui=notificationPage();await ui.start();ui.transition('failed');await ui.tick();
+  assert.equal(ui.timers.size,2);
+  ui.get('workspace-notice').onfocusin();assert.equal(ui.timers.size,1);
+  ui.get('workspace-notice').onfocusout();assert.equal(ui.timers.size,2);
+  ui.get('workspace-notice-dismiss').onclick();
+  assert.equal(ui.get('workspace-notice').hidden,true);
+  assert.equal(ui.get('workspace-unread').textContent,'1');
+  assert.equal(ui.timers.size,1);
+});
+
+test('notification history is bounded and corrupt stored entries are ignored',()=>{
+  const session=storage();session.setItem('lora-pilot.activity.v1',JSON.stringify({notifications:[null,{},'bad']}));
+  const tracker=context.createActivityTracker(session,()=>2000);
+  assert.equal(tracker.notifications.length,0);
+  tracker.update(Array.from({length:30},(_,i)=>({...item('failed',String(i)),label:'Model '+i,created_at:3})));
+  assert.equal(tracker.notifications.length,20);
+  tracker.markRead();
+  assert.ok(tracker.notifications.every(notice=>!notice.unread));
 });
 
 

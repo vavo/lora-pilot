@@ -1,6 +1,6 @@
 # ControlPilot
 
-_Last updated: 2026-10-05_
+_Last updated: 2026-11-08_
 
 ControlPilot brings the path from a folder of images to a usable LoRA into one workspace. Start with your dataset, prepare captions, choose a training profile, and bring the result into ComfyUI. Models, service controls, and detailed logs remain close when you need them.
 
@@ -12,7 +12,7 @@ The Dashboard puts four starting points ahead of the hardware details: prepare a
 
 The sidebar follows the same journey. **Prepare** contains Datasets, Caption images, and Models. **Train** contains Guided training and Advanced training. **Create** opens ComfyUI and the Gallery, while **Manage** holds Services, Storage, and Settings. Docs and Support sit below these groups. The Light and Dark controls remain at the bottom of the menu, including on mobile. The collapsed desktop menu uses sun and moon icons for these choices.
 
-You can minimize the build and activity bar with its close control. An activity icon appears beside Copilot at the bottom right; select it to reopen the bar. This browser remembers your choice across pages and reloads. The icon marks active work and pending completion notices while the bar is minimized.
+The blue notification bell sits beside Copilot at the bottom right on every screen. Its badge counts unread notifications. New completion and failure notices appear for five seconds, then disappear; hovering or focusing a notice pauses that timeout. Click the bell to reopen recent notifications and current activity. Opening the panel marks its notifications as read. The last 20 notifications and their read state survive page reloads within the same browser tab; dismissing a preview does not erase its history.
 
 ![ControlPilot dashboard preview with workspace status and workflow shortcuts](../assets/images/home/dashboard.png)
 
@@ -20,7 +20,7 @@ You can minimize the build and activity bar with its close control. An activity 
 
 ## Know what is running
 
-When the build and activity bar is expanded, its build label opens **Build & diagnostics**. It shows the image's source commit and build date, detected GPU and memory, and locally installed service versions and states. Choose **Copy diagnostics** when asking for support. The summary deliberately leaves out credentials, URLs, workspace paths, dataset names and logs, so you can explain which build you are testing without copying your environment. Older images and source checkouts without embedded metadata show **unknown**.
+Open the blue bell and choose **Diagnostics** to view **Build & diagnostics**. It shows the image's source commit and build date, detected GPU and memory, and locally installed service versions and states. The build number is no longer displayed above every screen. Choose **Copy diagnostics** when asking for support. The summary deliberately leaves out credentials, URLs, workspace paths, dataset names and logs, so you can explain which build you are testing without copying your environment. Older images and source checkouts without embedded metadata show **unknown**.
 
 The activity control stays with you as you move between pages. Open it to inspect guided training, legacy TrainPilot, managed Diffusion Pipe runs and model downloads. A percentage appears when the job reports progress. Completion and failure notices offer **View task**, which returns to the training run or the Downloads view. The page checks every five seconds while ControlPilot is open; it does not send desktop or email notifications. Work launched independently in another tool is outside this indicator's scope.
 
