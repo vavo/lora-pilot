@@ -21,7 +21,7 @@ from PIL import Image, ImageFilter, ImageOps, ImageStat
 from pydantic import BaseModel, Field, ValidationError
 
 from .comfy_access import internal_headers
-from .dataset_generation import (CAPTION_MODEL, CHECKPOINT, MODEL_FILES, MODEL_SIZES, RECIPE_VERSION,
+from .dataset_generation import (CAPTION_MODEL, REFERENCE_MODELS, MODEL_FILES, MODEL_SIZES, RECIPE_VERSION,
                                  reference_graph, shot_plan, validate_graph, variation_graph)
 from .service_registry import local_url
 from .tagpilot_local import model_ready
@@ -176,7 +176,7 @@ class DatasetBuilder:
         except (httpx.HTTPError, ValueError) as exc:
             raise HTTPException(503, 'ComfyUI is unavailable. Start it in Services and retry.') from exc
 
-    def missing_models(self, source):
+    def missing_models(self, source, style='photo'):
         missing = []
         for name, (folder, filename) in MODEL_FILES.items():
             path = self.models / folder / filename
@@ -185,13 +185,14 @@ class DatasetBuilder:
         caption = self.models / 'text_encoders' / CAPTION_MODEL
         if not model_ready(caption):
             missing.append('dataset-local-captioner')
-        checkpoint = self.models / 'checkpoints' / CHECKPOINT
-        if source == 'prompt' and (not checkpoint.is_file() or checkpoint.stat().st_size != MODEL_SIZES['sdxl-base']):
-            missing.append('sdxl-base')
+        name, filename = REFERENCE_MODELS[style]
+        checkpoint = self.models / 'checkpoints' / filename
+        if source == 'prompt' and (not checkpoint.is_file() or checkpoint.stat().st_size != MODEL_SIZES[name]):
+            missing.append(name)
         return missing
 
-    def preflight(self, source):
-        missing = self.missing_models(source)
+    def preflight(self, source, style='photo'):
+        missing = self.missing_models(source, style)
         problems = []
         if missing:
             problems.append('Install missing models in Models: ' + ', '.join(missing))
@@ -199,14 +200,14 @@ class DatasetBuilder:
             registry = self.request('GET', 'object_info')
             validate_graph(variation_graph('reference.png', 'test', 1, 'test'), registry)
             if source == 'prompt':
-                validate_graph(reference_graph('test', 1, 'test'), registry)
+                validate_graph(reference_graph('test', 1, 'test', style), registry)
         except HTTPException as exc:
             problems.append(str(exc.detail))
         return dict(ready=not problems, missing=missing, problems=problems, recipe=RECIPE_VERSION,
                     captioning='Caption and tag the accepted images in TagPilot using local Qwen3-VL on CPU.')
 
-    def require_ready(self, source):
-        result = self.preflight(source)
+    def require_ready(self, source, style='photo'):
+        result = self.preflight(source, style)
         if not result['ready']:
             raise HTTPException(409, 'Generation is not ready. Check that ComfyUI is running in Services and retry.' if not result['missing']
                                 else 'The downloaded models are incomplete. Check storage and retry setup.')
@@ -224,13 +225,13 @@ class DatasetBuilder:
                 raise HTTPException(400, 'Describe the character you want to create')
             if spec.source == 'photo' and not photo:
                 raise HTTPException(400, 'Choose a reference photo')
-            missing = self.missing_models(spec.source)
+            missing = self.missing_models(spec.source, spec.style)
             if missing:
                 weight_bytes = sum(MODEL_SIZES[name] for name in missing)
                 if shutil.disk_usage(self.models if self.models.exists() else self.workspace).free < weight_bytes:
                     raise HTTPException(409, 'Not enough space for the first model download. Free space in Storage and try again.')
             else:
-                self.require_ready(spec.source)
+                self.require_ready(spec.source, spec.style)
             if shutil.disk_usage(self.workspace).free < (spec.count * 12 + 200) * 1024 ** 2:
                 raise HTTPException(409, 'Not enough workspace space for this dataset. Free space in Storage.')
             job_id = uuid.uuid4().hex
@@ -391,7 +392,8 @@ class DatasetBuilder:
             directory = self.directory(job['id'])
             if job['phase'] == 'setup':
                 source = job['spec']['source']
-                missing = self.missing_models(source)
+                style = job['spec'].get('style', 'photo')
+                missing = self.missing_models(source, style)
                 for index, name in enumerate(missing, 1):
                     if self.stop.is_set():
                         raise RuntimeError('Setup paused. Resume when you are ready.')
@@ -404,7 +406,7 @@ class DatasetBuilder:
                         pull = self.downloads.status(name)
                     if pull['state'] != 'done':
                         raise RuntimeError('A model download failed. Check free storage and your connection, then resume.')
-                self.require_ready(source)
+                self.require_ready(source, style)
                 job.update(phase='reference', status='generating_reference', message='Creating reference candidates.')
                 self.save(job)
             if job['phase'] == 'reference':
@@ -570,8 +572,8 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
     router.add_event_handler('shutdown', builder.close)
 
     @router.get('/preflight')
-    def preflight(source: Literal['prompt', 'photo'] = 'prompt'):
-        return builder.preflight(source)
+    def preflight(source: Literal['prompt', 'photo'] = 'prompt', style: Literal['photo', 'illustration'] = 'photo'):
+        return builder.preflight(source, style)
 
     @router.get('/plan')
     def plan(count: int = Query(30, ge=4, le=100), goal: Literal['identity', 'character'] = 'identity',
@@ -650,7 +652,8 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
             if job['status'] in ('reference_review', 'saved'):
                 raise HTTPException(409, 'Choose your reference or create a new dataset.')
             if job['phase'] != 'setup':
-                builder.require_ready(job['spec']['source'] if job['phase'] == 'reference' else 'photo')
+                builder.require_ready(job['spec']['source'] if job['phase'] == 'reference' else 'photo',
+                                      job['spec'].get('style', 'photo'))
             job.pop('retry_slots', None)
             builder.start(job)
             return builder.public(job)

@@ -43,11 +43,14 @@ Choose **Create reference** (or **Use this photo**) to start. ControlPilot downl
 
 | Models entry | Use | Download size |
 |---|---|---|
-| `sdxl-base` | Four references from a description; not needed for photo input | About 6.9 GB |
+| `realvisxl-v5` | Photo-style references from a description | About 6.9 GB |
+| `sdxl-base` | Illustration-style references from a description | About 6.9 GB |
 | `dataset-qwen-edit` | Qwen Image Edit 2511 FP8 diffusion model | About 20.5 GB |
 | `hunyuanimage-2.1-comfy-qwen-encoder-fp8` | Shared Qwen image text/vision encoder | About 9.4 GB |
 | `anima-vae` | Shared Qwen VAE | About 0.25 GB |
 | `dataset-local-captioner` | Qwen3-VL-2B-Instruct for local checks and captions | About 4.3 GB |
+
+Photo references use RealVisXL V5.0 at 896 × 1152, with DPM++ SDE Karras, 30 steps and CFG 7. Illustration references keep SDXL Base at 768 × 1024, DPM++ 2M with the normal scheduler, 30 steps and CFG 7. Only the checkpoint for your selected style downloads; uploading your own reference needs neither T2I checkpoint. Existing complete model files are reused.
 
 The native [ComfyUI Qwen Image Edit 2511 recipe](https://docs.comfy.org/tutorials/image/qwen/qwen-image-edit-2511) uses 40-step editing. V1 does not use a Lightning or multi-angle LoRA, FLUX reference generation, partner nodes or paid captioning APIs. Weight file sizes are not GPU-memory requirements: ComfyUI offloading, resolution and other running tasks affect the GPU and system RAM needed. Try the 15-image preset on your hardware before requesting a large set.
 

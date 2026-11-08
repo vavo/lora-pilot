@@ -1,5 +1,7 @@
 Unreleased (October 29th 2026)
 
+- Photo-style dataset references now use RealVisXL V5.0 at 896 × 1152 with DPM++ SDE Karras, 30 steps and CFG 7. Missing weights download automatically; Illustration references and Qwen image-to-image variations are unchanged.
+
 - Replaced the global build/activity bar with a blue notification bell beside Copilot. Added an unread count, five-second previews and recent notification history; diagnostics remain available inside the panel.
 
 - Dataset creation now distinguishes people from non-human characters, offers Photo/Illustration references, and starts with three trial edits of the approved reference. Image decisions remain available during background work; regeneration is user-controlled. Compare images with Previous/Next or arrow keys and save any kept subset to TagPilot, including while stopping a larger batch.

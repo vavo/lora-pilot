@@ -8,9 +8,13 @@ MODEL_FILES = {
     'hunyuanimage-2.1-comfy-qwen-encoder-fp8': ('text_encoders', 'qwen_2.5_vl_7b_fp8_scaled.safetensors'),
     'anima-vae': ('vae', 'qwen_image_vae.safetensors'),
 }
-CHECKPOINT = 'sd_xl_base_1.0.safetensors'
+REFERENCE_MODELS = {
+    'photo': ('realvisxl-v5', 'RealVisXL_V5.0_fp16.safetensors'),
+    'illustration': ('sdxl-base', 'sd_xl_base_1.0.safetensors'),
+}
 MODEL_SIZES = {'dataset-qwen-edit': 20533762817, 'hunyuanimage-2.1-comfy-qwen-encoder-fp8': 9384670680,
-               'anima-vae': 253806246, 'sdxl-base': 6938078334, 'dataset-local-captioner': 4266647442}
+               'anima-vae': 253806246, 'sdxl-base': 6938078334, 'realvisxl-v5': 6938065488,
+               'dataset-local-captioner': 4266647442}
 
 
 def node(kind, **inputs):
@@ -25,13 +29,15 @@ def reference_graph(prompt, seed, prefix, style='photo'):
         prompt = 'Illustration, consistent character design. ' + prompt
         negative = ''
     return {
-        '1': node('CheckpointLoaderSimple', ckpt_name=CHECKPOINT),
+        '1': node('CheckpointLoaderSimple', ckpt_name=REFERENCE_MODELS[style][1]),
         '2': node('CLIPTextEncode', clip=['1', 1], text=prompt),
         '3': node('CLIPTextEncode', clip=['1', 1], text=negative + 'blurry, watermark, text, collage, multiple subjects'),
-        '4': node('EmptyLatentImage', width=768, height=1024, batch_size=1),
+        '4': node('EmptyLatentImage', width=896 if style == 'photo' else 768,
+                  height=1152 if style == 'photo' else 1024, batch_size=1),
         '5': node('KSampler', model=['1', 0], positive=['2', 0], negative=['3', 0],
                   latent_image=['4', 0], seed=seed, steps=30, cfg=7.0,
-                  sampler_name='dpmpp_2m', scheduler='normal', denoise=1.0),
+                  sampler_name='dpmpp_sde' if style == 'photo' else 'dpmpp_2m',
+                  scheduler='karras' if style == 'photo' else 'normal', denoise=1.0),
         '6': node('VAEDecode', samples=['5', 0], vae=['1', 2]),
         '7': node('SaveImage', images=['6', 0], filename_prefix=prefix),
     }

@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from apps.Portal.services.dataset_builder import DatasetBuilder, create_router, image_checks, safe_path
-from apps.Portal.services.dataset_generation import MODEL_FILES, MODEL_SIZES, reference_graph, variation_graph, shot_plan, validate_graph
+from apps.Portal.services.dataset_generation import MODEL_FILES, MODEL_SIZES, REFERENCE_MODELS, reference_graph, variation_graph, shot_plan, validate_graph
 from apps.Portal.services.tagpilot_local import parse_review
 
 
@@ -507,8 +507,81 @@ class DatasetBuilderTests(unittest.TestCase):
             self.assertEqual(rows[name][2].split(':', 1)[1].split('/')[-1], filename)
             self.assertEqual(rows[name][3], folder)
             self.assertEqual(int(rows[name][5]), MODEL_SIZES[name])
-        for name in ('sdxl-base', 'dataset-local-captioner'):
+        for name, filename in REFERENCE_MODELS.values():
+            self.assertEqual(rows[name][2].split(':', 1)[1], filename)
+            self.assertEqual(rows[name][3], 'checkpoints')
+        for name in ('sdxl-base', 'realvisxl-v5', 'dataset-local-captioner'):
             self.assertEqual(int(rows[name][5]), MODEL_SIZES[name])
+
+    def test_reference_settings_are_style_specific(self):
+        for style, model, width, height, sampler, scheduler in (
+            ('photo', 'RealVisXL_V5.0_fp16.safetensors', 896, 1152, 'dpmpp_sde', 'karras'),
+            ('illustration', 'sd_xl_base_1.0.safetensors', 768, 1024, 'dpmpp_2m', 'normal'),
+        ):
+            with self.subTest(style=style):
+                graph = reference_graph('a robot', 42, 'reference', style)
+                self.assertEqual(graph['1']['inputs']['ckpt_name'], model)
+                self.assertEqual(graph['4']['inputs'], dict(width=width, height=height, batch_size=1))
+                self.assertEqual(graph['5']['inputs'], dict(model=['1', 0], positive=['2', 0],
+                    negative=['3', 0], latent_image=['4', 0], seed=42, steps=30, cfg=7.0,
+                    sampler_name=sampler, scheduler=scheduler, denoise=1.0))
+
+    def test_style_checkpoint_download_and_reuse(self):
+        self.missing.stop()
+        # Small stand-ins exercise the real file-size checks without downloading weights.
+        with patch.dict(MODEL_SIZES, {name: 10 for name in MODEL_SIZES}), \
+             patch('apps.Portal.services.dataset_builder.model_ready', return_value=True):
+            for folder, filename in MODEL_FILES.values():
+                path = self.builder.models / folder / filename
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'0' * 10)
+            for style, (name, filename) in REFERENCE_MODELS.items():
+                with self.subTest(style=style):
+                    self.assertEqual(self.builder.missing_models('prompt', style), [name])
+                    self.assertEqual(self.builder.missing_models('photo', style), [])
+                    path = self.builder.models / 'checkpoints' / filename
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(b'partial')
+                    self.assertEqual(self.builder.missing_models('prompt', style), [name])
+                    def download(model, job_id):
+                        self.assertEqual((model, job_id), (name, name))
+                        path.write_bytes(b'0' * 10)
+                        return {'state': 'done'}
+                    self.downloads.start.side_effect = download
+                    self.downloads.start.reset_mock()
+                    with patch.object(self.builder, 'generate') as generate:
+                        response = self.client.post('/api/dataset-builder/jobs', data={'spec': json.dumps(
+                            dict(name=style, trigger='ohwx', prompt='A robot', style=style))})
+                        self.assertEqual(response.status_code, 200, response.text)
+                        self.builder.thread.join(3)
+                        self.assertFalse(self.builder.thread.is_alive())
+                        self.assertEqual(self.builder.read(response.json()['id'])['status'], 'reference_review')
+                        self.downloads.start.assert_called_once_with(name, name)
+                        self.assertEqual(generate.call_count, 4)
+                        for call in generate.call_args_list:
+                            self.assertEqual(call.args[1]['1']['inputs']['ckpt_name'], filename)
+                    self.assertEqual(self.builder.missing_models('prompt', style), [])
+                    with patch.object(self.builder, 'start'):
+                        response = self.client.post('/api/dataset-builder/jobs', data={'spec': json.dumps(
+                            dict(name=style + 'again', trigger='ohwx', prompt='A robot', style=style))})
+                    self.assertEqual(response.json()['phase'], 'reference')
+                    self.builder.require_ready.assert_called_with('prompt', style)
+
+    def test_preflight_and_resume_use_selected_style(self):
+        with patch.object(self.builder, 'request', return_value={}), \
+             patch('apps.Portal.services.dataset_builder.validate_graph') as validate:
+            for style in REFERENCE_MODELS:
+                response = self.client.get('/api/dataset-builder/preflight', params={'style': style})
+                self.assertTrue(response.json()['ready'])
+                self.assertEqual(validate.call_args.args[0], reference_graph('test', 1, 'test', style))
+        self.assertEqual(self.client.get('/api/dataset-builder/preflight?style=invalid').status_code, 422)
+        job = self.create(style='illustration')
+        job['spec']['source'] = 'prompt'
+        job['status'] = 'paused'
+        self.builder.save(job)
+        with patch.object(self.builder, 'start'):
+            self.assertEqual(self.client.post(f'/api/dataset-builder/jobs/{job["id"]}/resume').status_code, 200)
+        self.builder.require_ready.assert_called_with('prompt', 'illustration')
 
     def test_image_checks_find_duplicates(self):
         path = self.root / 'image.png'; path.write_bytes(photo_bytes())
@@ -521,6 +594,7 @@ class DatasetBuilderTests(unittest.TestCase):
             result = self.builder.preflight('prompt')
         self.assertFalse(result['ready'])
         self.assertIn('dataset-local-captioner', result['missing'])
-        self.assertIn('sdxl-base', result['missing'])
+        self.assertIn('realvisxl-v5', result['missing'])
+        self.assertNotIn('sdxl-base', result['missing'])
         self.assertIn('Start ComfyUI in Services', result['problems'])
-        self.assertEqual(set(self.builder.missing_models('photo')), set(result['missing']) - {'sdxl-base'})
+        self.assertEqual(set(self.builder.missing_models('photo')), set(result['missing']) - {'realvisxl-v5'})
