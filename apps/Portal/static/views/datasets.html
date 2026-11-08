@@ -51,8 +51,12 @@
   <dialog id="db-compare" class="db-compare" aria-labelledby="db-compare-title">
     <div class="db-compare-heading"><h3 id="db-compare-title">Compare with your reference</h3><button id="db-compare-close" type="button" class="btn ghost">Close</button></div>
     <p class="journey-note">Check the subject and its defining features against your original reference. Keep only the images you want to train with.</p>
-    <div class="row wrap gap-12 db-compare-nav"><button id="db-compare-prev" type="button" class="btn ghost">Previous</button><span id="db-compare-position" role="status"></span><button id="db-compare-next" type="button" class="btn ghost">Next</button></div>
-    <div class="db-compare-images"><figure><img id="db-compare-reference" alt="Approved reference"><figcaption>Approved reference</figcaption></figure><figure><img id="db-compare-image" alt="Selected variation"><figcaption id="db-compare-shot"></figcaption></figure></div>
+    <div class="db-compare-gallery">
+      <button id="db-compare-prev" type="button" class="btn ghost db-compare-arrow" aria-label="Previous image" title="Previous image (Left arrow)"><span aria-hidden="true">&lt;</span></button>
+      <div class="db-compare-images"><figure><img id="db-compare-reference" alt="Approved reference"><figcaption>Approved reference</figcaption></figure><figure><img id="db-compare-image" alt="Selected variation"><figcaption id="db-compare-shot"></figcaption></figure></div>
+      <button id="db-compare-next" type="button" class="btn ghost db-compare-arrow" aria-label="Next image" title="Next image (Right arrow)"><span aria-hidden="true">&gt;</span></button>
+    </div>
+    <p id="db-compare-position" class="db-compare-position journey-note" role="status"></p>
     <p id="db-compare-state" role="status"></p><ul id="db-compare-warnings"></ul>
     <div id="db-compare-actions" class="row wrap gap-8"></div>
     <p id="db-compare-error" class="status" role="alert"></p>

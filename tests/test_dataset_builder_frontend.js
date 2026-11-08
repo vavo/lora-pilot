@@ -149,6 +149,15 @@ test('comparison navigation stays open and skips unfinished images', async () =>
   assert.equal(el('compare-next').disabled, true);
   el('compare').onkeydown({key:'ArrowLeft', preventDefault(){}});
   assert.match(el('compare-image').src, /first.png$/);
+  el('compare').onkeydown({key:'ArrowLeft', preventDefault(){}});
+  assert.match(el('compare-image').src, /first.png$/);
+  el('compare').onkeydown({key:'ArrowRight', preventDefault(){}});
+  assert.match(el('compare-image').src, /last.png$/);
+  el('compare').onkeydown({key:'ArrowRight', preventDefault(){}});
+  assert.match(el('compare-image').src, /last.png$/);
+  const html = fs.readFileSync('apps/Portal/static/views/datasets.html', 'utf8');
+  assert.match(html, /id="db-compare-prev"[^>]*aria-label="Previous image"[^>]*><span aria-hidden="true">&lt;/);
+  assert.match(html, /id="db-compare-next"[^>]*aria-label="Next image"[^>]*><span aria-hidden="true">&gt;/);
 });
 
 test('unchecked images can be kept or excluded during generation, with explicit keep confirmation', async () => {

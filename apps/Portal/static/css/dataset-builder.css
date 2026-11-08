@@ -24,17 +24,20 @@
 .db-details { margin:16px 0; }
 .db-compare { width:min(960px, calc(100% - 32px)); max-height:90dvh; box-sizing:border-box; overflow:auto; padding:24px; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:12px; }
 .db-compare::backdrop { background:rgb(0 0 0 / 65%); }
+.db-compare-gallery { --preview-height:min(48dvh, 460px); display:grid; grid-template-columns:44px minmax(0,1fr) 44px; gap:10px; }
+.db-compare-arrow { width:44px; height:44px; padding:0; margin-top:calc(var(--preview-height) / 2 - 22px); }
+.db-compare-arrow span { display:block; font-size:28px; line-height:1; }
 .db-compare-images { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 .db-compare figure { margin:0; min-width:0; }
-.db-compare img { width:100%; height:min(48dvh, 460px); object-fit:contain; }
+.db-compare img { width:100%; height:var(--preview-height); object-fit:contain; }
 .db-compare figcaption { margin-top:8px; line-height:1.5; }
 .db-compare-heading { display:flex; align-items:start; justify-content:space-between; gap:16px; }
 .db-compare-heading h3 { margin-top:0; }
-.db-compare-nav { margin:16px 0; }
+.db-compare-position { text-align:center; margin:12px 0; }
 @media (max-width:600px) {
   .db-compare { padding:16px; }
   .db-compare-images { gap:10px; }
-  .db-compare img { height:28dvh; }
+  .db-compare-gallery { --preview-height:28dvh; gap:4px; }
   .db-compare figcaption { font-size:13px; }
 }
 .db-image .row { margin-top:14px; }
