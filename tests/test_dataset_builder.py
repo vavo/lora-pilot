@@ -371,22 +371,34 @@ class DatasetBuilderTests(unittest.TestCase):
         self.assertEqual(len(calls), 4)
         self.assertEqual([x['attempts'] for x in finished['items']], [1, 1, 1, 1])
 
-    def test_unchecked_image_needs_explicit_confirmation_and_can_export_alone(self):
+    def test_unchecked_image_can_be_kept_directly_and_exported_alone(self):
         job = self.prepare_review(self.create())
         for item in job['items']:
             item.update(review=None, accepted=False, caption='')
         self.builder.save(job)
         url = f'/api/dataset-builder/jobs/{job["id"]}'
         self.assertEqual(self.client.post(url + '/finish').status_code, 409)
-        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True}).status_code, 409)
-        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True, 'confirm_unchecked': True,
+        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True,
                                                                    'file': 'stale.png'}).status_code, 409)
-        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True, 'confirm_unchecked': True}).status_code, 200)
+        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True}).status_code, 200)
         result = self.client.post(url + '/finish')
         self.assertEqual(result.status_code, 200, result.text)
         self.assertEqual(result.json()['exported_count'], 1)
         self.assertEqual(len(list((self.root / 'datasets/1_character').glob('*.png'))), 1)
         self.assertEqual(len(list((self.root / 'datasets/1_character').glob('*.txt'))), 0)
+
+    def test_flagged_image_can_be_kept_without_losing_specific_warnings(self):
+        job = self.prepare_review(self.create())
+        warning = 'Possibly blurry or low-detail image; inspect it before keeping.'
+        job['items'][0].update(accepted=False, warnings=[warning])
+        self.builder.save(job)
+        response = self.client.patch(f'/api/dataset-builder/jobs/{job["id"]}/images/0',
+                                     json={'accepted': True, 'file': 'image-0.png'})
+        self.assertEqual(response.status_code, 200, response.text)
+        item = response.json()['items'][0]
+        self.assertTrue(item['accepted'])
+        self.assertTrue(item['user_reviewed'])
+        self.assertEqual(item['warnings'], [warning])
 
     def test_review_cannot_overwrite_a_manual_exclusion(self):
         job = self.prepare_review(self.create())

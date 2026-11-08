@@ -90,10 +90,8 @@ window.initDatasetBuilder = function (screen) {
     const reason = saved ? 'This dataset is already saved.' : changing ? 'Waiting for this image to be regenerated.' : '';
     const update = async accepted => {
       if (saved || changing || job.finish_requested) throw new Error(reason || 'Saving your selection. Please wait.');
-      const unchecked = !item.review || !!item.warnings?.length;
-      if (accepted && unchecked && !window.confirm('Automatic checks are unavailable or raised concerns. Compare this image with your reference. Keep it anyway?')) return;
       selected = await screen.json(`${api}/jobs/${job.id}/images/${item.slot}`, {
-        method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({accepted, file: item.file, confirm_unchecked: accepted && unchecked})
+        method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({accepted, file: item.file})
       });
       el('reviewed').checked = false;
     };

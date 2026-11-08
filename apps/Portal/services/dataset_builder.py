@@ -51,7 +51,6 @@ class ReferenceChoice(BaseModel):
 class ImageChoice(BaseModel):
     accepted: bool
     file: str | None = None
-    confirm_unchecked: bool = False
 
 
 class ImageRevision(BaseModel):
@@ -687,8 +686,6 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
     def choose(job_id: str, slot: int, choice: ImageChoice):
         with builder.lock:
             job, item = editable_item(job_id, slot, choice.file)
-            if choice.accepted and (not item.get('review') or item.get('warnings')) and not choice.confirm_unchecked:
-                raise HTTPException(409, 'Automatic checks are unavailable or raised concerns. Confirm that you want to keep this image anyway.')
             if slot in job.get('regenerate_slots', []):
                 job['regenerate_slots'].remove(slot)
             item.update(accepted=choice.accepted, user_reviewed=True)

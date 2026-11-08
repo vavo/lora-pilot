@@ -33,7 +33,7 @@ function fixture(ready = true, overrides = {}) {
       warnings: slot === 0 ? ['Identity uncertain: compare with the reference before keeping.'] : []}))};
   Object.assign(job, overrides);
   const calls = [], handoffs = [];
-  const page = vm.createContext({window: {confirm: () => true}, document: {getElementById: el, createElement: tag => new Element(tag)},
+  const page = vm.createContext({window: {confirm: () => { throw new Error('Image decisions must not open a confirmation'); }}, document: {getElementById: el, createElement: tag => new Element(tag)},
     Option: function (textContent, value) { return Object.assign(new Element('option'), {textContent, value}); },
     FormData, URLSearchParams, AbortController, DOMException, setTimeout: () => 0, clearTimeout() {},
     openTagpilotDataset: name => handoffs.push(name)});
@@ -160,19 +160,15 @@ test('comparison navigation stays open and skips unfinished images', async () =>
   assert.match(html, /id="db-compare-next"[^>]*aria-label="Next image"[^>]*><span aria-hidden="true">&gt;/);
 });
 
-test('unchecked images can be kept or excluded during generation, with explicit keep confirmation', async () => {
+test('unchecked images can be kept or excluded during generation without a confirmation', async () => {
   const {el,calls,page} = fixture(true, {status:'generating', items:[
     {slot:0,file:'first.png',attempts:1,review:null,accepted:false}
   ]}); await settle();
   card(el,0).button('Compare with reference').onclick();
   assert.ok(el('compare-actions').children.every(button => !button.disabled));
-  page.window.confirm = () => false;
-  await el('compare-actions').children[0].onclick();
-  assert.equal(calls.filter(([,options]) => options.method === 'PATCH').length, 0);
-  page.window.confirm = () => true;
   await el('compare-actions').children[0].onclick();
   const request = calls.find(([,options]) => options.method === 'PATCH');
-  assert.deepEqual(JSON.parse(request[1].body), {accepted:true,file:'first.png',confirm_unchecked:true});
+  assert.deepEqual(JSON.parse(request[1].body), {accepted:true,file:'first.png'});
   el('reviewed').checked = true; el('reviewed').onchange();
   assert.equal(el('finish').disabled, false);
   assert.match(el('finish').textContent, /Stop & save 1 kept image/);
