@@ -1,6 +1,7 @@
 import io
 import json
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -63,6 +64,7 @@ class DatasetBuilderTests(unittest.TestCase):
 
     def prepare_review(self, job):
         job['reference'] = job['references'][0]
+        job['trial_approved'] = True
         job['phase'], job['status'] = 'variations', 'review'
         job['items'] = shot_plan(4, 'identity', True, False)
         for item in job['items']:
@@ -142,21 +144,19 @@ class DatasetBuilderTests(unittest.TestCase):
         self.assertIn('Free space', response.json()['detail'])
         self.assertFalse(self.builder.root.exists())
 
-    def test_finish_publishes_exact_accepted_count_for_tagpilot(self):
+    def test_finish_publishes_only_kept_images_for_tagpilot(self):
         job = self.prepare_review(self.create())
         for item in job['items']:
             item.pop('caption', None)
         job['items'][0]['accepted'] = False; self.builder.save(job)
         url = f'/api/dataset-builder/jobs/{job["id"]}'
-        self.assertEqual(self.client.post(url + '/finish').status_code, 409)
-        self.assertFalse((self.root / 'datasets/1_character').exists())
-        result = self.client.patch(url + '/images/0', json={'accepted': True})
-        self.assertEqual(result.status_code, 200, result.text)
         result = self.client.post(url + '/finish')
         self.assertEqual(result.status_code, 200, result.text)
         self.assertEqual(result.json()['dataset'], '1_character')
         target = self.root / 'datasets/1_character'
-        self.assertEqual(len(list(target.glob('*.png'))), 4)
+        self.assertEqual(len(list(target.glob('*.png'))), 3)
+        self.assertFalse((target / '001.png').exists())
+        self.assertEqual(result.json()['exported_count'], 3)
         self.assertEqual(len(list(target.glob('*.txt'))), 0)
         self.assertEqual(json.loads((target / 'generation.json').read_text())['spec']['trigger'], 'ohwxperson')
         self.assertTrue((target / 'generation.json').is_file())
@@ -260,9 +260,8 @@ class DatasetBuilderTests(unittest.TestCase):
     def test_incomplete_captioning_never_passes_as_ready(self):
         job = self.prepare_review(self.create())
         for item in job['items']:
-            item.update(review=None, accepted=False)
-        with patch('apps.Portal.services.dataset_builder.subprocess.Popen', return_value=Mock(poll=Mock(return_value=1), wait=Mock(return_value=1))), \
-             self.assertRaisesRegex(RuntimeError, 'did not finish'):
+            item.update(review=None, accepted=False, caption='')
+        with patch('apps.Portal.services.dataset_builder.subprocess.Popen', return_value=Mock(poll=Mock(return_value=1), wait=Mock(return_value=1))):
             self.builder.review(job)
         self.assertTrue(all(not item['accepted'] and not item['review'] for item in job['items']))
 
@@ -279,11 +278,12 @@ class DatasetBuilderTests(unittest.TestCase):
         url = f'/api/dataset-builder/jobs/{job["id"]}/images/2/regenerate'
         with patch.object(self.builder, 'start') as start:
             self.assertEqual(self.client.post(url).status_code, 200)
-            self.assertEqual(start.call_args.args[0]['retry_slots'], [2])
+            self.assertEqual(start.call_args.args[0]['regenerate_slots'], [2])
+            self.assertFalse(start.call_args.kwargs['fill_missing'])
         job['items'][2]['attempts'] = 3; self.builder.save(job)
         self.assertEqual(self.client.post(url).status_code, 409)
 
-    def test_full_generation_uses_original_reference_and_stops_at_budget(self):
+    def test_trial_uses_original_reference_and_does_not_retry_rejections(self):
         job = self.create()
         job.update(reference=job['references'][0], phase='variations', items=shot_plan(4, 'identity', True, False))
         calls = []
@@ -296,10 +296,10 @@ class DatasetBuilderTests(unittest.TestCase):
         with patch.object(self.builder, 'request', return_value={'subfolder': 'dataset-builder', 'name': 'original.png'}), \
              patch.object(self.builder, 'generate', side_effect=generate), patch.object(self.builder, 'review', side_effect=review):
             self.builder.work(job)
-        self.assertEqual(len(calls), 12)
+        self.assertEqual(len(calls), 3)
         self.assertTrue(all(graph['4']['inputs']['image'] == 'dataset-builder/original.png' for graph in calls))
-        self.assertEqual(job['status'], 'review')
-        self.assertTrue(all(item['attempts'] == 3 and not item['accepted'] for item in job['items']))
+        self.assertEqual(job['status'], 'trial_review')
+        self.assertEqual([item['attempts'] for item in job['items']], [1, 1, 1, 0])
 
     def test_local_review_failure_is_not_accepted(self):
         with self.assertRaises(ValueError):
@@ -312,7 +312,12 @@ class DatasetBuilderTests(unittest.TestCase):
 
     def test_native_workflows_and_shot_plan(self):
         graph = variation_graph('original.png', 'turn left', 1, 'test')
+        self.assertEqual(graph['4']['inputs']['image'], 'original.png')
+        self.assertEqual(graph['5']['inputs']['image'], ['4', 0])
         self.assertEqual(graph['6']['inputs']['image1'], ['5', 0])
+        self.assertEqual(graph['7']['inputs']['image1'], ['5', 0])
+        self.assertEqual(graph['10']['inputs']['pixels'], ['5', 0])
+        self.assertEqual(graph['11']['inputs']['latent_image'], ['10', 0])
         self.assertEqual(graph['11']['inputs']['steps'], 40)
         self.assertNotIn('LoraLoaderModelOnly', [n['class_type'] for n in graph.values()])
         with self.assertRaises(HTTPException):
@@ -321,6 +326,179 @@ class DatasetBuilderTests(unittest.TestCase):
         self.assertEqual(len(set(x['shot'] for x in plan)), 18)
         self.assertTrue(all('keep the original clothing exactly' in x['prompt'] for x in plan))
         self.assertEqual(reference_graph('portrait', 1, 'test')['1']['class_type'], 'CheckpointLoaderSimple')
+
+    def test_nonhuman_recipe_and_reference_styles(self):
+        plan = shot_plan(15, 'identity', True, True, 'character')
+        for item in plan:
+            for human in ('skin', 'hair', 'shirt', 'smile', 'clothing'):
+                self.assertNotIn(human, item['prompt'])
+            self.assertIn('exact same non-human character', item['prompt'])
+        self.assertEqual(len({x['shot'].split(', ')[1] for x in plan[:3]}), 3)
+        photo = reference_graph('a robot', 1, 'test')
+        illustration = reference_graph('a robot', 1, 'test', 'illustration')
+        self.assertIn('Photorealistic photograph', photo['2']['inputs']['text'])
+        self.assertIn('cartoon', photo['3']['inputs']['text'])
+        self.assertNotIn('Photorealistic', illustration['2']['inputs']['text'])
+        self.assertNotIn('illustration', illustration['3']['inputs']['text'])
+        plan = self.client.get('/api/dataset-builder/plan?subject=character').json()
+        self.assertFalse(plan['vary_clothes'])
+
+    def test_trial_gate_survives_resume_and_approval_keeps_trial_files(self):
+        job = self.create()
+        url = f'/api/dataset-builder/jobs/{job["id"]}'
+        with patch.object(self.builder, 'start'):
+            job = self.client.post(url + '/reference', json={'file': job['references'][0]}).json()
+        calls = []
+        def generate(current, graph, filename):
+            calls.append(filename)
+            (self.builder.directory(current['id']) / filename).write_bytes(photo_bytes())
+        with patch.object(self.builder, 'request', return_value={'name': 'original.png'}), \
+             patch.object(self.builder, 'generate', side_effect=generate), patch.object(self.builder, 'review'):
+            self.builder.work(job)
+            self.assertEqual(len(calls), 3)
+            self.assertEqual(job['status'], 'trial_review')
+            self.assertEqual(self.client.post(url + '/approve-trial').status_code, 409)
+            self.assertEqual(self.client.post(url + '/resume').status_code, 200)
+            self.builder.thread.join(3)
+            self.assertEqual(len(calls), 3)
+            for slot in range(3):
+                response = self.client.patch(url + f'/images/{slot}', json={'accepted': True, 'confirm_unchecked': True})
+                self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(self.client.post(url + '/approve-trial').status_code, 200)
+            self.builder.thread.join(3)
+        finished = self.builder.read(job['id'])
+        self.assertTrue(finished['trial_approved'])
+        self.assertEqual(len(calls), 4)
+        self.assertEqual([x['attempts'] for x in finished['items']], [1, 1, 1, 1])
+
+    def test_unchecked_image_needs_explicit_confirmation_and_can_export_alone(self):
+        job = self.prepare_review(self.create())
+        for item in job['items']:
+            item.update(review=None, accepted=False, caption='')
+        self.builder.save(job)
+        url = f'/api/dataset-builder/jobs/{job["id"]}'
+        self.assertEqual(self.client.post(url + '/finish').status_code, 409)
+        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True}).status_code, 409)
+        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True, 'confirm_unchecked': True,
+                                                                   'file': 'stale.png'}).status_code, 409)
+        self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': True, 'confirm_unchecked': True}).status_code, 200)
+        result = self.client.post(url + '/finish')
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['exported_count'], 1)
+        self.assertEqual(len(list((self.root / 'datasets/1_character').glob('*.png'))), 1)
+        self.assertEqual(len(list((self.root / 'datasets/1_character').glob('*.txt'))), 0)
+
+    def test_review_cannot_overwrite_a_manual_exclusion(self):
+        job = self.prepare_review(self.create())
+        item = job['items'][0]; item.update(review=None, accepted=False)
+        def worker(*args, **kwargs):
+            item.update(user_reviewed=True, accepted=False)
+            (self.builder.directory(job['id']) / 'vision-result.json').write_text(
+                json.dumps({item['file']: {'identity': 'consistent', 'issues': []}}))
+            return Mock(poll=Mock(return_value=0), wait=Mock(return_value=0))
+        with patch('apps.Portal.services.dataset_builder.subprocess.Popen', side_effect=worker):
+            self.builder.review(job)
+        self.assertFalse(item['accepted'])
+        self.assertTrue(item['user_reviewed'])
+
+    def test_interrupted_save_and_stale_selection_can_be_retried(self):
+        job = self.prepare_review(self.create())
+        job.update(status='generating', finish_requested=True, finish_slots=[0], busy_slot=1)
+        self.builder.save(job)
+        recovered = self.builder.read(job['id'])
+        self.assertEqual(recovered['status'], 'paused')
+        self.assertNotIn('finish_requested', recovered)
+        self.assertNotIn('busy_slot', recovered)
+        self.assertEqual(self.builder.public(recovered)['status'], 'paused')
+        recovered.update(status='failed', finish_slots=[0])
+        for item in recovered['items']:
+            item['accepted'] = item['slot'] == 2
+        self.builder.save(recovered)
+        result = self.client.post(f'/api/dataset-builder/jobs/{job["id"]}/finish')
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['exported_slots'], [2])
+
+    def test_active_review_and_regeneration_share_one_worker(self):
+        job = self.prepare_review(self.create())
+        job['items'][1].update(file=None, review=None, accepted=False)
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        def generate(current, graph, filename):
+            calls.append(filename)
+            if len(calls) == 1:
+                entered.set()
+                self.assertTrue(release.wait(5))
+            (self.builder.directory(current['id']) / filename).write_bytes(photo_bytes())
+        url = f'/api/dataset-builder/jobs/{job["id"]}'
+        with patch.object(self.builder, 'request', return_value={'name': 'original.png'}), \
+             patch.object(self.builder, 'generate', side_effect=generate), patch.object(self.builder, 'review'):
+            self.builder.start(job)
+            try:
+                self.assertTrue(entered.wait(3))
+                response = self.client.patch(url + '/images/0', json={'accepted': False})
+                self.assertEqual(response.status_code, 200, response.text)
+                response = self.client.post(url + '/images/2/regenerate', json={'file': 'image-2.png'})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()['regenerate_slots'], [2])
+                self.assertEqual(self.client.post(url + '/images/2/regenerate').status_code, 409)
+            finally:
+                release.set()
+                self.builder.thread.join(3)
+        restored = self.builder.read(job['id'])
+        self.assertEqual(len(calls), 2)
+        self.assertFalse(restored['items'][0]['accepted'])
+        self.assertTrue(restored['items'][0]['user_reviewed'])
+        self.assertEqual(restored['regenerate_slots'], [])
+        self.assertEqual(restored['items'][2]['attempts'], 2)
+
+    def test_stop_and_save_freezes_selected_subset(self):
+        job = self.prepare_review(self.create())
+        job['items'][1].update(file=None, review=None, accepted=False)
+        job['items'][2]['accepted'] = False
+        entered, release = threading.Event(), threading.Event()
+        def generate(current, graph, filename):
+            entered.set()
+            self.assertTrue(release.wait(5))
+            (self.builder.directory(current['id']) / filename).write_bytes(photo_bytes())
+        url = f'/api/dataset-builder/jobs/{job["id"]}'
+        with patch.object(self.builder, 'request', return_value={'name': 'original.png'}), \
+             patch.object(self.builder, 'generate', side_effect=generate):
+            self.builder.start(job)
+            try:
+                self.assertTrue(entered.wait(3))
+                response = self.client.post(url + '/finish')
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertTrue(response.json()['finish_requested'])
+                self.assertEqual(self.client.patch(url + '/images/0', json={'accepted': False}).status_code, 409)
+            finally:
+                release.set()
+                self.builder.thread.join(3)
+        saved = self.builder.read(job['id'])
+        self.assertEqual(saved['status'], 'saved', saved['message'])
+        self.assertEqual(saved['exported_slots'], [0, 3])
+        self.assertEqual(len(list((self.root / 'datasets/1_character').glob('*.png'))), 2)
+
+    def test_keeping_last_image_cancels_failed_queued_regeneration(self):
+        job = self.prepare_review(self.create())
+        job.update(status='failed', regenerate_slots=[0])
+        job['items'][0].update(attempts=3, accepted=False)
+        self.builder.save(job)
+        url = f'/api/dataset-builder/jobs/{job["id"]}'
+        response = self.client.patch(url + '/images/0', json={'accepted': True, 'file':'image-0.png'})
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()['regenerate_slots'], [])
+        self.assertTrue(response.json()['items'][0]['accepted'])
+        self.assertEqual(self.client.post(url + '/images/0/regenerate').status_code, 409)
+
+    def test_finish_saves_the_client_selection_not_later_autoaccepted_images(self):
+        job = self.prepare_review(self.create())
+        url = f'/api/dataset-builder/jobs/{job["id"]}/finish'
+        self.assertEqual(self.client.post(url, json={'files':['stale.png']}).status_code, 409)
+        self.assertEqual(self.client.post(url, json={'files':[]}).status_code, 409)
+        result = self.client.post(url, json={'files':['image-2.png']})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json()['exported_slots'], [2])
+        self.assertEqual(len(list((self.root / 'datasets/1_character').glob('*.png'))), 1)
 
     def test_required_models_reuse_canonical_manifest_files(self):
         manifest = Path(__file__).resolve().parents[1] / 'config/models.manifest'

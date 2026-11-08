@@ -30,6 +30,7 @@
 .db-compare figcaption { margin-top:8px; line-height:1.5; }
 .db-compare-heading { display:flex; align-items:start; justify-content:space-between; gap:16px; }
 .db-compare-heading h3 { margin-top:0; }
+.db-compare-nav { margin:16px 0; }
 @media (max-width:600px) {
   .db-compare { padding:16px; }
   .db-compare-images { gap:10px; }
@@ -38,6 +39,6 @@
 }
 .db-image .row { margin-top:14px; }
 .db-image .btn { font-size:13px; padding:8px 10px; }
-#db-error { color:var(--danger,#b42318); overflow-wrap:anywhere; }
+#db-error, #db-compare-error { color:var(--danger,#b42318); overflow-wrap:anywhere; }
 #db-preflight { overflow-wrap:anywhere; margin-bottom:16px; }
 #db-finish { margin-top:16px; }

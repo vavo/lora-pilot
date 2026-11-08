@@ -16,21 +16,23 @@
 <section id="dataset-builder" class="journey-surface db-builder" hidden aria-labelledby="db-title">
   <h3 id="db-title">Build your training images</h3>
   <ol class="preparation-steps" aria-label="Dataset to training"><li data-prepare-step="1" aria-current="step">Reference</li><li data-prepare-step="2">Review images</li><li>Caption in TagPilot</li><li>Train</li></ol>
-  <p class="journey-note">First approve a reference, then review the variations. Identity checks are suggestions; look closely at faces before keeping an image.</p>
+  <p class="journey-note">Choose a reference, try three images, then approve the rest. Automatic checks are suggestions; your review decides what to keep.</p>
   <form id="db-form">
     <div class="db-fields">
       <label>Dataset name<input id="db-name" class="input" required maxlength="64" pattern="[A-Za-z0-9][A-Za-z0-9_\-]*" placeholder="my_character"></label>
       <label>Trigger word<input id="db-trigger" class="input" required maxlength="40" pattern="[A-Za-z][A-Za-z0-9_]*" placeholder="ohwxperson"><small>Use this word in prompts after training.</small></label>
       <label>Number of images<select id="db-count" class="select"><option value="15">15 (minimum)</option><option value="30" selected>30 (basic)</option><option value="50">50 (optimal)</option><option value="100">100 (detailed)</option></select></label>
       <label>Start from<select id="db-source" class="select"><option value="prompt">A description</option><option value="photo">My photo</option></select></label>
-      <label>What should the LoRA learn?<select id="db-goal" class="select"><option value="identity">Person / identity</option><option value="character">Character with a fixed look</option></select></label>
+      <label>What is your subject?<select id="db-subject" class="select"><option value="person">A person</option><option value="character">A non-human character (robot, creature…)</option></select></label>
+      <label id="db-style-label">Reference style<select id="db-style" class="select"><option value="photo">Photo</option><option value="illustration">Illustration</option></select></label>
+      <label id="db-goal-label">What should stay the same?<select id="db-goal" class="select"><option value="identity">The person, with different looks</option><option value="character">The person, clothes and hairstyle</option></select></label>
     </div>
     <label id="db-prompt-label">Describe your character<textarea id="db-prompt" class="input" rows="3" maxlength="2000" placeholder="An adult woman with short curly brown hair, freckles and green eyes, natural portrait photography" required></textarea></label>
     <label id="db-photo-label" hidden>Reference photo<input id="db-photo" class="input" type="file" accept="image/png,image/jpeg,image/webp"><small>One clear photo, 256 px or larger, up to 32 MB. Unseen details may be invented.</small></label>
-    <div class="row wrap gap-12 db-options"><label><input id="db-clothes" type="checkbox" checked> Vary clothes</label><label><input id="db-hair" type="checkbox"> Vary hairstyle</label></div>
+    <div id="db-options" class="row wrap gap-12 db-options"><label><input id="db-clothes" type="checkbox" checked> Vary clothes</label><label><input id="db-hair" type="checkbox"> Vary hairstyle</label></div>
     <section class="db-plan" aria-labelledby="db-plan-title"><h4 id="db-plan-title">Your planned image mix</h4><p id="db-plan" role="status">Loading the shot plan…</p><p class="journey-note">This is what we will ask for, not a check of the finished images. Review the results before training.</p></section>
     <p class="journey-note">Use photos you have permission to use. Images stay on your pod; GPU time is still billed by your host.</p>
-    <details class="db-details"><summary>How generation works</summary><p class="journey-note">A description creates four SDXL references to choose from. Qwen Image Edit makes the variations, with up to three attempts per image. Local consistency checks and TagPilot captions run on CPU and can take several minutes per image.</p></details>
+    <details class="db-details"><summary>How generation works</summary><p class="journey-note">A description creates four SDXL references in your chosen style. Qwen Image Edit uses your approved reference for every variation. We try three images first; the rest start only when you approve. Regeneration is your choice, with up to three attempts per image. TagPilot’s local vision model provides optional consistency checks. Captioning stays in TagPilot.</p></details>
     <p id="db-preflight" role="status" class="journey-note">Missing models download automatically when you start. First-time setup may need up to 42 GB.</p>
     <div class="row wrap gap-12"><button id="db-create" type="submit" class="btn primary" disabled>Create reference</button></div>
   </form>
@@ -38,18 +40,22 @@
   <label id="db-jobs-label" class="db-jobs" hidden>Saved creation jobs<select id="db-jobs" class="select"><option value="">Choose a job</option></select></label>
   <section id="db-job" hidden aria-labelledby="db-job-title">
     <h3 id="db-job-title"></h3><p id="db-progress" role="status"></p>
-    <div class="row wrap gap-12"><button id="db-pause" class="btn ghost" type="button" hidden>Pause after current image</button><button id="db-resume" class="btn ghost" type="button" hidden>Resume / retry unfinished images</button></div>
+    <p id="db-job-summary" class="journey-note"></p>
+    <div id="db-trial-wrap" class="db-plan" hidden><strong>Do these three images look right?</strong><p>Keep all three trial images to continue, or regenerate the ones you dislike. They count toward your dataset total.</p><button id="db-approve-trial" class="btn primary" type="button">Create the remaining images</button></div>
+    <div class="row wrap gap-12"><button id="db-pause" class="btn ghost" type="button" hidden>Pause after current image</button><button id="db-resume" class="btn ghost" type="button" hidden>Resume unfinished work</button></div>
     <div id="db-reference" class="db-reference"></div>
     <div id="db-images" class="db-images"></div>
-    <div id="db-finish-wrap" hidden><label><input id="db-reviewed" type="checkbox"> I have reviewed the kept images.</label><p id="db-accepted" class="journey-note"></p><button id="db-finish" type="button" class="btn primary" disabled>Continue to TagPilot</button></div>
+    <div id="db-finish-wrap" hidden><label><input id="db-reviewed" type="checkbox"> I have reviewed the images I am keeping.</label><p id="db-accepted" class="journey-note"></p><button id="db-finish" type="button" class="btn primary" disabled>Save kept images &amp; open TagPilot</button></div>
     <button id="db-train" type="button" class="btn primary" hidden>Open dataset in TagPilot</button>
   </section>
   <dialog id="db-compare" class="db-compare" aria-labelledby="db-compare-title">
     <div class="db-compare-heading"><h3 id="db-compare-title">Compare with your reference</h3><button id="db-compare-close" type="button" class="btn ghost">Close</button></div>
-    <p class="journey-note">Check the face and defining features. Clothes and backgrounds may differ if you requested variations.</p>
+    <p class="journey-note">Check the subject and its defining features against your original reference. Keep only the images you want to train with.</p>
+    <div class="row wrap gap-12 db-compare-nav"><button id="db-compare-prev" type="button" class="btn ghost">Previous</button><span id="db-compare-position" role="status"></span><button id="db-compare-next" type="button" class="btn ghost">Next</button></div>
     <div class="db-compare-images"><figure><img id="db-compare-reference" alt="Approved reference"><figcaption>Approved reference</figcaption></figure><figure><img id="db-compare-image" alt="Selected variation"><figcaption id="db-compare-shot"></figcaption></figure></div>
     <p id="db-compare-state" role="status"></p><ul id="db-compare-warnings"></ul>
     <div id="db-compare-actions" class="row wrap gap-8"></div>
+    <p id="db-compare-error" class="status" role="alert"></p>
   </dialog>
 </section>
 <div id="first-lora-guide" data-title="Your first dataset - use this default dataset to train your first LoRA"></div>

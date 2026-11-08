@@ -104,10 +104,15 @@ def run(directory, model_path):
         image = local_image(directory, item['file'])
         prompt = (
             'Image 1 is the approved identity reference. Image 2 is a proposed training image. '
-            'Compare the face and defining physical features, not merely clothing or background. '
-            'If the face is hidden, too small or ambiguous, identity must be uncertain. '
-            'Look for malformed anatomy, extra people, unreadable faces, text and watermarks. '
-            + ('Clothing and hairstyle must also match the reference. ' if request['goal'] == 'character' else
+            + ('Compare the non-human character design, silhouette, proportions, materials, colours and distinctive parts. '
+               'Do not require human skin, hair, clothing or a human face. A human replacing the character is different. '
+               'If defining parts cannot be seen, identity must be uncertain. Look for broken parts, extra subjects, text and watermarks. '
+               if request.get('subject') == 'character' else
+               'Compare the face and defining physical features, not merely clothing or background. '
+               'If the face is hidden, too small or ambiguous, identity must be uncertain. '
+               'Look for malformed anatomy, extra people, unreadable faces, text and watermarks. ')
+            + ('Keep the same character design. ' if request.get('subject') == 'character' else
+               'Clothing and hairstyle must also match the reference. ' if request['goal'] == 'character' else
                'Clothes, hairstyle and background are allowed to differ. ')
             + 'The requested shot is: ' + item['shot'] + '. Flag a clearly incorrect viewpoint or framing. '
             'Return only JSON: {"identity":"consistent|different|uncertain", "issues":["short visible problem"]}. '

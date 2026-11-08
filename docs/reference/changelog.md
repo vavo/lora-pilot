@@ -1,12 +1,12 @@
 # Changelog
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-08_
 
 The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release history. You can also read it in ControlPilot Docs or retrieve it from `GET /api/changelog`.
 
 ## Unreleased
 
-The dataset builder guides beginners from a reference through image review, TagPilot captions and Guided training. It adds a planned shot mix and side-by-side reference comparison. TagPilot remains the only caption/tag editor, with local Qwen3-VL, browser-draft recovery and unfinished-batch resume; workspace files change only on explicit save. GPU generation and vision-model inference still need pod acceptance testing.
+The dataset builder guides beginners from a reference through image review, TagPilot captions and Guided training. It distinguishes people from non-human characters, offers Photo/Illustration references, and starts with three trial Qwen image-to-image variations before the remaining batch. Review controls remain available during background work; Previous/Next and arrow keys navigate comparisons. Any kept subset can continue to TagPilot. TagPilot remains the only caption/tag editor, with local Qwen3-VL, browser-draft recovery and unfinished-batch resume; workspace files change only on explicit save. GPU generation and vision-model inference still need pod acceptance testing.
 
 Guided training adds Anima, Lumina-Image 2.0 and HunyuanImage 2.1 with model downloads, Kohya recipes and saved queue settings. Each family keeps the same three quality profiles. Built-in comparisons are not yet available for these three families.
 

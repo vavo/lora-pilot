@@ -19,19 +19,21 @@ class Element {
   querySelectorAll() { return this.children.flatMap(child => [child, ...child.querySelectorAll()]); }
 }
 const settle = () => new Promise(resolve => setImmediate(resolve));
-function fixture(ready = true) {
+function fixture(ready = true, overrides = {}) {
   const nodes = new Map();
   const el = name => { const id = name.startsWith('db-') || name === 'dataset-builder' ? name : 'db-' + name;
     if (!nodes.has(id)) nodes.set(id, new Element()); return nodes.get(id); };
   el('dataset-builder').hidden = true; el('source').value = 'prompt'; el('clothes').checked = true;
   el('count').value = '4'; el('goal').value = 'identity';
+  el('subject').value = 'person'; el('style').value = 'photo';
   let job = {id: 'a'.repeat(32), spec: {name: 'sample', count: 4}, phase: 'variations', status: 'review',
     message: 'Review your images', references: ['reference.png'], reference: 'reference.png', accepted_count: 3,
     items: Array.from({length: 4}, (_, slot) => ({slot, shot: 'portrait', file: `image-${slot}.png`, attempts: 1,
       accepted: slot !== 0, caption: 'trigger, a portrait', review: {identity: 'consistent'},
       warnings: slot === 0 ? ['Identity uncertain: compare with the reference before keeping.'] : []}))};
+  Object.assign(job, overrides);
   const calls = [], handoffs = [];
-  const page = vm.createContext({window: {}, document: {getElementById: el, createElement: tag => new Element(tag)},
+  const page = vm.createContext({window: {confirm: () => true}, document: {getElementById: el, createElement: tag => new Element(tag)},
     Option: function (textContent, value) { return Object.assign(new Element('option'), {textContent, value}); },
     FormData, URLSearchParams, AbortController, DOMException, setTimeout: () => 0, clearTimeout() {},
     openTagpilotDataset: name => handoffs.push(name)});
@@ -39,20 +41,24 @@ function fixture(ready = true) {
     calls.push([url, options]);
     if (url.includes('preflight')) return {ready, problems: ready ? [] : ['Install required models']};
     if (url.includes('/plan?')) return {count:4, framing:{'close-up portrait':2,'waist-up portrait':1,'full-body photograph':1},
-      angles:{'front view':3,'front-left three-quarter view':1},vary_clothes:el('goal').value === 'identity' && el('clothes').checked,vary_hair:false};
+      angles:{'front view':3,'front-left three-quarter view':1},subject:el('subject').value,vary_clothes:el('goal').value === 'identity' && el('clothes').checked,vary_hair:false};
     if (options.method === 'PATCH') {
       const slot = Number(url.split('/').pop());
       Object.assign(job.items[slot], JSON.parse(options.body));
+      job.items[slot].user_reviewed = true;
+      job.regenerate_slots = (job.regenerate_slots || []).filter(value => value !== slot);
       job.accepted_count = job.items.filter(item => item.accepted).length;
     }
     if (url.endsWith('/finish')) job = {...job, status: 'saved', dataset: '1_sample'};
+    if (url.endsWith('/approve-trial')) job = {...job, trial_approved:true, status:'generating'};
+    if (url.endsWith('/regenerate')) job.regenerate_slots = [Number(url.split('/').at(-2))];
     return structuredClone(url.endsWith('/jobs') ? [job] : job);
   };
   vm.runInContext(fs.readFileSync('apps/Portal/static/js/screen-lifecycle.js', 'utf8'), page);
   vm.runInContext(fs.readFileSync('apps/Portal/static/js/dataset-builder.js', 'utf8'), page);
   page.window.initDatasetBuilder(page.window.createScreenLifecycle());
   el('open').onclick();
-  return {el, calls, handoffs};
+  return {el, calls, handoffs, page};
 }
 function card(el, slot) {
   const children = el('images').children[slot].querySelectorAll();
@@ -68,18 +74,18 @@ test('dataset name patterns work with modern browser Unicode-set validation', ()
   assert.equal(regex.test('../escape'), false);
 });
 
-test('builder has no caption editor and hands the exact reviewed count to TagPilot', async () => {
+test('builder has no caption editor and allows a kept subset to continue to TagPilot', async () => {
   const {el, handoffs} = fixture(); await settle();
   assert.equal(card(el, 0).caption, undefined);
   el('reviewed').checked = true; el('reviewed').onchange();
-  assert.equal(el('finish').disabled, true);
+  assert.equal(el('finish').disabled, false);
   await card(el, 0).button('Keep image').onclick();
   assert.equal(el('reviewed').checked, false);
   el('reviewed').checked = true; el('reviewed').onchange();
   assert.equal(el('finish').disabled, false);
   await el('finish').onclick();
   assert.deepEqual(handoffs, ['1_sample']);
-  assert.equal(card(el, 0).button('Keep image').disabled, true);
+  assert.equal(card(el, 0).button('Keep image').disabled, false);
 });
 
 test('opening the builder does not start downloads or block creation; photo/fixed-look inputs stay consistent', async () => {
@@ -111,12 +117,12 @@ test('reference comparison reuses Keep/Exclude actions and clears review confirm
   assert.equal(el('compare').open,true);
   assert.match(el('compare-reference').src,/reference.png$/);
   assert.match(el('compare-image').src,/image-0.png$/);
-  assert.match(el('compare-warnings').children[0].textContent,/face could not be matched confidently/);
+  assert.match(el('compare-warnings').children[0].textContent,/subject could not be matched confidently/);
   el('reviewed').checked=true;
   await el('compare-actions').children.find(button=>button.textContent==='Keep image').onclick();
   assert.match(el('compare-state').textContent,/Kept for training/);
   assert.equal(el('reviewed').checked,false);
-  assert.equal(card(el,0).button('Keep image').disabled,true);
+  assert.equal(card(el,0).button('Keep image').disabled,false);
   el('compare-close').onclick();assert.equal(el('compare').open,false);
   assert.equal(card(el,0).button('Compare with reference').focused,true);
 });
@@ -128,4 +134,63 @@ test('each preparation screen names the same four steps and has a current step',
     assert.match(html,/aria-current="step"/);
     for (const label of ['Reference','Review images','Caption in TagPilot','Train']) assert.ok(html.includes(`>${label}</li>`));
   }
+});
+
+test('comparison navigation stays open and skips unfinished images', async () => {
+  const {el} = fixture(true, {items: [
+    {slot:0, file:'first.png', attempts:1}, {slot:1, file:null}, {slot:2, file:'last.png', attempts:1}
+  ]}); await settle();
+  card(el,0).button('Compare with reference').onclick();
+  assert.equal(el('compare-position').textContent, '1 of 2');
+  assert.equal(el('compare-prev').disabled, true);
+  el('compare-next').onclick();
+  assert.equal(el('compare').open, true);
+  assert.match(el('compare-image').src, /last.png$/);
+  assert.equal(el('compare-next').disabled, true);
+  el('compare').onkeydown({key:'ArrowLeft', preventDefault(){}});
+  assert.match(el('compare-image').src, /first.png$/);
+});
+
+test('unchecked images can be kept or excluded during generation, with explicit keep confirmation', async () => {
+  const {el,calls,page} = fixture(true, {status:'generating', items:[
+    {slot:0,file:'first.png',attempts:1,review:null,accepted:false}
+  ]}); await settle();
+  card(el,0).button('Compare with reference').onclick();
+  assert.ok(el('compare-actions').children.every(button => !button.disabled));
+  page.window.confirm = () => false;
+  await el('compare-actions').children[0].onclick();
+  assert.equal(calls.filter(([,options]) => options.method === 'PATCH').length, 0);
+  page.window.confirm = () => true;
+  await el('compare-actions').children[0].onclick();
+  const request = calls.find(([,options]) => options.method === 'PATCH');
+  assert.deepEqual(JSON.parse(request[1].body), {accepted:true,file:'first.png',confirm_unchecked:true});
+  el('reviewed').checked = true; el('reviewed').onchange();
+  assert.equal(el('finish').disabled, false);
+  assert.match(el('finish').textContent, /Stop & save 1 kept image/);
+  await el('compare-actions').children[1].onclick();
+  assert.equal(el('finish').disabled, true);
+  await el('compare-actions').children[2].onclick();
+  assert.ok(calls.some(([url]) => url.endsWith('/0/regenerate')));
+  assert.equal(el('compare-actions').children[2].textContent, 'Regeneration queued');
+  await el('compare-actions').children[2].onclick();
+  assert.match(el('compare-error').textContent, /already queued/);
+  await el('compare-actions').children[1].onclick();
+  assert.equal(el('compare-actions').children[2].textContent, 'Regenerate');
+});
+
+test('trial gate and nonhuman controls stay simple after reopening a job', async () => {
+  const {el,calls} = fixture(true, {status:'trial_review',trial_approved:false}); await settle();
+  assert.equal(el('trial-wrap').hidden, false);
+  assert.equal(el('approve-trial').disabled, true);
+  await card(el,0).button('Keep image').onclick();
+  assert.equal(el('approve-trial').disabled, false);
+  await el('approve-trial').onclick();
+  assert.ok(calls.some(([url]) => url.endsWith('/approve-trial')));
+  el('subject').value='character'; el('subject').onchange(); await settle();
+  assert.equal(el('goal-label').hidden, true);
+  assert.equal(el('options').hidden, true);
+  assert.match(el('plan').textContent, /same character design/);
+  assert.ok(calls.some(([url]) => url.includes('subject=character')));
+  el('source').value='photo'; el('source').onchange();
+  assert.equal(el('style-label').hidden, true);
 });

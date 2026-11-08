@@ -2,7 +2,7 @@
 from fastapi import HTTPException
 from .tagpilot_local import MODEL_NAME as CAPTION_MODEL
 
-RECIPE_VERSION = 'qwen-2511-v1'
+RECIPE_VERSION = 'qwen-2511-v2'
 MODEL_FILES = {
     'dataset-qwen-edit': ('diffusion_models', 'qwen_image_edit_2511_fp8mixed.safetensors'),
     'hunyuanimage-2.1-comfy-qwen-encoder-fp8': ('text_encoders', 'qwen_2.5_vl_7b_fp8_scaled.safetensors'),
@@ -17,11 +17,17 @@ def node(kind, **inputs):
     return dict(class_type=kind, inputs=inputs)
 
 
-def reference_graph(prompt, seed, prefix):
+def reference_graph(prompt, seed, prefix, style='photo'):
+    if style == 'photo':
+        prompt = 'Photorealistic photograph, natural lighting, realistic materials and fine detail. ' + prompt
+        negative = 'illustration, drawing, painting, anime, cartoon, comic, stylized render, '
+    else:
+        prompt = 'Illustration, consistent character design. ' + prompt
+        negative = ''
     return {
         '1': node('CheckpointLoaderSimple', ckpt_name=CHECKPOINT),
         '2': node('CLIPTextEncode', clip=['1', 1], text=prompt),
-        '3': node('CLIPTextEncode', clip=['1', 1], text='blurry, watermark, text, collage, multiple people'),
+        '3': node('CLIPTextEncode', clip=['1', 1], text=negative + 'blurry, watermark, text, collage, multiple subjects'),
         '4': node('EmptyLatentImage', width=768, height=1024, batch_size=1),
         '5': node('KSampler', model=['1', 0], positive=['2', 0], negative=['3', 0],
                   latent_image=['4', 0], seed=seed, steps=30, cfg=7.0,
@@ -76,16 +82,26 @@ def validate_graph(graph, registry, uploaded=False):
                 raise HTTPException(409, f'{value} is missing in ComfyUI. Install the required model in Models.')
 
 
-def shot_plan(count, goal, vary_clothes, vary_hair):
+def shot_plan(count, goal, vary_clothes, vary_hair, subject='person'):
     angles = ['front view', 'front-left three-quarter view', 'front-right three-quarter view',
               'left profile', 'right profile', 'slightly elevated front view']
-    frames = ['close-up portrait', 'waist-up portrait', 'full-body photograph']
+    frames = ['close-up portrait', 'waist-up portrait', 'full-body view']
+    if subject == 'character':
+        frames = ['close-up view', 'upper-body view', 'full-body view']
     scenes = ['plain studio background, soft daylight', 'outdoor park, overcast daylight',
               'simple indoor room, window light', 'city street, evening light']
     clothes = ['a plain blue shirt', 'a dark casual jacket', 'a cream sweater', 'a simple green T-shirt']
     result = []
     for i in range(count):
-        frame, angle = frames[i % 3], angles[(i // 3) % len(angles)]
+        frame, angle = frames[i % 3], angles[(i // 3 + i % 3) % len(angles)]
+        if subject == 'character':
+            prompt = ('Edit the reference image: show this exact same non-human character. '
+                      'Preserve its design, silhouette, proportions, materials, colours and distinctive parts. '
+                      'Do not turn it into a human or redesign it. Preserve the reference visual style. '
+                      f'Change only the camera view and setting: {frame}, {angle}, {scenes[(i // 2) % len(scenes)]}. '
+                      'One subject, no collage, text or watermark.')
+            result.append(dict(slot=i, shot=f'{frame}, {angle}', prompt=prompt, attempts=0, accepted=False))
+            continue
         details = [frame, angle, scenes[(i // 2) % len(scenes)],
                    ['neutral expression', 'gentle smile', 'relaxed expression'][i % 3]]
         if goal == 'identity' and vary_clothes:
@@ -94,7 +110,7 @@ def shot_plan(count, goal, vary_clothes, vary_hair):
             details.append('keep the original clothing exactly')
         details.append('hair tied back, preserving colour and hairline' if goal == 'identity' and vary_hair and i % 4 == 3
                        else 'keep the original hairstyle and hair colour')
-        prompt = ('Create one photograph of the same single person or character from the reference. '
+        prompt = ('Edit the reference image to show the exact same person. Preserve the reference visual style. '
                   'Preserve their facial identity, age, skin tone, body proportions and defining features. '
                   + ', '.join(details) + '. Natural anatomy. No collage, labels or watermark.')
         result.append(dict(slot=i, shot=f'{frame}, {angle}', prompt=prompt, attempts=0, accepted=False))

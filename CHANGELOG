@@ -1,12 +1,14 @@
 Unreleased (October 29th 2026)
 
+- Dataset creation now distinguishes people from non-human characters, offers Photo/Illustration references, and starts with three trial edits of the approved reference. Image decisions remain available during background work; regeneration is user-controlled. Compare images with Previous/Next or arrow keys and save any kept subset to TagPilot, including while stopping a larger batch.
+
 - Updated the image to JupyterLab 4.6.5, ComfyUI 0.44.0, InvokeAI 6.14.4 and AI Toolkit revision beb94824.
 
 - Dataset creation now downloads missing models when you start a reference and offers 15, 30, 50 or 100 images. The dashboard opens the builder directly; ZIP upload remains a separate option.
 - Fixed MCP setup and agent connections on RunPod when its HTTPS proxy rewrites the Host header. Direct connections still require the configured host and transport.
 - Fixed MediaPilot’s Upscale selected action on fresh and upgraded workspaces. It uses the bundled 2× Lanczos workflow unless a custom workflow is configured.
 
-- Added a first-version dataset builder in ControlPilot: description or photo input, reference approval, native Qwen Image Edit variations, offline consistency warnings, resumable bounded jobs, and exact-count handoff to TagPilot. Captioning and tagging stay in TagPilot, with a local Qwen3-VL provider sharing the vision worker, preserved generation records, and save-before-training handoff. Added the required models to the catalogue. GPU generation and local vision-model inference still require acceptance testing on a pod.
+- Added a first-version dataset builder in ControlPilot: description or photo input, reference approval, native Qwen Image Edit variations, offline consistency warnings, resumable bounded jobs, and kept-image handoff to TagPilot. Captioning and tagging stay in TagPilot, with a local Qwen3-VL provider sharing the vision worker, preserved generation records, and save-before-training handoff. Added the required models to the catalogue. GPU generation and local vision-model inference still require acceptance testing on a pod.
 - TagPilot now reuses its ZIP save API for complete-collection saves and reports failed batch requests instead of claiming completion.
 - Added private browser-draft recovery in TagPilot. Refreshes pause batch captioning/tagging; restoring resumes only unfinished images and retains edits without saving credentials or automatically replacing workspace datasets.
 - Added a four-stage reference-to-training path, side-by-side reference review with the existing image actions, and a planned image-mix preview using the current dataset recipe. Planned variety is clearly distinguished from verified output.

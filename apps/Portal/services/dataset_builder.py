@@ -1,4 +1,5 @@
 """Persistent, single-worker dataset creation. GPU execution stays in ComfyUI."""
+import copy
 import io
 import json
 import os
@@ -39,6 +40,8 @@ class BuildSpec(BaseModel):
     goal: Literal['identity', 'character'] = 'identity'
     vary_clothes: bool = True
     vary_hair: bool = False
+    subject: Literal['person', 'character'] = 'person'
+    style: Literal['photo', 'illustration'] = 'photo'
 
 
 class ReferenceChoice(BaseModel):
@@ -47,6 +50,16 @@ class ReferenceChoice(BaseModel):
 
 class ImageChoice(BaseModel):
     accepted: bool
+    file: str | None = None
+    confirm_unchecked: bool = False
+
+
+class ImageRevision(BaseModel):
+    file: str | None = None
+
+
+class FinishChoice(BaseModel):
+    files: list[str] | None = Field(default=None, max_length=100)
 
 
 def safe_path(root, *parts):
@@ -104,6 +117,7 @@ class DatasetBuilder:
         self.closing = threading.Event()
         self.vision_process = None
         self.active_id = None
+        self.active_job = None
 
     def close(self):
         self.closing.set()
@@ -130,16 +144,23 @@ class DatasetBuilder:
         if data['status'] in ACTIVE and self.active_id != job_id:
             data['status'] = 'paused'
             data['message'] = 'Interrupted by a restart. Resume to recover the saved work.'
+            data.pop('busy_slot', None)
+            if data.pop('finish_requested', False):
+                data.pop('finish_slots', None)
+                data['message'] = 'Saving was interrupted. Review your kept images, then save them to TagPilot again.'
         return data
 
     def save(self, job):
-        job['updated_at'] = now()
-        write_json(safe_path(self.directory(job['id']), 'state.json'), job)
+        with self.lock:
+            job['updated_at'] = now()
+            write_json(safe_path(self.directory(job['id']), 'state.json'), job)
 
     def public(self, job):
-        result = dict(job)
+        result = copy.deepcopy(job)
         result['accepted_count'] = sum(bool(x.get('accepted')) for x in job['items'])
-        if self.stop.is_set() and self.active_id == job['id'] and job['status'] in ACTIVE:
+        if job.get('finish_requested'):
+            result.update(status='pausing', message='Finishing the current operation, then saving only your kept images.')
+        elif self.stop.is_set() and self.active_id == job['id'] and job['status'] in ACTIVE:
             result.update(status='pausing', message='Pausing setup.' if job['phase'] == 'setup' else 'Pausing after the current image. Other ComfyUI jobs will not be interrupted.')
         return result
 
@@ -217,7 +238,7 @@ class DatasetBuilder:
             directory.mkdir(parents=True, mode=0o700)
             job = dict(id=job_id, spec=spec.model_dump(), status='reference_review', phase='reference',
                        message='Choose the reference to use for every variation.', references=[], reference=None,
-                       items=[], pending=None, created_at=now(), recipe=RECIPE_VERSION)
+                       items=[], pending=None, trial_approved=False, created_at=now(), recipe=RECIPE_VERSION)
             if spec.source == 'photo':
                 save_image(photo, safe_path(directory, 'reference-upload.png'))
                 job['references'] = ['reference-upload.png']
@@ -228,12 +249,14 @@ class DatasetBuilder:
                 self.start(job)
             return self.public(job)
 
-    def start(self, job):
+    def start(self, job, fill_missing=True):
         self.idle(job)
         if self.closing.is_set():
             raise HTTPException(503, 'ControlPilot is restarting. Try again after it reconnects.')
         self.stop.clear()
         self.active_id = job['id']
+        self.active_job = job
+        job['fill_missing'] = fill_missing
         job['status'] = 'generating_reference' if job['phase'] == 'reference' else 'generating'
         job['message'] = 'Queued for generation. You can leave this page and return later.'
         if job['phase'] == 'setup':
@@ -310,12 +333,14 @@ class DatasetBuilder:
 
     def review(self, job):
         directory = self.directory(job['id'])
-        items = [x for x in job['items'] if x.get('file') and not x.get('review')]
+        with self.lock:
+            items = [dict(x) for x in job['items'] if x.get('file') and not x.get('review') and not x.get('user_reviewed')]
         if not items:
             return
         job['status'], job['message'] = 'checking', 'Checking identity locally on CPU. This can take several minutes.'
         self.save(job)
-        write_json(safe_path(directory, 'vision-request.json'), dict(reference=job['reference'], goal=job['spec']['goal'], items=items))
+        write_json(safe_path(directory, 'vision-request.json'), dict(reference=job['reference'], goal=job['spec']['goal'],
+                   subject=job['spec'].get('subject', 'person'), items=items))
         result_path = safe_path(directory, 'vision-result.json')
         write_json(result_path, {})
         core = Path('/opt/venvs/core/bin/python')
@@ -339,24 +364,27 @@ class DatasetBuilder:
                     proc.wait()
                 self.vision_process = None
         results = json.loads(result_path.read_text())
-        for item in items:
-            result = results.get(item['file'])
-            if not result or 'error' in result:
-                item['warnings'] = ['Local checks incomplete. Resume to retry consistency checks.']
-                continue
-            fingerprint, warnings = image_checks(safe_path(directory, item['file']))
-            for other in job['items']:
-                if other is not item and 'fingerprint' in other and (fingerprint ^ other['fingerprint']).bit_count() <= 3:
-                    warnings.append('Very similar to another image; check that it adds useful variation.')
-                    break
-            item['fingerprint'] = fingerprint
-            if result['identity'] != 'consistent':
-                warnings.append('Identity ' + result['identity'] + ': compare with the reference before keeping.')
-            warnings.extend(result['issues'])
-            item.update(review=result, warnings=warnings, accepted=not warnings)
-        self.save(job)
-        if not self.stop.is_set() and any(not x.get('review') for x in items):
-            raise RuntimeError('Local checks did not finish. Check the job vision.log, then Resume to retry. No external API was used.')
+        with self.lock:
+            for snapshot in items:
+                item = job['items'][snapshot['slot']]
+                if (item.get('user_reviewed') or item.get('file') != snapshot['file']
+                        or item['slot'] in job.get('regenerate_slots', [])):
+                    continue
+                result = results.get(item['file'])
+                if not result or 'error' in result:
+                    item['warnings'] = ['Automatic checks unavailable. Compare with the reference and decide yourself.']
+                    continue
+                fingerprint, warnings = image_checks(safe_path(directory, item['file']))
+                for other in job['items']:
+                    if other is not item and 'fingerprint' in other and (fingerprint ^ other['fingerprint']).bit_count() <= 3:
+                        warnings.append('Very similar to another image; check that it adds useful variation.')
+                        break
+                item['fingerprint'] = fingerprint
+                if result['identity'] != 'consistent':
+                    warnings.append('Identity ' + result['identity'] + ': compare with the reference before keeping.')
+                warnings.extend(result['issues'])
+                item.update(review=result, warnings=warnings, accepted=not warnings)
+            self.save(job)
 
     def work(self, job):
         try:
@@ -385,7 +413,7 @@ class DatasetBuilder:
                         break
                     filename = f'reference-{index}.png'
                     self.generate(job, reference_graph(job['spec']['prompt'], int(job['id'][:8], 16) + index,
-                                                       f'DatasetBuilder/{job["id"]}/{filename[:-4]}'), filename)
+                                                       f'DatasetBuilder/{job["id"]}/{filename[:-4]}', job['spec'].get('style', 'photo')), filename)
                     job['references'].append(filename)
                     job['pending'] = None
                     self.save(job)
@@ -397,50 +425,89 @@ class DatasetBuilder:
                     upload = self.request('POST', 'upload/image', files={'image': (f'{job["id"]}.png', stream, 'image/png')},
                                           data={'type': 'input', 'subfolder': 'dataset-builder', 'overwrite': 'true'})
                 image_name = '/'.join(filter(None, [upload.get('subfolder'), upload['name']]))
-                for attempt in range(3):
-                    for item in job['items']:
-                        if self.stop.is_set():
-                            break
-                        if job.get('retry_slots') is not None and item['slot'] not in job['retry_slots']:
-                            continue
-                        # Existing files without a review are retried by the local worker, not regenerated.
-                        if item.get('accepted') or (item.get('file') and not item.get('review')) or item['attempts'] >= 3:
-                            continue
-                        filename = f'image-{item["slot"]:03d}-{item["attempts"]}.png'
-                        seed = int(job['id'][:8], 16) + item['slot'] * 10 + item['attempts']
-                        job['status'], job['message'] = 'generating', f'Creating image {item["slot"] + 1} of {job["spec"]["count"]} (attempt {item["attempts"] + 1}/3).'
-                        self.save(job)
+                limit = 3 if job.get('trial_approved') is False else len(job['items'])
+                while True:
+                    while not self.stop.is_set():
+                        with self.lock:
+                            queue = job.setdefault('regenerate_slots', [])
+                            pending = job.get('pending')
+                            item = next((x for x in job['items'] if pending and
+                                         pending['file'] == f'image-{x["slot"]:03d}-{x["attempts"]}.png'), None)
+                            if item is None and queue:
+                                item = job['items'][queue[0]]
+                            if item is None and job.get('fill_missing', True):
+                                item = next((x for x in job['items'][:limit] if not x.get('file') and x['attempts'] < 3), None)
+                            if item is None:
+                                break
+                            if item['attempts'] >= 3:
+                                raise RuntimeError('Three attempts used for this image. Review it or start a new dataset.')
+                            filename = f'image-{item["slot"]:03d}-{item["attempts"]}.png'
+                            seed = int(job['id'][:8], 16) + item['slot'] * 10 + item['attempts']
+                            job['busy_slot'] = item['slot']
+                            kind = 'trial image' if job.get('trial_approved') is False else 'image'
+                            job['status'], job['message'] = 'generating', f'Creating {kind} {item["slot"] + 1} of {limit} (attempt {item["attempts"] + 1}/3). You can review finished images now.'
+                            self.save(job)
                         self.generate(job, variation_graph(image_name, item['prompt'], seed,
                                                             f'DatasetBuilder/{job["id"]}/{filename[:-4]}'), filename)
-                        item.pop('fingerprint', None)
-                        item.update(file=filename, attempts=item['attempts'] + 1, review=None, accepted=False,
-                                    caption='', warnings=[], user_reviewed=False, seed=seed)
-                        job['pending'] = None
+                        with self.lock:
+                            item.pop('fingerprint', None)
+                            item.update(file=filename, attempts=item['attempts'] + 1, review=None, accepted=False,
+                                        caption='', warnings=[], user_reviewed=False, seed=seed)
+                            job['pending'] = None
+                            job.pop('busy_slot', None)
+                            if item['slot'] in queue:
+                                queue.remove(item['slot'])
+                            self.save(job)
+                    if not self.stop.is_set():
+                        try:
+                            self.review(job)
+                        except (OSError, RuntimeError, ValueError):
+                            with self.lock:
+                                for item in job['items']:
+                                    if item.get('file') and not item.get('review') and not item.get('user_reviewed'):
+                                        item['warnings'] = ['Automatic checks unavailable. Compare with the reference and decide yourself.']
+                    with self.lock:
+                        if job.get('regenerate_slots') and not self.stop.is_set():
+                            continue
+                        if self.stop.is_set():
+                            job.update(status='paused', message='Paused. You can review finished images or resume.')
+                        elif job.get('trial_approved') is False:
+                            job.update(status='trial_review', message='Review your three trial images. Keep the ones you like or regenerate, then approve the rest.')
+                        else:
+                            job.update(status='review', message='Review your images. Automatic checks are suggestions; your choices decide what is kept.')
                         self.save(job)
-                    if self.stop.is_set():
                         break
-                    self.review(job)
-                    if all(x.get('accepted') or x['attempts'] >= 3 for x in job['items']):
-                        break
-                job['status'] = 'paused' if self.stop.is_set() else 'review'
-                accepted = sum(bool(x.get('accepted')) for x in job['items'])
-                job['message'] = f'{accepted} of {job["spec"]["count"]} images passed automated checks. Review the contact sheet before saving.'
-                if any(not x.get('file') and x['attempts'] >= 3 for x in job['items']):
-                    job['message'] += ' A shot exhausted its three attempts without an image. Fix the ComfyUI error and create a new job.'
         except Exception as exc:
             job['status'] = 'paused' if self.stop.is_set() else 'failed'
             job['message'] = str(exc.detail) if isinstance(exc, HTTPException) else str(exc)
         finally:
             with self.lock:
-                self.save(job)
+                job.pop('busy_slot', None)
                 self.active_id = None
+                self.active_job = None
+                if job.pop('finish_requested', False):
+                    try:
+                        self.finish(job, from_worker=True)
+                    except Exception as exc:
+                        job.update(status='failed', message='Could not save your selection: ' + (
+                            str(exc.detail) if isinstance(exc, HTTPException) else str(exc)))
+                self.save(job)
 
-    def finish(self, job):
-        self.idle()
+    def finish(self, job, from_worker=False, files=None):
+        if not from_worker:
+            self.idle()
+            job.pop('finish_slots', None)
         if job['status'] == 'saved':
             return self.public(job)
-        if len(job['items']) != job['spec']['count'] or any(not x.get('accepted') or not x.get('review') for x in job['items']):
-            raise HTTPException(409, 'Keep every requested image before opening TagPilot. Flagged images need your review.')
+        kept = [x for x in job['items'] if x.get('file') and x.get('accepted') and (x.get('review') or x.get('user_reviewed'))
+                and x['slot'] in job.get('finish_slots', [x['slot']])]
+        if files is not None:
+            if set(files) - {x['file'] for x in kept}:
+                raise HTTPException(409, 'Your selection changed. Review the latest images before saving.')
+            kept = [x for x in kept if x['file'] in files]
+        if not kept:
+            raise HTTPException(409, 'Keep at least one image before opening TagPilot.')
+        job['exported_slots'] = [x['slot'] for x in kept]
         directory = self.directory(job['id'])
         datasets = safe_path(self.workspace, 'datasets')
         datasets.mkdir(parents=True, exist_ok=True)
@@ -453,8 +520,9 @@ class DatasetBuilder:
                 published = json.loads(metadata.read_text()) if metadata.is_file() else {}
             except (ValueError, OSError):
                 published = {}
-            matches = published.get('id') == job['id'] and published.get('items') == job['items']
-            for item in job['items'] if matches else []:
+            matches = (published.get('id') == job['id'] and published.get('items') == job['items']
+                       and published.get('exported_slots', job['exported_slots']) == job['exported_slots'])
+            for item in kept if matches else []:
                 basename = f'{item["slot"] + 1:03d}'
                 photo = safe_path(target, basename + '.png')
                 caption = safe_path(target, basename + '.txt')
@@ -468,8 +536,12 @@ class DatasetBuilder:
         staging = safe_path(directory, 'export')
         staging.mkdir(exist_ok=True)
         for item in job['items']:
-            source = safe_path(directory, item['file'])
             basename = f'{item["slot"] + 1:03d}'
+            if item['slot'] not in job['exported_slots']:
+                for extension in ('.png', '.txt'):
+                    safe_path(staging, basename + extension).unlink(missing_ok=True)
+                continue
+            source = safe_path(directory, item['file'])
             shutil.copyfile(source, safe_path(staging, basename + '.png'))
             # Preserve drafts from older jobs; new jobs are captioned only in TagPilot.
             caption = safe_path(staging, basename + '.txt')
@@ -485,7 +557,8 @@ class DatasetBuilder:
         return self.mark_saved(job, name)
 
     def mark_saved(self, job, name):
-        job.update(status='saved', dataset=name, message='Images saved. Open TagPilot to caption, tag and prepare for training.')
+        job.update(status='saved', dataset=name, exported_count=len(job['exported_slots']),
+                   message=f'{len(job["exported_slots"])} kept images saved. Open TagPilot to caption, tag and prepare for training.')
         self.save(job)
         self.invalidate()
         return self.public(job)
@@ -502,13 +575,14 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
 
     @router.get('/plan')
     def plan(count: int = Query(30, ge=4, le=100), goal: Literal['identity', 'character'] = 'identity',
-             vary_clothes: bool = True, vary_hair: bool = False):
-        shots = shot_plan(count, goal, vary_clothes, vary_hair)
+             vary_clothes: bool = True, vary_hair: bool = False, subject: Literal['person', 'character'] = 'person'):
+        shots = shot_plan(count, goal, vary_clothes, vary_hair, subject)
         return {'count': count,
                 'framing': dict(Counter(item['shot'].split(', ', 1)[0] for item in shots)),
                 'angles': dict(Counter(item['shot'].split(', ', 1)[1] for item in shots)),
-                'vary_clothes': goal == 'identity' and vary_clothes,
-                'vary_hair': goal == 'identity' and vary_hair}
+                'subject': subject,
+                'vary_clothes': subject == 'person' and goal == 'identity' and vary_clothes,
+                'vary_hair': subject == 'person' and goal == 'identity' and vary_hair}
 
     @router.get('/jobs')
     def jobs():
@@ -550,7 +624,21 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
             builder.require_ready('photo')
             job['reference'] = choice.file
             job['phase'] = 'variations'
-            job['items'] = shot_plan(job['spec']['count'], job['spec']['goal'], job['spec']['vary_clothes'], job['spec']['vary_hair'])
+            job['items'] = shot_plan(job['spec']['count'], job['spec']['goal'], job['spec']['vary_clothes'],
+                                     job['spec']['vary_hair'], job['spec'].get('subject', 'person'))
+            builder.start(job)
+            return builder.public(job)
+
+    @router.post('/jobs/{job_id}/approve-trial')
+    def approve_trial(job_id: str):
+        with builder.lock:
+            job = builder.read(job_id)
+            builder.idle(job)
+            if job.get('trial_approved') is not False or job.get('pending') or job.get('regenerate_slots') or len(job['items']) < 3 or any(
+                    not x.get('file') or not x.get('accepted') for x in job['items'][:3]):
+                raise HTTPException(409, 'Keep all three trial images before creating the rest.')
+            builder.require_ready('photo')
+            job['trial_approved'] = True
             builder.start(job)
             return builder.public(job)
 
@@ -559,6 +647,8 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
         with builder.lock:
             job = builder.read(job_id)
             builder.idle(job)
+            if job['status'] in ('reference_review', 'saved'):
+                raise HTTPException(409, 'Choose your reference or create a new dataset.')
             if job['phase'] != 'setup':
                 builder.require_ready(job['spec']['source'] if job['phase'] == 'reference' else 'photo')
             job.pop('retry_slots', None)
@@ -573,38 +663,75 @@ def create_router(workspace, models, invalidate=lambda: None, *, downloads):
             builder.stop.set()
             return {'message': builder.public(builder.read(job_id))['message']}
 
+    def editable_item(job_id, slot, filename):
+        job = builder.active_job if builder.active_id == job_id else builder.read(job_id)
+        if job.get('finish_requested'):
+            raise HTTPException(409, 'Saving your selected images. Wait for TagPilot to open.')
+        if job is not builder.active_job or job['status'] not in ACTIVE:
+            builder.idle(job)
+        if job['status'] == 'saved' or slot < 0 or slot >= len(job['items']):
+            raise HTTPException(409, 'This image cannot be changed.')
+        item = job['items'][slot]
+        if not item.get('file'):
+            raise HTTPException(409, 'Wait for this image to finish.')
+        if filename is not None and filename != item['file']:
+            raise HTTPException(409, 'This image changed. Review the latest version first.')
+        if job.get('busy_slot') == slot:
+            raise HTTPException(409, 'This image is being regenerated. Other images can still be reviewed.')
+        return job, item
+
     @router.patch('/jobs/{job_id}/images/{slot}')
     def choose(job_id: str, slot: int, choice: ImageChoice):
         with builder.lock:
-            job = builder.read(job_id)
-            builder.idle(job)
-            if slot < 0 or slot >= len(job['items']) or not job['items'][slot].get('review'):
-                raise HTTPException(409, 'Wait for local checks before reviewing this image')
-            job['items'][slot].update(accepted=choice.accepted, user_reviewed=True)
+            job, item = editable_item(job_id, slot, choice.file)
+            if choice.accepted and (not item.get('review') or item.get('warnings')) and not choice.confirm_unchecked:
+                raise HTTPException(409, 'Automatic checks are unavailable or raised concerns. Confirm that you want to keep this image anyway.')
+            if slot in job.get('regenerate_slots', []):
+                job['regenerate_slots'].remove(slot)
+            item.update(accepted=choice.accepted, user_reviewed=True)
             builder.save(job)
             return builder.public(job)
 
     @router.post('/jobs/{job_id}/images/{slot}/regenerate')
-    def regenerate(job_id: str, slot: int):
+    def regenerate(job_id: str, slot: int, choice: ImageRevision = ImageRevision()):
         with builder.lock:
-            job = builder.read(job_id)
-            builder.idle(job)
-            if slot < 0 or slot >= len(job['items']) or job.get('pending'):
-                raise HTTPException(409, 'Resume the pending image before regenerating')
-            item = job['items'][slot]
-            if item.get('file') and not item.get('review'):
-                raise HTTPException(409, 'Resume local checks before regenerating this image')
+            job, item = editable_item(job_id, slot, choice.file)
+            if slot in job.get('regenerate_slots', []):
+                raise HTTPException(409, 'Regeneration is already queued. Resume if this job is paused.')
             if item['attempts'] >= 3:
                 raise HTTPException(409, 'Three attempts used for this shot. Review the last image or start a new job with a better reference.')
-            builder.require_ready('photo')
+            if job.get('trial_approved') is False and slot >= 3:
+                raise HTTPException(409, 'Approve your three trial images first.')
+            if job is not builder.active_job:
+                if job.get('pending'):
+                    raise HTTPException(409, 'Resume the pending image before regenerating another.')
+                builder.require_ready('photo')
             item['accepted'] = False
-            job['retry_slots'] = [slot]
-            builder.start(job)
+            job.setdefault('regenerate_slots', []).append(slot)
+            if job is builder.active_job:
+                builder.save(job)
+            else:
+                builder.start(job, fill_missing=False)
             return builder.public(job)
 
     @router.post('/jobs/{job_id}/finish')
-    def finish(job_id: str):
+    def finish(job_id: str, choice: FinishChoice = FinishChoice()):
         with builder.lock:
-            return builder.finish(builder.read(job_id))
+            if builder.active_id == job_id and builder.active_job is not None:
+                job = builder.active_job
+                kept = [x for x in job['items'] if x.get('file') and x.get('accepted')]
+                if choice.files is not None:
+                    if set(choice.files) - {x['file'] for x in kept}:
+                        raise HTTPException(409, 'Your selection changed. Review the latest images before saving.')
+                    kept = [x for x in kept if x['file'] in choice.files]
+                if not kept:
+                    raise HTTPException(409, 'Keep at least one image before opening TagPilot.')
+                job['finish_requested'] = True
+                job['finish_slots'] = [x['slot'] for x in kept]
+                builder.stop.set()
+                job['message'] = 'Finishing the current operation, then saving only your kept images.'
+                builder.save(job)
+                return builder.public(job)
+            return builder.finish(builder.read(job_id), files=choice.files)
 
     return router, builder
