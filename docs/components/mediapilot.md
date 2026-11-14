@@ -52,11 +52,17 @@ Key variables:
 
 ##  Search and Filtering
 
+**Latest** is the default folder view. It lists images and videos from the main output directory and InvokeAI, including their subfolders, newest first by file modification time. Use **Untagged** to see only files directly in the main output directory, or choose a specific folder. Hidden folders, thumbnail caches and symlinks are excluded from Latest.
+
+Selections keep their source paths, so identically named files in different folders remain separate when previewing, liking, moving, deleting, downloading or upscaling. ZIP downloads from Latest preserve the source folder paths. Existing filename-only likes remain readable; new likes are stored per source path.
+
 ### Video previews
 
 Open **Gallery** in ControlPilot to browse videos alongside images. Hover over a video card for a muted looping preview. Double-click or double-tap it to open the player with playback, sound, seeking and fullscreen controls. Closing the preview or switching to another item stops playback. Download, like and tag/move actions also work with videos; upscaling remains image-only.
 
 The gallery lists MP4, WebM, MOV, M4V, MKV and AVI files. Playback depends on the browser and the file's codec; an extension alone does not guarantee support. For an unsupported video, use **Download** and open the original in a video player. MediaPilot does not transcode files. Video cards use the source video rather than generated WebP thumbnails.
+
+Playback uses the browser's native video player and the existing FastAPI/Starlette server, including HTTP byte-range requests for seeking. No additional Python video package is required. The LoRA Pilot image already includes FFmpeg and ffprobe; the build checks that both run successfully. These server tools do not add codec support to the browser.
 
 With focus on the video player, keyboard controls belong to the player; Escape closes the modal. Image magnification remains image-only. Clear the metadata search to see videos: prompt/LoRA/parameter search currently applies to image metadata.
 

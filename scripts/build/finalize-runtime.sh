@@ -54,3 +54,7 @@ cp /opt/pilot/config/core-constraints.txt /workspace/config/core-constraints.txt
 
 # Later app installers must not leave the shared core environment inconsistent.
 /opt/venvs/core/bin/python -m pip check
+
+# Verify the media tools and their shared libraries in the finished image.
+ffmpeg -version
+ffprobe -version

@@ -687,7 +687,7 @@ def list_folders():
 
 
 def normalize_folder(folder: str) -> str:
-    if folder in ("_root", "InvokeAI"):
+    if folder in ("_root", "_latest", "InvokeAI"):
         return folder
     norm = os.path.normpath(folder).replace("\\", "/")
     if os.path.isabs(norm) or norm == ".." or norm.startswith("../"):
@@ -701,19 +701,23 @@ def normalize_new_folder(name: str) -> str:
     cleaned = (name or "").strip()
     if not cleaned:
         raise HTTPException(status_code=400, detail="Invalid folder")
-    if cleaned in ("Untagged", "InvokeAI", "_root"):
+    if cleaned in ("Untagged", "InvokeAI", "_root", "_latest"):
         raise HTTPException(status_code=400, detail="Reserved folder name")
     norm = normalize_folder(cleaned)
-    if norm in ("_root", "InvokeAI"):
+    if norm in ("_root", "InvokeAI", "_latest"):
         raise HTTPException(status_code=400, detail="Reserved folder name")
     return norm
 
 
 def base_dir_for_folder(folder: str) -> Path:
+    if folder == "_latest":
+        raise HTTPException(status_code=400, detail="Latest is a view, not a destination folder")
     if folder == "_root":
         return OUTPUT_ROOT
     if folder == "InvokeAI":
         return INVOKEAI_ROOT
+    if folder.startswith("InvokeAI/"):
+        return _safe_join(INVOKEAI_ROOT, folder[len("InvokeAI/"):])
     return _safe_join(OUTPUT_ROOT, folder)
 
 
@@ -732,6 +736,42 @@ def normalize_selected_filename(value: str) -> str:
     if not cleaned or cleaned in {".", ".."}:
         raise HTTPException(status_code=400, detail="Invalid filename")
     return cleaned
+
+
+def selected_media(folder: str, filename: str):
+    if folder != "_latest":
+        return normalize_folder(folder), normalize_selected_filename(filename)
+    parts = filename.split("/")
+    if len(parts) < 2 or parts[0] not in ("output", "invoke") or any(
+        not part or part in (".", "..") or "\\" in part for part in parts
+    ):
+        raise HTTPException(status_code=400, detail="Invalid media path")
+    parent = "/".join(parts[1:-1])
+    source = ("InvokeAI/" + parent).rstrip("/") if parts[0] == "invoke" else (parent or "_root")
+    file_path_for_folder(source, parts[-1])
+    return source, parts[-1]
+
+
+def media_like_key(folder: str, filename: str) -> str:
+    if folder == "InvokeAI" or folder.startswith("InvokeAI/"):
+        relative = folder[len("InvokeAI"):].strip("/")
+        return "invoke/" + (relative + "/" if relative else "") + filename
+    return "output/" + (folder + "/" if folder != "_root" else "") + filename
+
+
+def latest_media_entries():
+    for prefix, base in (("output", OUTPUT_ROOT), ("invoke", INVOKEAI_ROOT)):
+        for root, dirs, files in os.walk(base):
+            dirs[:] = [d for d in dirs if d != "_thumbs" and not d.startswith(".")
+                       and not (Path(root) / d).is_symlink()]
+            for name in files:
+                entry = Path(root) / name
+                if name.startswith(".") or not name.lower().endswith(MEDIA_EXTS) or entry.is_symlink():
+                    continue
+                try:
+                    yield f"{prefix}/{entry.relative_to(base).as_posix()}", entry.stat().st_mtime
+                except FileNotFoundError:
+                    continue
 
 
 def encode_url_segment(value: str) -> str:
@@ -930,17 +970,14 @@ def get_images(
     search: str = Query(""),
 ):
     folder = normalize_folder(folder)
-    base_dir = base_dir_for_folder(folder)
-    if not base_dir.exists():
-        return Paginated(page=1, pages=1, images=[])
-
-    file_entries = []
-    for entry in base_dir.iterdir():
-        if not entry.is_file():
-            continue
-        if not entry.name.lower().endswith(MEDIA_EXTS):
-            continue
-        file_entries.append((entry.name, entry.stat().st_mtime))
+    if folder == "_latest":
+        file_entries = list(latest_media_entries())
+    else:
+        base_dir = base_dir_for_folder(folder)
+        if not base_dir.exists():
+            return Paginated(page=1, pages=1, images=[])
+        file_entries = [(entry.name, entry.stat().st_mtime) for entry in base_dir.iterdir()
+                        if entry.is_file() and entry.name.lower().endswith(MEDIA_EXTS)]
 
     # Sort entries according to requested sort
     sort_upper = (sort or "").upper()
@@ -949,7 +986,7 @@ def get_images(
     elif sort_upper == "ALPHABETICALLY":
         file_entries.sort(key=lambda x: x[0].lower())
     else:  # NEWEST default
-        file_entries.sort(key=lambda x: x[1], reverse=True)
+        file_entries.sort(key=lambda x: (x[1], x[0]), reverse=True)
 
     search_criteria = parse_search_query(search)
     metadata_cache: Dict[str, Dict[str, Any]] = {}
@@ -963,7 +1000,7 @@ def get_images(
         for f, mtime in file_entries:
             if f.lower().endswith(VIDEO_EXTS):
                 continue  # Video metadata is not part of image prompt search.
-            full_path = file_path_for_folder(folder, f)
+            full_path = file_path_for_folder(*selected_media(folder, f))
             metadata = extract_metadata(str(full_path))
             metadata_cache[f] = metadata
             if metadata_matches_search(metadata, search_criteria):
@@ -983,24 +1020,25 @@ def get_images(
 
     items = []
     for f, mtime in page_files:
-        full_path = file_path_for_folder(folder, f)
+        source_folder, source_name = selected_media(folder, f)
+        full_path = file_path_for_folder(source_folder, source_name)
         media_type = "video" if f.lower().endswith(VIDEO_EXTS) else "image"
         metadata = metadata_cache.get(f, {})
         if media_type == "image" and not metadata:
             metadata = extract_metadata(str(full_path))
-        safe_filename = encode_url_segment(f)
+        safe_filename = encode_url_segment(source_name)
+        thumb_path = thumb_path_for_folder(source_folder, source_name)
 
-        if folder == "_root":
-            thumb_path = thumb_path_for_folder(folder, f)
+        if source_folder == "_root":
             thumb_url = f"./thumbs/{safe_filename}{THUMB_EXT}"
             full_url = f"./output/{safe_filename}"
-        elif folder == "InvokeAI":
-            thumb_path = thumb_path_for_folder(folder, f)
-            thumb_url = f"./thumbs/InvokeAI/{safe_filename}{THUMB_EXT}"
-            full_url = f"./invoke/{safe_filename}"
+        elif source_folder == "InvokeAI" or source_folder.startswith("InvokeAI/"):
+            relative = encode_folder_for_url(source_folder[len("InvokeAI"):].strip("/"))
+            media_path = f"{relative}/{safe_filename}" if relative else safe_filename
+            thumb_url = f"./thumbs/InvokeAI/{media_path}{THUMB_EXT}"
+            full_url = f"./invoke/{media_path}"
         else:
-            thumb_path = thumb_path_for_folder(folder, f)
-            folder_url = encode_folder_for_url(folder)
+            folder_url = encode_folder_for_url(source_folder)
             thumb_url = f"./thumbs/{folder_url}/{safe_filename}{THUMB_EXT}"
             full_url = f"./output/{folder_url}/{safe_filename}"
 
@@ -1015,8 +1053,8 @@ def get_images(
                 media_type=media_type,
                 full_url=full_url,
                 thumb_url=thumb_url,
-                liked=(f in liked),
-                tagged=(folder != "_root"),
+                liked=(media_like_key(source_folder, source_name) in liked or source_name in liked),
+                tagged=(source_folder != "_root"),
                 created_at=mtime,
                 **metadata,
             )
@@ -1028,19 +1066,19 @@ def get_images(
 # LIKE
 # ---------------------------------------------------
 
-@app.post("/like/{filename}")
-def like_file(filename: str):
-    filename = normalize_selected_filename(filename)
+@app.post("/like/{filename:path}")
+def like_file(filename: str, folder: str = "_root"):
+    folder, filename = selected_media(folder, filename)
     with get_db() as conn:
-        conn.execute("INSERT OR REPLACE INTO likes(filename) VALUES (?)", (filename,))
+        conn.execute("INSERT OR REPLACE INTO likes(filename) VALUES (?)", (media_like_key(folder, filename),))
         conn.commit()
     return {"ok": True}
 
-@app.post("/unlike/{filename}")
-def unlike_file(filename: str):
-    filename = normalize_selected_filename(filename)
+@app.post("/unlike/{filename:path}")
+def unlike_file(filename: str, folder: str = "_root"):
+    folder, filename = selected_media(folder, filename)
     with get_db() as conn:
-        conn.execute("DELETE FROM likes WHERE filename = ?", (filename,))
+        conn.execute("DELETE FROM likes WHERE filename IN (?, ?)", (media_like_key(folder, filename), filename))
         conn.commit()
     return {"ok": True}
 
@@ -1050,9 +1088,9 @@ def unlike_file(filename: str):
 
 @app.delete("/image/{folder:path}/{filename}")
 @app.delete("/image/{filename}")
+@app.delete("/selection")
 def delete_file(filename: str, folder: str = "_root"):
-    filename = normalize_selected_filename(filename)
-    folder = normalize_folder(folder)
+    folder, filename = selected_media(folder, filename)
     path = file_path_for_folder(folder, filename)
 
     if path.exists():
@@ -1063,7 +1101,7 @@ def delete_file(filename: str, folder: str = "_root"):
         thumb.unlink()
 
     with get_db() as conn:
-        conn.execute("DELETE FROM likes WHERE filename = ?", (filename,))
+        conn.execute("DELETE FROM likes WHERE filename IN (?, ?)", (media_like_key(folder, filename), filename))
         conn.execute("DELETE FROM tags WHERE filename = ?", (filename,))
         conn.commit()
 
@@ -1075,8 +1113,7 @@ def delete_file(filename: str, folder: str = "_root"):
 
 @app.post("/tag")
 def tag_file(filename: str, old_folder: str, new_folder: str):
-    filename = normalize_selected_filename(filename)
-    old_folder = normalize_folder(old_folder)
+    old_folder, filename = selected_media(old_folder, filename)
     new_folder = normalize_folder(new_folder)
     new_dir = base_dir_for_folder(new_folder)
     new_dir.mkdir(parents=True, exist_ok=True)
@@ -1100,6 +1137,8 @@ def tag_file(filename: str, old_folder: str, new_folder: str):
         old_thumb.unlink()
 
     with get_db() as conn:
+        conn.execute("UPDATE OR IGNORE likes SET filename = ? WHERE filename = ?",
+                     (media_like_key(new_folder, filename), media_like_key(old_folder, filename)))
         conn.execute(
             "INSERT OR REPLACE INTO tags(filename, folder) VALUES (?, ?)",
             (filename, new_folder),
@@ -1126,13 +1165,13 @@ def upscale_bulk(payload: BulkUpscalePayload):
             detail=f"Too many files selected (max {MAX_BULK_UPSCALE_FILES})",
         )
 
-    base_dir = base_dir_for_folder(folder)
     workflow_template = load_upscale_workflow_template()
 
     unique_filenames = []
     seen = set()
     for raw_name in filenames:
-        safe_name = normalize_selected_filename(raw_name)
+        selected_media(folder, raw_name)
+        safe_name = raw_name if folder == "_latest" else normalize_selected_filename(raw_name)
         if safe_name in seen:
             continue
         seen.add(safe_name)
@@ -1142,7 +1181,8 @@ def upscale_bulk(payload: BulkUpscalePayload):
     failed = []
     with requests.Session() as session:
         for filename in unique_filenames:
-            full_path = file_path_for_folder(folder, filename)
+            source_folder, source_name = selected_media(folder, filename)
+            full_path = file_path_for_folder(source_folder, source_name)
             if not filename.lower().endswith(IMAGE_EXTS):
                 failed.append({"filename": filename, "error": "Upscale only supports images"})
                 continue
@@ -1150,7 +1190,7 @@ def upscale_bulk(payload: BulkUpscalePayload):
                 failed.append({"filename": filename, "error": "File not found"})
                 continue
             try:
-                comfy_input_image = upload_image_to_comfy(session, full_path, filename)
+                comfy_input_image = upload_image_to_comfy(session, full_path, source_name)
                 workflow = ensure_workflow_input_image(
                     workflow_template,
                     input_image=comfy_input_image,
@@ -1197,12 +1237,11 @@ def download_bulk(payload: BulkDownloadPayload):
             detail=f"Too many files selected (max {MAX_BULK_DOWNLOAD_FILES})",
         )
 
-    base_dir = base_dir_for_folder(folder)
-
     unique_filenames = []
     seen = set()
     for raw_name in filenames:
-        safe_name = normalize_selected_filename(raw_name)
+        selected_media(folder, raw_name)
+        safe_name = raw_name if folder == "_latest" else normalize_selected_filename(raw_name)
         if safe_name in seen:
             continue
         seen.add(safe_name)
@@ -1219,7 +1258,7 @@ def download_bulk(payload: BulkDownloadPayload):
     try:
         with zipfile.ZipFile(zip_path, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
             for filename in unique_filenames:
-                full_path = file_path_for_folder(folder, filename)
+                full_path = file_path_for_folder(*selected_media(folder, filename))
                 if not full_path.is_file():
                     continue
                 archive.write(full_path, arcname=filename)

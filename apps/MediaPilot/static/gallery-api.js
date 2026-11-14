@@ -87,7 +87,7 @@ export async function fetchImages(page, limit, folder, sort, search = "") {
   return res.json();
 }
 
-export async function sendLike(filename, liked) {
+export async function sendLike(filename, liked, folder = "_root") {
   assertString("filename", filename);
   if (typeof liked !== "boolean") {
     throw new Error("Invalid liked state");
@@ -98,7 +98,7 @@ export async function sendLike(filename, liked) {
       : `unlike/${encodeURIComponent(filename)}`
   );
 
-  const res = await fetch(endpoint, { method: "POST" });
+  const res = await fetch(`${endpoint}?folder=${encodeURIComponent(folder)}`, { method: "POST" });
   if (!res.ok) throw new Error(`Server returned ${res.status}`);
   return true;
 }
@@ -127,7 +127,9 @@ export async function deleteImage(filename, folder) {
     .map((part) => encodeURIComponent(part))
     .join("/");
   const endpoint = appUrl(
-    folder === "_root"
+    folder === "_latest"
+      ? `selection?folder=_latest&filename=${safeFilename}`
+      : folder === "_root"
       ? `image/${safeFilename}`
       : `image/${safeFolder}/${safeFilename}`
   );

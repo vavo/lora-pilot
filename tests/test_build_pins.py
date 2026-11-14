@@ -64,6 +64,13 @@ class BuildPinTests(unittest.TestCase):
         self.assertIn("  zip \\\n", system_tools)
         self.assertIn("  unzip \\\n", system_tools)
 
+    def test_media_tools_are_installed_and_checked_in_final_image(self):
+        system_tools = (ROOT / "scripts/build/install-system-tools.sh").read_text()
+        finalize = (ROOT / "scripts/build/finalize-runtime.sh").read_text()
+        self.assertIn("  ffmpeg \\\n", system_tools)
+        self.assertIn("ffmpeg -version\n", finalize)
+        self.assertIn("ffprobe -version\n", finalize)
+
     def test_ai_toolkit_patch_removes_deprecated_next_dev_indicator(self):
         patch_text = (ROOT / "scripts/build/patches/patch-ai-toolkit.sh").read_text()
 

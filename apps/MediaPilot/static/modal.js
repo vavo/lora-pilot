@@ -480,6 +480,7 @@ function buildFullUrl(filename) {
 }
 
 function buildFullUrlForFolder(filename, folder) {
+  if (folder === "_latest") return appUrl(filename.split("/").map(encodeURIComponent).join("/"));
   const safeFilename = encodeURIComponent(filename);
   if (folder === "_root") return appUrl(`output/${safeFilename}`);
   if (folder === "InvokeAI") return appUrl(`invoke/${safeFilename}`);

@@ -17,7 +17,7 @@ let totalPages = 1;
 let loading = false;
 let isEnd = false;
 
-let currentFolder = "_root";
+let currentFolder = "_latest";
 let filterMode = "ALL";
 let sortMode = "NEWEST";
 let searchQuery = "";
@@ -80,6 +80,10 @@ function encodeFolderPath(folder) {
 
 function buildThumbUrl(filename, folder) {
   if (!isNonEmptyString(filename)) return "";
+  if (folder === "_latest") {
+    const item = imagesList.find(img => img.filename === filename);
+    return item?.thumb_url ? appUrl(item.thumb_url.replace(/^\.\//, "")) : "";
+  }
   const safeFilename = `${encodeURIComponent(filename)}${THUMB_EXT}`;
   if (folder === "_root") return appUrl(`thumbs/${safeFilename}`);
   if (folder === "InvokeAI") return appUrl(`thumbs/InvokeAI/${safeFilename}`);
@@ -89,6 +93,7 @@ function buildThumbUrl(filename, folder) {
 
 function buildFullUrl(filename, folder) {
   if (!isNonEmptyString(filename)) return "";
+  if (folder === "_latest") return appUrl(encodeFolderPath(filename));
   const safeFilename = encodeURIComponent(filename);
   if (folder === "_root") return appUrl(`output/${safeFilename}`);
   if (folder === "InvokeAI") return appUrl(`invoke/${safeFilename}`);
@@ -279,23 +284,29 @@ export async function loadFolders() {
       opt.textContent = f;
       folderSelect.appendChild(opt);
     });
+    folderSelect.prepend(new Option("Latest", "_latest"));
 
-    const availableValues = folders.map((f) => (f === "Untagged" ? "_root" : f));
+    const availableValues = ["_latest", ...folders.map((f) => (f === "Untagged" ? "_root" : f))];
     if (!availableValues.includes(currentFolder)) {
-      currentFolder = "_root";
+      currentFolder = "_latest";
     }
     folderSelect.value = currentFolder;
   } catch (err) {
     console.error("Failed to load folders", err);
     notify("Failed to load folders.");
     tagsList = ["Untagged"];
-    folderSelect.innerHTML = `<option value="_root">Untagged</option><option value="InvokeAI">InvokeAI</option>`;
-    folderSelect.value = "_root";
+    folderSelect.innerHTML = `<option value="_latest">Latest</option><option value="_root">Untagged</option><option value="InvokeAI">InvokeAI</option>`;
+    currentFolder = "_latest";
+    folderSelect.value = currentFolder;
   }
 }
 
 folderSelect.onchange = () => {
   currentFolder = folderSelect.value;
+  if (currentFolder === "_latest") {
+    sortMode = "NEWEST";
+    if (sortSelect) sortSelect.value = sortMode;
+  }
   resetGallery();
   showLoadingScreen();
   loadImages(1, false);
@@ -679,7 +690,7 @@ export async function toggleLike(card, filename) {
   // Optimistic UI update
   setCardLiked(card, next);
   try {
-    await API.sendLike(filename, next);
+    await API.sendLike(filename, next, currentFolder);
   } catch (error) {
     console.error("Failed to update like:", error);
     notify("Failed to update like.");
