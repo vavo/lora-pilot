@@ -1,8 +1,8 @@
 # MediaPilot
 
-_Last updated: 2026-07-05_
+_Last updated: 2026-11-14_
 
-MediaPilot is the built-in gallery and curation layer for generated images in LoRA Pilot. It is embedded into ControlPilot and optimized for large output directories.
+MediaPilot is the built-in gallery and curation layer for generated images and videos in LoRA Pilot. It is embedded into ControlPilot and optimized for large output directories.
 
 ##  Overview
 
@@ -51,6 +51,18 @@ Key variables:
 | `MEDIAPILOT_ALLOW_ORIGINS` | CORS origins (comma-separated) | `*` |
 
 ##  Search and Filtering
+
+### Video previews
+
+Open **Gallery** in ControlPilot to browse videos alongside images. Hover over a video card for a muted looping preview. Double-click or double-tap it to open the player with playback, sound, seeking and fullscreen controls. Closing the preview or switching to another item stops playback. Download, like and tag/move actions also work with videos; upscaling remains image-only.
+
+The gallery lists MP4, WebM, MOV, M4V, MKV and AVI files. Playback depends on the browser and the file's codec; an extension alone does not guarantee support. For an unsupported video, use **Download** and open the original in a video player. MediaPilot does not transcode files. Video cards use the source video rather than generated WebP thumbnails.
+
+With focus on the video player, keyboard controls belong to the player; Escape closes the modal. Image magnification remains image-only. Clear the metadata search to see videos: prompt/LoRA/parameter search currently applies to image metadata.
+
+This integration ports the video-preview feature from [MediaPilot commit 6fe1e59](https://github.com/vavo/MediaPilot/commit/6fe1e59bf2002c2315adcf8c443b522a260ed5ad), retaining LoRA Pilot's embedded URLs and access controls.
+
+### Image metadata search
 
 Search supports free text and field filters:
 
@@ -123,7 +135,7 @@ The paths below are relative to MediaPilot. In LoRA Pilot, prefix them with `/me
 | `/auth/logout` | `POST` | Invalidate MediaPilot session and clear cookie |
 | `/folders` | `GET` | List folders |
 | `/folders` | `POST` | Create folder |
-| `/images` | `GET` | Paginated image list |
+| `/images` | `GET` | Paginated media list; `media_type` is `image` or `video`. Videos have an empty `thumb_url` and use `full_url` for playback |
 | `/like/{filename}` | `POST` | Like image |
 | `/unlike/{filename}` | `POST` | Unlike image |
 | `/tag` | `POST` | Move image between folders |

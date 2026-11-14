@@ -11,6 +11,7 @@ Built for ComfyUI, InvokeAI, and any folder-based pipeline where speed matters m
 ## Why MediaPilot
 
 - Instant WebP thumbnails for huge output folders
+- Video cards with muted hover previews and a full player. MP4, WebM, MOV, M4V, MKV and AVI are listed; playback depends on browser codec support. Download unsupported files to play them locally. Videos are excluded from image upscaling and image-metadata search.
 - Smart metadata search across prompt, LoRA, sampler, scheduler, steps, and CFG
 - Bulk actions that actually save time: like, tag, delete, ZIP download, upscale queue
 - Optional password gate (server-side cookie session)

@@ -88,6 +88,8 @@ UPSCALE_OUTPUT_PREFIX = os.environ.get("MEDIAPILOT_UPSCALE_OUTPUT_PREFIX", "medi
 COMFY_REQUEST_TIMEOUT = env_int("MEDIAPILOT_COMFY_REQUEST_TIMEOUT", 60)
 THUMB_EXT = ".webp"
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
+VIDEO_EXTS = (".mp4", ".webm", ".mov", ".m4v", ".mkv", ".avi")
+MEDIA_EXTS = IMAGE_EXTS + VIDEO_EXTS
 OUTPUT_ROOT = Path(OUTPUT_DIR)
 THUMBS_ROOT = Path(THUMBS_DIR)
 INVOKEAI_ROOT = Path(INVOKEAI_DIR)
@@ -581,6 +583,7 @@ def extract_metadata(full_path: str) -> dict:
 
 class ImageInfo(BaseModel):
     filename: str
+    media_type: str = "image"
     thumb_url: str
     full_url: str
     liked: bool
@@ -935,7 +938,7 @@ def get_images(
     for entry in base_dir.iterdir():
         if not entry.is_file():
             continue
-        if not entry.name.lower().endswith(IMAGE_EXTS):
+        if not entry.name.lower().endswith(MEDIA_EXTS):
             continue
         file_entries.append((entry.name, entry.stat().st_mtime))
 
@@ -958,6 +961,8 @@ def get_images(
     if has_search:
         filtered_entries = []
         for f, mtime in file_entries:
+            if f.lower().endswith(VIDEO_EXTS):
+                continue  # Video metadata is not part of image prompt search.
             full_path = file_path_for_folder(folder, f)
             metadata = extract_metadata(str(full_path))
             metadata_cache[f] = metadata
@@ -979,8 +984,9 @@ def get_images(
     items = []
     for f, mtime in page_files:
         full_path = file_path_for_folder(folder, f)
-        metadata = metadata_cache.get(f)
-        if metadata is None:
+        media_type = "video" if f.lower().endswith(VIDEO_EXTS) else "image"
+        metadata = metadata_cache.get(f, {})
+        if media_type == "image" and not metadata:
             metadata = extract_metadata(str(full_path))
         safe_filename = encode_url_segment(f)
 
@@ -998,11 +1004,15 @@ def get_images(
             thumb_url = f"./thumbs/{folder_url}/{safe_filename}{THUMB_EXT}"
             full_url = f"./output/{folder_url}/{safe_filename}"
 
-        make_thumb(full_path, thumb_path)
+        if media_type == "image":
+            make_thumb(full_path, thumb_path)
+        else:
+            thumb_url = ""
 
         items.append(
             ImageInfo(
                 filename=f,
+                media_type=media_type,
                 full_url=full_url,
                 thumb_url=thumb_url,
                 liked=(f in liked),
@@ -1133,6 +1143,9 @@ def upscale_bulk(payload: BulkUpscalePayload):
     with requests.Session() as session:
         for filename in unique_filenames:
             full_path = file_path_for_folder(folder, filename)
+            if not filename.lower().endswith(IMAGE_EXTS):
+                failed.append({"filename": filename, "error": "Upscale only supports images"})
+                continue
             if not full_path.is_file():
                 failed.append({"filename": filename, "error": "File not found"})
                 continue

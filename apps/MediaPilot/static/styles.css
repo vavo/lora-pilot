@@ -559,8 +559,53 @@ main {
   touch-action: auto;
 }
 
-.modal.hidden {
+.modal.hidden,
+.modal-img.hidden,
+.modal-video.hidden,
+.video-error.hidden {
   display: none;
+}
+
+.video-overlay-host {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #000;
+}
+
+.video-thumb {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  background: #050505;
+}
+
+.video-badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.video-error {
+  position: absolute;
+  top: 48px;
+  left: 16px;
+  right: 16px;
+  padding: 12px;
+  background: var(--mp-bg);
+  color: var(--mp-text);
+}
+
+.is-video .filename-overlay {
+  top: 12px;
+  bottom: auto;
+  max-width: calc(100% - 96px);
 }
 
 .modal-inner {
@@ -589,7 +634,8 @@ main {
   background: #000;
 }
 
-.modal-img {
+.modal-img,
+.modal-video {
   width: 100%;
   height: 100%;
   object-fit: contain;
