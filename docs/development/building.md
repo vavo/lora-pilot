@@ -6,7 +6,7 @@ This guide covers building LoRA Pilot from source, including development setup, 
 
 ## Publish a development image with GitHub Actions
 
-Run the repository's **Publish Docker image** workflow on the pushed branch you want to publish to build and push `notrius/lora-pilot:dev` plus a commit-specific SHA tag. Manual builds leave `latest` unchanged unless you enable **Also update the latest tag**. It builds Linux/amd64 with the default cu130 profile. Commit and push the intended source first; GitHub Actions does not include local uncommitted files. From an authenticated GitHub CLI, publish the current branch with:
+Run the repository's **Publish Docker image** workflow on the pushed branch you want to publish to build and push `notrius/lora-pilot:dev` plus a commit-specific SHA tag. Automatic builds triggered by pushes to `main` or version tags never update `latest`; version-tag builds still publish their version tags. Updating `latest` requires a manual workflow run with **Also update the latest tag** enabled (`publish_latest=true`); it is disabled by default. The workflow builds Linux/amd64 with the default cu130 profile. Commit and push the intended source first; GitHub Actions does not include local uncommitted files. From an authenticated GitHub CLI, publish the current branch with:
 
 ```bash
 gh workflow run publish-docker.yml -R vavo/lora-pilot --ref "$(git branch --show-current)" -f publish_latest=false

@@ -49,7 +49,7 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           flavor: latest=false
           tags: |
-            type=raw,value=latest,enable=${{ github.event_name != 'workflow_dispatch' || inputs.publish_latest }}
+            type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && inputs.publish_latest == true }}
             type=raw,value=dev
             type=sha,prefix=sha-
             type=semver,pattern={{version}}

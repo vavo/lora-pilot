@@ -24,6 +24,18 @@ def read_pin(path, name):
 
 
 class BuildPinTests(unittest.TestCase):
+    def test_docker_latest_requires_explicit_manual_opt_in(self):
+        workflow = (ROOT / ".github/workflows/publish-docker.yml").read_text()
+        latest_tags = [line.strip() for line in workflow.splitlines()
+                       if "type=raw,value=latest" in line]
+        self.assertEqual(latest_tags, [
+            "type=raw,value=latest,enable=${{ github.event_name == 'workflow_dispatch' && inputs.publish_latest == true }}"
+        ])
+        self.assertIn("flavor: latest=false", workflow)
+        self.assertRegex(workflow, r"publish_latest:\n\s+description:[^\n]+\n\s+type: boolean\n\s+default: false")
+        self.assertIn("type=raw,value=dev\n", workflow)
+        self.assertIn("type=sha,prefix=sha-\n", workflow)
+
     def test_copilot_cli_pin_matches_across_build_entrypoints(self):
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
