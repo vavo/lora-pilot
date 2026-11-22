@@ -65,9 +65,9 @@ TRAINING_SCRIPTS = {'anima': 'anima_train_network.py', 'lumina2': 'lumina_train_
                     'hunyuan_image21': 'hunyuan_image_train_network.py', 'flux1': 'flux_train_network.py', 'sd15': 'train_network.py',
                     'sd35_medium': 'sd3_train_network.py', 'sd35_large': 'sd3_train_network.py'}
 FAMILY_NOTES = {
-    'anima': 'Anima uses its base weights, Qwen3 encoder and Qwen-Image VAE. Built-in comparisons are not available for this family yet.',
-    'lumina2': 'Lumina-Image 2.0 uses full-size weights, Gemma 2 and the FLUX autoencoder. Accept google/gemma-2-2b access on Hugging Face and add your token in Settings for its tokenizer. Built-in comparisons are not available yet.',
-    'hunyuan_image21': 'HunyuanImage 2.1 uses full-size weights, Qwen2.5-VL, byT5 and its image VAE. Block swapping needs substantial system memory. Built-in comparisons are not available yet.',
+    'anima': 'Anima uses its base weights, Qwen3 encoder and Qwen-Image VAE. Comparisons prepare a ComfyUI copy of each selected checkpoint.',
+    'lumina2': 'Lumina-Image 2.0 uses full-size weights, Gemma 2 and the FLUX autoencoder. Accept google/gemma-2-2b access on Hugging Face and add your token in Settings for its tokenizer.',
+    'hunyuan_image21': 'HunyuanImage 2.1 uses full-size weights, Qwen2.5-VL, byT5 and its image VAE. Block swapping needs substantial system memory. Comparisons prepare a ComfyUI copy of each selected checkpoint.',
     'sdxl': 'SDXL uses the selected checkpoint and your configured VAE with the existing Kohya profiles.',
     'flux1': 'FLUX.1 dev uses full-size weights, AE, CLIP-L and FP16 T5. Block swapping needs substantial system memory.',
     'sd15': 'SD 1.5 uses the selected checkpoint at 512-pixel resolution. A separate VAE is required for checkpoints without one.',

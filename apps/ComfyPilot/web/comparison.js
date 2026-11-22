@@ -2,7 +2,8 @@ import { app } from '../../scripts/app.js';
 
 const allowedNodes = new Set(['CheckpointLoaderSimple', 'UNETLoader', 'DualCLIPLoader', 'VAELoader',
   'LoraLoader', 'EmptyLatentImage', 'EmptySD3LatentImage', 'CLIPTextEncode', 'FluxGuidance',
-  'KSampler', 'VAEDecode', 'SaveImage']);
+  'KSampler', 'VAEDecode', 'SaveImage', 'CLIPLoader', 'TripleCLIPLoader', 'ModelSamplingSD3',
+  'ModelSamplingAuraFlow', 'EmptyHunyuanImageLatent']);
 let loading = false;
 // ComfyUI rewrites the URL while restoring its initial graph.
 // Capture the handoff before that restoration can remove the fragment.

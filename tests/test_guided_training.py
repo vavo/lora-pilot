@@ -308,7 +308,7 @@ class GuidedTrainingTests(unittest.TestCase):
                         self.assertEqual(config['blocks_to_swap'], 18)
                         self.assertEqual(config['attn_mode'], 'torch')
 
-    def test_image_family_comparison_rejection_precedes_library_and_comfy_access(self):
+    def test_image_family_comparison_support_and_training_model_preflight(self):
         self.addCleanup(setattr, gpu_guard, 'managed_conflicts', gpu_guard.managed_conflicts)
         router, queue = create_router(self.root, self.models, self.resolve_dataset, lambda _: self.config, lambda _: 'base', lambda: [])
         start = queue.start
@@ -332,12 +332,7 @@ class GuidedTrainingTests(unittest.TestCase):
                 run = queue.get(rid)
                 self.checkpoint(Path(run['output_dir']) / 'portrait.safetensors')
                 run['status'] = 'succeeded'; queue.save(run)
-                self.assertIn('not available', client.get(f'/api/training/runs/{rid}').json()['comparison_unavailable'])
-                with patch('apps.Portal.services.training_api.comfy') as comfy:
-                    response = client.post(f'/api/training/runs/{rid}/comparison/prepare', json={'prompt': 'portrait', 'all_checkpoints': True})
-                    self.assertEqual(response.status_code, 400)
-                    comfy.assert_not_called()
-                self.assertFalse((self.models / 'loras/ControlPilot' / rid).exists())
+                self.assertIsNone(client.get(f'/api/training/runs/{rid}').json()['comparison_unavailable'])
                 with self.assertRaises(HTTPException):
                     graph(run, ComparisonRequest(prompt='portrait'), ['portrait.safetensors'], {})
 
@@ -488,15 +483,18 @@ class ComparisonGraphTests(unittest.TestCase):
         # Node contracts from pinned ComfyUI v0.34.0. Model dropdowns are supplied at runtime.
         schemas = {
             'CheckpointLoaderSimple': dict(ckpt_name=['base.safetensors']),
-            'UNETLoader': dict(unet_name=['flux1-dev.safetensors'], weight_dtype=['default']),
-            'DualCLIPLoader': dict(clip_name1=['clip_l.safetensors'], clip_name2=['t5xxl_fp16.safetensors'], type=['flux']),
-            'VAELoader': dict(vae_name=['ae.safetensors']),
+            'UNETLoader': dict(unet_name=['flux1-dev.safetensors', 'anima-base-v1.0.safetensors', 'lumina_2_model_bf16.safetensors', 'hunyuanimage2.1.safetensors'], weight_dtype=['default']),
+            'DualCLIPLoader': dict(clip_name1=['clip_l.safetensors', 'qwen_2.5_vl_7b.safetensors'], clip_name2=['t5xxl_fp16.safetensors', 'byt5_small_glyphxl_fp16.safetensors'], type=['flux', 'hunyuan_image']),
+            'CLIPLoader': dict(clip_name=['qwen_3_06b_base.safetensors', 'gemma_2_2b_fp16.safetensors'], type=['stable_diffusion', 'lumina2']),
+            'VAELoader': dict(vae_name=['ae.safetensors', 'qwen_image_vae.safetensors', 'hunyuan_image_2.1_vae_fp16.safetensors']),
             'LoraLoader': dict(model='MODEL', clip='CLIP', lora_name=['trained.safetensors'], strength_model='FLOAT', strength_clip='FLOAT'),
             'EmptyLatentImage': dict(width='INT', height='INT', batch_size='INT'),
             'EmptySD3LatentImage': dict(width='INT', height='INT', batch_size='INT'),
+            'EmptyHunyuanImageLatent': dict(width='INT', height='INT', batch_size='INT'),
+            'ModelSamplingAuraFlow': dict(model='MODEL', shift='FLOAT'),
             'CLIPTextEncode': dict(text='STRING', clip='CLIP'),
             'FluxGuidance': dict(conditioning='CONDITIONING', guidance='FLOAT'),
-            'KSampler': dict(model='MODEL', positive='CONDITIONING', negative='CONDITIONING', latent_image='LATENT', seed='INT', steps='INT', cfg='FLOAT', sampler_name=['euler', 'dpmpp_2m'], scheduler=['simple', 'normal'], denoise='FLOAT'),
+            'KSampler': dict(model='MODEL', positive='CONDITIONING', negative='CONDITIONING', latent_image='LATENT', seed='INT', steps='INT', cfg='FLOAT', sampler_name=['euler', 'dpmpp_2m', 'res_multistep'], scheduler=['simple', 'normal'], denoise='FLOAT'),
             'VAEDecode': dict(samples='LATENT', vae='VAE'),
             'SaveImage': dict(images='IMAGE', filename_prefix='STRING'),
         }
@@ -543,6 +541,38 @@ class ComparisonGraphTests(unittest.TestCase):
                     del registry['TripleCLIPLoader']
                     with self.assertRaises(HTTPException):
                         graph(run, ComparisonRequest(prompt='portrait'), 'trained.safetensors', registry)
+
+    def test_anima_lumina_and_hunyuan_comparisons_use_native_components(self):
+        expected = {
+            'anima': ('CLIPLoader', 'EmptyLatentImage', 1024, 4.0),
+            'lumina2': ('CLIPLoader', 'EmptySD3LatentImage', 1024, 4.0),
+            'hunyuan_image21': ('DualCLIPLoader', 'EmptyHunyuanImageLatent', 2048, 3.5),
+        }
+        for family, (loader, latent, size, cfg) in expected.items():
+            with self.subTest(family=family):
+                run = {'id': 'a' * 32, 'spec': {'family': family}, 'template': {
+                    key: '/workspace/models/' + relative for key, (_, relative) in MODEL_FILES[family].items()}}
+                registry = self.registry()
+                registry['LoraLoader']['input']['required']['lora_name'][0].append('epoch2.safetensors')
+                workflow = graph(run, ComparisonRequest(prompt='portrait', seed=17),
+                                 ['trained.safetensors', 'epoch2.safetensors'], registry)
+                self.assertEqual(workflow['2']['class_type'], loader)
+                self.assertEqual(workflow['5']['class_type'], latent)
+                self.assertEqual(workflow['5']['inputs']['width'], size)
+                self.assertEqual(workflow['1']['inputs']['unet_name'], Path(run['template']['pretrained_model_name_or_path']).name)
+                self.assertEqual({workflow[str(n)]['inputs']['seed'] for n in [13, 23, 33]}, {17})
+                self.assertEqual({workflow[str(n)]['inputs']['cfg'] for n in [13, 23, 33]}, {cfg})
+                self.assertEqual(workflow['10']['inputs']['text'], workflow['20']['inputs']['text'])
+                if family == 'lumina2':
+                    self.assertEqual(workflow['6']['inputs']['shift'], 6.0)
+                    self.assertIn('<Prompt Start> portrait', workflow['10']['inputs']['text'])
+                    self.assertEqual(workflow['4']['inputs']['model'], ['6', 0])
+                if family == 'hunyuan_image21':
+                    self.assertEqual(workflow['2']['inputs']['type'], 'hunyuan_image')
+                    self.assertEqual(workflow['2']['inputs']['clip_name2'], 'byt5_small_glyphxl_fp16.safetensors')
+                del registry[loader]
+                with self.assertRaises(HTTPException):
+                    graph(run, ComparisonRequest(prompt='portrait'), 'trained.safetensors', registry)
 
     def test_missing_nodes_or_unavailable_models_prevent_submission(self):
         registry = self.registry()

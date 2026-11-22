@@ -1,6 +1,6 @@
 # TrainPilot
 
-_Last updated: 2026-10-09_
+_Last updated: 2026-11-22_
 
 A useful training experiment should leave you with more than a file named `final_final`. It should tell you what you trained, which settings you used, and what changed in the result. Guided training brings that whole loop into ControlPilot: prepare a run, keep its history, and compare your LoRA with the original model.
 
@@ -14,7 +14,9 @@ Anima uses its base v1.0 weights, Qwen3-0.6B encoder and Qwen-Image VAE. Lumina-
 
 HunyuanImage 2.1 uses the original full-size Tencent weights, the full Qwen2.5-VL encoder, byT5 and its dedicated image VAE. Its recipe starts with 18 swapped blocks; you can lower that to zero in hardware settings when enough GPU memory is available. Block swapping also needs substantial system memory. These are image-training recipes, not HunyuanVideo training.
 
-The three new families work with queueing, saved configurations, checkpoint recovery and downloads. Built-in comparison generation is unavailable for them until matching workflows are integrated. HunyuanImage LoRAs also require Kohya's bundled `networks/convert_hunyuan_image_lora_to_comfy.py` conversion script before use in ComfyUI; keep the original checkpoint for further training. Model files are downloaded when requested, not bundled in the image. These additions require a build newer than v2.6 and have not yet been validated by completed GPU training runs.
+The three new families work with queueing, saved configurations, checkpoint recovery, downloads and **Try my LoRA** comparisons. Compare one checkpoint or generate the original-model baseline followed by every saved checkpoint with the same prompt and seed. Anima and HunyuanImage comparisons automatically prepare ComfyUI-compatible copies using Kohya's bundled conversion tools. The original checkpoints remain available for further training, and converted copies are reused until the source checkpoint or converter changes. Lumina checkpoints load directly with the Gemma encoder and their own sampling settings.
+
+Model files are downloaded when requested, not bundled in the image. These additions require a build newer than v2.6. Workflow generation, conversion orchestration and checkpoint preservation are covered by local regression checks; completed GPU training and image-generation runs remain deployment checks.
 
 ControlPilot checks the required model paths before adding a run. When missing files match the catalog, it offers to download them. Gated downloads may require a Hugging Face token and access approved on the model's page. A successful file check means the required paths exist; it does not establish that the weights are valid or that a run will fit your GPU.
 

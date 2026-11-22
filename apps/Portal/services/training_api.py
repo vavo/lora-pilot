@@ -16,6 +16,7 @@ from . import gpu_guard
 from .training_timing import timing
 from .guided_training import GuidedTraining, TrainingRequest, FAMILY_NOTES
 from .lora_comparison import ComparisonRequest, checkpoint_order, comparison_outputs, comparison_unavailable, comfy, graph, result_images
+from .lora_conversion import comparison_loras
 from .training_runs import TrainingRuns, under, write_json, now
 from .experiment_export import ExportRequest, export_plan, build_archive, preview_token
 from .training_performance import gpu_snapshot, recommendation
@@ -331,6 +332,7 @@ def create_router(workspace, models, resolve_dataset, resolve_config, model_name
             if len(selected) > 64:
                 raise HTTPException(400, 'Compare a single checkpoint for runs with more than 64 saved files')
             names = [publish_lora(run, name) for name in selected]
+            names = comparison_loras(models, run, names)
             # Refresh after publishing: loader dropdowns are the runtime source of truth.
             registry = comfy('GET', 'object_info')
             prompt = graph(run, req, names, registry)

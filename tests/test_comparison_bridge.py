@@ -72,6 +72,11 @@ vm.runInNewContext(source, context);
   location.hash = '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify(grid));
   await listeners.hashchange();
   assert.equal(loads.length, 2);
+  for (const class_type of ['CLIPLoader', 'TripleCLIPLoader', 'ModelSamplingSD3', 'ModelSamplingAuraFlow', 'EmptyHunyuanImageLatent']) {
+    location.hash = '#controlpilot-comparison=' + encodeURIComponent(JSON.stringify({'1': {class_type, inputs:{}}}));
+    await listeners.hashchange();
+  }
+  assert.equal(loads.length, 7);
 })().catch(error => { console.error(error); process.exit(1); });
 '''
         result = subprocess.run(['node', '-e', script, str(bridge)], capture_output=True, text=True)

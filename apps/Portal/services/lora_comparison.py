@@ -37,10 +37,8 @@ def checkpoint_order(name):
 
 
 def comparison_unavailable(family):
-    if family == 'hunyuan_image21':
-        return 'Built-in comparisons are not available for HunyuanImage 2.1 yet. Download the checkpoints and convert a copy with Kohya’s convert_hunyuan_image_lora_to_comfy.py before using a matching ComfyUI workflow.'
-    if family in {'anima', 'lumina2'}:
-        return 'Built-in comparisons are not available for this model family yet. Download your checkpoints and use a matching ComfyUI workflow.'
+    if family not in {'sdxl', 'sd15', 'sd35_medium', 'sd35_large', 'flux1', 'anima', 'lumina2', 'hunyuan_image21'}:
+        return 'Built-in comparisons are not available for this model family.'
     return None
 
 def graph(run, request, lora_name, registry):
@@ -74,7 +72,18 @@ def graph(run, request, lora_name, registry):
         except ValueError:
             raise HTTPException(400, f'The training {key} must be available in ComfyUI’s {folder} folder')
 
-    if flux:
+    if family in {'anima', 'lumina2', 'hunyuan_image21'}:
+        model = add('1', 'UNETLoader', unet_name=model_name('pretrained_model_name_or_path', 'diffusion_models'), weight_dtype='default')
+        if family == 'hunyuan_image21':
+            clip = add('2', 'DualCLIPLoader', clip_name1=model_name('text_encoder', 'text_encoders'),
+                       clip_name2=model_name('byt5', 'text_encoders'), type='hunyuan_image')
+        else:
+            clip = add('2', 'CLIPLoader', clip_name=model_name('qwen3' if family == 'anima' else 'gemma2', 'text_encoders'),
+                       type='stable_diffusion' if family == 'anima' else 'lumina2')
+        vae = add('3', 'VAELoader', vae_name=model_name('ae' if family == 'lumina2' else 'vae', 'vae'))
+        if family == 'lumina2':
+            model = add('6', 'ModelSamplingAuraFlow', model=model, shift=6.0)
+    elif flux:
         model = add('1', 'UNETLoader', unet_name=model_name('pretrained_model_name_or_path', 'diffusion_models'), weight_dtype='default')
         clip = add('2', 'DualCLIPLoader', clip_name1=model_name('clip_l', 'text_encoders'), clip_name2=model_name('t5xxl', 'text_encoders'), type='flux')
         vae = add('3', 'VAELoader', vae_name=model_name('ae', 'vae'))
@@ -91,8 +100,19 @@ def graph(run, request, lora_name, registry):
                 vae = ['3', 2]
             else:
                 vae = add('3', 'VAELoader', vae_name=model_name('vae', 'vae'))
-    latent = add('5', 'EmptySD3LatentImage' if flux or sd3 else 'EmptyLatentImage',
-                 width=512 if family == 'sd15' else 1024, height=512 if family == 'sd15' else 1024, batch_size=1)
+    size = 512 if family == 'sd15' else 2048 if family == 'hunyuan_image21' else 1024
+    latent_type = 'EmptyLatentImage'
+    if flux or sd3 or family == 'lumina2':
+        latent_type = 'EmptySD3LatentImage'
+    if family == 'hunyuan_image21':
+        latent_type = 'EmptyHunyuanImageLatent'
+    latent = add('5', latent_type, width=size, height=size, batch_size=1)
+    steps, cfg, sampler, scheduler = {
+        'anima': (30, 4.0, 'euler', 'simple'),
+        'lumina2': (25, 4.0, 'res_multistep', 'simple'),
+        'hunyuan_image21': (20, 3.5, 'euler', 'simple'),
+    }.get(family, (20, 1.0 if flux else 4.5 if sd3 else 7.0,
+                   'euler' if flux or sd3 else 'dpmpp_2m', 'simple' if flux or sd3 else 'normal'))
     names = [lora_name] if isinstance(lora_name, str) else lora_name
     for index, name in enumerate([None, *names]):
         base = 10 + index * 10
@@ -103,13 +123,16 @@ def graph(run, request, lora_name, registry):
             branch_model = add(loader, 'LoraLoader', model=model, clip=clip, lora_name=name,
                                strength_model=request.strength, strength_clip=request.strength)
             branch_clip = [loader, 1]
-        positive = add(str(base), 'CLIPTextEncode', text=request.prompt, clip=branch_clip)
+        text = request.prompt
+        if family == 'lumina2':
+            text = config.get('system_prompt', 'You are an assistant designed to generate superior images with the superior degree of image-text alignment based on textual prompts or user prompts.') + ' <Prompt Start> ' + text
+        positive = add(str(base), 'CLIPTextEncode', text=text, clip=branch_clip)
         negative = add(str(base + 1), 'CLIPTextEncode', text='', clip=branch_clip)
         if flux:
             positive = add(str(base + 2), 'FluxGuidance', conditioning=positive, guidance=3.5)
         samples = add(str(base + 3), 'KSampler', model=branch_model, positive=positive, negative=negative,
-                      latent_image=latent, seed=request.seed, steps=20, cfg=1.0 if flux else 4.5 if sd3 else 7.0,
-                      sampler_name='euler' if flux or sd3 else 'dpmpp_2m', scheduler='simple' if flux or sd3 else 'normal', denoise=1.0)
+                      latent_image=latent, seed=request.seed, steps=steps, cfg=cfg,
+                      sampler_name=sampler, scheduler=scheduler, denoise=1.0)
         image = add(str(base + 4), 'VAEDecode', samples=samples, vae=vae)
         add(str(base + 5), 'SaveImage', images=image, filename_prefix=f'LoRA-Pilot/{run["id"]}/{index:03d}')
         nodes[str(base + 5)]['_meta'] = {'title': label}

@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from apps.Portal.services import gpu_guard
 from apps.Portal.services.training_api import create_router
 import test_guided_training
+from test_lora_conversion import converter_environment, checkpoint
 
 
 class TrainingComparisonApiTests(unittest.TestCase):
@@ -168,6 +169,37 @@ class TrainingComparisonApiTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 400, response.text)
             remote.assert_not_called()
         self.assertEqual(secret.read_bytes(), b'outside the run')
+
+    def test_new_families_prepare_native_grids_and_keep_training_checkpoints(self):
+        environment = converter_environment(self.root)
+        names = ['example-step00000400.safetensors', 'example-step00000200.safetensors', 'example.safetensors']
+        for name in names:
+            checkpoint(self.artifact.parent / name)
+        before = {name: (self.artifact.parent / name).read_bytes() for name in names}
+        for family in ['anima', 'lumina2', 'hunyuan_image21']:
+            self.run['spec']['family'] = family
+            self.run['template'] = {key: str(self.models / relative)
+                                    for key, (_, relative) in test_guided_training.MODEL_FILES[family].items()}
+            self.queue.save(self.run)
+            def remote(method, path, **kwargs):
+                if path == 'object_info':
+                    self.registry['LoraLoader']['input']['required']['lora_name'][0] = [
+                        path.relative_to(self.models / 'loras').as_posix()
+                        for path in (self.models / 'loras').rglob('*.safetensors')]
+                    return self.registry
+                self.workflow = kwargs['json']['prompt']
+                return {'prompt_id': 'family-grid'}
+            with patch.dict('os.environ', environment), patch('apps.Portal.services.training_api.comfy', side_effect=remote):
+                response = self.client.post(self.prefix + '/comparison/prepare',
+                                            json=dict(prompt='portrait', seed=123, all_checkpoints=True))
+            self.assertEqual(response.status_code, 200, response.text)
+            workflow = response.json()['workflow']
+            self.assertEqual([node['_meta']['title'] for node in workflow.values() if node['class_type'] == 'SaveImage'],
+                             ['Without LoRA', names[1], names[0], names[2]])
+            loras = [node['inputs']['lora_name'] for node in workflow.values() if node['class_type'] == 'LoraLoader']
+            self.assertEqual(all('/comfy/' in name for name in loras), family != 'lumina2')
+            self.assertIsNone(self.client.get(self.prefix).json()['comparison_unavailable'])
+        self.assertEqual(before, {name: (self.artifact.parent / name).read_bytes() for name in names})
 
     def test_generation_persists_results_and_rejects_duplicate_submission(self):
         def comfy(method, path, **kwargs):
