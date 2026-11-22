@@ -6,6 +6,8 @@ The repository's root [CHANGELOG](../../CHANGELOG) is the canonical release hist
 
 ## Unreleased
 
+The LoRA Pilot agent skill brings dataset review, model checks, supported training and checkpoint comparisons into a documented agent workflow. Model-specific references help with image/video prompts and inference settings, distinguishing base, distilled, Turbo and editing variants. Install the skill locally or read its bundled resources through MCP; it preserves the connected server's existing permissions and execution limits.
+
 Create Photo references with RealVisXL V5.0 at 896 × 1152, DPM++ SDE Karras, 30 steps and CFG 7. ControlPilot downloads missing weights when you start. Illustration mode keeps SDXL Base and its existing settings; uploaded references need neither T2I checkpoint. Qwen Image Edit variations still use the approved reference.
 
 Review images using the arrows beside the comparison images or the left/right keyboard keys. **Keep image** saves your decision without a confirmation popup, including when checks are pending or flag a concern. Specific warnings remain visible. The image-choice API no longer requires `confirm_unchecked`.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "LoRA Pilot"
+  short_description: "Review datasets, train LoRAs and tune inference"
+  default_prompt: "Use $lora-pilot to inspect my connected workspace and help with datasets, model-specific prompts, training or comparisons."

@@ -1,6 +1,6 @@
 # Connect an assistant with MCP
 
-_Documentation updated: 2026-10-06._
+_Documentation updated: 2026-11-22._
 
 LoRA Pilot provides Streamable HTTP at `/mcp`, using the official Python SDK `mcp==2.3.0`. It starts disabled. Each connection has its own expiring bearer token, permissions, and selected datasets/runs. A ControlPilot browser cookie, Comfy token or Hugging Face token cannot authenticate MCP.
 
@@ -24,6 +24,14 @@ The **Try one of these** buttons copy four prompts:
 - Summarize the training runs I shared and their saved checkpoints.
 
 Keep the copied credential out of shared conversations, URLs, committed configuration and logs. The setup instruction asks the agent to store it privately and avoid echoing it; your agent's handling and retention still matter. Settings does not save tokens in browser storage and clears displayed credentials on changes or navigation. Read permission authorizes disclosure to the connected client; revocation cannot erase data it already received.
+
+### LoRA Pilot agent skill
+
+The bundled **lora-pilot** skill helps agents review dataset quality counts, check installed model components, prepare and monitor supported training, compare checkpoints, and suggest prompts and inference settings for the exact model variant. Its references cover SD, SDXL, FLUX, Qwen, Z-Image, Anima, Lumina, HunyuanImage, Chroma, HiDream and other image families, plus Wan, HunyuanVideo, LTX and MiniMax H3 video workflows. Base, distilled, Turbo and editing variants have separate guidance.
+
+Copy the complete [`apps/Portal/mcp_server/skills/lora-pilot` directory](https://github.com/vavo/lora-pilot/tree/main/apps/Portal/mcp_server/skills/lora-pilot) into your agent's skill directory. For Codex, use `~/.codex/skills/lora-pilot`, including `SKILL.md`, `agents/` and `references/`. Restart Codex to discover it, then ask: “Use $lora-pilot to review my shared dataset and help choose a prompt and comparison plan.” Keep connection credentials in the client's private MCP configuration, outside the skill.
+
+Agents that can read MCP resources can use the same guidance without installing files. With `workspace:read`, read `lorapilot://skills/lora-pilot`; it links to the workflow, image-model, video-model and inference references exposed by that build. Older images will not list the skill resources until upgraded. The skill does not create a connection, expand grants or enable write gates. General inference settings are recommendations; the current MCP can execute only its fixed SDXL training/comparison recipes, while broader inference uses the matching ControlPilot or ComfyUI workflow.
 
 ### Automatic address setup
 

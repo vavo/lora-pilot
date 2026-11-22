@@ -1,5 +1,7 @@
 Unreleased (November 22nd 2026)
 
+- Added a portable LoRA Pilot agent skill and read-only MCP guides for dataset review, model checks, training, comparisons, model-specific prompting and inference tuning.
+
 - Added owner-only MCP diagnostics, Codex setup instructions and a public connection test.
 
 - MediaPilot now opens in Latest: newest images and videos across output and InvokeAI subfolders. Untagged remains available; cross-folder selections keep their source paths, including in ZIP downloads.
