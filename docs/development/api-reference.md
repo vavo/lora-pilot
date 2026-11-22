@@ -1,6 +1,6 @@
 # API Reference
 
-_Last updated: 2026-10-29_
+_Last updated: 2026-11-08_
 
 ControlPilot backend is a FastAPI app served on `PORTAL_PORT` (default `7878`). This reference covers first-party routes in ControlPilot, embedded MediaPilot and the internal Copilot sidecar. Upstream applications such as ComfyUI keep their own API contracts.
 
@@ -155,7 +155,7 @@ These routes use ControlPilot's existing `/api/*` authentication. Generation is 
 
 | Method | Path | Input and result |
 |---|---|---|
-| `GET` | `/api/dataset-builder/preflight` | Query `source=prompt` or `photo`; returns `ready`, missing model IDs, problems and recipe version |
+| `GET` | `/api/dataset-builder/preflight` | Query `source=prompt` (default) or `photo`, and `style=photo` (default) or `illustration`; checks the selected reference workflow and returns `ready`, missing model IDs, problems and recipe version. Does not start downloads |
 | `GET` | `/api/dataset-builder/plan` | Query `count` (4–100, default 30), `subject`, `goal`, `vary_clothes`, `vary_hair`; returns framing/viewpoint counts and effective variation choices from the existing recipe, without creating a job or running inference; planned, not verified coverage |
 | `GET` | `/api/dataset-builder/jobs` | Up to 100 most recently updated jobs |
 | `POST` | `/api/dataset-builder/jobs` | Multipart `spec` JSON string and optional `photo`; returns saved job, not completion |
@@ -165,15 +165,17 @@ These routes use ControlPilot's existing `/api/*` authentication. Generation is 
 | `POST` | `/api/dataset-builder/jobs/{id}/approve-trial` | Requires all three trials kept, no pending work, and `trial_approved=false`; starts remaining slots without replacing trials |
 | `POST` | `/api/dataset-builder/jobs/{id}/pause` | Stops after the current image; never sends a global ComfyUI interrupt |
 | `POST` | `/api/dataset-builder/jobs/{id}/resume` | Recovers pending work and retries unfinished generation/checks within attempt limits |
-| `PATCH` | `/api/dataset-builder/jobs/{id}/images/{slot}` | Zero-based slot; `{"accepted":true,"file":"image-000-0.png","confirm_unchecked":true}`. `file` optionally guards against stale edits; keeping unchecked/flagged images requires `confirm_unchecked`. Manual decisions override checks and are allowed during other generation/review work |
+| `PATCH` | `/api/dataset-builder/jobs/{id}/images/{slot}` | Zero-based slot; `{"accepted":true,"file":"image-000-0.png"}`. Optional `file` guards against stale edits. Accepts unchecked/flagged images without another confirmation, records `user_reviewed=true` and preserves warnings. Manual decisions override checks and are allowed during other generation/review work |
 | `POST` | `/api/dataset-builder/jobs/{id}/images/{slot}/regenerate` | Optional `{"file":"image-000-0.png"}` stale-image guard; queues only that shot behind current work; maximum three candidates per shot, no automatic retries. Duplicate regeneration and edits to the currently generating slot return 409. Keep/Exclude cancels a queued replacement that has not started |
 | `POST` | `/api/dataset-builder/jobs/{id}/finish` | Requires at least one kept image with automated or explicit human review; exports only those images and trigger metadata. While active, freezes `finish_slots`, returns `finish_requested=true`/`pausing`, and saves after the current operation. Poll until `saved` with `dataset` and `exported_count`; does not launch training |
 
 `spec` fields: `name` (1–64 letters/numbers/underscores/hyphens, starts alphanumeric), `trigger` (1–40 letters/numbers/underscores, starts with a letter), `source` (`prompt` default or `photo`), `prompt` (up to 2,000 characters; required for prompt input), `count` (4–100, default 30), `subject` (`person` default or `character` for non-human), `style` (`photo` default or `illustration`, used only for generated references), `goal` (`identity` default or `character` for a fixed look), `vary_clothes` (default true), and `vary_hair` (default false). Non-human subjects and fixed-look mode ignore clothing/hair variation flags. Images are decoded, EXIF-normalized and saved as RGB PNG with a maximum 1,536-pixel long edge.
 
+For `source=prompt`, Photo references use `realvisxl-v5` at 896 × 1152, `dpmpp_sde`/`karras`, 30 steps and CFG 7. Illustration references use `sdxl-base` at 768 × 1024, `dpmpp_2m`/`normal`, 30 steps and CFG 7. Setup downloads the selected checkpoint through the shared Models queue and reuses complete installed weights. `source=photo` needs neither reference checkpoint. Qwen variation and local-check dependencies apply to both sources; their workflows are unchanged.
+
 Missing models are downloaded through the shared Models queue before reference review or generation. Statuses are `preparing`, `generating_reference`, `reference_review`, `generating`, `checking`, `pausing`, `paused`, `trial_review`, `review`, `failed`, and `saved`. New jobs persist `trial_approved=false`; resume cannot bypass trial approval. Older jobs without this field retain their original progress and recipe. Interrupted active jobs report paused after a restart. No prompt is silently resubmitted when the original HTTP outcome is uncertain. A ComfyUI prompt can be polled for an hour per resume; the local review batch has a two-hour timeout. `failed` is resumable when its underlying dependency is fixed. Saved jobs are immutable; finishing the same saved job is idempotent. Existing unrelated datasets and symlink paths are rejected.
 
-The UI requires human contact-sheet confirmation before calling `finish` and sends `{"files":["image-000-0.png"]}` to freeze the exact displayed selection. Stale filenames return 409; omitting `files` selects all currently kept images. API clients must provide their own review step. Automated acceptance is heuristic, not a guarantee of identity or training quality. Missing local review results require explicit human acceptance; they do not block export once confirmed. Export retains older caption drafts but creates no placeholder sidecars. Captioning stays in TagPilot.
+The UI requires human contact-sheet confirmation before calling `finish` and sends `{"files":["image-000-0.png"]}` to freeze the exact displayed selection. Stale filenames return 409; omitting `files` selects all currently kept images. API clients must provide their own review step. Automated acceptance is heuristic, not a guarantee of identity or training quality. Accepting an image through `PATCH` counts as human review even without local check results; no `confirm_unchecked` field is needed. Saved jobs, stale filenames and edits to a slot being regenerated remain protected. Export retains older caption drafts but creates no placeholder sidecars. Captioning stays in TagPilot.
 
 ## Dataset + TagPilot API
 
