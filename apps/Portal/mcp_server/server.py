@@ -452,6 +452,10 @@ class Boundary:
         self.app, self.runtime = app, runtime
 
     async def __call__(self, scope, receive, send):
+        if scope['type'] == 'http' and scope['path'] == '/api/settings/mcp-diagnostics':
+            # Owner-authenticated, read-only diagnostics remain reachable when
+            # the stricter MCP host/transport boundary rejects normal setup.
+            return await self.runtime.admin(scope, receive, send)
         if scope['type'] == 'http' and (scope['path'] == '/api/settings/mcp' or scope['path'].startswith('/api/settings/mcp/')):
             headers = {}
             for key, value in scope['headers']:

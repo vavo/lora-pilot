@@ -233,6 +233,10 @@
         </div>
         <div id="settings-mcp-status" class="settings-status" role="status">Checking connection setup…</div>
         <button id="settings-mcp-refresh" type="button" class="btn secondary">Refresh</button>
+        <details class="settings-details"><summary>Connection diagnostics</summary>
+          <div id="settings-mcp-diagnostics" aria-live="polite"></div>
+          <button id="settings-mcp-check" type="button" class="btn secondary">Check setup</button>
+        </details>
       </section>
       <section id="settings-mcp-connection-form" class="settings-section settings-card">
         <h3 id="settings-mcp-form-title">New connection</h3>
@@ -258,7 +262,10 @@
         <h3>Copy this into your agent to set up the connection</h3>
         <p>The copy button includes your private connection token. Paste it only into an agent you trust. It is available here once; rotate the token if you need new setup instructions later.</p>
         <textarea id="settings-mcp-instructions" class="input" readonly aria-label="Agent setup instructions"></textarea>
+        <div class="field"><label for="settings-mcp-agent">Agent</label><select id="settings-mcp-agent" class="select"><option value="codex">Codex</option><option value="generic">Other MCP client</option></select></div>
         <button id="settings-mcp-copy-setup" type="button" class="btn primary">Copy setup instructions</button>
+        <button id="settings-mcp-test" type="button" class="btn secondary">Test public connection</button>
+        <p id="settings-mcp-test-result" class="settings-status" role="status"></p>
         <details class="settings-details"><summary>Manual connection details</summary>
           <p>Use Streamable HTTP with an Authorization bearer header. Your client must support bearer tokens; OAuth-only clients cannot connect yet.</p>
           <label for="settings-mcp-token">Connection token</label><input id="settings-mcp-token" class="input" type="password" readonly /><button id="settings-mcp-copy" type="button" class="btn secondary">Copy token</button>

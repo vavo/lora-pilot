@@ -434,24 +434,59 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
   let mcpCsrf = '';
   const mcpOrigin = new URL(location.origin);
   const mcpSecure = mcpOrigin.protocol === 'https:' || ['localhost', '127.0.0.1', '[::1]'].includes(mcpOrigin.hostname);
-  let mcpEditing = null, mcpBusy = false, mcpLoaded = false, mcpAvailable = false, mcpView = 0;
+  let mcpEditing = null, mcpBusy = false, mcpTesting = false, mcpLoaded = false, mcpAvailable = false, mcpView = 0;
   const mcpSelected = name => [...mcp(name).querySelectorAll('input:checked')].map(input => input.value);
   function clearMcpSecrets() {
     for (const name of ['password', 'new-password', 'confirm-password', 'token', 'instructions']) mcp(name).value = '';
     mcp('token-result').hidden = true;
+    mcp('test-result').textContent = '';
+    mcp('test').disabled = true;
   }
   function mcpControls() {
     mcp('create').disabled = mcpBusy || !mcpAvailable || !mcpSecure;
     mcp('save').disabled = mcpBusy || !mcpSecure || !mcpCsrf || (!mcpAvailable && !mcp('enabled').checked);
     mcp('set-password').disabled = mcpBusy || !mcpSecure;
+    mcp('test').disabled = mcpBusy || mcpTesting || !mcp('token').value;
   }
   function mcpSetupText(token) {
-    return `Add an MCP server named "lora-pilot" to this agent.
+    const common = `Add an MCP server named "lora-pilot" to this agent.
 Transport: Streamable HTTP
 URL: ${mcp('url').value}
 Authorization header: Bearer ${token}
 Keep this credential in private configuration. Do not echo it or commit it.
 Connect and list the available tools.`;
+    if (mcp('agent').value !== 'codex') return common;
+    return common + `
+
+For Codex, add this to ~/.codex/config.toml:
+[mcp_servers.lora-pilot]
+url = ${JSON.stringify(mcp('url').value)}
+bearer_token_env_var = "LORA_PILOT_MCP_TOKEN"
+
+Store the token above as LORA_PILOT_MCP_TOKEN in the environment that launches Codex.
+Restart the MCP connection after configuring it. Use bearer authentication, not OAuth login.
+List the tools, then call workspace_status if that permission is enabled. Report the actual result.`;
+  }
+  async function refreshMcpDiagnostics() {
+    const request = screen.latest('mcp-diagnostics');
+    try {
+      const value = await request.json('/api/settings/mcp-diagnostics');
+      request.check();
+      mcp('diagnostics').replaceChildren();
+      for (const item of value.checks || []) {
+        const row = document.createElement('p'), title = document.createElement('strong');
+        title.textContent = `${item.state === 'pass' ? 'Ready' : 'Needs attention'}: ${item.label}. `;
+        row.append(title, document.createTextNode(item.message));
+        mcp('diagnostics').append(row);
+      }
+      if (value.build?.revision) {
+        const build = document.createElement('p'); build.className = 'settings-note';
+        build.textContent = `Running build ${value.build.revision.slice(0, 8)}`;
+        mcp('diagnostics').append(build);
+      }
+    } catch (error) {
+      if (request.active) mcp('diagnostics').textContent = `Could not check setup: ${settingsError(error)}`;
+    }
   }
   function resetMcpForm() {
     mcpEditing = null; mcp('form-title').textContent = 'New connection';
@@ -550,9 +585,10 @@ Connect and list the available tools.`;
     } catch (error) {
       if (request.active) {
         mcpCsrf = ''; mcpAvailable = false; mcpControls();
-        mcp('status').textContent = `Could not load MCP settings: ${settingsError(error)}. Sign in to ControlPilot at its public address, then refresh.`;
+        mcp('status').textContent = `Could not load MCP settings: ${settingsError(error)}. Open Connection diagnostics for the next step.`;
       }
     }
+    if (screen.active) await refreshMcpDiagnostics();
   }
   async function updateMcp(path, method, body) {
     if (mcpBusy || !mcpSecure) return;
@@ -582,6 +618,29 @@ Connect and list the available tools.`;
     policy: { enabled: mcp('unattended').checked, max_steps: Number(mcp('steps').value), max_seconds: Number(mcp('seconds').value), max_bytes: Number(mcp('bytes').value) * 1024 ** 3 } });
   mcp('cancel-edit').onclick = () => { if (!mcpBusy) resetMcpForm(); };
   mcp('refresh').onclick = refreshMcp;
+  mcp('check').onclick = refreshMcpDiagnostics;
+  mcp('agent').onchange = () => {
+    if (mcp('token').value) mcp('instructions').value = mcpSetupText('[included when copied]');
+  };
+  mcp('test').onclick = async () => {
+    const token = mcp('token').value, view = mcpView;
+    if (!token || mcp('test').disabled || mcpBusy) return;
+    mcpTesting = true; mcpControls();
+    mcp('test-result').textContent = 'Testing the public MCP address…';
+    const request = screen.latest('mcp-connection-test');
+    try {
+      const result = await request.json('/api/settings/mcp/test', {method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-MCP-CSRF': mcpCsrf}, body: JSON.stringify({token})});
+      request.check();
+      if (view === mcpView && mcp('token').value === token) mcp('test-result').textContent = result.message;
+    } catch (error) {
+      if (request.active && view === mcpView && mcp('token').value === token)
+        mcp('test-result').textContent = `Connection test failed: ${settingsError(error)}`;
+    } finally {
+      mcpTesting = false;
+      if (screen.active) mcpControls();
+    }
+  };
   mcp('set-password').onclick = async () => {
     if (mcpBusy || !mcpSecure) return;
     const password = mcp('new-password').value.trim(), view = mcpView;

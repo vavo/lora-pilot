@@ -12,6 +12,10 @@ Open **Settings → MCP** on an image containing this implementation. If Control
 
 Under **Copy this into your agent to set up the connection**, choose **Copy setup instructions**. The copied text includes the endpoint, Streamable HTTP transport and private bearer credential. Paste it into a trusted agent's private setup. The preview hides the token; the copy button includes it. Manual connection details are available underneath for clients that need separate URL/header fields. The credential is shown only at creation or rotation; rotate it from **Connections** if you need fresh instructions later.
 
+Choose **Codex** to include its `config.toml` entry and the `LORA_PILOT_MCP_TOKEN` environment variable setup. Codex must inherit that variable when it starts. Restart its MCP connection after changing the configuration, then ask it to list the tools and call `workspace_status`. This connection uses a bearer token, so an OAuth sign-in is not needed.
+
+**Connection diagnostics → Check setup** checks the configured address, proxy and HTTPS handling, MCP runtime and saved connection records. These owner-only checks remain available when an address mismatch blocks the normal MCP settings. They do not expose credentials or change permissions. After creating or rotating a connection, **Test public connection** uses that token to discover tools through the public endpoint and read workspace status when permitted. This tests the pod's route through its public proxy; the Codex tool call verifies the client's own route.
+
 The **Try one of these** buttons copy four prompts:
 
 - Check my LoRA Pilot workspace and tell me whether the training queue is paused.

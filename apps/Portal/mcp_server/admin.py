@@ -13,6 +13,7 @@ from pydantic import Field
 from .contracts import Automation, Input, READ_SCOPES, SCOPES
 from .files import Rejected
 from .server import public_origin
+from .connection import diagnostics, owner as diagnostic_owner, test_connection
 try:
     from ..services.gpu_guard import LAUNCH_LOCK
 except ImportError:
@@ -42,6 +43,10 @@ class NewClient(Client):
 
 class Approval(OwnerChange):
     approve: bool
+
+
+class ConnectionTest(Input):
+    token: str = Field(min_length=1, max_length=512, repr=False)
 
 
 def create_app(runtime, enabled, authenticated, session_value, verify_password):
@@ -94,6 +99,19 @@ def create_app(runtime, enabled, authenticated, session_value, verify_password):
         except FileNotFoundError:
             pass
         return dict(datasets=datasets, runs=runs)
+
+    @app.get('/api/settings/mcp-diagnostics')
+    def setup_diagnostics(request: Request):
+        diagnostic_owner(request, enabled, authenticated)
+        return JSONResponse(diagnostics(runtime, request), headers={'Cache-Control': 'no-store'})
+
+    @app.post('/api/settings/mcp/test')
+    async def connection_test(request: Request, payload: ConnectionTest):
+        csrf = check(request)
+        if (request.headers.get('origin') != runtime.origin
+                or not hmac.compare_digest(request.headers.get('x-mcp-csrf', ''), csrf)):
+            raise Rejected('NOT_AUTHORIZED')
+        return await test_connection(runtime, payload.token)
 
     @app.get('/api/settings/mcp')
     def status(request: Request):

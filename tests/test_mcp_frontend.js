@@ -38,7 +38,10 @@ async function page(state = ready(), mutation = async () => ({token: 'lp_fixture
       querySelectorAll: selector => selector.includes('settings-theme') ? [] : selector.includes('settings-mcp-') ? [...nodes.values()].filter(el => el.id.startsWith('settings-mcp-')) : tabs},
     navigator: {clipboard: {writeText: async text => copied.push(text)}},
     fetchJson: async (url, options = {}) => {
-      if (!options.method) return url === '/api/settings/mcp' ? state : url === '/api/settings' ? {comfy_access: {}} : {};
+      if (!options.method) {
+        if (url === '/api/settings/mcp' && state.loadError) throw Error(state.loadError);
+        return url === '/api/settings/mcp' ? state : url === '/api/settings/mcp-diagnostics' ? state.diagnostics || {} : url === '/api/settings' ? {comfy_access: {}} : {};
+      }
       const body = JSON.parse(options.body); requests.push({url, body, headers: options.headers});
       if (url === '/api/settings/password') { Object.assign(state, ready()); return {}; }
       return mutation(url, body);
@@ -134,4 +137,50 @@ test('public plaintext setup never asks for or submits a password', async () => 
   p.mcp('new-password').value = p.mcp('confirm-password').value = 'test-only-password';
   await p.mcp('set-password').onclick(); assert.equal(p.requests.length, 0);
   assert.match(p.mcp('status').textContent, /HTTPS/);
+});
+
+test('setup diagnostics remain available when MCP settings reject the address', async () => {
+  const p = await page({...ready(), loadError: 'NOT_AUTHORIZED', diagnostics: {
+    checks: [{label: 'Address match', state: 'error', message: 'Correct MCP_PUBLIC_URL and restart ControlPilot.'}],
+    build: {revision: '1234567890abcdef'},
+  }});
+  assert.match(p.mcp('status').textContent, /Connection diagnostics/);
+  assert.doesNotMatch(p.mcp('status').textContent, /Sign in.*then refresh/);
+  assert.equal(p.mcp('diagnostics').children.length, 2);
+  assert.match(p.mcp('diagnostics').children[1].textContent, /12345678/);
+});
+
+test('Codex setup includes bearer environment configuration and tests only the selected credential', async () => {
+  const p = await page(ready(), async url => url.endsWith('/test')
+    ? {ok: true, message: 'Public MCP connection verified. Workspace status succeeded.'}
+    : {token: 'lp_fixture_only', url: 'https://pilot.example/mcp'});
+  p.mcp('password').value = 'owner-fixture';
+  await p.mcp('create').onclick();
+  p.mcp('agent').value = 'codex'; p.mcp('agent').onchange();
+  assert.match(p.mcp('instructions').value, /bearer_token_env_var = "LORA_PILOT_MCP_TOKEN"/);
+  assert.doesNotMatch(p.mcp('instructions').value, /lp_fixture_only/);
+  await p.mcp('copy-setup').onclick();
+  assert.match(p.copied[0], /lp_fixture_only/);
+  assert.match(p.copied[0], /not OAuth/);
+  assert.equal(p.mcp('test').disabled, false);
+  await p.mcp('test').onclick();
+  assert.deepEqual(p.requests[1].body, {token: 'lp_fixture_only'});
+  assert.equal(p.requests[1].headers['X-MCP-CSRF'], 'csrf-fixture');
+  assert.match(p.mcp('test-result').textContent, /Workspace status succeeded/);
+  p.screen.dispose();
+  assert.equal(p.mcp('test-result').textContent, '');
+  assert.equal(p.mcp('token').value, '');
+});
+
+test('a late connection-test result cannot update a departed tab', async () => {
+  let finish;
+  const p = await page(ready(), async url => url.endsWith('/test')
+    ? new Promise(resolve => { finish = resolve; }) : {token: 'lp_fixture_only'});
+  p.mcp('password').value = 'owner-fixture'; await p.mcp('create').onclick();
+  const request = p.mcp('test').onclick();
+  assert.equal(p.mcp('test').disabled, true);
+  await p.get('settings-tab-general').fire('click');
+  finish({ok: true, message: 'Must not appear'}); await request;
+  assert.equal(p.mcp('test-result').textContent, '');
+  assert.equal(p.mcp('test').disabled, true);
 });
