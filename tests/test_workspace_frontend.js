@@ -204,6 +204,23 @@ test('notification history is bounded and corrupt stored entries are ignored',()
   assert.ok(tracker.notifications.every(notice=>!notice.unread));
 });
 
+test('hidden notification bubble suppresses previews and keeps activity history', async()=>{
+  const ui=notificationPage();
+  ui.page.window.controlPilotSettings={notifications_bubble:false};
+  await ui.start();
+  assert.equal(ui.get('workspace-bell').hidden,true);
+  ui.transition('failed');await ui.tick();
+  assert.equal(ui.get('workspace-notice').hidden,true);
+  assert.equal(ui.get('workspace-unread').textContent,'1');
+  ui.page.window.workspaceStatus.applySettings({notifications_bubble:true});
+  assert.equal(ui.get('workspace-bell').hidden,false);
+  ui.get('workspace-bell').onclick();
+  assert.equal(ui.get('workspace-notifications').hidden,false);
+  ui.page.window.workspaceStatus.applySettings({notifications_bubble:false});
+  assert.equal(ui.get('workspace-notifications').hidden,true);
+  assert.equal(ui.get('workspace-bell').attributes['aria-expanded'],'false');
+});
+
 
 test('guided drafts retain each newly supported model family', () => {
   const draft = context.createTrainingDraft(storage());

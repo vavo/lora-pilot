@@ -1,18 +1,18 @@
 # CUDA environments and bundled video workflows
 
-Image pins as of 2026-11-06. Build with `make build CUDA_PROFILE=cu130` (default) or
+Image pins as of 2026-11-23. Build with `make build CUDA_PROFILE=cu130` (default) or
 `make build CUDA_PROFILE=cu128`. The Makefile selects matching NVIDIA base,
 NVCC package and PyTorch wheel index. Passing only `CUDA_PROFILE` to a raw
 `docker build` does not select the other arguments; mismatches fail the build.
 
 | App | Pinned version | Environment | GPU stack |
 | --- | --- | --- | --- |
-| ComfyUI | 0.44.0 | core | Torch 2.11.0 / vision 0.26.0 / audio 2.11.0 / xFormers 0.0.35, selected CUDA profile |
+| ComfyUI | 0.46.0 | core | Torch 2.11.0 / vision 0.26.0 / audio 2.11.0 / xFormers 0.0.35, selected CUDA profile |
 | Kohya | 26.0.0 | kohya | Same GPU versions, independently installed |
-| AI Toolkit | beb94824c51480a04d3c86c718603676fdef6938 | ai-toolkit | Same GPU versions, independently installed |
+| AI Toolkit | 73c84b091dd0f5647fc6a4b59122a2efc1c8147b | ai-toolkit | Same GPU versions, independently installed |
 | InvokeAI | 6.14.4 | invoke | Torch 2.7.1 / vision 0.22.1 / xFormers 0.0.31.post1, CUDA 12.8 on both profiles |
 
-[ComfyUI 0.44.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.44.0) uses Manager 4.2.2.
+[ComfyUI 0.46.0](https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.46.0) is installed with the separately pinned Manager 4.4.2. The installer overrides upstream’s Manager 4.2.2 requirement while retaining its other dependencies.
 [InvokeAI 6.14.4](https://pypi.org/project/InvokeAI/6.14.4/) requires Diffusers 0.40.0.
 
 Kohya preserves upstream Diffusers 0.32.2, Transformers 4.54.1 and Hub 0.34.3;
@@ -73,6 +73,12 @@ audit. This is source and dependency-resolution evidence; it is not an import
 or generation test of an installed `/opt/venvs/core`.
 
 ## Validation and remaining runtime check
+
+For the November 23 ComfyUI 0.46.0 / Manager 4.4.2 update, Linux Python 3.12
+dependency resolution passed on both CUDA indexes with the existing core pins
+and JupyterLab (226 packages each). AI Toolkit 0.13.43 keeps the previous pin’s
+requirements files unchanged, and its existing UI build patch still applies.
+These checks do not establish a successful container build or GPU run.
 
 At the September audit pins, Linux dependency resolution passed for ComfyUI/core (including Diffusion Pipe), Kohya and AI Toolkit on
 both CUDA indexes, and InvokeAI on its CUDA 12.8 index. Workflow hashes,

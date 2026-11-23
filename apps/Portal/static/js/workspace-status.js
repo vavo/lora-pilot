@@ -39,6 +39,12 @@ function createActivityTracker(storage, now = Date.now) {
 window.workspaceStatus = (() => {
   const $ = id => document.getElementById(id);
   let tracker, timer, previewTimer, epoch = 0, last = [], signature = '', statusMessage = '';
+  let running = false, showBubble = true;
+  function applySettings(settings = {}) {
+    showBubble = settings.notifications_bubble !== false;
+    $('workspace-bell').hidden = !running || !showBubble;
+    if (!showBubble) { hidePreview(); setOpen(false, false); }
+  }
   function hidePreview() {
     clearTimeout(previewTimer);
     $('workspace-notice').hidden = true;
@@ -109,7 +115,7 @@ window.workspaceStatus = (() => {
       last = [...data.items, ...last.filter(affected)];
       const incoming = tracker.update(data.items);
       if (!$('workspace-notifications').hidden) tracker.markRead();
-      else if (incoming.length) {
+      else if (incoming.length && showBubble) {
         const notice = incoming[incoming.length - 1];
         $('workspace-notice-text').textContent = `${notice.label}: ${stateLabel[notice.state] || notice.state}${incoming.length > 1 ? ` · ${incoming.length - 1} more` : ''}`;
         $('workspace-notice-view').onclick = () => openTask(notice);
@@ -145,7 +151,8 @@ window.workspaceStatus = (() => {
       try { storage = window.sessionStorage; } catch { storage = {getItem:()=>null, setItem(){}}; }
       tracker = createActivityTracker(storage);
     }
-    $('workspace-bell').hidden = false;
+    running = true;
+    applySettings(window.controlPilotSettings || {});
     $('workspace-bell').onclick = () => setOpen($('workspace-notifications').hidden);
     $('workspace-notifications-close').onclick = () => setOpen(false);
     $('workspace-diagnostics-open').onclick = showDiagnostics;
@@ -172,6 +179,7 @@ window.workspaceStatus = (() => {
     poll(generation);
   }
   function stop() {
+    running = false;
     epoch++; clearTimeout(timer);
     hidePreview();
     $('workspace-bell').hidden = true;
@@ -181,5 +189,5 @@ window.workspaceStatus = (() => {
     document.removeEventListener('keydown', escapePanel);
     if ($('workspace-diagnostics')?.open) $('workspace-diagnostics').close();
   }
-  return {start, stop};
+  return {start, stop, applySettings};
 })();

@@ -18,8 +18,8 @@ Read only the reference needed for the task:
 | Task | Local reference | MCP resource on builds containing this skill |
 |---|---|---|
 | Dataset review, model checks, training, comparisons and monitoring | [MCP workflows](references/mcp-workflows.md) | `lorapilot://skills/lora-pilot/mcp-workflows` |
-| Image-model prompts and variant-specific starting points | [Image models](references/image-models.md) | `lorapilot://skills/lora-pilot/image-models` |
-| Video/audio prompts, reference frames and temporal settings | [Video models](references/video-models.md) | `lorapilot://skills/lora-pilot/video-models` |
+| Image-model prompts and variant-specific starting points, including Qwen 2.1, Ming, FLUX.3, MOSS, Fibo, Iris and image H3 | [Image models](references/image-models.md) | `lorapilot://skills/lora-pilot/image-models` |
+| Video/audio prompts, reference frames and temporal settings, including FastH3 and YuE2 | [Video models](references/video-models.md) | `lorapilot://skills/lora-pilot/video-models` |
 | Diagnosing results and tuning inference | [Inference tuning](references/inference.md) | `lorapilot://skills/lora-pilot/inference` |
 
 Agents without a local skill loader can read `lorapilot://skills/lora-pilot` as the entrypoint. Relative links in these documents refer to the skill package; MCP-only clients should use the listed resource URIs. Older servers may not expose these resources; use the local references and discovered tool schemas without assuming an upgrade.

@@ -68,6 +68,8 @@ class Element {
     assert.equal(get('settings-panel-general').hidden, true);
     assert.equal(get('settings-back-models').hidden, false);
     assert.equal(get('settings-hf-token').value, '');
+    assert.equal(get('settings-notifications-bubble').checked, true);
+    assert.equal(get('settings-copilot-bubble').checked, true);
     assert.match(get('settings-hf-status').textContent, /saved/i);
     tabs[1].events.click();
     assert.equal(get('settings-panel-general').hidden, true);
@@ -82,10 +84,11 @@ class Element {
     radios[0].checked = false; radios[1].checked = true;
     get('settings-sidebar-compact').checked = true;
     get('settings-copilot-allow-urls').checked = true;
+    get('settings-notifications-bubble').checked = false;
     get('settings-panel-general').events.change();
     assert.equal(get('settings-ui-status').textContent, 'Unsaved changes.');
     await get('settings-ui-save').events.click();
-    assert.deepEqual(requests[0], ['/api/settings/ui', {theme:'dark', sidebar_compact:true}]);
+    assert.deepEqual(requests[0], ['/api/settings/ui', {theme:'dark', sidebar_compact:true, notifications_bubble:false, copilot_bubble:true}]);
     assert.equal(get('settings-ui-save').disabled, false);
     const status = get('settings-ui-status').textContent;
     if (failure === '/api/settings/ui') {

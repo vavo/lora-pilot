@@ -59,3 +59,16 @@ For Cosmos Text2World versus Video2World, identify whether text alone or actual 
 ## Audio-only work: ACE-Step and similar models
 
 Establish exact Base/XL/accelerated model and the requested task. Separate music style/instruments/tempo/structure from lyrics, language and vocal delivery. Preserve the user's lyrics and distinguish instrumental from vocal output. Use duration and the model's own conditioning fields instead of video resolution or image CFG defaults. The LoRA Pilot MCP currently has no audio-generation or audio-training tool; provide a trainer/inference handoff after checking that stack's documented support. Never turn a request for a music LoRA into the fixed SDXL training recipe.
+
+
+## FastH3 Omni and 8-Step V2
+
+Both are distilled H3 video/audio variants; preserve H3’s multimodal prompt structure while matching the exact task. The [pinned AI Toolkit presets](https://github.com/ostris/ai-toolkit/blob/73c84b091dd0f5647fc6a4b59122a2efc1c8147b/extensions_built_in/diffusion_models/ui.tsx) use eight-step sampling and guidance 1. Keep the model’s trained schedule rather than adding steps as a generic quality setting. They share H3’s text encoder, video VAE and audio VAE but require their own DiTs and matching training adapters, disabled during sampling.
+
+[FastH3 8-Step V2](https://huggingface.co/FastVideo/FastVideo-FastH3-Comfy) supports text-to-video/audio only, without first-frame or reference conditioning. The pinned implementation uses 24 fps and snaps frame counts down to the `17n+5` grid. [FastH3 Omni](https://huggingface.co/FastVideo/FastH3-Omni-Comfy) is reference-to-video/audio and has its own attention/conditioning path. Do not assign V2’s restrictions or the old Preview v0.2 VSA setup to Omni. The bundled MiniMax H3 graphs remain base-model graphs; they are not automatically converted FastH3 workflows.
+
+## YuE2 audio
+
+Separate style/instrumentation/tempo from lyrics and vocal delivery. Example style: `warm indie folk, fingerpicked acoustic guitar, brushed drums, intimate solo vocal, relaxed 90 BPM`; keep lyrics in the model’s lyrics field. Preserve the requested language and distinguish instrumental from vocal output. YuE2 uses its own tags/lyrics and optional ABC-score protocol, not ACE-Step’s fields or image guidance values. Discover the exact audio preset before prescribing durations or generation settings.
+
+The pinned trainer expects the [Comfy YuE2 checkpoint](https://huggingface.co/Comfy-Org/YuE2), which embeds the text tokenizer and audio VAE. Training audio conditioning uses [MERT-v2-FullSong](https://huggingface.co/m-a-p/MERT-v2-FullSong) with the [community v4 semantic head/NAR adapter](https://huggingface.co/Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4). SheetSage adds score conditioning; optional separation modes need further assets. A catalog download is not proof the trainer’s Hugging Face cache is populated. Do not label the raw vendor checkpoint as a drop-in replacement, imply the community tokenizer is the unreleased official tokenizer, or attempt YuE2 through MCP’s fixed image-training/comparison tools.

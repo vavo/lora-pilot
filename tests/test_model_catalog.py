@@ -56,3 +56,31 @@ console.log(JSON.stringify({families:context.window.modelFamilies,
             self.assertEqual(actual, refs)
             optional = [entry["name"] for entry in catalog_files if entry["optional"]]
             self.assertEqual(optional, ["gemma4_e2b_it_int8_convrot.safetensors"] if "ltx" in filename else [])
+
+    def test_image_h3_audio_and_shared_components_have_distinct_families(self):
+        data = self.catalog()
+        assignments = dict(data["assignments"])
+        expected = {
+            "minimax-h3-image-int8": "minimax-image",
+            "minimax-h3-image-vae": "minimax-image",
+            "minimax-h3-video-vae": "minimax",
+            "fasth3-omni-int8": "minimax",
+            "fasth3-8step-v2-int8": "minimax",
+            "p-h3-image-int8": "ph3",
+            "qwen-image-2.1-turbo-int8": "qwen",
+            "flux3-klein-base-bf16": "flux",
+            "ming-image-0.1-design-int8": "ming",
+            "moss-image-base-int8": "moss",
+            "fibo2-dev-int8": "fibo",
+            "iris3b-base": "iris",
+            "yue2-3b-int8": "yue2",
+        }
+        for name, family in expected.items():
+            self.assertEqual(assignments[name], family, name)
+        families = {family["id"]: family for family in data["families"]}
+        self.assertEqual(families["yue2"]["task"], "audio")
+        for family in families.values():
+            for name in family.get("components", []):
+                self.assertIn(name, assignments, family["id"])
+        self.assertIn("minimax-h3-qwen3vl-32b-nvfp4", families["minimax-image"]["components"])
+        self.assertNotIn("minimax-h3-video-vae", families["minimax-image"]["components"])

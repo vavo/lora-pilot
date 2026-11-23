@@ -312,6 +312,8 @@ class ControlPilotLoginRequest(BaseModel):
 class ControlPilotUiSettingsRequest(BaseModel):
     theme: str
     sidebar_compact: bool
+    notifications_bubble: Optional[bool] = None
+    copilot_bubble: Optional[bool] = None
 
 
 class ControlPilotShutdownDefaultsRequest(BaseModel):
@@ -378,6 +380,8 @@ def _default_controlpilot_settings() -> dict:
         "session_secret": secrets.token_hex(32),
         "theme": "light",
         "sidebar_compact": False,
+        "notifications_bubble": True,
+        "copilot_bubble": True,
         "shutdown_mode": "",
         "shutdown_default_hours": 0,
         "shutdown_default_mins": 1,
@@ -402,6 +406,9 @@ def _read_controlpilot_settings() -> dict:
                     settings["theme"] = str(data.get("theme")).strip()
                 if isinstance(data.get("sidebar_compact"), bool):
                     settings["sidebar_compact"] = data["sidebar_compact"]
+                for key in ("notifications_bubble", "copilot_bubble"):
+                    if isinstance(data.get(key), bool):
+                        settings[key] = data[key]
                 if str(data.get("shutdown_mode", "")).strip() in {"", "stop", "remove"}:
                     settings["shutdown_mode"] = str(data.get("shutdown_mode")).strip()
                 for key in ("shutdown_default_hours", "shutdown_default_mins", "shutdown_default_secs"):
@@ -454,6 +461,8 @@ def _write_controlpilot_settings(settings: dict) -> None:
     payload["session_secret"] = str(settings.get("session_secret", "") or "").strip() or secrets.token_hex(32)
     payload["theme"] = "dark" if str(settings.get("theme", "")).strip() == "dark" else "light"
     payload["sidebar_compact"] = bool(settings.get("sidebar_compact", False))
+    for key in ("notifications_bubble", "copilot_bubble"):
+        payload[key] = bool(settings.get(key, True))
     payload["shutdown_mode"] = str(settings.get("shutdown_mode", "") or "").strip() if str(settings.get("shutdown_mode", "") or "").strip() in {"", "stop", "remove"} else ""
     payload["shutdown_default_hours"] = max(0, int(settings.get("shutdown_default_hours", 0) or 0))
     payload["shutdown_default_mins"] = max(0, int(settings.get("shutdown_default_mins", 1) or 0))
@@ -1973,6 +1982,8 @@ def get_controlpilot_settings(request: Request):
         "mediapilot_password_set": bool(_read_mediapilot_password()),
         "theme": settings.get("theme", "light"),
         "sidebar_compact": bool(settings.get("sidebar_compact", False)),
+        "notifications_bubble": settings["notifications_bubble"],
+        "copilot_bubble": settings["copilot_bubble"],
         "shutdown_mode": str(settings.get("shutdown_mode", "") or ""),
         "shutdown_default_hours": int(settings.get("shutdown_default_hours", 0) or 0),
         "shutdown_default_mins": int(settings.get("shutdown_default_mins", 1) or 0),
@@ -2098,11 +2109,17 @@ def revoke_comfy_token(request: Request):
 @app.post("/api/settings/ui")
 def set_controlpilot_ui_settings(payload: ControlPilotUiSettingsRequest):
     theme = "dark" if str(payload.theme).strip() == "dark" else "light"
-    settings = _merge_controlpilot_settings({
+    updates = {
         "theme": theme,
         "sidebar_compact": bool(payload.sidebar_compact),
-    })
-    return {"status": "ok", "theme": settings["theme"], "sidebar_compact": settings["sidebar_compact"]}
+    }
+    for key in ("notifications_bubble", "copilot_bubble"):
+        value = getattr(payload, key)
+        if value is not None:
+            updates[key] = value
+    settings = _merge_controlpilot_settings(updates)
+    return {"status": "ok", **{key: settings[key] for key in (
+        "theme", "sidebar_compact", "notifications_bubble", "copilot_bubble")}}
 
 
 @app.post("/api/settings/shutdown-defaults")

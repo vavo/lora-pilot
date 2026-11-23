@@ -152,8 +152,8 @@ class BuildPinTests(unittest.TestCase):
 
     def test_comfy_uses_latest_verified_refs(self):
         expected = {
-            "COMFYUI_REF": "v0.44.0",
-            "COMFYUI_MANAGER_REF": "4.2.2",
+            "COMFYUI_REF": "v0.46.0",
+            "COMFYUI_MANAGER_REF": "4.4.2",
             "COMFYUI_DOWNLOADER_REF": "03146df738191004a8aad8264dca5c3530907f56",
             "COMFYUI_GGUF_REF": "6ea2651e7df66d7585f6ffee804b20e92fb38b8a",
             "COMFYUI_VHS_REF": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
@@ -187,6 +187,27 @@ class BuildPinTests(unittest.TestCase):
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             with self.subTest(path=path):
                 self.assertEqual(read_pin(path, "DIFFPIPE_REF"), expected)
+
+    def test_manager_pin_override_keeps_other_upstream_requirements(self):
+        installer = (ROOT / "scripts/build/install-comfy.sh").read_text()
+        fragment = installer.split('manager_requirement=', 1)[1].split('\nmkdir -p ', 1)[0]
+        fragment = 'manager_requirement=' + fragment
+        with tempfile.TemporaryDirectory() as temporary:
+            folder = Path(temporary)
+            requirements = folder / "manager_requirements.txt"
+            output = folder / "installed.txt"
+            fragment = fragment.replace('/opt/pilot/repos/ComfyUI/manager_requirements.txt', str(requirements))
+            fragment = fragment.replace('/tmp/comfy-manager-req.txt', str(folder / 'resolved.txt'))
+            capture = 'pip_install_in_venv() { cat "${@: -1}" > "$CAPTURE"; }\n'
+            env = {**os.environ, 'COMFYUI_MANAGER_REF': '4.4.2', 'CAPTURE': str(output)}
+            for upstream in ('comfyui_manager==4.2.2', 'comfyui-manager==4.4.2'):
+                requirements.write_text(upstream + '\nnh3>=0.3.7\n')
+                result = subprocess.run(['bash', '-ec', capture + fragment], env=env, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(output.read_text(), 'comfyui_manager==4.4.2\nnh3>=0.3.7\n')
+            requirements.write_text('comfyui_manager>=4.2.2\n')
+            result = subprocess.run(['bash', '-ec', capture + fragment], env=env, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
 
     def test_core_stack_uses_cu130_torch_triplet(self):
         expected = {
@@ -433,7 +454,7 @@ class BuildPinTests(unittest.TestCase):
     def test_jupyter_and_ai_toolkit_use_verified_upstream_pins(self):
         for path in ("Dockerfile", "Makefile", "build.env.example"):
             self.assertEqual(read_pin(path, "JUPYTERLAB_VERSION"), "4.6.5")
-            self.assertEqual(read_pin(path, "AI_TOOLKIT_REF"), "beb94824c51480a04d3c86c718603676fdef6938")
+            self.assertEqual(read_pin(path, "AI_TOOLKIT_REF"), "73c84b091dd0f5647fc6a4b59122a2efc1c8147b")
 
     def test_invoke_installs_local_xformers_to_shadow_core(self):
         text = (ROOT / "scripts/build/install-invoke.sh").read_text()

@@ -9,7 +9,7 @@ const viewMap = {
   dashboard: { view: "/views/dashboard.html", init: screen => window.initDashboard && window.initDashboard(screen), stop: () => window.stopDashboard?.() },
   storage: { view: "/views/storage.html", init: screen => window.storagePage.init(screen), stop: () => window.storagePage.stop() },
   services: { view: "/views/services.html", init: screen => window.initServices && window.initServices(screen), stop: () => window.stopServices?.() },
-  models: { view: "/views/models.html?v=20260907b", init: screen => window.initModels && window.initModels(screen), stop: () => window.stopModels?.() },
+  models: { view: "/views/models.html?v=20261123a", init: screen => window.initModels && window.initModels(screen), stop: () => window.stopModels?.() },
   datasets: { view: "/views/datasets.html", init: screen => window.initDatasets && window.initDatasets(screen) },
   mediapilot: { view: "/views/mediapilot.html?v=20260905a", init: screen => window.initMediapilot && window.initMediapilot(screen) },
   comfyui: { view: "/views/comfyui.html", init: screen => window.initComfyUI && window.initComfyUI(screen), stop: () => window.stopComfyUI?.() },
@@ -114,6 +114,8 @@ window.applyControlPilotUiSettings = function (settings = {}) {
   if (typeof settings.sidebar_compact === "boolean" && isDesktopLayout()) {
     setSidebarCompact(!!settings.sidebar_compact);
   }
+  setCopilotSectionVisibility(currentSection);
+  window.workspaceStatus.applySettings(window.controlPilotSettings);
 };
 
 window.refreshControlPilotSettings = async function () {
@@ -198,18 +200,19 @@ async function loadSection(section) {
 
 function setCopilotSectionVisibility(section) {
   const disabled = section === "mediapilot";
+  const hidden = disabled || window.controlPilotSettings?.copilot_bubble === false;
   const fab = document.getElementById("copilot-fab");
   const drawer = document.getElementById("copilot-drawer");
 
   mainEl?.classList.toggle("main--mediapilot", disabled);
   if (fab) {
-    fab.hidden = disabled;
-    fab.classList.toggle("is-hidden", disabled);
+    fab.hidden = hidden;
+    fab.classList.toggle("is-hidden", hidden);
   }
   if (drawer) {
-    if (disabled) drawer.classList.remove("open");
-    drawer.hidden = disabled;
-    drawer.classList.toggle("is-hidden", disabled);
+    if (hidden) drawer.classList.remove("open");
+    drawer.hidden = hidden;
+    drawer.classList.toggle("is-hidden", hidden);
   }
 }
 

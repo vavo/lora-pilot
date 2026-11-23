@@ -1,4 +1,8 @@
-Unreleased (November 22nd 2026)
+Unreleased (November 23rd 2026)
+
+- Expanded the model catalog with Qwen-Image 2.1, Ming, FLUX.3, MOSS, Fibo, Iris, image H3 variants, FastH3 and YuE2, including shared components and training adapters. Added audio filtering, refreshed the 62-group training reference and model-specific agent guidance.
+
+- Added separate Settings switches for the notifications and Copilot bubbles. Preferences persist across restarts; hidden notifications keep their activity history without showing previews.
 
 - Added a portable LoRA Pilot agent skill and read-only MCP guides for dataset review, model checks, training, comparisons, model-specific prompting and inference tuning.
 
@@ -16,7 +20,7 @@ Unreleased (November 22nd 2026)
 
 - Dataset creation now distinguishes people from non-human characters, offers Photo/Illustration references, and starts with three trial edits of the approved reference. Image decisions remain available during background work; regeneration is user-controlled. Compare images using the side arrows or left/right keyboard keys and save any kept subset to TagPilot, including while stopping a larger batch.
 
-- Updated the image to JupyterLab 4.6.5, ComfyUI 0.44.0, InvokeAI 6.14.4 and AI Toolkit revision beb94824.
+- Updated the image to JupyterLab 4.6.5, ComfyUI 0.46.0, Manager 4.4.2 and AI Toolkit 0.13.43 (73c84b09). InvokeAI remains at the latest stable 6.14.4.
 
 - Dataset creation now downloads missing models when you start a reference and offers 15, 30, 50 or 100 images. The dashboard opens the builder directly; ZIP upload remains a separate option.
 - Fixed MCP setup and agent connections on RunPod when its HTTPS proxy rewrites the Host header. Direct connections still require the configured host and transport.

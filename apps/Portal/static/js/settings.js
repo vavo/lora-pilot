@@ -19,6 +19,8 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
     themes: document.querySelectorAll('input[name="settings-theme"]'),
     uiSave: document.getElementById("settings-ui-save"),
     sidebarCompact: document.getElementById("settings-sidebar-compact"),
+    notificationsBubble: document.getElementById("settings-notifications-bubble"),
+    copilotBubble: document.getElementById("settings-copilot-bubble"),
     uiStatus: document.getElementById("settings-ui-status"),
     shutdownMode: document.getElementById("settings-shutdown-mode"),
     shutdownHours: document.getElementById("settings-shutdown-hours"),
@@ -152,6 +154,10 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
     if (updates('password') && els.passwordEnabled) els.passwordEnabled.checked = !!(settings && settings.password_enabled);
     if (updates('general')) els.themes.forEach(input => { input.checked = input.value === (settings.theme === "dark" ? "dark" : "light"); });
     if (updates('general') && els.sidebarCompact) els.sidebarCompact.checked = !!(settings && settings.sidebar_compact);
+    if (updates('general')) {
+      els.notificationsBubble.checked = settings.notifications_bubble !== false;
+      els.copilotBubble.checked = settings.copilot_bubble !== false;
+    }
     if (updates('shutdown') && els.shutdownMode) els.shutdownMode.value = (settings && settings.shutdown_mode) || "";
     if (updates('shutdown') && els.shutdownHours) els.shutdownHours.value = String((settings && settings.shutdown_default_hours) ?? 0);
     if (updates('shutdown') && els.shutdownMins) els.shutdownMins.value = String((settings && settings.shutdown_default_mins) ?? 1);
@@ -274,6 +280,8 @@ window.initSettings = async function (screen = window.createScreenLifecycle()) {
     const ui = {
       theme: [...els.themes].find(input => input.checked)?.value || "light",
       sidebar_compact: !!els.sidebarCompact?.checked,
+      notifications_bubble: els.notificationsBubble.checked,
+      copilot_bubble: els.copilotBubble.checked,
     };
     const allowAllUrls = !!els.copilotAllowUrls?.checked;
     try {

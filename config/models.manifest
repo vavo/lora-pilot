@@ -180,3 +180,59 @@ lumina2-gemma2|hf_file|Comfy-Org/Lumina_Image_2.0_Repackaged:split_files/text_en
 hunyuanimage-2.1-training|hf_file|tencent/HunyuanImage-2.1:dit/hunyuanimage2.1.safetensors|diffusion_models||34851687040
 hunyuanimage-2.1-qwen-encoder|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/qwen_2.5_vl_7b.safetensors|text_encoders||16584415576
 hunyuanimage-2.1-byt5|hf_file|Comfy-Org/HunyuanImage_2.1_ComfyUI:split_files/text_encoders/byt5_small_glyphxl_fp16.safetensors|text_encoders||438643184
+
+# --- Qwen-Image 2.1 (generation and editing) ---
+qwen-image-2.1-int8|hf_file|Comfy-Org/Qwen-Image-2.1:diffusion_models/qwen_image_2.1_int8_convrot.safetensors|diffusion_models||7256783064
+qwen-image-2.1-turbo-int8|hf_file|Comfy-Org/Qwen-Image-2.1:diffusion_models/qwen_image_2.1_turbo_int8_convrot.safetensors|diffusion_models||7256787829
+qwen-image-2.1-qwen3vl-8b-int8|hf_file|Comfy-Org/Qwen-Image-2.1:text_encoders/qwen3vl_8b_int8_convrot.safetensors|text_encoders||9350798360
+qwen-image-2.1-vae|hf_file|Comfy-Org/Qwen-Image-2.1:vae/qwen_image_2.1_vae_bf16.safetensors|vae||675509688
+qwen-image-2.1-turbo-training-adapter|hf_file|ostris/qwen_image_2_turbo_training_adapter:qwen_image_2_turbo_training_adapter_v1.safetensors|loras/training_adapters||159436160
+
+# --- Ming-Image 0.1 Design ---
+ming-image-0.1-design-int8|hf_file|Comfy-Org/Ming-Image:diffusion_models/ming_image_0.1_design_int8_convrot.safetensors|diffusion_models||6175239953
+ming-image-ling-mini-2.0-int8|hf_file|Comfy-Org/Ming-Image:text_encoders/ming_image_0.1_ling_mini_2.0_int8_convrot.safetensors|text_encoders||19507670525
+ming-image-vae|hf_file|Comfy-Org/Ming-Image:vae/ming_image_vae_bf16.safetensors|vae||253816696
+ming-image-training-adapter|hf_file|ostris/ming_image_training_adapter:ming_image_01_design_training_adapter_v1.safetensors|loras/training_adapters||170128008
+
+# --- FLUX.3 Image Klein Base (gated; explicit local DiT path in AI Toolkit) ---
+flux3-klein-base-int8-convrot|hf_file|black-forest-labs/flux-3-image-klein-comfy:diffusion_models/flux3-image-klein-base-int8-convrot.safetensors|diffusion_models||5807427339
+flux3-klein-base-bf16|hf_file|black-forest-labs/flux-3-image-klein-comfy:diffusion_models/flux3-image-klein-base-bf16.safetensors|diffusion_models||11076957072
+# FLUX.3 and Fibo use the existing flux2-vae and shared Qwen3-VL-4B encoder below.
+
+# --- MOSS-Image Base / SFT ---
+moss-image-base-int8|hf_file|Comfy-Org/MOSS-Image:diffusion_models/moss_image_base_int8_convrot.safetensors|diffusion_models||5413698958
+moss-image-sft-int8|hf_file|Comfy-Org/MOSS-Image:diffusion_models/moss_image_sft_int8_convrot.safetensors|diffusion_models||5413698958
+moss-image-qwen3.5-9b-int8|hf_file|Comfy-Org/MOSS-Image:text_encoders/qwen3.5_9b_int8_convrot.safetensors|text_encoders||9748121532
+moss-image-vae-small|hf_file|Comfy-Org/MOSS-Image:vae/flux2-vae_small.safetensors|vae||249521340
+
+# --- Fibo 2.0 Dev / shared Qwen3-VL-4B encoder ---
+fibo2-dev-int8|hf_file|Comfy-Org/Fibo-2.0:diffusion_models/fibo2_dev_int8_convrot.safetensors|diffusion_models||8408562474
+qwen3vl-4b-int8|hf_file|Comfy-Org/Fibo-2.0:text_encoders/qwen3vl_4b_int8_convrot.safetensors|text_encoders||4858559240
+
+# --- Iris-3B (pixel space, no VAE) ---
+iris3b-base|hf_repo|speridlabs/iris-3b|checkpoints/iris3b|model.safetensors,config.yaml|11950114087
+iris3b-qwen3vl-4b-bf16|hf_file|Comfy-Org/Krea-2:text_encoders/qwen3vl_4b_bf16.safetensors|text_encoders||8875719384
+
+# --- Pruna P-H3-Image (separate image encoder and VAE) ---
+p-h3-image-int8|hf_file|PrunaAI/P-H3-Image-Comfy:diffusion_models/p-h3-image_int8_convrot.safetensors|diffusion_models||21213068840
+p-h3-image-text-encoder-int8|hf_file|PrunaAI/P-H3-Image-Comfy:text_encoders/p-h3-image_text_encoder_int8_convrot.safetensors|text_encoders||5120870504
+p-h3-image-vae|hf_file|PrunaAI/P-H3-Image-Comfy:vae/p-h3-image_vae_bf16.safetensors|vae||5559036680
+p-h3-image-training-adapter|hf_file|ostris/minimax_h3_training_adapter:p_h3_image_training_adapter_v1.safetensors|loras/training_adapters||155110320
+
+# --- MiniMax H3 Image (shares minimax-h3-qwen3vl-32b-nvfp4, not the video VAE) ---
+minimax-h3-image-int8|hf_file|Comfy-Org/MiniMax-H3-Image:diffusion_models/minimax_h3_image_pruned_int8_convrot.safetensors|diffusion_models||20979314802
+minimax-h3-image-vae|hf_file|Comfy-Org/MiniMax-H3-Image:vae/minimax_h3_image_vae_fp16.safetensors|vae||1168505312
+minimax-h3-image-training-adapter|hf_file|ostris/minimax_h3_training_adapter:minimax_h3_image_training_adapter_v1.safetensors|loras/training_adapters||155110072
+
+# --- FastH3 (shares MiniMax H3 video/audio VAEs and text encoder) ---
+fasth3-omni-int8|hf_file|FastVideo/FastH3-Omni-Comfy:diffusion_models/fasth3_omniref_8step_pruned_int8_convrot.safetensors|diffusion_models||22213723064
+fasth3-8step-v2-int8|hf_file|FastVideo/FastVideo-FastH3-Comfy:diffusion_models/fastvideo_fasth3_8step_v2_pruned_int8_convrot.safetensors|diffusion_models||22128378696
+fasth3-omni-training-adapter|hf_file|ostris/minimax_h3_training_adapter:fastvideo_fasth3_omni_training_adapter_v1.safetensors|loras/training_adapters||175193992
+fasth3-8step-v2-training-adapter|hf_file|ostris/minimax_h3_training_adapter:fastvideo_fasth3_8step_v2_training_adapter_v1.safetensors|loras/training_adapters||350323144
+
+# --- YuE2 audio (Comfy repack includes text tokenizer and VAE) ---
+yue2-3b-int8|hf_file|Comfy-Org/YuE2:checkpoints/yue2_3b_int8_convrot.safetensors|checkpoints||3960938800
+yue2-sheetsage2|hf_file|Comfy-Org/YuE2:audio_encoders/sheetsage2_bf16.safetensors|audio_encoders||1386868122
+yue2-semantic-head-v4|hf_file|Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4:tokenizer_head_joint_v4.pt|ai_toolkit||171305291
+yue2-nar-lora-v4|hf_file|Mothersuperior/yue2-mothersuperior-realaudio-tokenizer-v4:nar_lora_joint_v4.pt|ai_toolkit||140626123
+yue2-mert-v2-fullsong|hf_repo|m-a-p/MERT-v2-FullSong|audio_encoders/MERT-v2-FullSong|config.json,preprocessor_config.json,model.safetensors,configuration_mert2.py,modeling_mert2.py|2529834886

@@ -33,14 +33,17 @@ if [[ ! -f "${manager_requirements_file}" ]]; then
   echo "ComfyUI manager requirements file not found: ${manager_requirements_file}" >&2
   exit 1
 fi
-if ! grep -Fxq "${manager_requirement}" "${manager_requirements_file}"; then
-  echo "ComfyUI manager requirement mismatch; expected ${manager_requirement}" >&2
-  cat "${manager_requirements_file}" >&2
+if [[ "$(grep -Ec '^comfyui[-_]manager==[^[:space:]]+$' "${manager_requirements_file}")" != "1" ]]; then
+  echo "Expected one pinned ComfyUI manager requirement" >&2
   exit 1
 fi
+# Keep upstream's extra dependencies while selecting our independently pinned Manager.
+sed -E "s/^comfyui[-_]manager==[^[:space:]]+$/${manager_requirement}/" \
+  "${manager_requirements_file}" > /tmp/comfy-manager-req.txt
 pip_install_in_venv /opt/venvs/core \
   -c /opt/pilot/config/core-constraints.txt \
-  -r "${manager_requirements_file}"
+  -r /tmp/comfy-manager-req.txt
+rm -f /tmp/comfy-manager-req.txt
 
 mkdir -p /opt/pilot/repos/ComfyUI/custom_nodes /opt/pilot/bundled/comfy-custom-nodes
 /opt/pilot/build/lib/git_checkout.sh \

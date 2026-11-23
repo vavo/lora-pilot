@@ -15,7 +15,7 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
 ## Why LoRA Pilot
 - **Three proven LoRA trainer stacks** in one place: Kohya SS, AI Toolkit, and Diffusion Pipe (plus TrainPilot for quick Kohya setup).
-- **51 training model groups** without juggling five half-compatible environments.
+- **62 training model groups** without juggling five half-compatible environments.
 - **ComfyUI + InvokeAI for rendering** with shared models, persistent outputs, and built-in model pulling.
 - **Full SD lifecycle covered**: dataset tagging/prep, model/dataset management, training, inference tuning, and media review.
 - **One control panel for ops**: ControlPilot handles services, downloads, logs, docs, and runtime controls.
@@ -36,20 +36,20 @@ Release-by-release details: [`CHANGELOG`](CHANGELOG)
 
 ## From your images to a usable LoRA
 
-In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, queue guided SDXL, FLUX.1 dev, SD 1.5, or SD 3.5 Medium/Large training, and compare the completed LoRA with its base model in ComfyUI. Persistent history keeps configurations, logs, and output locations available after a restart, and library copies preserve original checkpoints. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
+In the current source, ControlPilot follows the work itself: upload a dataset, review caption coverage, queue guided SDXL, FLUX.1 dev, SD 1.5, SD 3.5 Medium/Large, Anima, Lumina-Image 2.0 or HunyuanImage 2.1 training, and compare the completed LoRA with its base model in ComfyUI. Persistent history keeps configurations, logs, and output locations available after a restart, and library copies preserve original checkpoints. You can inspect hardware, logs, and advanced configuration when you need them. The sidebar groups tools by preparation, training, creation, and workspace management, with light and dark themes available throughout.
 
 These interface changes are included in [v2.6](docs/releases/v2.6.md). The [ControlPilot guide](docs/user-guide/control-pilot.md) explains the workflow; check the image revision you deploy before expecting the same screens on an existing pod.
 
 ## Supported training models
 
-**All 51 model groups**, including their listed variants, from the [September 26 training inventory](https://lorapilot.com/lora-training/#supported-models):
+**62 model groups**, including their listed variants, checked against the pinned trainer source on November 23, 2026:
 
-- **Images and editing (31):** FLUX.2 dev; FLUX.2 Klein base 4B/9B; FLUX.1 dev/schnell; FLUX.1 Kontext dev; Flex.1 alpha; Flex.2 preview; Qwen-Image/2512; Qwen-Image-Edit/2509/2511; Z-Image/Turbo/De-Turbo; Z-Image L2P; SD 1.4/1.5; SD 2.0/2.1; SDXL 1.0; SD3/3.5 Medium/3.5 Large; Anima Base v1.0; Lumina-Image 2.0; HunyuanImage 2.1; Chroma1 Base; Zeta-Chroma; HiDream I1 Full; HiDream E1-1; HiDream O1 Image; OmniGen2; ERNIE-Image; Nucleus-Image; Ideogram 4; PRX Pixel T2I; Krea 2 Raw/Turbo; Boogu-Image 0.1 Base/Edit; Mage-Flow Base/Edit-Base; Cosmos-Predict2 2B/14B.
-- **Video (12):** Wan 2.1 T2V 1.3B/14B; Wan 2.1 I2V 14B 480p/720p; Wan 2.2 T2V/I2V A14B; Wan 2.2 TI2V 5B; LTX-2/2.3/2.5; LTX-Video 0.9.x (through 0.9.8); HunyuanVideo; HunyuanVideo 1.5; Cosmos 1.0 Diffusion Text2World 7B/14B; MiniMax H3; MiniMax H3 Ref2VA; FastH3 Preview v0.2.
-- **Audio (2):** ACE-Step 1.5 Base; ACE-Step 1.5 XL Base.
+- **Images and editing (39):** FLUX.3 Image Klein Base; Qwen-Image 2.1/Turbo; Ming-Image 0.1 Design; MOSS-Image Base/SFT; Fibo 2.0 Dev; Iris-3B; Pruna P-H3-Image; MiniMax H3 Image; FLUX.2 dev; FLUX.2 Klein base 4B/9B; FLUX.1 dev/schnell; FLUX.1 Kontext dev; Flex.1 alpha; Flex.2 preview; Qwen-Image/2512; Qwen-Image-Edit/2509/2511; Z-Image/Turbo/De-Turbo; Z-Image L2P; SD 1.4/1.5; SD 2.0/2.1; SDXL 1.0; SD3/3.5 Medium/3.5 Large; Anima Base v1.0; Lumina-Image 2.0; HunyuanImage 2.1; Chroma1 Base; Zeta-Chroma; HiDream I1 Full; HiDream E1-1; HiDream O1 Image; OmniGen2; ERNIE-Image; Nucleus-Image; Ideogram 4; PRX Pixel T2I; Krea 2 Raw/Turbo; Boogu-Image 0.1 Base/Edit; Mage-Flow Base/Edit-Base; Cosmos-Predict2 2B/14B.
+- **Video (14):** FastH3 Omni; FastH3 8-Step V2; Wan 2.1 T2V 1.3B/14B; Wan 2.1 I2V 14B 480p/720p; Wan 2.2 T2V/I2V A14B; Wan 2.2 TI2V 5B; LTX-2/2.3/2.5; LTX-Video 0.9.x (through 0.9.8); HunyuanVideo; HunyuanVideo 1.5; Cosmos 1.0 Diffusion Text2World 7B/14B; MiniMax H3; MiniMax H3 Ref2VA; FastH3 Preview v0.2.
+- **Audio (3):** YuE2 3B; ACE-Step 1.5 Base; ACE-Step 1.5 XL Base.
 - **Advanced image configuration (6):** AuraFlow 0.3; PixArt-α XL-2/Σ XL-2; CogView4-6B; F-Lite Standard/Texture; Chroma1-Radiance (x0); Segmind SSD-1B/Vega.
 
-See the [full trainer compatibility tables](docs/reference/supported-models.md) for UI versus configuration paths, version restrictions, and setup notes. Cosmos 1.0 needs extra setup; the advanced entries need configuration outside the web UI. Guided TrainPilot recipes cover SDXL, FLUX.1 dev, SD 1.5, and SD 3.5 Medium/Large. Model weights download separately. Qwen-Image 2.1 and Ming-Image 0.1 Design require a trainer upgrade and are outside this count.
+See the [full trainer compatibility tables](docs/reference/supported-models.md) for UI versus configuration paths, version restrictions, and setup notes. Cosmos 1.0 needs extra setup; the advanced entries need configuration outside the web UI. Guided TrainPilot recipes cover SDXL, FLUX.1 dev, SD 1.5, and SD 3.5 Medium/Large, Anima, Lumina-Image 2.0 and HunyuanImage 2.1. Model weights download separately; the Models page includes the new families and their components.
 
 ## Explore the workspace
 

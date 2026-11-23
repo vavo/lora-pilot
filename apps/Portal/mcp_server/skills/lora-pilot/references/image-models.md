@@ -1,6 +1,6 @@
 # Image prompting by base family
 
-Reference checked 2026-11-22. Identify exact weights and the installed workflow before using a profile. These examples guide prompt writing and experiments; they are not MCP inference endpoints. Proposed ComfyUI starting ranges below are labeled separately from upstream pipeline examples. Preserve a working graph's sampler/schedule unless there is evidence to change it.
+Reference checked 2026-11-23. Identify exact weights and the installed workflow before using a profile. These examples guide prompt writing and experiments; they are not MCP inference endpoints. Proposed ComfyUI starting ranges below are labeled separately from upstream pipeline examples. Preserve a working graph's sampler/schedule unless there is evidence to change it.
 
 ## Stable Diffusion 1.x / 1.5
 
@@ -125,3 +125,46 @@ For layouts or posters, specify exact quoted text, its order/position, typograph
 For ERNIE-Image, Nucleus, PRX Pixel, Krea, Lens, PixelDiT and other newer families, resolve the exact publisher card and a compatible installed workflow before prescribing numbers. Natural descriptive prompts are a starting strategy, not proof of identical conditioning. For reference/edit models, bind each reference to its actual role. For pixel-space models, verify whether a VAE is needed at all. For specialized upscalers, distinguish the input image and upscale recipe from text-to-image generation. Do not turn a current catalog name into an unsupported MCP tool or reuse a similarly named architecture's LoRA.
 
 If a family is absent here, use the model's own card and official sample graph, record the source/revision, and describe the proposed test. Never silently substitute another model. Catalog presence, trainer support and inference support remain separate checks.
+
+
+## New AI Toolkit image families
+
+The following starting points come from [AI Toolkit 0.13.43’s pinned UI presets](https://github.com/ostris/ai-toolkit/blob/73c84b091dd0f5647fc6a4b59122a2efc1c8147b/extensions_built_in/diffusion_models/ui.tsx), not from a verified GPU run. They are AI Toolkit sample settings; keep an installed ComfyUI workflow’s own schedule and field names. The existing MCP comparison cannot execute these families. Obtain the matching workflow or provide a concrete UI handoff.
+
+### Qwen-Image 2.1 and Turbo
+
+Use connected descriptions of subject, layout, materials, lighting and exact quoted text. For editing, identify the supplied reference image and the specific change to make. Example: `Replace the sign in the robot’s right hand with a cream card reading "REPAIRS". Keep the robot, pose and workshop unchanged.` Use `qwen_image_2` for Base, or the Turbo preset with `model_kwargs.turbo: true`; do not treat the older Qwen-Image encoder/VAE as interchangeable. Both use Qwen3-VL-8B and an RGBA VAE. Enable alpha only when the task needs transparent output and the whole pipeline preserves it.
+
+The Base UI starts with guidance scale 3; use the installed Base schedule. Turbo has a fixed eight-step schedule at guidance 1. Turbo training requires `qwen_image_2_turbo_training_adapter_v1`, active during training and disabled for sampling. Do not leave the training adapter in an inference stack by habit. [Weights](https://huggingface.co/Comfy-Org/Qwen-Image-2.1).
+
+### Ming-Image 0.1 Design
+
+Specify layout and text as design instructions: `A cream repair-shop poster. Center an orange robot above the large title "RADIO REPAIR". Small dark-blue lettering below reads "OPEN DAILY". Flat screen-print texture, generous margins.` Describe transparent areas explicitly only when using RGBA mode. The preset uses Ling Mini 2.0, the Ming RGBA VAE, 12 steps and guidance 1. Training uses `ming_image_01_design_training_adapter_v1`; sampling removes it. The pinned UI exposes generation; backend editing support does not imply a working editing preset or MCP input upload. [Weights](https://huggingface.co/Comfy-Org/Ming-Image).
+
+### FLUX.3 Image Klein Base
+
+Use scene-first prose with clear spatial relationships and quoted lettering. For edits, state what changes and what stays, referring only to images actually supplied. The AI Toolkit Base sample uses 1024 × 1024, 28 steps, flowmatch and guidance 3.5. This is a traditional CFG field in this implementation, not FLUX.1’s separate FluxGuidance recipe. Use Qwen3-VL-4B and the FLUX.2 VAE. Step-distilled FLUX.3 is a separate inference variant and must not replace Base for training.
+
+The catalog retains the publisher’s actual `flux3-image-klein-base-*.safetensors` names. Set `model.name_or_path` to the selected local DiT file because the pinned AI Toolkit resolver still advertises underscore filenames. The gate applies to the BFL repository; a token does not replace accepting its license. [Publisher package](https://huggingface.co/black-forest-labs/flux-3-image-klein-base), [Comfy repack](https://huggingface.co/black-forest-labs/flux-3-image-klein-comfy).
+
+### MOSS-Image Base and SFT
+
+Describe visible content and relationships; retain the exact Base or SFT choice when evaluating a LoRA. Both AI Toolkit presets use 1024 × 1024, 30 flowmatch steps and guidance 3, with DiT block 22 skipped on the unconditional branch. Preserve that `uncond_skip_layers: [22]` behavior and exclude `layers.22.` from LoRA training rather than copying the number into an unrelated CFG node. Use Qwen3.5-9B and the small FLUX.2 VAE.
+
+Editing uses the separate experimental edit preset and reference/target pairs. In ComfyUI, edit LoRAs need [ComfyUI-MOSS-Image-Ostris-Edit](https://github.com/ostris/ComfyUI-MOSS-Image-Ostris-Edit); catalog downloads do not install that extension. Do not claim it is bundled. [Weights](https://huggingface.co/Comfy-Org/MOSS-Image).
+
+### Fibo 2.0 Dev
+
+Write descriptive prose with explicit subjects, object relationships and changes for any supplied editing references. Use multiline prompts only when their structure serves the requested image. The Dev sample preset uses 1024 × 1024, 30 flowmatch steps and guidance 5 against its model-specific null caption. Do not replace that unconditional conditioning with an SDXL negative-tag list. Use Qwen3-VL-4B and the FLUX.2 VAE; Turbo is a different variant. [Weights](https://huggingface.co/Comfy-Org/Fibo-2.0).
+
+### Iris-3B
+
+Use concrete scene descriptions rather than guessed tag syntax. Example: `An orange robot examines a tiny brass gear through a magnifying glass. Close side view, pale workbench, soft morning light.` The AI Toolkit sample starts at 30 steps and guidance 3; use the checkpoint’s supported canvas and scheduler. This is a pixel-space model with Qwen3-VL-4B, so do not add a VAE or diagnose missing VAE weights. The catalog Base directory includes `config.yaml`; keep it beside `model.safetensors`. Do not substitute the Iris Turbo checkpoint. [Publisher](https://huggingface.co/speridlabs/iris-3b).
+
+### Pruna P-H3-Image
+
+Use image-specific prose about the subject, composition and requested edits. For actual multiple references, the pinned backend uses `<Picture 1>`, `<Picture 2>` and so on; keep numbering aligned with supplied images. It is an eight-step, guidance-1 image model with its own image encoder and VAE, not a MiniMax video preset. The AI Toolkit sample starts at 2048 × 2048; upstream notes prefer higher native-area output, so do not promise equivalent quality at SDXL resolutions. Training uses `p_h3_image_training_adapter_v1` and sampling disables it. [Weights](https://huggingface.co/PrunaAI/P-H3-Image-Comfy).
+
+### MiniMax H3 Image
+
+Describe a still image and its spatial relationships; use the same ordered `<Picture N>` references only when the editing backend receives those images. Omit video/audio scene fields. This model is distilled to six steps with guidance 1. The AI Toolkit sample starts at 2048 × 2048 and uses the shared H3 Qwen3-VL-32B encoder, its dedicated image VAE and `minimax_h3_image_training_adapter_v1` for training only. Its latent format is not the H3 video VAE’s. Do not assume that installing the existing H3 video workflow provides an image graph. [Weights](https://huggingface.co/Comfy-Org/MiniMax-H3-Image).

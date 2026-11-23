@@ -30,7 +30,7 @@ There is no general ControlPilot bearer-token API. The optional Comfy token appl
 | `POST` | `/api/settings/auth/login` | JSON `{"password":"..."}`; sets session cookie when protection is enabled |
 | `POST` | `/api/settings/auth/logout` | No body; clears session cookie |
 | `POST` | `/api/settings/password` | `{"enabled":true,"password":"..."}`; nonempty password required when enabling; `{"enabled":false}` removes protection |
-| `POST` | `/api/settings/ui` | Required `theme` and `sidebar_compact`; `dark` selects dark, other theme values select light |
+| `POST` | `/api/settings/ui` | Required `theme` and `sidebar_compact`; `dark` selects dark, other theme values select light. Optional `notifications_bubble` and `copilot_bubble` booleans control the floating buttons; both default on, and omitted values preserve saved choices |
 | `POST` | `/api/settings/shutdown-defaults` | `shutdown_mode`: `""`, `stop`, or `remove`; `hours`, `mins`, `secs` default to 0, 1, 0 and clamp to 0–99, 0–59, 0–59; saves defaults without scheduling |
 | `POST` | `/api/settings/copilot-defaults` | Required `allow_all_urls` boolean |
 | `POST` | `/api/settings/jupyter` | Optional `token` (omit/null preserves; empty clears), `allow_origin_pat` (defaults empty); saves values and restarts Jupyter |

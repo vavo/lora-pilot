@@ -7,7 +7,7 @@
   const starting = new Set();
   const $ = id => document.getElementById(id);
   const families = () => window.modelFamilies;
-  const members = family => models.filter(m => window.modelFamilyFor(m).id === family.id);
+  const members = family => models.filter(m => window.modelFamilyFor(m).id === family.id || family.components?.includes(m.name));
   const jobFor = name => jobs.find(j => j.name === name);
   const matches = m => {
     const family = window.modelFamilyFor(m);
@@ -124,7 +124,7 @@
     ["Model", "Task", "Status", ""].forEach(label => headings.append(element("span", "", label)));
     container.append(headings);
     const list = element("div", "models-family-list");
-    const taskNames = { images: "Image generation", video: "Video generation", editing: "Image editing", components: "Components" };
+    const taskNames = { images: "Image generation", video: "Video generation", audio: "Audio generation", editing: "Image editing", components: "Components" };
     const thumbnails = { ltx25: "ltx25", minimax: "minimax", flux: "flux", qwen: "qwen", sdxl: "sdxl" };
     selected.forEach(family => {
       const row = button("", "select", family.id, "models-family-row");
@@ -254,7 +254,7 @@
       section.dataset.modelDetails = `${family.id}:variants`;
       section.open = !refs.length;
       section.append(element("summary", "", refs.length ? "Other variants and components" : "Models and components"));
-      section.append(element("p", "models-note", "Choose the files your workflow needs. Variants are alternatives."));
+      section.append(element("p", "models-note", "Choose a checkpoint variant and its required components."));
       variants.forEach(m => section.append(fileRow(m)));
       body.append(section);
     }
